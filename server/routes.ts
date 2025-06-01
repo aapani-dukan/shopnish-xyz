@@ -1,10 +1,18 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
+import { seedDatabase } from "./seed";
 import { insertProductSchema, insertCartItemSchema, insertOrderSchema, insertReviewSchema } from "@shared/schema";
 import { z } from "zod";
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Seed database on startup
+  try {
+    await seedDatabase();
+    console.log("Database seeded successfully");
+  } catch (error) {
+    console.error("Failed to seed database:", error);
+  }
   // Categories
   app.get("/api/categories", async (req, res) => {
     try {
@@ -147,13 +155,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/orders", async (req, res) => {
     try {
-      const { userId } = req.query;
+      const { customerId } = req.query;
+      const filters: any = {};
       
-      if (!userId) {
-        return res.status(400).json({ message: "User ID required" });
+      if (customerId) {
+        filters.customerId = parseInt(customerId as string);
       }
 
-      const orders = await storage.getOrders(parseInt(userId as string));
+      const orders = await storage.getOrders(filters);
       res.json(orders);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch orders" });
