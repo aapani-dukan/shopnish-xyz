@@ -2,7 +2,7 @@ import { defineConfig } from 'drizzle-kit';
 import 'dotenv/config';
 
 export default defineConfig({
-  schema: './server/schema.ts', // या आपका actual schema path
+  schema: './server/shared/schema.ts', // या आपका actual schema path
   out: './server/migrations',
   driver: 'pg',
   dbCredentials: {
