@@ -1,13 +1,11 @@
-// drizzle.config.ts
+
+import * as dotenv from "dotenv";      
 import { defineConfig } from "drizzle-kit";
-import * as dotenv from "dotenv";      // ✅ ये ज़रूरी है
-dotenv.config();                       // ✅ इससे .env file load होती है
 
 export default defineConfig({
   schema: "./shared/schema.ts",
   out: "./drizzle/migrations",
-  dialect: "postgresql",
-  driver: "pg",
+  dialect: "postgresql", // ✅ ज़रूरी
   dbCredentials: {
     connectionString: process.env.DATABASE_URL!,
   },
