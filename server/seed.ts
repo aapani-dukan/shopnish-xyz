@@ -12,6 +12,14 @@ export async function seedDatabase() {
       return;
     }
 
+    // 👇 ये लाइनें table को create कर देंगी अगर वो exist नहीं करती
+await db.execute(`
+  CREATE TABLE IF NOT EXISTS categories (
+    id SERIAL PRIMARY KEY,
+    name TEXT NOT NULL,
+    image TEXT NOT NULL
+  );
+`);
     // Create categories for daily essentials
     const categoryData = [
       {
