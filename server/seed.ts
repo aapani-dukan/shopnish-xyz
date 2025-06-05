@@ -1,45 +1,81 @@
 import { db } from "./db";
-import { categories, products, users, stores } from "@shared/schema";
+import { categories } from "@shared/schema";
 
 export async function seedDatabase() {
   try {
     console.log("Seeding database...");
 
-    // Check if data already exists
+    // ✅ Attempt to create table manually (for emergency use only)
+    await db.execute(`
+      CREATE TABLE IF NOT EXISTS categories (
+        id SERIAL PRIMARY KEY,
+        name TEXT NOT NULL,
+        name_hindi TEXT,
+        slug TEXT UNIQUE,
+        description TEXT,
+        image TEXT,
+        is_active BOOLEAN DEFAULT true,
+        sort_order INTEGER
+      );
+    `);
+
+    // ✅ Check if table already has data
     const existingCategories = await db.select().from(categories);
     if (existingCategories.length > 0) {
-      console.log("Database already seeded");
+      console.log("✅ Database already seeded.");
       return;
     }
 
-    // 👇 ये लाइनें table को create कर देंगी अगर वो exist नहीं करती
-await db.execute(`
-  CREATE TABLE IF NOT EXISTS categories (
-    id SERIAL PRIMARY KEY,
-    name TEXT NOT NULL,
-    image TEXT NOT NULL
-  );
-`);
-    // Create categories for daily essentials
+    // ✅ Insert sample category data
     const categoryData = [
       {
         name: "Cooking Oils & Ghee",
-        nameHindi: "खाना पकाने का तेल और घी",
+        name_hindi: "खाना पकाने का तेल और घी",
         slug: "cooking-oils",
         description: "Essential cooking oils, ghee, and butter",
         image: "https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5",
-        isActive: true,
-        sortOrder: 1,
+        is_active: true,
+        sort_order: 1,
       },
       {
         name: "Rice & Grains",
-        nameHindi: "चावल और अनाज",
+        name_hindi: "चावल और अनाज",
         slug: "rice-grains",
         description: "All types of rice, wheat, and grains",
         image: "https://images.unsplash.com/photo-1586201375761-83865001e31c",
-        isActive: true,
-        sortOrder: 2,
+        is_active: true,
+        sort_order: 2,
       },
+      {
+        name: "Snacks & Namkeen",
+        name_hindi: "नमकीन और स्नैक्स",
+        slug: "snacks-namkeen",
+        description: "Delicious snacks and namkeen items",
+        image: "https://images.unsplash.com/photo-1601315379701-1564147c58b4",
+        is_active: true,
+        sort_order: 3,
+      },
+      {
+        name: "Personal Care",
+        name_hindi: "व्यक्तिगत देखभाल",
+        slug: "personal-care",
+        description: "Shampoos, soaps, creams, etc.",
+        image: "https://images.unsplash.com/photo-1611080626919-7e2c3a6baf4b",
+        is_active: true,
+        sort_order: 4,
+      }
+    ];
+
+    // ✅ Insert into DB
+    for (const category of categoryData) {
+      await db.insert(categories).values(category);
+    }
+
+    console.log("✅ Database seeded successfully.");
+  } catch (error) {
+    console.error("❌ Failed to seed database:", error);
+  }
+},
       {
         name: "Pulses & Lentils",
         nameHindi: "दाल और दलहन",
