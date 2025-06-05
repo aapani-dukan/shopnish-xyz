@@ -64,18 +64,27 @@ export async function seedDatabase() {
         is_active: true,
         sort_order: 4,
       }
-    ];
+    
 
-    // ✅ Insert into DB
-    for (const category of categoryData) {
-      await db.insert(categories).values(category);
-    }
-
-    console.log("✅ Database seeded successfully.");
-  } catch (error) {
-    console.error("❌ Failed to seed database:", error);
-  }
-},
+    
+      {
+        name: "Snacks & Namkeen",
+        name_hindi: "नमकीन और स्नैक्स",
+        slug: "snacks-namkeen",
+        description: "Delicious snacks and namkeen items",
+        image: "https://images.unsplash.com/photo-1601315379701-1564147c58b4",
+        is_active: true,
+        sort_order: 3,
+      },
+      {
+        name: "Personal Care",
+        name_hindi: "व्यक्तिगत देखभाल",
+        slug: "personal-care",
+        description: "Shampoos, soaps, creams, etc.",
+        image: "https://images.unsplash.com/photo-1611080626919-7e2c3a6baf4b",
+        is_active: true,
+        sort_order: 4,
+      },
       {
         name: "Pulses & Lentils",
         nameHindi: "दाल और दलहन",
@@ -150,6 +159,16 @@ export async function seedDatabase() {
       }
     ];
 
+// ✅ Insert into DB
+    for (const category of categoryData) {
+      await db.insert(categories).values(category);
+    }
+
+    console.log("✅ Database seeded successfully.");
+  catch (error) {
+    console.error("❌ Failed to seed database:", error);
+  }
+   
     // Insert categories
     const insertedCategories = await db.insert(categories).values(categoryData).returning();
     console.log(`Inserted ${insertedCategories.length} categories`);
