@@ -26,11 +26,11 @@ export const useCartStore = create<CartStore>()(
     (set, get) => ({
       items: [],
       sessionId: Math.random().toString(36).substring(2, 15),
-      
+
       addItem: (newItem) => {
         const items = get().items;
         const existingItem = items.find(item => item.productId === newItem.productId);
-        
+
         if (existingItem) {
           set({
             items: items.map(item =>
@@ -45,32 +45,32 @@ export const useCartStore = create<CartStore>()(
           });
         }
       },
-      
+
       removeItem: (id) => {
         set({ items: get().items.filter(item => item.id !== id) });
       },
-      
+
       updateQuantity: (id, quantity) => {
         if (quantity <= 0) {
           get().removeItem(id);
           return;
         }
-        
+
         set({
           items: get().items.map(item =>
             item.id === id ? { ...item, quantity } : item
           )
         });
       },
-      
+
       clearCart: () => {
         set({ items: [] });
       },
-      
+
       getTotalItems: () => {
         return get().items.reduce((total, item) => total + item.quantity, 0);
       },
-      
+
       getTotalPrice: () => {
         return get().items.reduce((total, item) => total + (parseFloat(item.price) * item.quantity), 0);
       },
@@ -80,3 +80,16 @@ export const useCartStore = create<CartStore>()(
     }
   )
 );
+
+// ✅ Seller Registration Store — Add this below cart store
+interface SellerRegistrationStore {
+  isOpen: boolean;
+  open: () => void;
+  close: () => void;
+}
+
+export const useSellerRegistrationStore = create<SellerRegistrationStore>((set) => ({
+  isOpen: false,
+  open: () => set({ isOpen: true }),
+  close: () => set({ isOpen: false }),
+}));
