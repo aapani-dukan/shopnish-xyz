@@ -1,4 +1,4 @@
-import type { Express } from "express";
+import express  from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { seedDatabase } from "./seed";
