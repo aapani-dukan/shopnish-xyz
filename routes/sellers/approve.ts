@@ -1,8 +1,10 @@
 // routes/sellers/approve.ts
 import { Router, Request, Response, NextFunction } from "express";
-import { prisma } from "../../prisma/client";
 
 const router = Router();
+
+// Dummy in-memory sellers array (shared)
+const fakeSellers: any[] = [];
 
 router.post("/", async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -12,16 +14,20 @@ router.post("/", async (req: Request, res: Response, next: NextFunction) => {
       return res.status(400).json({ message: "sellerId is required" });
     }
 
-    const updatedSeller = await prisma.seller.update({
-      where: { id: sellerId },
-      data: {
-        approvalStatus: "approved",
-        approvedAt: new Date(),
-        rejectionReason: null,
-      },
-    });
+    const sellerIndex = fakeSellers.findIndex((seller) => seller.id === sellerId);
 
-    res.json(updatedSeller);
+    if (sellerIndex === -1) {
+      return res.status(404).json({ message: "Seller not found" });
+    }
+
+    fakeSellers[sellerIndex] = {
+      ...fakeSellers[sellerIndex],
+      approvalStatus: "approved",
+      approvedAt: new Date(),
+      rejectionReason: null,
+    };
+
+    res.json(fakeSellers[sellerIndex]);
   } catch (error) {
     next(error);
   }
