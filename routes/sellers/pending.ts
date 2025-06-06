@@ -1,15 +1,19 @@
 // routes/sellers/pending.ts
 import { Router, Request, Response, NextFunction } from "express";
-import { prisma } from "../../prisma/client";
 
 const router = Router();
 
+// Dummy in-memory sellers array (shared, ideally this should be imported from a shared file)
+const fakeSellers: any[] = [];
+
 router.get("/", async (_req: Request, res: Response, next: NextFunction) => {
   try {
-    const pendingSellers = await prisma.seller.findMany({
-      where: { approvalStatus: "pending" },
-      orderBy: { createdAt: "desc" },
-    });
+    const pendingSellers = fakeSellers
+      .filter((seller) => seller.approvalStatus === "pending")
+      .sort(
+        (a, b) =>
+          new Date(b.appliedAt).getTime() - new Date(a.appliedAt).getTime()
+      );
 
     res.json(pendingSellers);
   } catch (error) {
