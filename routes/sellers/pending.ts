@@ -1,5 +1,5 @@
 import { Router, Request, Response, NextFunction } from "express";
-import { sellers } from "../../storage"; // ✅ Import real sellers array
+import { sellers } from "../../../server/storage";
 
 const router = Router();
 
