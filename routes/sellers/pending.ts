@@ -1,5 +1,5 @@
 import { Router, Request, Response, NextFunction } from "express";
-import { sellers } from "../../../server/storage";
+import { sellers } from "../../server/storage";
 
 const router = Router();
 
