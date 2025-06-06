@@ -1,7 +1,7 @@
 // components/seller-onboarding-dialog.tsx
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-
+import SellerRegistrationForm from "./SellerRegistrationForm";
 interface SellerOnboardingDialogProps {
   open: boolean;
   onClose: () => void;
