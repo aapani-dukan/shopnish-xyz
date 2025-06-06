@@ -40,6 +40,14 @@ getSellers(filters?: { approvalStatus?: string }): Promise<Seller[]>;
   createReview(review: InsertReview): Promise<Review>;
 }
 
+export const sellers = [
+  {
+    id: "1",
+    name: "Test Seller",
+    approvalStatus: "pending",
+    appliedAt: new Date().toISOString(),
+  },
+];
 export class DatabaseStorage implements IStorage {
   // Authentication & Users
   async getUserByEmail(email: string): Promise<User | undefined> {
