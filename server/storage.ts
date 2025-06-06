@@ -61,7 +61,15 @@ export class DatabaseStorage implements IStorage {
       return undefined;
     }
   }
+async function getSellers(filters?: { approvalStatus?: string }) {
+  const sellers = await db.select().from(sellersTable);
+  if (filters?.approvalStatus) {
+    return sellers.filter(s => s.approvalStatus === filters.approvalStatus);
+  }
+  return sellers;
+}
 
+  
   async createUser(user: InsertUser): Promise<User> {
     const result = await db.insert(users).values(user).returning();
     return result[0];
