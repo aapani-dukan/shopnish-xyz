@@ -1,20 +1,22 @@
 // components/seller-onboarding-dialog.tsx
+
+import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import SellerRegistrationForm from "./SellerRegistrationForm";
+import SellerLogin from "./SellerLogin";
+
 interface SellerOnboardingDialogProps {
   open: boolean;
   onClose: () => void;
-  onRegister: () => void;
-  onLogin: () => void;
 }
 
 export default function SellerOnboardingDialog({
   open,
   onClose,
-  onRegister,
-  onLogin,
 }: SellerOnboardingDialogProps) {
+  const [tab, setTab] = useState("register");
+
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="space-y-4">
@@ -22,14 +24,20 @@ export default function SellerOnboardingDialog({
           <DialogTitle>Become a Seller</DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4">
-          <Button className="w-full" onClick={onRegister}>
-            Register as a Seller
-          </Button>
-          <Button variant="outline" className="w-full" onClick={onLogin}>
-            Login as a Seller
-          </Button>
-        </div>
+        <Tabs value={tab} onValueChange={setTab} className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="register">Register</TabsTrigger>
+            <TabsTrigger value="login">Login</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="register">
+            <SellerRegistrationForm />
+          </TabsContent>
+
+          <TabsContent value="login">
+            <SellerLogin />
+          </TabsContent>
+        </Tabs>
       </DialogContent>
     </Dialog>
   );
