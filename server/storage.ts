@@ -4,7 +4,7 @@ import {
   type User, type InsertUser, type Category, type InsertCategory, 
   type Product, type InsertProduct, type CartItem, type InsertCartItem,
   type Order, type InsertOrder, type OrderItem, type InsertOrderItem,
-  type Review, type InsertReview
+  type Review, type InsertReview,type seller
 } from "@shared/schema";
 
 export interface IStorage {
@@ -12,7 +12,7 @@ export interface IStorage {
   getUserByEmail(email: string): Promise<User | undefined>;
   getUserById(id: number): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
-
+getSellers(filters?: { approvalStatus?: string }): Promise<Seller[]>;
   // Categories
   getCategories(): Promise<Category[]>;
   getCategory(id: number): Promise<Category | undefined>;
@@ -61,12 +61,12 @@ export class DatabaseStorage implements IStorage {
       return undefined;
     }
   }
-async function getSellers(filters?: { approvalStatus?: string }) {
-  const sellers = await db.select().from(sellersTable);
-  if (filters?.approvalStatus) {
-    return sellers.filter(s => s.approvalStatus === filters.approvalStatus);
-  }
-  return sellers;
+async getSellers(filters?: { approvalStatus?: string }): Promise<Seller[]> {
+    const sellersList = await db.select().from(sellers);
+    if (filters?.approvalStatus) {
+      return sellersList.filter(s => s.approvalStatus === filters.approvalStatus);
+    }
+    return sellersList;
 }
 
   
