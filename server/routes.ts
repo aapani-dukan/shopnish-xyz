@@ -8,6 +8,8 @@ import { z } from "zod";
 
 import sellersApplyRouter from "./routes/sellers/apply";
 import sellersApproveRouter from "./routes/sellers/approve";
+import sellersRejectRouter from "./routes/sellers/reject";
+router.use("/sellers/reject", sellersRejectRouter);
 router.use("/sellers/approve", sellersApproveRouter);
 router.use("/sellers/apply", sellersApplyRouter);
 export async function registerRoutes(app: Express): Promise<Server> {
