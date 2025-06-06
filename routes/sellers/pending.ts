@@ -1,14 +1,11 @@
-// routes/sellers/pending.ts
 import { Router, Request, Response, NextFunction } from "express";
+import { sellers } from "../../storage"; // ✅ Import real sellers array
 
 const router = Router();
 
-// Dummy in-memory sellers array (shared, ideally this should be imported from a shared file)
-const fakeSellers: any[] = [];
-
 router.get("/", async (_req: Request, res: Response, next: NextFunction) => {
   try {
-    const pendingSellers = fakeSellers
+    const pendingSellers = sellers
       .filter((seller) => seller.approvalStatus === "pending")
       .sort(
         (a, b) =>
