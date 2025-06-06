@@ -5,7 +5,7 @@ import { seedDatabase } from "./seed";
 import { insertProductSchema, insertCartItemSchema, insertOrderSchema, insertReviewSchema } from "@shared/schema";
 import { z } from "zod";
 // routes.ts
-import pendingSellersRoute from "../sellers/pending";
+import pendingSellersRoute from "../routes/sellers/pending";
 import sellersApplyRouter from "../routes/sellers/apply";
 import sellersApproveRouter from "../routes/sellers/approve";
 import sellersRejectRouter from "../routes/sellers/reject";
