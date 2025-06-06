@@ -48,6 +48,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get all pending seller requests
+  app.get("/api/sellers/pending", async (req, res) => {
+    try {
+      const sellers = await storage.getSellers({ approvalStatus: "pending" });
+      res.json(sellers);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch pending sellers" });
+    }
+  });
+
   app.get("/api/products/:id", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
