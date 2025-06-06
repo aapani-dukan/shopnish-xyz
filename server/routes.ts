@@ -28,6 +28,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 app.use("/api/sellers/pending", pendingSellersRoute);
+  app.use("/api/sellers/apply", sellersApplyRouter);
+app.use("/api/sellers/approve", sellersApproveRouter);
+app.use("/api/sellers/reject", sellersRejectRouter);
   // Products
   app.get("/api/products", async (req, res) => {
     try {
