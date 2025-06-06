@@ -9,10 +9,7 @@ import pendingSellersRoute from "./sellers/pending";
 import sellersApplyRouter from "../routes/sellers/apply";
 import sellersApproveRouter from "../routes/sellers/approve";
 import sellersRejectRouter from "../routes/sellers/reject";
-const router=express.Router();
-router.use("/sellers/reject", sellersRejectRouter);
-router.use("/sellers/approve", sellersApproveRouter);
-router.use("/sellers/apply", sellersApplyRouter);
+
 export async function registerRoutes(app: Express): Promise<Server> {
   // Seed database on startup
   try {
