@@ -4,7 +4,11 @@ import { storage } from "./storage";
 import { seedDatabase } from "./seed";
 import { insertProductSchema, insertCartItemSchema, insertOrderSchema, insertReviewSchema } from "@shared/schema";
 import { z } from "zod";
+// routes.ts
 
+import sellersApplyRouter from "./routes/sellers/apply";
+
+router.use("/sellers/apply", sellersApplyRouter);
 export async function registerRoutes(app: Express): Promise<Server> {
   // Seed database on startup
   try {
