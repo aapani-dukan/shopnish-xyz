@@ -7,7 +7,8 @@ import { z } from "zod";
 // routes.ts
 
 import sellersApplyRouter from "./routes/sellers/apply";
-
+import sellersApproveRouter from "./routes/sellers/approve";
+router.use("/sellers/approve", sellersApproveRouter);
 router.use("/sellers/apply", sellersApplyRouter);
 export async function registerRoutes(app: Express): Promise<Server> {
   // Seed database on startup
