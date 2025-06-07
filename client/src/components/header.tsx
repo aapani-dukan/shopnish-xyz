@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { useCartStore } from "@/lib/store";
 import CartModal from "./cart-modal";
 import { useSellerRegistrationStore } from "@/lib/store";
-import { Button } from "@/components/ui/button";
+
 interface Category {
   id: number;
   name: string;
