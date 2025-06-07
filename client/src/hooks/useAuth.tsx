@@ -1,10 +1,14 @@
 import { useEffect, useState } from "react";
+import { getAuth, onAuthStateChanged, User as FirebaseUser } from "firebase/auth";
+import { app } from "@/lib/firebase"; // Firebase initialization file
 
 interface User {
-  id: string;
-  name: string;
-  email: string;
-  role: string; // "customer" | "seller" | "admin" etc.
+  uid: string;
+  name: string | null;
+  email: string | null;
+  phone?: string | null;
+  photoURL?: string | null;
+  provider?: any[];
 }
 
 export function useAuth() {
@@ -12,40 +16,46 @@ export function useAuth() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const token = localStorage.getItem("authToken"); // JWT token
+    const auth = getAuth(app);
 
-    if (!token) {
-      setUser(null);
-      setLoading(false);
-      return;
-    }
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: FirebaseUser | null) => {
+      if (!firebaseUser) {
+        setUser(null);
+        setLoading(false);
+        return;
+      }
 
-    const fetchUser = async () => {
       try {
+        const idToken = await firebaseUser.getIdToken();
+
         const response = await fetch("/api/auth/me", {
           method: "GET",
           headers: {
-            Authorization: `Bearer ${token}`,
+            Authorization: `Bearer ${idToken}`,
             "Content-Type": "application/json",
           },
         });
 
-        if (!response.ok) {
-          throw new Error("Invalid token or user not found");
-        }
+        if (!response.ok) throw new Error("Failed to fetch user data");
 
         const data = await response.json();
-        setUser(data.user); // must match backend response structure
-      } catch (error) {
-        console.error("Authentication failed:", error);
-        localStorage.removeItem("authToken"); // Optional: logout if token invalid
+        setUser({
+          uid: data.uid,
+          name: data.name,
+          email: data.email,
+          phone: data.phone,
+          photoURL: data.photoURL,
+          provider: data.provider,
+        });
+      } catch (err) {
+        console.error("Auth Error:", err);
         setUser(null);
       } finally {
         setLoading(false);
       }
-    };
+    });
 
-    fetchUser();
+    return () => unsubscribe(); // Cleanup
   }, []);
 
   return { user, loading };
