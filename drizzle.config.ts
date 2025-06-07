@@ -2,10 +2,9 @@ import { defineConfig } from 'drizzle-kit';
 import 'dotenv/config';
 
 export default defineConfig({
-  schema: './server/shared/schema.ts', // ✅ आपका schema path
+  schema: './server/shared/schema.ts',
   out: './server/migrations',
-  driver: 'pg',
-  dialect: 'postgresql',               // ✅ REQUIRED: यह line ज़रूर चाहिए
+  driver: 'pg', // ✅ अब यह ही काफी है
   dbCredentials: {
     connectionString: process.env.DATABASE_URL!,
   },
