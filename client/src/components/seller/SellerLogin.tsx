@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { signInWithGoogle, onAuthStateChange } from "../lib/firebase";
+import { signInWithGoogle, onAuthStateChange } from "../src/lib/firebase";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
