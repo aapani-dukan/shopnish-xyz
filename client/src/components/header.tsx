@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { useCartStore } from "@/lib/store";
 import CartModal from "./cart-modal";
 import { useSellerRegistrationStore } from "@/lib/store";
-import SellerRegistrationModal from "@/components/modals/seller-registration-modal"; // ✅ ADD THIS
+import SellerRegistrationModal from "@/components/seller-registration-modal"; // ✅ ADD THIS
 
 interface Category {
   id: number;
