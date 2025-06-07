@@ -1,5 +1,5 @@
 import { Router, Request, Response, NextFunction } from "express";
-import { prisma } from "../../prisma/client"; // prisma client path adjust करें
+
 
 const router = Router();
 
