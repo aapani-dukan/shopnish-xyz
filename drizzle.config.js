@@ -1,10 +1,11 @@
 const { defineConfig } = require('drizzle-kit');
 
 module.exports = defineConfig({
-  schema: './shared/schema.ts',
-  out: './server/migrations',
-  dialect: 'pg', // 🔴 यही सबसे जरूरी बदलाव है
+  schema: './shared/schema.ts',          // ← अपना schema path
+  out: './server/migrations',            // ← migrations यहीं बनेंगी
+  dialect: 'postgresql',                 // ← enum-value ठीक
   dbCredentials: {
-    connectionString: 'postgresql://neondb_owner:npg_98LZoDWjpxkK@ep-falling-mud-a8ib7jxz-pooler.eastus2.azure.neon.tech/neondb?sslmode=require',
+    url: 'postgresql://neondb_owner:npg_98LZoDWjpxkK@ep-falling-mud-a8ib7jxz-pooler.eastus2.azure.neon.tech/neondb?sslmode=require',
+    // ↑ NOTE: फ़ील्ड-नाम “url” है, “connectionString” नहीं
   },
 });
