@@ -3,7 +3,6 @@ import {
   getAuth,
   GoogleAuthProvider,
   signInWithPopup,
-  signInWithRedirect,
   getRedirectResult,
   signOut,
   onAuthStateChanged,
@@ -11,7 +10,7 @@ import {
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: `${import.meta.env.VITE_FIREBASE_PROJECT_ID}.firebaseapp.com`,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN, // ✅ FIXED
   projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
   storageBucket: `${import.meta.env.VITE_FIREBASE_PROJECT_ID}.appspot.com`,
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
@@ -21,7 +20,7 @@ export const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();
 
-// Google sign-in function with popup (better for development)
+// Google sign-in function with popup
 export const signInWithGoogle = async () => {
   try {
     return await signInWithPopup(auth, googleProvider);
@@ -31,17 +30,9 @@ export const signInWithGoogle = async () => {
   }
 };
 
-// Sign out function
-export const signOutUser = () => {
-  return signOut(auth);
-};
+export const signOutUser = () => signOut(auth);
 
-// Handle redirect result
-export const handleGoogleRedirect = () => {
-  return getRedirectResult(auth);
-};
+export const handleGoogleRedirect = () => getRedirectResult(auth);
 
-// Auth state listener
-export const onAuthStateChange = (callback: (user: any) => void) => {
-  return onAuthStateChanged(auth, callback);
-};
+export const onAuthStateChange = (callback: (user: any) => void) =>
+  onAuthStateChanged(auth, callback);
