@@ -35,6 +35,16 @@ export const stores = pgTable("stores", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+
+export const insertSellerSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(6),
+  firstName: z.string().min(1),
+  lastName: z.string().min(1),
+  phone: z.string().min(10),
+  role: z.literal("seller").default("seller"),
+});
+
 // Product categories for essentials
 export const categories = pgTable("categories", {
   id: serial("id").primaryKey(),
