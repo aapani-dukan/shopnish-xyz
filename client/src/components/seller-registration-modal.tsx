@@ -13,6 +13,8 @@ import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useSellerRegistrationStore } from "@/lib/store";
 import { useAuth } from "@/hooks/useAuth";
+import { useEffect,useState } from "react";
+import { SellerRegistrationForm } from "./ SellerRegistrationForm";
 import { Store, CheckCircle, Clock, FileText, CreditCard, Phone } from "lucide-react";
 import { z } from "zod";
 
@@ -74,28 +76,43 @@ export default function SellerRegistrationModal() {
   };
 
   if (!user) {
-    return (
-      <Dialog open={isOpen} onOpenChange={close}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center">
-              <Store className="h-5 w-5 mr-2" />
-              Join as a Seller
-            </DialogTitle>
-          </DialogHeader>
-          <div className="text-center py-6">
-            <div className="text-4xl mb-4">🔐</div>
-            <h3 className="text-lg font-semibold mb-2">Login Required</h3>
-            <p className="text-muted-foreground mb-4">
-              Please log in to register as a seller on our platform.
-            </p>
-            <Button onClick={() => window.location.href = '/api/login'} className="w-full">
-              Login to Continue
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-    );
+  const handleLogin = async () => {
+    try {
+      const result = await signInWithGoogle(); // Firebase login
+      console.log("User logged in:", result.user);
+      // Login के बाद modal अपने-आप रेंडर हो जाएगा
+    } catch (error) {
+      console.error("Login failed:", error);
+      toast({
+        title: "Login Failed",
+        description: "Please try logging in again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={close}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center">
+            <Store className="h-5 w-5 mr-2" />
+            Join as a Seller
+          </DialogTitle>
+        </DialogHeader>
+        <div className="text-center py-6">
+          <div className="text-4xl mb-4">🔐</div>
+          <h3 className="text-lg font-semibold mb-2">Login Required</h3>
+          <p className="text-muted-foreground mb-4">
+            Please log in with Google to register as a seller.
+          </p>
+          <Button onClick={handleLogin} className="w-full">
+            Login with Google
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
   }
 
   return (
