@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
-import { Search, Heart, ShoppingCart, User, Menu } from "lucide-react";
+import { Search, Heart, ShoppingCart, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useCartStore } from "@/lib/store";
 import CartModal from "./cart-modal";
 import { useSellerRegistrationStore } from "@/lib/store";
+import SellerRegistrationModal from "@/components/modals/seller-registration-modal"; // ✅ ADD THIS
 
 interface Category {
   id: number;
@@ -23,7 +24,8 @@ export default function Header({ categories }: HeaderProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [, setLocation] = useLocation();
   const totalItems = useCartStore(state => state.getTotalItems());
-const { open } = useSellerRegistrationStore();
+  const { open } = useSellerRegistrationStore();
+
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchQuery.trim()) {
@@ -72,10 +74,11 @@ const { open } = useSellerRegistrationStore();
                 <Heart className="h-5 w-5" />
                 <span className="sr-only">Wishlist</span>
               </Button>
+
               <Button onClick={open} variant="outline" className="ml-4">
-  Become a Seller
-</Button>
-              
+                Become a Seller
+              </Button>
+
               <Button
                 variant="ghost"
                 size="sm"
@@ -90,7 +93,7 @@ const { open } = useSellerRegistrationStore();
                 )}
                 <span className="sr-only">Shopping cart</span>
               </Button>
-              
+
               <Button variant="ghost" size="sm" className="text-gray-600 hover:text-primary">
                 <User className="h-5 w-5" />
                 <span className="sr-only">Account</span>
@@ -115,7 +118,9 @@ const { open } = useSellerRegistrationStore();
         </div>
       </header>
 
+      {/* Modals */}
       <CartModal isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} />
+      <SellerRegistrationModal /> {/* ✅ ADD THIS */}
     </>
   );
 }
