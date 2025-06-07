@@ -1,13 +1,10 @@
 import { defineConfig } from 'drizzle-kit';
-import dotenv from 'dotenv';
-
-dotenv.config();
 
 export default defineConfig({
-  schema: './shared/schema.ts',       // अपने schema का path
-  out: './server/migrations',         // यहां drizzle migrations बनाएगा
+  schema: './shared/schema.ts',
+  out: './server/migrations',
   dialect: 'postgresql',
   dbCredentials: {
-    connectionString: process.env.DATABASE_URL!,
+    connectionString: "postgresql://neondb_owner:npg_98LZoDWjpxkK@ep-falling-mud-a8ib7jxz-pooler.eastus2.azure.neon.tech/neondb?sslmode=require",
   },
 });
