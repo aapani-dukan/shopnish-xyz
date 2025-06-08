@@ -1,7 +1,7 @@
 import express from "express";
-import { verifyToken } from "../middleware/verify-token";
-import { db } from "../db";
-import { sellers } from "../db/schema";
+import { verifyToken } from "../server/middleware/verify-token";
+import { db } from "../server/db";
+import { sellers } from "../server/db/schema";
 import { eq } from "drizzle-orm";
 
 const router = express.Router();
