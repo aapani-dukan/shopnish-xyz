@@ -1,6 +1,13 @@
 import { useEffect, useState } from "react";
 import { getAuth, onAuthStateChanged, User as FirebaseUser } from "firebase/auth";
-import { app } from "@/lib/firebase"; // Firebase initialization file
+import { app } from "@/lib/firebase";
+
+interface Seller {
+  id: number;
+  userId: string;
+  storeName: string;
+  // आप जरूरत के अनुसार और fields जोड़ सकते हैं
+}
 
 interface User {
   uid: string;
@@ -9,6 +16,7 @@ interface User {
   phone?: string | null;
   photoURL?: string | null;
   provider?: any[];
+  seller?: Seller | null;   // नया field
 }
 
 export function useAuth() {
@@ -28,7 +36,8 @@ export function useAuth() {
       try {
         const idToken = await firebaseUser.getIdToken();
 
-        const response = await fetch("/api/auth/me", {
+        // Step 1: Firebase user data fetch करें
+        const responseUser = await fetch("/api/auth/me", {
           method: "GET",
           headers: {
             Authorization: `Bearer ${idToken}`,
@@ -36,16 +45,30 @@ export function useAuth() {
           },
         });
 
-        if (!response.ok) throw new Error("Failed to fetch user data");
+        if (!responseUser.ok) throw new Error("Failed to fetch user data");
+        const dataUser = await responseUser.json();
 
-        const data = await response.json();
+        // Step 2: Seller data fetch करें
+        let sellerData = null;
+        const responseSeller = await fetch("/api/sellers/me", {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${idToken}`,
+            "Content-Type": "application/json",
+          },
+        });
+        if (responseSeller.ok) {
+          sellerData = await responseSeller.json();
+        }
+
         setUser({
-          uid: data.uid,
-          name: data.name,
-          email: data.email,
-          phone: data.phone,
-          photoURL: data.photoURL,
-          provider: data.provider,
+          uid: dataUser.uid,
+          name: dataUser.name,
+          email: dataUser.email,
+          phone: dataUser.phone,
+          photoURL: dataUser.photoURL,
+          provider: dataUser.provider,
+          seller: sellerData,  // यहाँ seller data सेट करें
         });
       } catch (err) {
         console.error("Auth Error:", err);
@@ -55,7 +78,7 @@ export function useAuth() {
       }
     });
 
-    return () => unsubscribe(); // Cleanup
+    return () => unsubscribe();
   }, []);
 
   return { user, loading };
