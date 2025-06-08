@@ -1,8 +1,14 @@
 import express from "express";
-const router = express.Router(); // ✅ Yeh line zaroori hai
+import { verifyToken } from "../middleware/verify-token";
+import { db } from "../db";
+import { sellers } from "../db/schema";
+import { eq } from "drizzle-orm";
 
-router.get("/api/sellers/me", async (req, res) => {
-  const user = req.user;
+const router = express.Router();
+
+// 🔐 Protected route for seller's own data
+router.get("/api/sellers/me", verifyToken, async (req, res) => {
+  const user = (req as any).user;
   if (!user) return res.status(401).json({ message: "Unauthorized" });
 
   const seller = await db.query.sellers.findFirst({
