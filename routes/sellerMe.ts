@@ -1,5 +1,5 @@
 import express from "express";
-import { verifyToken } from "../server/middleware/verify-token";
+import { verifyToken } from "../server/middleware/verifyToken";
 import { db } from "../server/db";
 import { sellers } from "../shared/schema";
 import { eq } from "drizzle-orm";
