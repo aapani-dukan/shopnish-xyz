@@ -9,6 +9,7 @@ import pendingSellersRoute from "../routes/sellers/pending";
 import sellersApplyRouter from "../routes/sellers/apply";
 import sellersApproveRouter from "../routes/sellers/approve";
 import sellersRejectRouter from "../routes/sellers/reject";
+import sellerMeRoute from "../routes/sellerMe";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Seed database on startup
@@ -31,6 +32,7 @@ app.use("/api/sellers/pending", pendingSellersRoute);
   app.use("/api/sellers/apply", sellersApplyRouter);
 app.use("/api/sellers/approve", sellersApproveRouter);
 app.use("/api/sellers/reject", sellersRejectRouter);
+  app.use(sellerMeRoute); // ✅ yeh zaroori hai
   // Products
   app.get("/api/products", async (req, res) => {
     try {
