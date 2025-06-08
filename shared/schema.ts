@@ -2,6 +2,22 @@ import { pgTable, text, serial, integer, decimal, boolean, timestamp, json } fro
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
+
+
+export const sellers = z.object({
+  id: z.string().uuid(),
+  userId: z.string(),
+  businessName: z.string(),
+  email: z.string().email(),
+  phone: z.string().optional(),
+  address: z.string().optional(),
+  approvalStatus: z.enum(["pending", "approved", "rejected"]),
+  approvedAt: z.date().optional(),
+  rejectionReason: z.string().optional(),
+  createdAt: z.date(),
+  updatedAt: z.date(),
+});
+
 // User roles: customer, seller, admin, delivery_boy
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
