@@ -83,12 +83,12 @@ export default function SellerRegistrationModal() {
       console.log("User logged in:", result.user);
       // Login के बाद modal अपने-आप रेंडर हो जाएगा
     } catch (error) {
-      console.error("Login failed:", error);
-      toast({
-        title: "Login Failed",
-        description: "Please try logging in again.",
-        variant: "destructive",
-      });
+  console.error("🔥 Detailed Login Error:", error);
+  toast({
+    title: "Login Failed",
+    description: error.message || "Please try again",
+    variant: "destructive",
+  });
     }
   };
 
