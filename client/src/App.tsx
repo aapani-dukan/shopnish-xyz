@@ -12,7 +12,7 @@ import { AuthRedirectGuard } from "@/components/auth-redirect-guard";
 
 // ✅ Correct imports
 import DeliveryLogin from "@/pages/delivery-login";
-import SellerLogin from "@/pages/seller/SellerLogin";
+import SellerLogin from "@/components/seller/SellerLogin";
 
 function Router() {
   return (
