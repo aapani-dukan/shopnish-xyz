@@ -10,7 +10,7 @@ export function AuthRedirectGuard() {
   useEffect(() => {
     if (loading) return;
 
-    // ✅ Allow these public routes without redirect
+    // ✅ Public routes – allow access without login
     const publicPaths = ["/", "/product", "/cart", "/checkout"];
     const isPublic = publicPaths.some((path) =>
       location.startsWith(path)
@@ -18,13 +18,43 @@ export function AuthRedirectGuard() {
 
     if (isPublic) return;
 
-    // 🔒 Redirect based on auth status
+    // 🔒 Redirect logic
     if (!user) {
       navigate("/login");
-    } else if (!user.seller) {
-      navigate("/register-seller");
+      return;
     }
-    // 👉 Already logged-in seller will stay wherever they are
+
+    // ✅ Seller redirect logic
+    if (user.role === "seller") {
+      if (user.seller?.approvalStatus === "approved") {
+        if (!location.startsWith("/seller-dashboard")) {
+          navigate("/seller-dashboard");
+        }
+      } else {
+        if (!location.startsWith("/register-seller")) {
+          navigate("/register-seller");
+        }
+      }
+      return;
+    }
+
+    // ✅ Admin redirect logic (optional)
+    if (user.role === "admin" && !location.startsWith("/admin-dashboard")) {
+      navigate("/admin-dashboard");
+      return;
+    }
+
+    // ✅ Delivery redirect logic (optional)
+    if (user.role === "delivery" && !location.startsWith("/delivery-dashboard")) {
+      navigate("/delivery-dashboard");
+      return;
+    }
+
+    // ✅ Default fallback for customers or unknown roles
+    if (!location.startsWith("/")) {
+      navigate("/");
+    }
+
   }, [user, loading, location, navigate]);
 
   return null;
