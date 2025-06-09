@@ -13,7 +13,7 @@ import NotFound from "@/pages/not-found";
 import RegisterSeller from "@/pages/register-seller";
 import Login from "@/pages/login";
 
-import SellerGate from "@/pages/seller";                    // seller.tsx renamed as SellerGate here
+import SellerGate from "@/pages/Seller";                    // seller.tsx renamed as SellerGate here
 import SellerRequests from "@/pages/SellerRequests";       // seller-requests.tsx for admin
 import SellerDashboard from "@/pages/seller-dashboard";     // current seller dashboard (if needed separately)
 import AdminDashboard from "@/pages/admin-dashboard";
@@ -33,7 +33,7 @@ function RoleBasedRedirector() {
     } else {
       switch (user.role) {
         case "seller":
-          navigate("/seller");               // redirecting to SellerGate page (/seller)
+          navigate("/Seller");               // redirecting to SellerGate page (/seller)
           break;
         case "admin":
           navigate("/admin-dashboard");
@@ -64,7 +64,7 @@ function Router() {
       <Route path="/dashboard" component={RoleBasedRedirector} />
 
       {/* Seller pages */}
-      <Route path="/seller" component={SellerGate} />
+      <Route path="/Seller" component={SellerGate} />
       <Route path="/SellerRequests" component={SellerRequests} />
 
       {/* Dashboards */}
