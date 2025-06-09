@@ -1,16 +1,18 @@
+// server/index.ts
 import express, { type Request, Response, NextFunction } from "express";
 import cors from "cors";
 import { registerRoutes } from "./routes";
-import { setupVite, serveStatic, log } from "./vite";
+import { setupVite, log } from "./vite";
+import { serveStatic } from "./serveStatic"; // ✅ Updated
 
 const app = express();
 
-// ✅ Middlewares
-app.use(cors()); // CORS enable karo
+// ✅ Middleware
+app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-// ✅ Logging Middleware
+// ✅ Request Logging
 app.use((req, res, next) => {
   const start = Date.now();
   const path = req.path;
@@ -44,7 +46,7 @@ app.use((req, res, next) => {
 (async () => {
   const server = await registerRoutes(app);
 
-  // ✅ Global error handler
+  // ✅ Error Handler
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
     const message = err.message || "Internal Server Error";
@@ -53,23 +55,16 @@ app.use((req, res, next) => {
     throw err;
   });
 
-  // ✅ Serve Vite or static build
+  // ✅ Serve frontend (Vite dev server in dev, static build in prod)
   if (app.get("env") === "development") {
     await setupVite(app, server);
   } else {
-    serveStatic(app);
+    serveStatic(app); // ✅ updated fallback logic included
   }
 
   // ✅ Start server
   const port = 5000;
-  server.listen(
-    {
-      port,
-      host: "0.0.0.0",
-      reusePort: true,
-    },
-    () => {
-      log(`serving on port ${port}`);
-    }
-  );
+  server.listen({ port, host: "0.0.0.0", reusePort: true }, () => {
+    log(`serving on port ${port}`);
+  });
 })();
