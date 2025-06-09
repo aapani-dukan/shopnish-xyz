@@ -3,16 +3,17 @@ import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
+
 import Home from "@/pages/home";
 import ProductDetail from "@/pages/product-detail";
 import Cart from "@/pages/cart";
 import Checkout from "@/pages/checkout";
 import NotFound from "@/pages/not-found";
-import { AuthRedirectGuard } from "@/components/auth-redirect-guard";
+import Dashboard from "@/pages/dashboard";
+import RegisterSeller from "@/pages/register-seller";
+import Login from "@/pages/login";
 
-// ✅ Correct imports
-import DeliveryLogin from "@/pages/delivery-login";
-import SellerLogin from "@/components/seller/SellerLogin";
+import { AuthRedirectGuard } from "@/components/auth-redirect-guard";
 
 function Router() {
   return (
@@ -21,8 +22,14 @@ function Router() {
       <Route path="/product/:id" component={ProductDetail} />
       <Route path="/cart" component={Cart} />
       <Route path="/checkout" component={Checkout} />
-      <Route path="/delivery-login" component={DeliveryLogin} />
-      <Route path="/SellerLogin" component={SellerLogin} />
+      <Route path="/login" component={Login} />
+      <Route path="/register-seller" component={RegisterSeller} />
+      <Route path="/dashboard">
+        <>
+          <AuthRedirectGuard />
+          <Dashboard />
+        </>
+      </Route>
       <Route component={NotFound} />
     </Switch>
   );
@@ -33,7 +40,6 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <Toaster />
-        <AuthRedirectGuard />
         <Router />
       </TooltipProvider>
     </QueryClientProvider>
