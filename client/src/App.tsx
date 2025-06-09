@@ -11,8 +11,8 @@ import Cart from "@/pages/cart";
 import Checkout from "@/pages/checkout";
 import NotFound from "@/pages/not-found";
 import { AuthRedirectGuard } from "@/components/auth-redirect-guard";
-import DeliveryLogin from "./pages/deliverylogin";
-import DeliveryLogin from "@/pages/delivery-login"; // अगर Delivery भी है
+import DeliveryLogin from "@/pages/deliverylogin";
+import SellerLogin from "@/pages/seller/sellerlogin";
 
 function Router() {
   return (
@@ -21,8 +21,8 @@ function Router() {
       <Route path="/product/:id" component={ProductDetail} />
       <Route path="/cart" component={Cart} />
       <Route path="/checkout" component={Checkout} />
-      <Route path="/login" component={LoginPage} />
       <Route path="/delivery-login" component={DeliveryLogin} />
+      <Route path="/seller-login" component={SellerLogin} />
       <Route component={NotFound} />
     </Switch>
   );
