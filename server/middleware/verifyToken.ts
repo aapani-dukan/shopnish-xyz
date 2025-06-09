@@ -1,10 +1,21 @@
-// middleware/verify-token.ts
+// server/middleware/verifyToken.ts
+
 import { Request, Response, NextFunction } from "express";
 import admin from "firebase-admin";
 
-// Make sure Firebase Admin is already initialized in your app
+export interface AuthenticatedRequest extends Request {
+  user?: {
+    uid: string;
+    email?: string;
+    name?: string;
+  };
+}
 
-export const verifyToken = async (req: Request, res: Response, next: NextFunction) => {
+export const verifyToken = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+) => {
   const authHeader = req.headers.authorization;
 
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
@@ -15,7 +26,15 @@ export const verifyToken = async (req: Request, res: Response, next: NextFunctio
 
   try {
     const decodedToken = await admin.auth().verifyIdToken(idToken);
-    (req as any).user = decodedToken; // ✅ Firebase UID and info accessible here
+
+    const userRecord = await admin.auth().getUser(decodedToken.uid);
+
+    req.user = {
+      uid: userRecord.uid,
+      email: userRecord.email || "",
+      name: userRecord.displayName || "",
+    };
+
     next();
   } catch (error) {
     console.error("Firebase token verification failed:", error);
