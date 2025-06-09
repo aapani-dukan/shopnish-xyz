@@ -9,7 +9,7 @@ import Cart from "@/pages/cart";
 import Checkout from "@/pages/checkout";
 import NotFound from "@/pages/not-found";
 import { AuthRedirectGuard } from "@/components/auth-redirect-guard"; // ✅ Import your guard
-
+import LoginPage from "@/pages/login"; // 👈 ये line add करो
 function Router() {
   return (
     <Switch>
@@ -18,6 +18,7 @@ function Router() {
       <Route path="/cart" component={Cart} />
       <Route path="/checkout" component={Checkout} />
       <Route component={NotFound} />
+      <Route path="/login" component={LoginPage} /> // 👈 ये line <Switch> के अंदर add करो
     </Switch>
   );
 }
