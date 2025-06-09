@@ -1,3 +1,5 @@
+// client/src/App.tsx
+
 import { Switch, Route } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -8,8 +10,10 @@ import ProductDetail from "@/pages/product-detail";
 import Cart from "@/pages/cart";
 import Checkout from "@/pages/checkout";
 import NotFound from "@/pages/not-found";
-import { AuthRedirectGuard } from "@/components/auth-redirect-guard"; // ✅ Import your guard
-import LoginPage from "@/pages/login"; // 👈 ये line add करो
+import { AuthRedirectGuard } from "@/components/auth-redirect-guard";
+import LoginPage from "@/pages/login";
+import DeliveryLogin from "@/pages/delivery-login"; // अगर Delivery भी है
+
 function Router() {
   return (
     <Switch>
@@ -17,8 +21,9 @@ function Router() {
       <Route path="/product/:id" component={ProductDetail} />
       <Route path="/cart" component={Cart} />
       <Route path="/checkout" component={Checkout} />
+      <Route path="/login" component={LoginPage} />
+      <Route path="/delivery-login" component={DeliveryLogin} />
       <Route component={NotFound} />
-      <Route path="/login" component={LoginPage} /> // 👈 ये line <Switch> के अंदर add करो
     </Switch>
   );
 }
@@ -28,7 +33,7 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <Toaster />
-        <AuthRedirectGuard /> {/* ✅ Add this line before Router */}
+        <AuthRedirectGuard />
         <Router />
       </TooltipProvider>
     </QueryClientProvider>
