@@ -4,7 +4,7 @@ import { useLocation } from "wouter";
 import Loader from "../../../shared/Loader";
 import { useAuth } from "@/hooks/useAuth";
 
-import SellerRegistrationModal from "@/components/modals/seller-registration-modal";
+import SellerRegistrationModal from "@/components/seller-registration-modal";
 
 export default function RegisterSellerPage() {
   const { user, loading } = useAuth();
