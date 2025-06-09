@@ -1,14 +1,18 @@
 // server/serveStatic.ts
 import path from "path";
+import { fileURLToPath } from "url";
+import { dirname } from "path";
 import express, { Express } from "express";
+
+// ✅ ESM-compatible __dirname equivalent
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 export function serveStatic(app: Express) {
   const distPath = path.resolve(__dirname, "../dist/public");
 
-  // Static files serve करें
   app.use(express.static(distPath));
 
-  // ✅ React Router fallback: unknown path पर भी index.html मिले
   app.get("*", (_req, res) => {
     res.sendFile(path.join(distPath, "index.html"));
   });
