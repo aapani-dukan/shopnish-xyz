@@ -11,7 +11,9 @@ interface Seller {
   id: number;
   userId: string;
   storeName: string;
-  // अन्य seller fields यहाँ जोड़ सकते हैं
+  approvalStatus: "approved" | "pending" | "rejected";
+  rejectionReason?: string;
+  // आप चाहें तो और भी seller fields जोड़ सकते हैं
 }
 
 interface User {
@@ -22,7 +24,7 @@ interface User {
   photoURL?: string | null;
   provider?: any[];
   seller?: Seller | null;
-  role?: string;
+  role?: "seller" | "customer" | "admin" | "delivery";
 }
 
 export function useAuth() {
@@ -36,7 +38,7 @@ export function useAuth() {
       try {
         const idToken = await firebaseUser.getIdToken();
 
-        // Step 1: User data
+        // Step 1: General user info
         const responseUser = await fetch("/api/auth/me", {
           method: "GET",
           headers: {
@@ -48,23 +50,24 @@ export function useAuth() {
         if (!responseUser.ok) throw new Error("Failed to fetch user data");
         const dataUser = await responseUser.json();
 
-        // Step 2: Seller data
-        let sellerData = null;
-        const responseSeller = await fetch("/api/sellers/me", {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${idToken}`,
-            "Content-Type": "application/json",
-          },
-        });
+        // Step 2: Seller info (only if role = seller)
+        const loginRole = sessionStorage.getItem("loginRole"); // seller / admin / delivery
+        let sellerData: Seller | null = null;
+        let role: User["role"] = loginRole === "seller" ? "seller" : (dataUser.role || "customer");
 
-        if (responseSeller.ok) {
-          sellerData = await responseSeller.json();
+        if (role === "seller") {
+          const responseSeller = await fetch("/api/sellers/me", {
+            method: "GET",
+            headers: {
+              Authorization: `Bearer ${idToken}`,
+              "Content-Type": "application/json",
+            },
+          });
+
+          if (responseSeller.ok) {
+            sellerData = await responseSeller.json();
+          }
         }
-
-        const role = sellerData
-          ? "seller"
-          : dataUser.role || "customer"; // अगर और roles हैं तो backend से भेजना होगा
 
         setUser({
           uid: dataUser.uid,
@@ -73,15 +76,15 @@ export function useAuth() {
           phone: dataUser.phone,
           photoURL: dataUser.photoURL,
           provider: dataUser.provider,
-          seller: sellerData,
           role,
+          seller: sellerData,
         });
 
-        return true; // success
+        return true;
       } catch (err) {
         console.error("Auth Error:", err);
         setUser(null);
-        return false; // failure
+        return false;
       } finally {
         setLoading(false);
       }
@@ -90,10 +93,9 @@ export function useAuth() {
     getRedirectResult(auth)
       .then((result) => {
         if (result?.user) {
-          // ✅ Fetch user & then redirect
           fetchUserAndSeller(result.user).then((success) => {
             if (success) {
-              window.location.replace("/dashboard"); // ✅ This is the fix
+              window.location.replace("/dashboard"); // role-based redirection
             }
           });
         } else {
