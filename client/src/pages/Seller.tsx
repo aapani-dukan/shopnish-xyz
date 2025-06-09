@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import SellerDashboard from "./seller-dashboard";
 import SellerRegistrationModal from "@/components/seller-registration-modal";
-import Loader from "@/shared/Loader";
+import Loader from "../../../shared/Loader";
 
 export default function SellerGate() {
   const { user, loading: authLoading } = useAuth();
