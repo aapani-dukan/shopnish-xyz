@@ -1,4 +1,4 @@
-inport REACT from "react";
+import React from "react";
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { Search, Heart, ShoppingCart, User } from "lucide-react";
