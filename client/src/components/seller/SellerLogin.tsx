@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { signInWithGoogle, onAuthStateChange } from "../../lib/firebase";
+import { startGoogleLogin("seller");, onAuthStateChange } from "../../lib/firebase";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -9,7 +9,7 @@ export default function SellerLogin() {
 
   const handleLogin = async () => {
     try {
-      const result = await signInWithGoogle();
+      const result = await startGoogleLogin("seller");
       const user = result.user;
       const token = await user.getIdToken();
 
