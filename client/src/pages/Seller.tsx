@@ -1,7 +1,7 @@
 // pages/seller.tsx
 import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
-import SellerDashboard from "@/components/seller/SellerDashboard";
+import SellerDashboard from "./seller-dashboard";
 import SellerRegistrationModal from "@/components/modals/seller-registration-modal";
 import Loader from "@/components/shared/loader";
 
@@ -55,5 +55,5 @@ export default function SellerGate() {
     return <SellerRegistrationModal />;
   }
 
-  return <SellerDashboard seller={seller} />;
+  return <seller-dashboard seller={seller} />;
 }
