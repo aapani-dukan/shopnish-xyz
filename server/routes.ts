@@ -10,7 +10,7 @@ import sellersApplyRouter from "../routes/sellers/apply";
 import sellersApproveRouter from "../routes/sellers/approve";
 import sellersRejectRouter from "../routes/sellers/reject";
 import sellerMeRoute from "../routes/sellerMe";
-
+import authRoutes from "./routes/authRoutes";
 export async function registerRoutes(app: Express): Promise<Server> {
   // Seed database on startup
   try {
