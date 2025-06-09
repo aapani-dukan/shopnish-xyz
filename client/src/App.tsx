@@ -1,5 +1,3 @@
-// client/src/App.tsx
-
 import { Switch, Route } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -11,7 +9,9 @@ import Cart from "@/pages/cart";
 import Checkout from "@/pages/checkout";
 import NotFound from "@/pages/not-found";
 import { AuthRedirectGuard } from "@/components/auth-redirect-guard";
-import DeliveryLogin from "@/pages/deliverylogin";
+
+// ✅ Correct imports
+import DeliveryLogin from "@/pages/delivery-login";
 import SellerLogin from "@/pages/seller/sellerlogin";
 
 function Router() {
