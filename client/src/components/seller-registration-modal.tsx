@@ -15,7 +15,7 @@ import { useSellerRegistrationStore } from "@/lib/store";
 import { useAuth } from "@/hooks/useAuth";
 import { useEffect,useState } from "react";
 import { SellerRegistrationForm } from "./SellerRegistrationForm";
-
+import { startGoogleLogin } from "../lib/firebase";
 import { Store, CheckCircle, Clock, FileText, CreditCard, Phone } from "lucide-react";
 import { z } from "zod";
 
