@@ -6,8 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useCartStore } from "@/lib/store";
 import CartModal from "./cart-modal";
-import { useSellerRegistrationStore } from "@/lib/store";
-import SellerRegistrationModal from "@/components/seller-registration-modal"; // ✅ ADD THIS
+import { startGoogleLogin } from "@/lib/firebase"; // ✅ import Google login handler
 
 interface Category {
   id: number;
@@ -24,7 +23,6 @@ export default function Header({ categories }: HeaderProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [, setLocation] = useLocation();
   const totalItems = useCartStore(state => state.getTotalItems());
-  const { open } = useSellerRegistrationStore();
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -75,7 +73,12 @@ export default function Header({ categories }: HeaderProps) {
                 <span className="sr-only">Wishlist</span>
               </Button>
 
-              <Button onClick={open} variant="outline" className="ml-4">
+              {/* ✅ Updated Become a Seller button with role tag */}
+              <Button
+                onClick={() => startGoogleLogin("seller")}
+                variant="outline"
+                className="ml-4"
+              >
                 Become a Seller
               </Button>
 
@@ -120,7 +123,6 @@ export default function Header({ categories }: HeaderProps) {
 
       {/* Modals */}
       <CartModal isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} />
-      <SellerRegistrationModal /> {/* ✅ ADD THIS */}
     </>
   );
 }
