@@ -8,6 +8,7 @@ import ProductDetail from "@/pages/product-detail";
 import Cart from "@/pages/cart";
 import Checkout from "@/pages/checkout";
 import NotFound from "@/pages/not-found";
+import { AuthRedirectGuard } from "@/components/auth-redirect-guard"; // ✅ Import your guard
 
 function Router() {
   return (
@@ -26,6 +27,7 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <Toaster />
+        <AuthRedirectGuard /> {/* ✅ Add this line before Router */}
         <Router />
       </TooltipProvider>
     </QueryClientProvider>
