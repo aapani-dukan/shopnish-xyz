@@ -12,7 +12,7 @@ import { AuthRedirectGuard } from "@/components/auth-redirect-guard";
 
 // ✅ Correct imports
 import DeliveryLogin from "@/pages/delivery-login";
-import SellerLogin from "@/pages/seller/sellerlogin";
+import SellerLogin from "@/pages/seller/SellerLogin";
 
 function Router() {
   return (
@@ -22,7 +22,7 @@ function Router() {
       <Route path="/cart" component={Cart} />
       <Route path="/checkout" component={Checkout} />
       <Route path="/delivery-login" component={DeliveryLogin} />
-      <Route path="/seller-login" component={SellerLogin} />
+      <Route path="/SellerLogin" component={SellerLogin} />
       <Route component={NotFound} />
     </Switch>
   );
