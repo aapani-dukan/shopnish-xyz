@@ -11,7 +11,7 @@ import Cart from "@/pages/cart";
 import Checkout from "@/pages/checkout";
 import NotFound from "@/pages/not-found";
 import { AuthRedirectGuard } from "@/components/auth-redirect-guard";
-import LoginPage from "@/pages/login";
+import DeliveryLogin from "./pages/deliverylogin";
 import DeliveryLogin from "@/pages/delivery-login"; // अगर Delivery भी है
 
 function Router() {
