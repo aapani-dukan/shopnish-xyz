@@ -1,24 +1,21 @@
 import { Router, Request, Response, NextFunction } from "express";
+import { db } from "../../server/db";
+import { sellers } from "../../shared/schema";
 
 const router = Router();
 
-// Dummy in-memory sellers array
-const fakeSellers: any[] = [];
-
 router.post("/", async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const {
-      userId,
-      businessName,
-      businessAddress,
-      phoneNumber,
-    } = req.body;
+    const { userId, businessName, businessAddress, phoneNumber } = req.body;
 
     if (!userId || !businessName || !phoneNumber) {
       return res.status(400).json({ message: "Missing required fields" });
     }
 
-    const existingSeller = fakeSellers.find((s) => s.userId === userId);
+    // Check if seller already applied or approved
+    const existingSeller = await db.query.sellers.findFirst({
+      where: sellers.userId.eq(userId),
+    });
 
     if (existingSeller) {
       return res.status(400).json({
@@ -26,17 +23,15 @@ router.post("/", async (req: Request, res: Response, next: NextFunction) => {
       });
     }
 
-    const newSellerApplication = {
-      id: (fakeSellers.length + 1).toString(),
+    // Insert new seller application with pending status
+    const newSellerApplication = await db.insert(sellers).values({
       userId,
       businessName,
       businessAddress,
       phoneNumber,
       approvalStatus: "pending",
       appliedAt: new Date(),
-    };
-
-    fakeSellers.push(newSellerApplication);
+    }).returning();
 
     res.status(201).json({
       message: "Seller application submitted",
