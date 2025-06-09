@@ -1,7 +1,8 @@
 // pages/register-seller.tsx
 import { useEffect } from "react";
 import { useLocation } from "wouter";
-imimport Loader from "../../../shared/Loader";port { useAuth } from "@/hooks/useAuth";
+import Loader from "../../../shared/Loader";
+import { useAuth } from "@/hooks/useAuth";
 
 import SellerRegistrationModal from "@/components/modals/seller-registration-modal";
 
