@@ -14,7 +14,7 @@ import RegisterSeller from "@/pages/register-seller";
 import Login from "@/pages/login";
 
 import SellerGate from "@/pages/Seller";                    // seller.tsx renamed as SellerGate here
-import SellerRequests from "@/pages/SellerRequests";       // seller-requests.tsx for admin
+import SellerRequests from "./components/admin/SellerRequests"; // relative path// seller-requests.tsx for admin
 import SellerDashboard from "@/pages/seller-dashboard";     // current seller dashboard (if needed separately)
 import AdminDashboard from "@/pages/admin-dashboard";
 import DeliveryDashboard from "@/pages/delivery-dashboard";
