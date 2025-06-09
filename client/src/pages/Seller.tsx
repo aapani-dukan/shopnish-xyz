@@ -4,13 +4,11 @@ import { useAuth } from "@/hooks/useAuth";
 import SellerDashboard from "@/components/seller/SellerDashboard";
 import SellerRegistrationModal from "@/components/modals/seller-registration-modal";
 import Loader from "@/components/shared/loader";
-import { useRouter } from "next/router";
 
 export default function SellerGate() {
   const { user, loading: authLoading } = useAuth();
   const [seller, setSeller] = useState(null);
   const [checkingSeller, setCheckingSeller] = useState(true);
-  const router = useRouter();
 
   useEffect(() => {
     const fetchSeller = async () => {
