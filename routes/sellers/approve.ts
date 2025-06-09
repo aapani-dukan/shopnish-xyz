@@ -1,10 +1,8 @@
-// routes/sellers/approve.ts
 import { Router, Request, Response, NextFunction } from "express";
+import { db } from "../../server/db";
+import { sellers } from "../../shared/schema";
 
 const router = Router();
-
-// Dummy in-memory sellers array (shared)
-const fakeSellers: any[] = [];
 
 router.post("/", async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -14,20 +12,26 @@ router.post("/", async (req: Request, res: Response, next: NextFunction) => {
       return res.status(400).json({ message: "sellerId is required" });
     }
 
-    const sellerIndex = fakeSellers.findIndex((seller) => seller.id === sellerId);
+    const existingSeller = await db.query.sellers.findFirst({
+      where: sellers.id.eq(sellerId),
+    });
 
-    if (sellerIndex === -1) {
+    if (!existingSeller) {
       return res.status(404).json({ message: "Seller not found" });
     }
 
-    fakeSellers[sellerIndex] = {
-      ...fakeSellers[sellerIndex],
-      approvalStatus: "approved",
-      approvedAt: new Date(),
-      rejectionReason: null,
-    };
+    // Update seller approval status to approved
+    const updatedSeller = await db
+      .update(sellers)
+      .set({
+        approvalStatus: "approved",
+        approvedAt: new Date(),
+        rejectionReason: null,
+      })
+      .where(sellers.id.eq(sellerId))
+      .returning();
 
-    res.json(fakeSellers[sellerIndex]);
+    res.json(updatedSeller);
   } catch (error) {
     next(error);
   }
