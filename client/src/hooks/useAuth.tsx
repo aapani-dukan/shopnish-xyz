@@ -22,6 +22,7 @@ interface User {
   photoURL?: string | null;
   provider?: any[];
   seller?: Seller | null;
+  role?: string;
 }
 
 export function useAuth() {
@@ -61,6 +62,10 @@ export function useAuth() {
           sellerData = await responseSeller.json();
         }
 
+        const role = sellerData
+          ? "seller"
+          : dataUser.role || "customer"; // अगर और roles हैं तो backend से भेजना होगा
+
         setUser({
           uid: dataUser.uid,
           name: dataUser.name,
@@ -69,20 +74,28 @@ export function useAuth() {
           photoURL: dataUser.photoURL,
           provider: dataUser.provider,
           seller: sellerData,
+          role,
         });
+
+        return true; // success
       } catch (err) {
         console.error("Auth Error:", err);
         setUser(null);
+        return false; // failure
       } finally {
         setLoading(false);
       }
     };
 
-    // ✅ Handle redirect result first
     getRedirectResult(auth)
       .then((result) => {
         if (result?.user) {
-          fetchUserAndSeller(result.user);
+          // ✅ Fetch user & then redirect
+          fetchUserAndSeller(result.user).then((success) => {
+            if (success) {
+              window.location.replace("/dashboard"); // ✅ This is the fix
+            }
+          });
         } else {
           const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
             if (firebaseUser) {
