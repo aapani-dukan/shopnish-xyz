@@ -1,16 +1,15 @@
 import { Router, Request, Response, NextFunction } from "express";
-import { sellers } from "../../server/storage";
+import { db } from "../../server/db";
+import { sellers } from "../../shared/schema";
 
 const router = Router();
 
 router.get("/", async (_req: Request, res: Response, next: NextFunction) => {
   try {
-    const pendingSellers = sellers
-      .filter((seller) => seller.approvalStatus === "pending")
-      .sort(
-        (a, b) =>
-          new Date(b.appliedAt).getTime() - new Date(a.appliedAt).getTime()
-      );
+    const pendingSellers = await db.query.sellers.findMany({
+      where: sellers.approvalStatus.eq("pending"),
+      orderBy: (seller) => seller.appliedAt.desc(),
+    });
 
     res.json(pendingSellers);
   } catch (error) {
