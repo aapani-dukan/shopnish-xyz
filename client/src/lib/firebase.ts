@@ -23,8 +23,8 @@ export const auth = getAuth(app);
 export const provider = new GoogleAuthProvider();
 
 // 🚀 Redirect-based Login Handler
-export const startGoogleLogin = (role: string) => {
-  // login करने से पहले role सेट करें ताकि बाद में redirect के बाद route decide हो सके
-  sessionStorage.setItem("loginRole", role);
-  signInWithRedirect(auth, provider);
+export const startGoogleLogin = async (role: "seller" | "customer") => {
+  localStorage.setItem("userRole", role); // ताकि बाद में पता चले seller login था या customer
+  const provider = new GoogleAuthProvider();
+  await signInWithRedirect(auth, provider);
 };
