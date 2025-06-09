@@ -1,12 +1,17 @@
 import { useEffect, useState } from "react";
-import { getAuth, onAuthStateChanged, User as FirebaseUser } from "firebase/auth";
+import {
+  getAuth,
+  onAuthStateChanged,
+  getRedirectResult,
+  User as FirebaseUser,
+} from "firebase/auth";
 import { app } from "@/lib/firebase";
 
 interface Seller {
   id: number;
   userId: string;
   storeName: string;
-  // आप जरूरत के अनुसार और fields जोड़ सकते हैं
+  // अन्य seller fields यहाँ जोड़ सकते हैं
 }
 
 interface User {
@@ -16,7 +21,7 @@ interface User {
   phone?: string | null;
   photoURL?: string | null;
   provider?: any[];
-  seller?: Seller | null;   // नया field
+  seller?: Seller | null;
 }
 
 export function useAuth() {
@@ -26,17 +31,11 @@ export function useAuth() {
   useEffect(() => {
     const auth = getAuth(app);
 
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: FirebaseUser | null) => {
-      if (!firebaseUser) {
-        setUser(null);
-        setLoading(false);
-        return;
-      }
-
+    const fetchUserAndSeller = async (firebaseUser: FirebaseUser) => {
       try {
         const idToken = await firebaseUser.getIdToken();
 
-        // Step 1: Firebase user data fetch करें
+        // Step 1: User data
         const responseUser = await fetch("/api/auth/me", {
           method: "GET",
           headers: {
@@ -48,7 +47,7 @@ export function useAuth() {
         if (!responseUser.ok) throw new Error("Failed to fetch user data");
         const dataUser = await responseUser.json();
 
-        // Step 2: Seller data fetch करें
+        // Step 2: Seller data
         let sellerData = null;
         const responseSeller = await fetch("/api/sellers/me", {
           method: "GET",
@@ -57,6 +56,7 @@ export function useAuth() {
             "Content-Type": "application/json",
           },
         });
+
         if (responseSeller.ok) {
           sellerData = await responseSeller.json();
         }
@@ -68,7 +68,7 @@ export function useAuth() {
           phone: dataUser.phone,
           photoURL: dataUser.photoURL,
           provider: dataUser.provider,
-          seller: sellerData,  // यहाँ seller data सेट करें
+          seller: sellerData,
         });
       } catch (err) {
         console.error("Auth Error:", err);
@@ -76,9 +76,30 @@ export function useAuth() {
       } finally {
         setLoading(false);
       }
-    });
+    };
 
-    return () => unsubscribe();
+    // ✅ Handle redirect result first
+    getRedirectResult(auth)
+      .then((result) => {
+        if (result?.user) {
+          fetchUserAndSeller(result.user);
+        } else {
+          const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+            if (firebaseUser) {
+              fetchUserAndSeller(firebaseUser);
+            } else {
+              setUser(null);
+              setLoading(false);
+            }
+          });
+          return () => unsubscribe();
+        }
+      })
+      .catch((error) => {
+        console.error("Redirect error:", error);
+        setUser(null);
+        setLoading(false);
+      });
   }, []);
 
   return { user, loading };
