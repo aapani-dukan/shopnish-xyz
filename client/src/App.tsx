@@ -14,7 +14,7 @@ import RegisterSeller from "@/pages/register-seller";
 import Login from "@/pages/login";
 
 import SellerGate from "@/pages/seller";                    // seller.tsx renamed as SellerGate here
-import SellerRequests from "@/pages/seller-requests";       // seller-requests.tsx for admin
+import SellerRequests from "@/pages/SellerRequests";       // seller-requests.tsx for admin
 import SellerDashboard from "@/pages/seller-dashboard";     // current seller dashboard (if needed separately)
 import AdminDashboard from "@/pages/admin-dashboard";
 import DeliveryDashboard from "@/pages/delivery-dashboard";
@@ -65,7 +65,7 @@ function Router() {
 
       {/* Seller pages */}
       <Route path="/seller" component={SellerGate} />
-      <Route path="/seller-requests" component={SellerRequests} />
+      <Route path="/SellerRequests" component={SellerRequests} />
 
       {/* Dashboards */}
       <Route path="/seller-dashboard" component={SellerDashboard} />
