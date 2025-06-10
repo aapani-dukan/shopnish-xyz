@@ -1,39 +1,3 @@
-import { useEffect, useState } from "react";
-import {
-  getAuth,
-  onAuthStateChanged,
-  getRedirectResult,
-  User as FirebaseUser,
-} from "firebase/auth";
-import { app } from "@/lib/firebase";
-
-interface Seller {
-  id: number;
-  userId: string;
-  storeName: string;
-  approvalStatus: "approved" | "pending" | "rejected";
-  rejectionReason?: string;
-}
-
-interface User {
-  uid: string;
-  name: string | null;
-  email: string | null;
-  phone?: string | null;
-  photoURL?: string | null;
-  provider?: any[];
-  seller?: Seller | null;
-  // Role now only for sellers: "approved" or "not-approved"
-  role?: "approved-seller" | "not-approved-seller" | null;
-}
-
-export function useAuth() {
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const auth = getAuth(app);
-
     const fetchUserAndSeller = async (firebaseUser: FirebaseUser) => {
       try {
         console.log("✅ Firebase user detected:", firebaseUser);
@@ -54,14 +18,14 @@ export function useAuth() {
         const dataUser = await responseUser.json();
         console.log("✅ /api/auth/me response:", dataUser);
 
-        // Check loginRole from sessionStorage - only "seller" handled here
-        const loginRole = sessionStorage.getItem("loginRole");
-        if (loginRole !== "seller") {
-          // If not seller, set user null or handle as per your app logic
-          console.warn("⚠️ User is not seller via loginRole, ignoring user.");
-          setUser(null);
-          return false;
-        }
+        // --- यह पूरा loginRole ब्लॉक हटा दें (या कमेंट कर दें) ---
+        // const loginRole = sessionStorage.getItem("loginRole");
+        // if (loginRole !== "seller") {
+        //   console.warn("⚠️ User is not seller via loginRole, ignoring user.");
+        //   setUser(null);
+        //   return false;
+        // }
+        // --------------------------------------------------------
 
         // Seller flow: fetch seller data to determine approval status
         let sellerData: Seller | null = null;
@@ -86,8 +50,11 @@ export function useAuth() {
             role = "not-approved-seller";
           }
         } else {
-          console.warn("⚠️ Failed to fetch seller data");
-          role = "not-approved-seller"; // default to not approved if error
+          console.warn("⚠️ Failed to fetch seller data, assuming not a seller or not registered yet.");
+          // यदि /api/sellers/me 404 या अन्य त्रुटि देता है, तो इसका मतलब है कि यह यूजर सेलर नहीं है।
+          // इस मामले में, role null या default non-seller होना चाहिए।
+          // role = "not-approved-seller"; // <--- यह सिर्फ तब सेट करें जब यूजर ने सेलर के रूप में रजिस्टर करने की कोशिश की हो
+          role = null; // यदि विक्रेता डेटा नहीं मिला, तो यह एक सामान्य उपयोगकर्ता है
         }
 
         const finalUser: User = {
@@ -97,7 +64,7 @@ export function useAuth() {
           phone: dataUser.phone,
           photoURL: dataUser.photoURL,
           provider: dataUser.provider,
-          role,
+          role, // यह role अब null भी हो सकता है अगर विक्रेता डेटा नहीं मिला
           seller: sellerData,
         };
 
@@ -113,31 +80,7 @@ export function useAuth() {
       }
     };
 
-    getRedirectResult(auth)
-      .then((result) => {
-        if (result?.user) {
-          console.log("➡️ Firebase redirect login success");
-          fetchUserAndSeller(result.user);
-        } else {
-          const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
-            if (firebaseUser) {
-              console.log("📡 Auth state changed - user logged in");
-              fetchUserAndSeller(firebaseUser);
-            } else {
-              console.log("🚫 No user found in auth state");
-              setUser(null);
-              setLoading(false);
-            }
-          });
-          return () => unsubscribe();
-        }
-      })
-      .catch((error) => {
-        console.error("❌ Redirect error:", error);
-        setUser(null);
-        setLoading(false);
-      });
+    // ... (getRedirectResult and onAuthStateChanged remain same) ...
   }, []);
-
-  return { user, loading };
+  // ... (return user, loading) ...
 }
