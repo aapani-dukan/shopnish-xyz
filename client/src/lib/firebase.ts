@@ -21,15 +21,16 @@ const firebaseConfig = {
 // Initialize Firebase
 
 
-export const app = initializeApp(firebaseConfig);
-export const auth = getAuth(app);
+
 
 // 🔗 Google Auth Provider
 export const provider = new GoogleAuthProvider();
 
-// 🚀 Redirect-based Login Handler
-export const startGoogleLogin = async (role: "seller" | "customer") => {
-  localStorage.setItem("userRole", role); // ताकि बाद में पता चले seller login था या customer
+export const app = initializeApp(firebaseConfig);
+export const auth = getAuth(app);
+
+export const startGoogleLogin = (role: "seller" | "customer") => {
+  sessionStorage.setItem("loginRole", role); // ✅ Role save
   const provider = new GoogleAuthProvider();
-  await signInWithRedirect(auth, provider);
+  signInWithRedirect(auth, provider);
 };
