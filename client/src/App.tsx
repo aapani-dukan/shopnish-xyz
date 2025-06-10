@@ -60,12 +60,12 @@ function Router() {
       <Route path="/checkout" component={Checkout} />
       <Route path="/login" component={Login} />
       <Route path="/register-seller" component={RegisterSeller} />
-
+      <Rout path="/SellerRegistrationForm" component={SellerRegistrationForm} />
       {/* Role-Based Redirect */}
       <Route path="/dashboard" component={RoleBasedRedirector} />
 
       {/* Seller pages */}
-      <Route path="/Seller" component={SellerGate} />
+      
       <Route path="/SellerRequests" component={SellerRequests} />
 
       {/* Dashboards */}
