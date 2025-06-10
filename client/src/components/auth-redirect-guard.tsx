@@ -1,58 +1,88 @@
-import { useEffect } from "react";
-import { useAuth } from "@/hooks/useAuth";
-import { useLocation } from "wouter";
+const fetchUserAndRole = async (firebaseUser: FirebaseUser) => {
+  try {
+    const idToken = await firebaseUser.getIdToken();
 
-export function AuthRedirectGuard() {
-  const [location, navigate] = useLocation();
-  const { user, loading } = useAuth();
+    // 1. Get user data from backend
+    const responseUser = await fetch("/api/auth/me", {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${idToken}`,
+        "Content-Type": "application/json",
+      },
+    });
 
-  useEffect(() => {
-    // 🔴 अगर अभी लोडिंग हो रही है, तो कोई redirect नहीं करना
-    if (loading) return;
+    if (!responseUser.ok) throw new Error("Failed to fetch user data");
 
-    // ✅ Public pages की लिस्ट
-    const publicPaths = ["/", "/product", "/cart", "/checkout"];
-    const isPublic = publicPaths.some((path) => location.startsWith(path));
+    const dataUser = await responseUser.json();
 
-    if (isPublic) return;
+    // 2. Get the role tag user brought after login (from sessionStorage or elsewhere)
+    const loginRole = sessionStorage.getItem("loginRole"); // "seller", "admin", "delivery-boy", "user"
 
-    // 🔐 अगर user login नहीं है
-    if (!user) {
-      navigate("/login");
-      return;
-    }
+    let finalRole: User["role"] = "customer"; // default
 
-    // ✅ Seller redirect
-    if (user.role === "seller") {
-      if (user.seller?.approvalStatus === "approved") {
-        if (!location.startsWith("/seller-dashboard")) {
-          navigate("/seller-dashboard");
-        }
+    if (loginRole === "admin") {
+      finalRole = "admin";
+    } else if (loginRole === "user") {
+      finalRole = "customer";
+    } else if (loginRole === "seller") {
+      // fetch seller data and check approvalStatus
+      const responseSeller = await fetch("/api/sellers/me", {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${idToken}`,
+          "Content-Type": "application/json",
+        },
+      });
+      if (!responseSeller.ok) throw new Error("Failed to fetch seller data");
+
+      const sellerData = await responseSeller.json();
+
+      if (sellerData.approvalStatus === "approved") {
+        finalRole = "seller";
       } else {
-        if (!location.startsWith("/register-seller")) {
-          navigate("/register-seller");
-        }
+        finalRole = "seller-not-approved"; // custom role for your logic, or just keep seller with approvalStatus in user.seller
       }
-      return;
+
+      // You can store sellerData in user.seller for later use
+    } else if (loginRole === "delivery-boy") {
+      // fetch delivery boy data and check verification status
+      const responseDelivery = await fetch("/api/delivery/me", {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${idToken}`,
+          "Content-Type": "application/json",
+        },
+      });
+      if (!responseDelivery.ok) throw new Error("Failed to fetch delivery boy data");
+
+      const deliveryData = await responseDelivery.json();
+
+      if (deliveryData.isVerified) {
+        finalRole = "delivery";
+      } else {
+        finalRole = "delivery-not-approved"; // custom flag
+      }
+      // Store deliveryData in user.delivery if needed
     }
 
-    // ✅ Admin redirect
-    if (user.role === "admin" && !location.startsWith("/admin-dashboard")) {
-      navigate("/admin-dashboard");
-      return;
-    }
+    // Create final user object with role and any extra info
+    const finalUser: User = {
+      uid: dataUser.uid,
+      name: dataUser.name,
+      email: dataUser.email,
+      phone: dataUser.phone,
+      photoURL: dataUser.photoURL,
+      provider: dataUser.provider,
+      role: finalRole,
+      seller: loginRole === "seller" ? sellerData : null,
+      // similarly for delivery data if needed
+    };
 
-    // ✅ Delivery redirect
-    if (user.role === "delivery" && !location.startsWith("/delivery-dashboard")) {
-      navigate("/delivery-dashboard");
-      return;
-    }
-
-    // ✅ Default fallback
-    if (!location.startsWith("/")) {
-      navigate("/");
-    }
-  }, [user, loading, location, navigate]);
-
-  return null;
-}
+    setUser(finalUser);
+  } catch (err) {
+    console.error("Auth error:", err);
+    setUser(null);
+  } finally {
+    setLoading(false);
+  }
+};
