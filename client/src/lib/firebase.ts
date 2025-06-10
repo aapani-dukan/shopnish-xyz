@@ -34,3 +34,5 @@ export const startGoogleLogin = (role: "seller" | "customer") => {
   const provider = new GoogleAuthProvider();
   signInWithRedirect(auth, provider);
 };
+// @ts-ignore
+if (typeof window !== "undefined") window.startGoogleLogin = startGoogleLogin;
