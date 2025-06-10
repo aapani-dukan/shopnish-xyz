@@ -1,7 +1,7 @@
 // client/src/pages/RegisterSellerPage.tsx
 import React from 'react';
 import { useAuth } from "@/hooks/useAuth";
-import SellerRegistrationForm from "@/components/SellerRegistrationForm"; // ✅ सही कॉम्पोनेंट इम्पोर्ट किया गया
+import SellerRegistrationForm from "@/components/seller/SellerRegistrationForm"; // ✅ सही कॉम्पोनेंट इम्पोर्ट किया गया
 import Loader from "../../../shared/Loader"; // सुनिश्चित करें कि Loader का पाथ सही है
 import { useLocation } from 'wouter'; // रीडायरेक्शन के लिए wouter का उपयोग करें
 
