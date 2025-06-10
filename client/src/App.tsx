@@ -11,7 +11,7 @@ import Cart from "@/pages/cart";
 import Checkout from "@/pages/checkout";
 import NotFound from "@/pages/not-found";
 import RegisterSeller from "@/pages/register-seller";
-import Login from "@/pages/login";
+//import Login from "@/pages/login";
 
 import SellerGate from "@/pages/Seller";                    // seller.tsx renamed as SellerGate here
 import SellerRequests from "./components/admin/SellerRequests"; // relative path// seller-requests.tsx for admin
