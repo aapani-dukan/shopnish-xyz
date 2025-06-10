@@ -1,5 +1,5 @@
 import { useAuth } from "@/hooks/useAuth";
-import SellerRegistrationModal from "@/components/seller-registration-modal";
+
 import Loader from "../../../shared/Loader";
 
 export default function RegisterSellerPage() {
@@ -9,5 +9,5 @@ export default function RegisterSellerPage() {
     return <Loader />;
   }
 
-  return <SellerRegistrationModal />;
+  
 }
