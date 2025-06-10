@@ -13,7 +13,6 @@ interface Seller {
   storeName: string;
   approvalStatus: "approved" | "pending" | "rejected";
   rejectionReason?: string;
-  // आप चाहें तो और भी seller fields जोड़ सकते हैं
 }
 
 interface User {
@@ -38,7 +37,6 @@ export function useAuth() {
       try {
         const idToken = await firebaseUser.getIdToken();
 
-        // Step 1: General user info
         const responseUser = await fetch("/api/auth/me", {
           method: "GET",
           headers: {
@@ -50,8 +48,7 @@ export function useAuth() {
         if (!responseUser.ok) throw new Error("Failed to fetch user data");
         const dataUser = await responseUser.json();
 
-        // Step 2: Seller info (only if role = seller)
-        const loginRole = sessionStorage.getItem("loginRole"); // seller / admin / delivery
+        const loginRole = sessionStorage.getItem("loginRole"); // ✅ sessionStorage का इस्तेमाल
         let sellerData: Seller | null = null;
         let role: User["role"] = loginRole === "seller" ? "seller" : (dataUser.role || "customer");
 
@@ -69,7 +66,7 @@ export function useAuth() {
           }
         }
 
-        setUser({
+        const finalUser: User = {
           uid: dataUser.uid,
           name: dataUser.name,
           email: dataUser.email,
@@ -78,7 +75,22 @@ export function useAuth() {
           provider: dataUser.provider,
           role,
           seller: sellerData,
-        });
+        };
+
+        setUser(finalUser);
+
+        // ✅ Role-based redirect
+        if (typeof window !== "undefined") {
+          if (role === "seller") {
+            if (sellerData?.approvalStatus === "approved") {
+              window.location.replace("/seller-dashboard");
+            } else {
+              window.location.replace("/register-seller");
+            }
+          } else {
+            window.location.replace("/");
+          }
+        }
 
         return true;
       } catch (err) {
@@ -93,11 +105,7 @@ export function useAuth() {
     getRedirectResult(auth)
       .then((result) => {
         if (result?.user) {
-          fetchUserAndSeller(result.user).then((success) => {
-            if (success) {
-              window.location.replace("/dashboard"); // role-based redirection
-            }
-          });
+          fetchUserAndSeller(result.user);
         } else {
           const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
             if (firebaseUser) {
