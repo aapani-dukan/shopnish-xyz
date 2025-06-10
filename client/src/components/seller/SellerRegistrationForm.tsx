@@ -1,17 +1,22 @@
 // client/src/components/SellerRegistrationForm.tsx
+
+// 'export default function SellerRegistrationForm()' ki jagah
+// ab hum 'export function SellerRegistrationForm()' ka upyog karenge.
+// Isse yeh component ek named export ban jayega.
+
 import React from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useAuth } from "@/hooks/useAuth"; // Assuming useAuth provides the user object
+import { useAuth } from "@/hooks/useAuth";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/hooks/use-toast";
-import { Loader2 } from "lucide-react"; // For loading spinner
-import { Link, useLocation } from "wouter"; // For redirection
+import { Loader2 } from "lucide-react";
+import { Link, useLocation } from "wouter";
 
 // 1. Define your form schema using Zod
 const sellerRegistrationSchema = z.object({
@@ -28,10 +33,11 @@ const sellerRegistrationSchema = z.object({
 
 type SellerRegistrationFormData = z.infer<typeof sellerRegistrationSchema>;
 
-export default function SellerRegistrationForm() {
-  const { user, loading } = useAuth(); // Get user from useAuth
+// Yahaan badlav kiya gaya hai: 'export default' hata kar 'export' lagaya gaya hai.
+export function SellerRegistrationForm() {
+  const { user, loading } = useAuth();
   const queryClient = useQueryClient();
-  const [, setLocation] = useLocation(); // For Wouter redirection
+  const [, setLocation] = useLocation();
 
   const {
     register,
@@ -49,7 +55,7 @@ export default function SellerRegistrationForm() {
         throw new Error("User not authenticated.");
       }
 
-      const idToken = await user.getIdToken(); // Get ID token from Firebase user
+      const idToken = await user.getIdToken();
 
       const response = await fetch("/api/sellers", {
         method: "POST",
@@ -71,20 +77,12 @@ export default function SellerRegistrationForm() {
         title: "Registration Successful!",
         description: "Your seller application has been submitted and is pending approval.",
       });
-      // Invalidate queries to refetch seller status if needed
-      queryClient.invalidateQueries({ queryKey: ['user'] }); 
-      queryClient.invalidateQueries({ queryKey: ['sellerData'] }); 
-      
-      // Clear the loginRole flag from sessionStorage as registration is done
-      sessionStorage.removeItem("loginRole"); 
+      queryClient.invalidateQueries({ queryKey: ['user'] });
+      queryClient.invalidateQueries({ queryKey: ['sellerData'] });
 
-      // Redirect user to a 'pending approval' page or directly to seller dashboard
-      // Based on your previous logic, they would be re-evaluated by AuthRedirectGuard
-      // which will then send them to seller-dashboard (if approved) or keep them here
-      // if you still want them to see a pending message.
-      // For now, let's redirect to a common status page or home for re-evaluation.
-      setLocation("/seller-status"); // You might want to create a page like /seller-status
-                                     // or simply redirect to home for AuthRedirectGuard to handle
+      sessionStorage.removeItem("loginRole");
+
+      setLocation("/seller-status");
     },
     onError: (error: any) => {
       toast({
@@ -108,9 +106,6 @@ export default function SellerRegistrationForm() {
     );
   }
 
-  // If user is not logged in, or if it's a general user, handle it
-  // This scenario should ideally be handled by AuthRedirectGuard earlier,
-  // but keeping a fallback for robustness.
   if (!user) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] p-4 text-center">
@@ -118,16 +113,14 @@ export default function SellerRegistrationForm() {
         <p className="text-gray-600 mb-6">
           Please log in to continue with seller registration.
         </p>
-        {/* You can add a login button here if desired */}
         <Button onClick={() => setLocation("/")}>Go to Home & Login</Button>
       </div>
     );
   }
 
-  // If user is already an approved seller, redirect them
   if (user.role === "approved-seller") {
-    setLocation("/seller-dashboard"); // Redirect if already approved
-    return null; // Don't render form if already redirected
+    setLocation("/seller-dashboard");
+    return null;
   }
 
   return (
@@ -139,7 +132,6 @@ export default function SellerRegistrationForm() {
         Join our platform and start selling your products today!
       </p>
 
-      {/* Seller Benefits Section */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8 text-center text-primary">
         <div className="p-4 bg-primary-50 rounded-lg">
           <h3 className="font-semibold text-lg">🚀 Quick Onboarding</h3>
@@ -200,7 +192,7 @@ export default function SellerRegistrationForm() {
             <Label htmlFor="city">City</Label>
             <Input
               id="city"
-              {...register("city")}
+                {...register("city")}
               className={errors.city ? "border-red-500" : ""}
             />
             {errors.city && (
@@ -281,4 +273,4 @@ export default function SellerRegistrationForm() {
       </form>
     </div>
   );
-          }
+      }
