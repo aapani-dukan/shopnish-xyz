@@ -1,40 +1,121 @@
-// Client/src/components/auth-redirect-guard.tsx
-import { useEffect } from 'react';
-import { useLocation } from 'wouter';
-import { useAuth } from '@/hooks/useAuth'; // ✅ useAuth को यहाँ इम्पोर्ट किया गया है
+// client/src/hooks/useAuth.tsx
+import { useEffect, useState } from "react";
+import {
+  getAuth,
+  onAuthStateChanged,
+  getRedirectResult,
+  User as FirebaseUser,
+} from "firebase/auth";
+import { app } from "@/lib/firebase";
 
-export default function AuthRedirectGuard({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useAuth();
-  const [, setLocation] = useLocation();
+interface Seller {
+  id: number;
+  userId: string;
+  storeName: string;
+  approvalStatus: "approved" | "pending" | "rejected";
+  rejectionReason?: string;
+}
+
+interface User {
+  uid: string;
+  name: string | null;
+  email: string | null;
+  phone?: string | null;
+  photoURL?: string | null;
+  provider?: any[];
+  seller?: Seller | null;
+  role?: "approved-seller" | "not-approved-seller" | null;
+}
+
+export function useAuth() { // ✅ ध्यान दें: यह function export की जा रही है
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (loading) {
-      return;
-    }
+    const auth = getAuth(app);
 
-    const loginRole = sessionStorage.getItem("loginRole");
+    const fetchUserAndSeller = async (firebaseUser: FirebaseUser) => {
+      try {
+        const idToken = await firebaseUser.getIdToken();
 
-    if (user) {
-      if (loginRole === "seller") {
-        sessionStorage.removeItem("loginRole"); 
+        const responseUser = await fetch("/api/auth/me", {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${idToken}`,
+            "Content-Type": "application/json",
+          },
+        });
 
-        if (user.role === "approved-seller") {
-          setLocation("/seller-dashboard");
-          return;
-        } else if (user.role === "not-approved-seller") {
-          setLocation("/seller-registration-form");
-          return;
+        if (!responseUser.ok) {
+          throw new Error("Failed to fetch user data");
         }
-      } 
-    } else {
-      // If user is logged out, you might want to redirect them to a login page
-      // if (location.pathname !== '/login') setLocation('/login');
-    }
-  }, [user, loading, setLocation]);
 
-  if (loading) {
-    return <div>Loading authentication...</div>;
-  }
+        const dataUser = await responseUser.json();
 
-  return <>{children}</>;
+        let sellerData: Seller | null = null;
+        let role: User["role"] = null;
+
+        const responseSeller = await fetch("/api/sellers/me", {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${idToken}`,
+            "Content-Type": "application/json",
+          },
+        });
+
+        if (responseSeller.ok) {
+          sellerData = await responseSeller.json();
+          if (sellerData.approvalStatus === "approved") {
+            role = "approved-seller";
+          } else {
+            role = "not-approved-seller";
+          }
+        } else {
+          role = null; // If no seller data, this user is not a seller. Role remains null.
+        }
+
+        const finalUser: User = {
+          uid: dataUser.uid,
+          name: dataUser.name,
+          email: dataUser.email,
+          phone: dataUser.phone,
+          photoURL: dataUser.photoURL,
+          provider: dataUser.provider,
+          role,
+          seller: sellerData,
+        };
+
+        setUser(finalUser);
+      } catch (err) {
+        console.error("Auth Error:", err);
+        setUser(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    getRedirectResult(auth)
+      .then((result) => {
+        if (result?.user) {
+          fetchUserAndSeller(result.user);
+        } else {
+          const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+            if (firebaseUser) {
+              fetchUserAndSeller(firebaseUser);
+            } else {
+              setUser(null);
+              setLoading(false);
+            }
+          });
+          return () => unsubscribe();
+        }
+      })
+      .catch((error) => {
+        console.error("Redirect error:", error);
+        setUser(null);
+        setLoading(false);
+      });
+  }, []);
+
+  return { user, loading };
 }
