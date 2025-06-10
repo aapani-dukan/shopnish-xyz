@@ -6,15 +6,20 @@ import {
   signInWithRedirect,
 } from "firebase/auth";
 
-// 🔐 Firebase config (अपना खुद का config यहाँ भरो)
+
+
+// Your web app's Firebase configuration
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_PROJECT_ID.appspot.com",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId: "YOUR_APP_ID",
+  apiKey: "AIzaSyChdYrxfxkfj6m04WT0nOBl5xCP62udcPU",
+  authDomain: "aapani-dukan.firebaseapp.com",
+  projectId: "aapani-dukan",
+  storageBucket: "aapani-dukan.firebasestorage.app",
+  messagingSenderId: "352463214204",
+  appId: "1:352463214204:web:a3adc9ef1d8af0de1fdbf9"
 };
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
 
 export const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
