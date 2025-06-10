@@ -1,33 +1,6 @@
-// client/src/App.tsx
+// client/src/App.tsx (संशोधित भाग)
 
-import { Switch, Route, useLocation } from "wouter";
-import { useEffect } from "react";
-import { queryClient } from "./lib/queryClient";
-import { QueryClientProvider } from "@tanstack/react-query";
-import { Toaster } from "@/components/ui/toaster";
-import { TooltipProvider } from "@/components/ui/tooltip";
-
-// **यहां बदलाव किया गया है:** SellerRegistrationForm को named import के रूप में इम्पोर्ट करें
-// (यह पहले से ही सही था, बस पुष्टि के लिए शामिल किया गया है)
-import { SellerRegistrationForm } from "@/components/seller/SellerRegistrationForm";
-
-// **यहां बदलाव किया गया है:** RegisterSellerPage को default import के रूप में इम्पोर्ट करें
-import RegisterSellerPage from "@/pages/register-seller"; // ✅ अब यह सही है
-
-import Home from "@/pages/home";
-import ProductDetail from "@/pages/product-detail";
-import Cart from "@/pages/cart";
-import Checkout from "@/pages/checkout";
-import NotFound from "@/pages/not-found";
-
-import Login from "@/pages/login";
-
-import SellerRequests from "./components/admin/SellerRequests";
-import SellerDashboard from "@/pages/seller-dashboard";
-import AdminDashboard from "@/pages/admin-dashboard";
-import DeliveryDashboard from "@/pages/delivery-dashboard";
-
-import { useAuth } from "@/hooks/useAuth";
+// ... आपके मौजूदा imports
 
 function RoleBasedRedirector() {
   const { user, loading } = useAuth();
@@ -36,69 +9,55 @@ function RoleBasedRedirector() {
   useEffect(() => {
     if (loading) return;
 
+    // **यहां बदलाव किया गया है:** sessionStorage से loginRole पढ़ें
+    const loginRole = sessionStorage.getItem("loginRole");
+
     if (!user) {
-      navigate("/login");
-    } else {
-      switch (user.role) {
-        case "seller":
-          navigate("/seller-dashboard"); // seller को सीधे डैशबोर्ड पर भेजें
-          break;
-        case "admin":
-          navigate("/admin-dashboard");
-          break;
-        case "delivery":
-          navigate("/delivery-dashboard");
-          break;
-        default:
-          navigate("/");
+      // अगर यूजर लॉग इन नहीं है और seller रजिस्ट्रेशन के लिए आया था,
+      // तो उसे `login` पेज पर भेजें जहाँ सेलर फ्लो हैंडल हो सके.
+      if (loginRole === "seller" && window.location.pathname !== "/login") {
+         navigate("/login"); // या /login?from=seller
+      } else {
+         // सामान्य लॉग इन की आवश्यकता
+         navigate("/login");
       }
+      return;
     }
-  }, [user, loading, navigate]);
+
+    // अगर यूजर लॉग इन है
+    switch (user.role) {
+      case "approved-seller":
+        navigate("/seller-dashboard");
+        break;
+      case "seller": // या 'pending-seller' या 'not-approved-seller'
+        // अगर यूजर 'seller' रोल में है लेकिन 'approved-seller' नहीं है,
+        // और वह `/register-seller` या `/seller-status` पर नहीं है,
+        // तो उसे सही पेज पर भेजें।
+        if (window.location.pathname !== "/register-seller" && window.location.pathname !== "/seller-status") {
+          navigate("/seller-status"); // मान लें कि 'seller' रोल का मतलब pending है
+        }
+        break;
+      case "admin":
+        navigate("/admin-dashboard");
+        break;
+      case "delivery":
+        navigate("/delivery-dashboard");
+        break;
+      default:
+        // अगर यूजर का कोई खास रोल नहीं है (freshly logged in)
+        // और वह `loginRole` "seller" के साथ आया था,
+        // तो उसे `register-seller` पेज पर भेजें।
+        if (loginRole === "seller") {
+          navigate("/register-seller");
+          sessionStorage.removeItem("loginRole"); // उपयोग के बाद फ्लैग हटा दें
+        } else if (window.location.pathname !== "/") { // अगर वे होम पर नहीं हैं और कोई खास रोल या फ्लो नहीं है
+          navigate("/"); // होम पेज पर भेजें
+        }
+        break;
+    }
+  }, [user, loading, navigate]); // loginRole को dependencies में जोड़ने की ज़रूरत नहीं क्योंकि वह read-only है
 
   return null;
 }
 
-function Router() {
-  return (
-    <Switch>
-      <Route path="/" component={Home} />
-      <Route path="/product/:id" component={ProductDetail} />
-      <Route path="/cart" component={Cart} />
-      <Route path="/checkout" component={Checkout} />
-      <Route path="/login" component={Login} />
-
-      {/* **यहां बदलाव किया गया है:** /register-seller राउट के लिए RegisterSellerPage का उपयोग करें */}
-      <Route path="/register-seller" component={RegisterSellerPage} />
-
-      {/* **यह लाइन हटाई गई है** - यह अनावश्यक राउट था */}
-      {/* <Rout path="/SellerRegistrationForm" component={SellerRegistrationForm} /> */}
-
-      {/* Role-Based Redirect */}
-      <Route path="/dashboard" component={RoleBasedRedirector} />
-
-      {/* Seller pages */}
-      <Route path="/SellerRequests" component={SellerRequests} />
-
-      {/* Dashboards */}
-      <Route path="/seller-dashboard" component={SellerDashboard} />
-      <Route path="/admin-dashboard" component={AdminDashboard} />
-      <Route path="/delivery-dashboard" component={DeliveryDashboard} />
-
-      {/* 404 Not Found के लिए कैच-ऑल राउट */}
-      <Route component={NotFound} />
-    </Switch>
-  );
-}
-
-function App() {
-  return (
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        <Router />
-      </TooltipProvider>
-    </QueryClientProvider>
-  );
-}
-
-export default App;
+// ... बाकी Router और App कॉम्पोनेंट unchanged हैं
