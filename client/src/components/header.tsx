@@ -1,4 +1,4 @@
-import React, { useState } from "react"; // ✅ Fully safe, कोई error नहीं देगा
+import React, { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { Search, Heart, ShoppingCart, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -22,7 +22,7 @@ export default function Header({ categories }: HeaderProps) {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [, setLocation] = useLocation();
-  const totalItems = useCartStore(state => state.getTotalItems());
+  const totalItems = useCartStore((state) => state.getTotalItems());
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -75,15 +75,16 @@ export default function Header({ categories }: HeaderProps) {
 
               {/* ✅ Updated Become a Seller button with role tag */}
               <Button
-  onClick={() => {
-    console.log("🟢 Seller login started");
-    startGoogleLogin("seller");
-  }}
-  variant="outline"
-  className="ml-4"
->
-  Become a Seller
-</Button>
+                onClick={() => {
+                  console.log("🟢 Seller login started");
+                  sessionStorage.setItem("loginRole", "seller"); // ✅ role stored
+                  startGoogleLogin("seller"); // ✅ redirect-based login
+                }}
+                variant="outline"
+                className="ml-4"
+              >
+                Become a Seller
+              </Button>
 
               <Button
                 variant="ghost"
