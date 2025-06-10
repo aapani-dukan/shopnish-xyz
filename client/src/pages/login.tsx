@@ -1,41 +1,43 @@
 // client/src/pages/login.tsx
 
 import { useEffect } from "react";
-import { getAuth, GoogleAuthProvider, signInWithRedirect, getRedirectResult } from "firebase/auth"; // getRedirectResult इम्पोर्ट करें
+import { getAuth, GoogleAuthProvider, signInWithRedirect, getRedirectResult } from "firebase/auth";
 import { app } from "@/lib/firebase";
 import { Button } from "@/components/ui/button";
-import { useLocation } from "wouter"; // wouter से useLocation इम्पोर्ट करें
+import { useLocation } from "wouter";
 
 export default function Login() {
   const auth = getAuth(app);
-  const [, setLocation] = useLocation(); // रीडायरेक्शन के लिए setLocation
+  const [, setLocation] = useLocation();
 
   useEffect(() => {
-    // Google लॉगिन रीडायरेक्ट के परिणाम को हैंडल करें
-    const handleRedirectResult = async () => {
+    const handleLoginRedirect = async () => {
       try {
         const result = await getRedirectResult(auth);
+
         if (result) {
-          // यूजर सफलतापूर्वक लॉग इन हो गया है
-          console.log("🟢 Google login redirect result:", result.user);
+          // यूजर ने Google से सफलतापूर्वक लॉगिन किया है
+          console.log("🟢 Google login successful via redirect:", result.user);
 
           // sessionStorage से loginRole फ्लैग की जांच करें
           const loginRole = sessionStorage.getItem("loginRole");
           sessionStorage.removeItem("loginRole"); // फ्लैग का उपयोग करने के बाद हटा दें
 
           if (loginRole === "seller") {
-            // अगर यूजर सेलर रजिस्ट्रेशन के लिए आया था, तो उसे रजिस्ट्रेशन पेज पर भेजें
+            console.log("Redirecting to /register-seller based on loginRole.");
             setLocation("/register-seller");
           } else {
-            // अन्यथा, उसे होम पेज पर भेजें
+            console.log("Redirecting to / (Home) as no specific role was set or it was not 'seller'.");
             setLocation("/");
           }
         } else {
-          // अगर यूजर पहले से लॉग इन है (या रीडायरेक्ट से नहीं आया है)
-          // तो हम 'onAuthStateChanged' लिसनर पर भरोसा कर सकते हैं
-          // जो नीचे है, या सीधे होम पर भेज सकते हैं अगर कोई specific flow नहीं है।
-          // अभी के लिए, onAuthStateChanged को इसे हैंडल करने दें।
-          console.log("🟡 No redirect result or user already signed in.");
+          // अगर कोई रीडायरेक्ट रिजल्ट नहीं है, तो यूजर शायद सीधे /login पर आया है,
+          // या पहले से ही लॉग इन है (इस केस में onAuthStateChanged चलेगा).
+          // अगर वे पहले से लॉग इन हैं और /login पर हैं, तो उन्हें होम पर भेजें।
+          if (auth.currentUser && window.location.pathname === "/login") {
+            console.log("User already logged in and on /login page. Redirecting to /.");
+            setLocation("/");
+          }
         }
       } catch (error) {
         console.error("🔴 Error during Google sign-in redirect result:", error);
@@ -44,38 +46,22 @@ export default function Login() {
       }
     };
 
-    handleRedirectResult();
+    handleLoginRedirect();
 
-    // पहले से लॉग इन हो तो, onAuthStateChanged लिसनर का उपयोग करें
-    // यह `getRedirectResult` के बाद भी चलता है, लेकिन सुनिश्चित करता है
-    // कि यूजर किसी भी अन्य तरीके से लॉग इन होने पर भी हैंडल हो।
-    const unsubscribe = auth.onAuthStateChanged((user) => {
-      if (user) {
-        // सुनिश्चित करें कि यह केवल तभी रीडायरेक्ट करे जब `getRedirectResult` ने पहले से रीडायरेक्ट न किया हो
-        // या यदि वे सीधे `login` पेज पर आएं और पहले से लॉग इन हों.
-        // `sessionStorage.getItem("loginRole")` की जांच करके हम सुनिश्चित कर सकते हैं
-        // कि यह सेलर फ्लो को बाधित न करे।
-        if (window.location.pathname === "/login") { // केवल तभी रीडायरेक्ट करें जब वे अभी भी `/login` पर हों
-            const loginRole = sessionStorage.getItem("loginRole");
-            if (loginRole === "seller") {
-                setLocation("/register-seller");
-            } else {
-                setLocation("/");
-            }
-        }
-      }
-    });
-
-    return () => unsubscribe();
-  }, [auth, setLocation]); // auth और setLocation को dependencies के रूप में जोड़ें
+    // onAuthStateChanged लिसनर को हटा दें ताकि यह getRedirectResult के साथ कॉन्फ्लिक्ट न करे,
+    // क्योंकि getRedirectResult ही रीडायरेक्ट लॉजिक को पूरी तरह से संभाल रहा है.
+    // आपको केवल यह सुनिश्चित करने की आवश्यकता है कि `useAuth` हुक सही ढंग से
+    // user.role को अपडेट कर रहा है जब Firebase claims बदलते हैं।
+    return () => {}; // कोई cleanup नहीं क्योंकि हमने लिसनर हटाया है
+  }, [auth, setLocation]);
 
   const handleLogin = () => {
     const provider = new GoogleAuthProvider();
-    // `startGoogleLogin` अब `firebase.ts` में परिभाषित है
-    // तो इस फ़ंक्शन को कॉल करने की आवश्यकता नहीं है, इसे `startGoogleLogin` हैंडल करेगा.
-    // लेकिन चूंकि header.tsx सीधे startGoogleLogin को कॉल कर रहा है, तो यह हिस्सा शायद सीधे उपयोग नहीं होगा।
-    // फिर भी, अगर आप यहाँ से सीधा लॉगिन ट्रिगर करते हैं तो यह `loginRole` सेट नहीं करेगा।
-    // सुनिश्चित करें कि `Become a Seller` फ्लो हमेशा `header.tsx` से ही शुरू हो।
+    // इस `handleLogin` को सीधे Header कॉम्पोनेंट में `startGoogleLogin` द्वारा कॉल किया जाना चाहिए,
+    // इसलिए यहाँ sessionStorage.setItem("loginRole", "seller") की आवश्यकता नहीं है
+    // जब तक आप इसे सामान्य "Continue with Google" बटन के रूप में उपयोग न करें
+    // जो सेलर फ्लो शुरू नहीं करता है।
+    sessionStorage.removeItem("loginRole"); // सुनिश्चित करें कि कोई पुराना फ्लैग न हो
     signInWithRedirect(auth, provider);
   };
 
@@ -85,10 +71,6 @@ export default function Login() {
         <h1 className="text-2xl font-bold text-gray-800">Welcome to Shopnish</h1>
         <p className="text-gray-600">Please login with Google to continue</p>
 
-        {/* इस बटन को `startGoogleLogin` को कॉल करना चाहिए ताकि `loginRole` सेट हो सके,
-            या इसे केवल सामान्य लॉगिन के लिए उपयोग करें।
-            अगर यह केवल सामान्य लॉगिन है, तो `startGoogleLogin` को कॉल न करें।
-            अभी के लिए, यह वही करता है जो पहले करता था। */}
         <Button onClick={handleLogin}>
           Continue with Google
         </Button>
