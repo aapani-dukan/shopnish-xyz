@@ -5,7 +5,7 @@ import SellerRegistrationForm from "@/components/seller/SellerRegistrationForm";
 import Loader from "../../../shared/Loader"; // सुनिश्चित करें कि Loader का पाथ सही है
 import { useLocation } from 'wouter'; // रीडायरेक्शन के लिए wouter का उपयोग करें
 
-export default function register-seller() {
+export default function RegisterSeller() {
   const { user, loading } = useAuth();
   const [, setLocation] = useLocation(); // wouter से setLocation प्राप्त करें
 
