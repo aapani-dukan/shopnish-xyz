@@ -1,4 +1,3 @@
-// client/src/components/auth-redirect-guard.tsx
 import { useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useLocation } from "wouter";
@@ -8,23 +7,22 @@ export function AuthRedirectGuard() {
   const { user, loading } = useAuth();
 
   useEffect(() => {
+    // 🔴 अगर अभी लोडिंग हो रही है, तो कोई redirect नहीं करना
     if (loading) return;
 
-    // ✅ Public routes – allow access without login
+    // ✅ Public pages की लिस्ट
     const publicPaths = ["/", "/product", "/cart", "/checkout"];
-    const isPublic = publicPaths.some((path) =>
-      location.startsWith(path)
-    );
+    const isPublic = publicPaths.some((path) => location.startsWith(path));
 
     if (isPublic) return;
 
-    // 🔒 Redirect logic
+    // 🔐 अगर user login नहीं है
     if (!user) {
       navigate("/login");
       return;
     }
 
-    // ✅ Seller redirect logic
+    // ✅ Seller redirect
     if (user.role === "seller") {
       if (user.seller?.approvalStatus === "approved") {
         if (!location.startsWith("/seller-dashboard")) {
@@ -38,23 +36,22 @@ export function AuthRedirectGuard() {
       return;
     }
 
-    // ✅ Admin redirect logic (optional)
+    // ✅ Admin redirect
     if (user.role === "admin" && !location.startsWith("/admin-dashboard")) {
       navigate("/admin-dashboard");
       return;
     }
 
-    // ✅ Delivery redirect logic (optional)
+    // ✅ Delivery redirect
     if (user.role === "delivery" && !location.startsWith("/delivery-dashboard")) {
       navigate("/delivery-dashboard");
       return;
     }
 
-    // ✅ Default fallback for customers or unknown roles
+    // ✅ Default fallback
     if (!location.startsWith("/")) {
       navigate("/");
     }
-
   }, [user, loading, location, navigate]);
 
   return null;
