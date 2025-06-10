@@ -1,7 +1,7 @@
 // Client/src/components/auth-redirect-guard.tsx
 import { useEffect } from 'react';
 import { useLocation } from 'wouter'; // assuming you're using wouter for routing
-import { useAuth } from '@/hooks/useAuth'; // Your centralized auth hook
+
 
 export default function AuthRedirectGuard({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
