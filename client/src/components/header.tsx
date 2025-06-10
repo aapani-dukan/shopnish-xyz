@@ -75,12 +75,15 @@ export default function Header({ categories }: HeaderProps) {
 
               {/* ✅ Updated Become a Seller button with role tag */}
               <Button
-                onClick={() => startGoogleLogin("seller")}
-                variant="outline"
-                className="ml-4"
-              >
-                Become a Seller
-              </Button>
+  onClick={() => {
+    console.log("🟢 Seller login started");
+    startGoogleLogin("seller");
+  }}
+  variant="outline"
+  className="ml-4"
+>
+  Become a Seller
+</Button>
 
               <Button
                 variant="ghost"
