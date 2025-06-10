@@ -1,59 +1,31 @@
 // pages/seller.tsx
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
-import SellerDashboard from "./seller-dashboard";
-import SellerRegistrationModal from "@/components/seller-registration-modal";
+import { useLocation } from "wouter";
 import Loader from "../../../shared/Loader";
 
-export default function SellerGate() {
-  const { user, loading: authLoading } = useAuth();
-  const [seller, setSeller] = useState(null);
-  const [checkingSeller, setCheckingSeller] = useState(true);
+export default function SellerRedirectPage() {
+  const { user, loading } = useAuth();
+  const [, navigate] = useLocation();
 
   useEffect(() => {
-    const fetchSeller = async () => {
-      if (!user) {
-        setCheckingSeller(false);
-        return;
+    if (loading) return;
+
+    if (!user) {
+      navigate("/login");
+      return;
+    }
+
+    if (user.role === "seller") {
+      if (user.seller?.approvalStatus === "approved") {
+        navigate("/seller-dashboard");
+      } else {
+        navigate("/register-seller");
       }
+    } else {
+      navigate("/");
+    }
+  }, [user, loading]);
 
-      try {
-        const token = await user.getIdToken();
-        const res = await fetch("/api/sellers/me", {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-
-        if (res.status === 200) {
-          const data = await res.json();
-          setSeller(data);
-        } else if (res.status === 404) {
-          setSeller(null); // not registered yet
-        } else {
-          console.error("Unexpected seller status", res.status);
-        }
-      } catch (err) {
-        console.error("Error fetching seller info", err);
-      } finally {
-        setCheckingSeller(false);
-      }
-    };
-
-    fetchSeller();
-  }, [user]);
-
-  if (authLoading || checkingSeller) {
-    return <Loader />;
-  }
-
-  if (!user) {
-    return <div>Please sign in to continue</div>;
-  }
-
-  if (!seller) {
-    return <SellerRegistrationModal />;
-  }
-
-  return <seller-dashboard seller={seller} />;
+  return <Loader />;
 }
