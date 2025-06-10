@@ -1,5 +1,4 @@
-import React from "react";
-import { useState } from "react";
+import React, { useState } from "react"; // ✅ Fully safe, कोई error नहीं देगा
 import { Link, useLocation } from "wouter";
 import { Search, Heart, ShoppingCart, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
