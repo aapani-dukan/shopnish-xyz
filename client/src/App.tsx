@@ -8,7 +8,8 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
 // SellerRegistrationForm को named import के रूप में इम्पोर्ट करें
-import { SellerRegistrationForm } from "@/components/seller/SellerRegistrationForm";
+// अगर यह export function SellerRegistrationForm है तो ऐसे इम्पोर्ट करें
+// import { SellerRegistrationForm } from "@/components/seller/SellerRegistrationForm";
 
 // RegisterSellerPage को default import के रूप में इम्पोर्ट करें
 import RegisterSellerPage from "@/pages/register-seller";
@@ -21,6 +22,7 @@ import NotFound from "@/pages/not-found";
 
 import Login from "@/pages/login";
 
+// ध्यान दें: अगर ये कॉम्पोनेंट्स named export हैं तो { } का उपयोग करें
 import SellerRequests from "./components/admin/SellerRequests";
 import SellerDashboard from "@/pages/seller-dashboard";
 import AdminDashboard from "@/pages/admin-dashboard";
@@ -35,47 +37,50 @@ function RoleBasedRedirector() {
   useEffect(() => {
     if (loading) return;
 
-    const loginRole = sessionStorage.getItem("loginRole");
-
-    // अगर यूजर लॉग इन नहीं है
-    if (!user) {
-      if (loginRole === "seller" && window.location.pathname !== "/login") {
-         // अगर यूजर सेलर रजिस्ट्रेशन के लिए आया था और अभी लॉगिन पेज पर नहीं है
-         navigate("/login");
-      } else if (window.location.pathname !== "/login") {
-         // सामान्य लॉगिन की आवश्यकता है, लेकिन पहले से लॉगिन पर नहीं है
-         navigate("/login");
-      }
-      return; // रीडायरेक्ट के बाद फंक्शन से बाहर निकलें
+    // अगर यूजर लॉग इन नहीं है और current path `/login` नहीं है, तो उसे `/login` पर भेजें
+    if (!user && window.location.pathname !== "/login") {
+      console.log("User not logged in, redirecting to /login from:", window.location.pathname);
+      navigate("/login");
+      return;
     }
 
     // अगर यूजर लॉग इन है
-    switch (user.role) {
-      case "approved-seller":
-        navigate("/seller-dashboard");
-        break;
-      case "seller": // यह रोल तब आ सकता है जब सेलर ने रजिस्टर कर दिया हो लेकिन अभी अप्रूव न हुआ हो
-        if (window.location.pathname !== "/register-seller" && window.location.pathname !== "/seller-status") {
-          navigate("/seller-status");
-        }
-        break;
-      case "admin":
-        navigate("/admin-dashboard");
-        break;
-      case "delivery":
-        navigate("/delivery-dashboard");
-        break;
-      default:
-        // अगर यूजर का कोई खास रोल नहीं है (नया लॉग इन हुआ यूजर)
-        // और वह `loginRole` "seller" के साथ आया था, तो उसे `register-seller` पेज पर भेजें।
-        if (loginRole === "seller") {
-          navigate("/register-seller");
-          sessionStorage.removeItem("loginRole"); // उपयोग के बाद फ्लैग हटा दें
-        } else if (window.location.pathname !== "/") {
-          // अगर कोई खास रोल या फ्लो नहीं है और वे होम पर नहीं हैं
-          navigate("/");
-        }
-        break;
+    if (user) {
+      switch (user.role) {
+        case "approved-seller":
+          if (window.location.pathname !== "/seller-dashboard") {
+            console.log("User is approved-seller, redirecting to /seller-dashboard.");
+            navigate("/seller-dashboard");
+          }
+          break;
+        case "seller": // यह रोल तब आ सकता है जब सेलर ने रजिस्टर कर दिया हो लेकिन अभी अप्रूव न हुआ हो
+          if (window.location.pathname !== "/register-seller" && window.location.pathname !== "/seller-status" && window.location.pathname !== "/seller-dashboard") {
+            console.log("User is 'seller' (pending), redirecting to /seller-status.");
+            navigate("/seller-status");
+          }
+          break;
+        case "admin":
+          if (window.location.pathname !== "/admin-dashboard") {
+            console.log("User is admin, redirecting to /admin-dashboard.");
+            navigate("/admin-dashboard");
+          }
+          break;
+        case "delivery":
+          if (window.location.pathname !== "/delivery-dashboard") {
+            console.log("User is delivery, redirecting to /delivery-dashboard.");
+            navigate("/delivery-dashboard");
+          }
+          break;
+        default:
+          // अगर यूजर का कोई खास रोल नहीं है (freshly logged in with default role)
+          // और वह `/login` या `/` (home) पर नहीं है, तो उसे `/` पर भेजें।
+          // `login.tsx` अब `loginRole` के आधार पर पहले ही रीडायरेक्ट कर चुका होगा।
+          if (window.location.pathname !== "/" && window.location.pathname !== "/login" && window.location.pathname !== "/register-seller") {
+            console.log("User has no specific role, redirecting to / (Home).");
+            navigate("/");
+          }
+          break;
+      }
     }
   }, [user, loading, navigate]);
 
@@ -83,6 +88,8 @@ function RoleBasedRedirector() {
 }
 
 function Router() {
+  const [, setLocation] = useLocation(); // `useLocation` hook को यहां भी इनिशियलाइज़ करें
+
   return (
     <Switch>
       <Route path="/" component={Home} />
@@ -135,3 +142,4 @@ function App() {
 }
 
 export default App;
+               
