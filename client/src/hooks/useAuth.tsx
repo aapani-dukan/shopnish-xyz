@@ -23,7 +23,8 @@ interface User {
   photoURL?: string | null;
   provider?: any[];
   seller?: Seller | null;
-  role?: "seller" | "customer" | "admin" | "delivery";
+  // Role now only for sellers: "approved" or "not-approved"
+  role?: "approved-seller" | "not-approved-seller" | null;
 }
 
 export function useAuth() {
@@ -39,7 +40,7 @@ export function useAuth() {
 
         const idToken = await firebaseUser.getIdToken();
 
-        // Step 1: Get general user data
+        // Fetch general user data
         const responseUser = await fetch("/api/auth/me", {
           method: "GET",
           headers: {
@@ -53,32 +54,43 @@ export function useAuth() {
         const dataUser = await responseUser.json();
         console.log("✅ /api/auth/me response:", dataUser);
 
-        // Step 2: Determine role
+        // Check loginRole from sessionStorage - only "seller" handled here
         const loginRole = sessionStorage.getItem("loginRole");
-        let role: User["role"] = loginRole === "seller" ? "seller" : (dataUser.role || "customer");
-        console.log("🟡 Role determined as:", role);
-
-        // Step 3: Fetch seller data if applicable
-        let sellerData: Seller | null = null;
-
-        if (role === "seller") {
-          const responseSeller = await fetch("/api/sellers/me", {
-            method: "GET",
-            headers: {
-              Authorization: `Bearer ${idToken}`,
-              "Content-Type": "application/json",
-            },
-          });
-
-          if (responseSeller.ok) {
-            sellerData = await responseSeller.json();
-            console.log("✅ /api/sellers/me response:", sellerData);
-          } else {
-            console.warn("⚠️ Failed to fetch seller data");
-          }
+        if (loginRole !== "seller") {
+          // If not seller, set user null or handle as per your app logic
+          console.warn("⚠️ User is not seller via loginRole, ignoring user.");
+          setUser(null);
+          return false;
         }
 
-        const finalUser = {
+        // Seller flow: fetch seller data to determine approval status
+        let sellerData: Seller | null = null;
+        let role: User["role"] = null;
+
+        const responseSeller = await fetch("/api/sellers/me", {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${idToken}`,
+            "Content-Type": "application/json",
+          },
+        });
+
+        if (responseSeller.ok) {
+          sellerData = await responseSeller.json();
+          console.log("✅ /api/sellers/me response:", sellerData);
+
+          // Set role based on approvalStatus
+          if (sellerData.approvalStatus === "approved") {
+            role = "approved-seller";
+          } else {
+            role = "not-approved-seller";
+          }
+        } else {
+          console.warn("⚠️ Failed to fetch seller data");
+          role = "not-approved-seller"; // default to not approved if error
+        }
+
+        const finalUser: User = {
           uid: dataUser.uid,
           name: dataUser.name,
           email: dataUser.email,
@@ -101,7 +113,6 @@ export function useAuth() {
       }
     };
 
-    // Step 5: Handle Firebase redirect login or auth state
     getRedirectResult(auth)
       .then((result) => {
         if (result?.user) {
