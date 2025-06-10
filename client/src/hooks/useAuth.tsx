@@ -1,138 +1,58 @@
-// client/src/hooks/useAuth.tsx
-import { useEffect, useState } from "react";
-import {
-  getAuth,
-  onAuthStateChanged,
-  getRedirectResult,
-  User as FirebaseUser,
-} from "firebase/auth";
-import { app } from "@/lib/firebase";
+// Client/src/components/auth-redirect-guard.tsx
+import { useEffect } from 'react';
+import { useLocation } from 'wouter'; // assuming you're using wouter for routing
+import { useAuth } from '@/hooks/useAuth'; // Your centralized auth hook
 
-interface Seller {
-  id: number;
-  userId: string;
-  storeName: string;
-  approvalStatus: "approved" | "pending" | "rejected";
-  rejectionReason?: string;
-}
-
-interface User {
-  uid: string;
-  name: string | null;
-  email: string | null;
-  phone?: string | null;
-  photoURL?: string | null;
-  provider?: any[];
-  seller?: Seller | null;
-  role?: "approved-seller" | "not-approved-seller" | null;
-}
-
-export function useAuth() {
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+export default function AuthRedirectGuard({ children }: { children: React.ReactNode }) {
+  const { user, loading } = useAuth();
+  const [, setLocation] = useLocation();
 
   useEffect(() => {
-    const auth = getAuth(app);
+    // 1. जब ऑथेंटिकेशन लोड हो रहा हो, तो कुछ न करें
+    if (loading) {
+      return;
+    }
 
-    const fetchUserAndSeller = async (firebaseUser: FirebaseUser) => {
-      try {
-        // Firebase यूजर का आईडी टोकन प्राप्त करें
-        const idToken = await firebaseUser.getIdToken();
+    // 2. लॉगिन भूमिका देखें (यदि यह एक विशेष लॉगिन प्रवाह से आया है)
+    const loginRole = sessionStorage.getItem("loginRole");
 
-        // सामान्य यूजर डेटा प्राप्त करें
-        const responseUser = await fetch("/api/auth/me", {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${idToken}`,
-            "Content-Type": "application/json",
-          },
-        });
+    // 3. यदि यूजर लॉग इन है
+    if (user) {
+      // यदि यह एक विशेष लॉगिन फ्लो है (जैसे "Become a Seller")
+      if (loginRole === "seller") {
+        // एक बार जब हम रीडायरेक्ट कर देते हैं, तो sessionStorage फ्लैग हटा दें
+        sessionStorage.removeItem("loginRole"); 
 
-        if (!responseUser.ok) {
-          // यदि यूजर डेटा प्राप्त करने में विफल रहता है, तो एरर थ्रो करें
-          throw new Error("Failed to fetch user data");
+        if (user.role === "approved-seller") {
+          // यदि सेलर अप्रूव्ड है, तो डैशबोर्ड पर भेजें
+          setLocation("/seller-dashboard"); // सुनिश्चित करें कि यह आपका सही डैशबोर्ड URL है
+          return; // रीडायरेक्ट के बाद फंक्शन से बाहर निकलें
+        } else if (user.role === "not-approved-seller") {
+          // यदि सेलर अप्रूव्ड नहीं है, तो रजिस्ट्रेशन फॉर्म पर भेजें
+          setLocation("/seller-registration-form"); // सुनिश्चित करें कि यह आपका सही रजिस्ट्रेशन फॉर्म URL है
+          return; // रीडायरेक्ट के बाद फंक्शन से बाहर निकलें
         }
+        // यदि 'seller' loginRole है लेकिन role 'approved-seller' या 'not-approved-seller' नहीं है,
+        // तो यह एक अनपेक्षित स्थिति है। आप यहाँ एक डिफ़ॉल्ट रीडायरेक्ट कर सकते हैं।
+        // फिलहाल इसे यहीं छोड़ते हैं, यह सामान्य हैंडलिंग पर गिरेगा।
+      } 
+      // यदि loginRole 'seller' नहीं है, तो यह एक सामान्य लॉगिन या डिफ़ॉल्ट यूजर है।
+      // आप यहाँ अन्य भूमिकाओं या डिफ़ॉल्ट रीडायरेक्ट को संभाल सकते हैं।
+      // उदाहरण: यदि यूजर लॉग इन है लेकिन किसी विशिष्ट फ्लो में नहीं है, तो उसे होम पेज पर भेजें या जहाँ वह होना चाहिए।
+      // वर्तमान में, यह कॉम्पोनेंट केवल बच्चों को रेंडर करेगा यदि कोई विशिष्ट रीडायरेक्ट नहीं होता है।
+      
+    } else {
+      // यदि यूजर लॉग आउट है (और 'loginRole' नहीं है)
+      // आप यहाँ सामान्य यूजर्स को लॉगिन पेज पर रीडायरेक्ट कर सकते हैं
+      // उदाहरण: if (!location.startsWith('/login')) setLocation('/login');
+    }
+  }, [user, loading, setLocation]); // dependencies: user, loading, setLocation
 
-        const dataUser = await responseUser.json();
+  // जब तक लोडिंग न हो जाए या रीडायरेक्ट न हो जाए तब तक कुछ भी रेंडर न करें
+  if (loading) {
+    return <div>Loading authentication...</div>; // या कोई स्पिनर
+  }
 
-        // सेलर डेटा प्राप्त करें
-        let sellerData: Seller | null = null;
-        let role: User["role"] = null;
-
-        const responseSeller = await fetch("/api/sellers/me", {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${idToken}`,
-            "Content-Type": "application/json",
-          },
-        });
-
-        // यदि सेलर डेटा सफलतापूर्वक प्राप्त होता है
-        if (responseSeller.ok) {
-          sellerData = await responseSeller.json();
-          // अप्रूवल स्टेटस के आधार पर रोल सेट करें
-          if (sellerData.approvalStatus === "approved") {
-            role = "approved-seller";
-          } else {
-            role = "not-approved-seller";
-          }
-        } else {
-          // यदि सेलर डेटा प्राप्त करने में विफल रहता है, तो यह यूजर सेलर नहीं है
-          // रोल को null पर सेट करें (यह सामान्य यूजर है)
-          role = null;
-        }
-
-        // फाइनल यूजर ऑब्जेक्ट बनाएं
-        const finalUser: User = {
-          uid: dataUser.uid,
-          name: dataUser.name,
-          email: dataUser.email,
-          phone: dataUser.phone,
-          photoURL: dataUser.photoURL,
-          provider: dataUser.provider,
-          role,
-          seller: sellerData,
-        };
-
-        setUser(finalUser);
-      } catch (err) {
-        // किसी भी एरर पर यूजर को null पर सेट करें
-        console.error("Auth Error:", err);
-        setUser(null);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    // Firebase रीडायरेक्ट लॉगिन परिणाम को हैंडल करें
-    getRedirectResult(auth)
-      .then((result) => {
-        if (result?.user) {
-          // यदि रीडायरेक्ट लॉगिन सफल होता है, तो यूजर और सेलर डेटा प्राप्त करें
-          fetchUserAndSeller(result.user);
-        } else {
-          // यदि कोई रीडायरेक्ट परिणाम नहीं है, तो सामान्य ऑथेंटिकेशन स्थिति परिवर्तनों को सुनें
-          const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
-            if (firebaseUser) {
-              // यदि यूजर लॉग इन है, तो यूजर और सेलर डेटा प्राप्त करें
-              fetchUserAndSeller(firebaseUser);
-            } else {
-              // यदि कोई यूजर नहीं मिला, तो यूजर को null पर सेट करें
-              setUser(null);
-              setLoading(false);
-            }
-          });
-          // जब कंपोनेंट अनमाउंट होता है तो लिसनर को अनसब्सक्राइब करें
-          return () => unsubscribe();
-        }
-      })
-      .catch((error) => {
-        // रीडायरेक्ट एरर को हैंडल करें
-        console.error("Redirect error:", error);
-        setUser(null);
-        setLoading(false);
-      });
-  }, []); // useEffect केवल एक बार कंपोनेंट माउंट होने पर चलता है
-
-  return { user, loading };
+  // यदि कोई रीडायरेक्ट नहीं होता है, तो बच्चे के कॉम्पोनेंट रेंडर करें
+  return <>{children}</>;
 }
