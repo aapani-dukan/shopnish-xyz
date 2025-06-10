@@ -37,6 +37,7 @@ export function useAuth() {
       try {
         const idToken = await firebaseUser.getIdToken();
 
+        // Step 1: Get general user data
         const responseUser = await fetch("/api/auth/me", {
           method: "GET",
           headers: {
@@ -48,9 +49,12 @@ export function useAuth() {
         if (!responseUser.ok) throw new Error("Failed to fetch user data");
         const dataUser = await responseUser.json();
 
-        const loginRole = sessionStorage.getItem("loginRole"); // ✅ sessionStorage का इस्तेमाल
-        let sellerData: Seller | null = null;
+        // Step 2: Determine role
+        const loginRole = sessionStorage.getItem("loginRole");
         let role: User["role"] = loginRole === "seller" ? "seller" : (dataUser.role || "customer");
+
+        // Step 3: Fetch seller data if applicable
+        let sellerData: Seller | null = null;
 
         if (role === "seller") {
           const responseSeller = await fetch("/api/sellers/me", {
@@ -66,7 +70,8 @@ export function useAuth() {
           }
         }
 
-        const finalUser: User = {
+        // Step 4: Set user
+        setUser({
           uid: dataUser.uid,
           name: dataUser.name,
           email: dataUser.email,
@@ -75,22 +80,7 @@ export function useAuth() {
           provider: dataUser.provider,
           role,
           seller: sellerData,
-        };
-
-        setUser(finalUser);
-
-        // ✅ Role-based redirect
-        if (typeof window !== "undefined") {
-          if (role === "seller") {
-            if (sellerData?.approvalStatus === "approved") {
-              window.location.replace("/seller-dashboard");
-            } else {
-              window.location.replace("/register-seller");
-            }
-          } else {
-            window.location.replace("/");
-          }
-        }
+        });
 
         return true;
       } catch (err) {
@@ -102,6 +92,7 @@ export function useAuth() {
       }
     };
 
+    // Step 5: Handle Firebase redirect login or auth state
     getRedirectResult(auth)
       .then((result) => {
         if (result?.user) {
