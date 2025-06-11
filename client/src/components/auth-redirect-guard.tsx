@@ -1,6 +1,7 @@
-// Client/src/components/auth-redirect-guard.tsx
+// client/src/components/auth-redirect-guard.tsx
+
 import { useEffect } from 'react';
-import { useLocation } from 'wouter'; // assuming you're using wouter for routing
+import { useLocation } from 'wouter';
 import { useAuth } from '@/hooks/useAuth'; // Your centralized auth hook
 
 export default function AuthRedirectGuard({ children }: { children: React.ReactNode }) {
@@ -13,44 +14,71 @@ export default function AuthRedirectGuard({ children }: { children: React.ReactN
       return;
     }
 
-    // 2. लॉगिन भूमिका देखें (यदि यह एक विशेष लॉगिन प्रवाह से आया है)
+    const currentPath = window.location.pathname;
     const loginRole = sessionStorage.getItem("loginRole");
 
-    // 3. यदि यूजर लॉग इन है
-    if (user) {
-      // यदि यह एक विशेष लॉगिन फ्लो है (जैसे "Become a Seller")
-      if (loginRole === "seller") {
-        // एक बार जब हम रीडायरेक्ट कर देते हैं, तो sessionStorage फ्लैग हटा दें
-        sessionStorage.removeItem("loginRole"); 
-
-        if (user.role === "approved-seller") {
-          // यदि सेलर अप्रूव्ड है, तो डैशबोर्ड पर भेजें
-          setLocation("/seller-dashboard"); // सुनिश्चित करें कि यह आपका सही डैशबोर्ड URL है
-          return; // रीडायरेक्ट के बाद फंक्शन से बाहर निकलें
-        } else if (user.role === "not-approved-seller") {
-          // यदि सेलर अप्रूव्ड नहीं है, तो रजिस्ट्रेशन फॉर्म पर भेजें
-          setLocation("/seller-registration-form"); // सुनिश्चित करें कि यह आपका सही रजिस्ट्रेशन फॉर्म URL है
-          return; // रीडायरेक्ट के बाद फंक्शन से बाहर निकलें
-        }
-        // यदि 'seller' loginRole है लेकिन role 'approved-seller' या 'not-approved-seller' नहीं है,
-        // तो यह एक अनपेक्षित स्थिति है। आप यहाँ एक डिफ़ॉल्ट रीडायरेक्ट कर सकते हैं।
-        // फिलहाल इसे यहीं छोड़ते हैं, यह सामान्य हैंडलिंग पर गिरेगा।
-      } 
-      // यदि loginRole 'seller' नहीं है, तो यह एक सामान्य लॉगिन या डिफ़ॉल्ट यूजर है।
-      // आप यहाँ अन्य भूमिकाओं या डिफ़ॉल्ट रीडायरेक्ट को संभाल सकते हैं।
-      // उदाहरण: यदि यूजर लॉग इन है लेकिन किसी विशिष्ट फ्लो में नहीं है, तो उसे होम पेज पर भेजें या जहाँ वह होना चाहिए।
-      // वर्तमान में, यह कॉम्पोनेंट केवल बच्चों को रेंडर करेगा यदि कोई विशिष्ट रीडायरेक्ट नहीं होता है।
-      
-    } else {
-      // यदि यूजर लॉग आउट है (और 'loginRole' नहीं है)
-      // आप यहाँ सामान्य यूजर्स को लॉगिन पेज पर रीडायरेक्ट कर सकते हैं
-      // उदाहरण: if (!location.startsWith('/login')) setLocation('/login');
+    // केस 1: यूजर लॉग इन नहीं है
+    if (!user) {
+      // अगर यूजर लॉग इन नहीं है और current path `/login` नहीं है, तो उसे `/login` पर भेजें
+      // loginRole को यहां देखने की जरूरत नहीं क्योंकि login.tsx इसे हैंडल करेगा
+      if (currentPath !== "/login") {
+        console.log("AuthGuard: User not logged in, redirecting to /login from:", currentPath);
+        setLocation("/login");
+      }
+      return;
     }
-  }, [user, loading, setLocation]); // dependencies: user, loading, setLocation
 
-  // जब तक लोडिंग न हो जाए या रीडायरेक्ट न हो जाए तब तक कुछ भी रेंडर न करें
+    // केस 2: यूजर लॉग इन है
+    // प्राथमिकता: `sessionStorage.loginRole` को देखें अगर `user.role` अभी तक सेट नहीं हुआ है या default है
+    // यह `Become a Seller` फ्लो को सुनिश्चित करेगा कि वे सीधे रजिस्ट्रेशन पर जाएं.
+    if (user.role === null || user.role === undefined) { 
+        if (loginRole === "seller" && currentPath !== "/register-seller") {
+            console.log("AuthGuard: User logged in with default/null role, 'seller' flow, redirecting to /register-seller from:", currentPath);
+            setLocation("/register-seller");
+            sessionStorage.removeItem("loginRole"); // उपयोग के बाद फ़्लैग हटा दें
+            return;
+        }
+    }
+
+    // केस 3: यूजर लॉग इन है और user.role सेट है (या `loginRole` 'seller' नहीं था)
+    switch (user.role) {
+      case "approved-seller":
+        if (currentPath !== "/seller-dashboard") {
+          console.log("AuthGuard: User is approved-seller, redirecting to /seller-dashboard.");
+          setLocation("/seller-dashboard");
+        }
+        break;
+      case "not-approved-seller": 
+        if (currentPath !== "/seller-status" && currentPath !== "/register-seller" && currentPath !== "/seller-dashboard") {
+          console.log("AuthGuard: User is not-approved-seller, redirecting to /seller-status.");
+          setLocation("/seller-status");
+        }
+        break;
+      case "admin":
+        if (currentPath !== "/admin-dashboard") {
+          console.log("AuthGuard: User is admin, redirecting to /admin-dashboard.");
+          setLocation("/admin-dashboard");
+        }
+        break;
+      case "delivery":
+        if (currentPath !== "/delivery-dashboard") {
+          console.log("AuthGuard: User is delivery, redirecting to /delivery-dashboard.");
+          setLocation("/delivery-dashboard");
+        }
+        break;
+      default:
+        // अगर कोई विशेष रोल नहीं है (और `loginRole` 'seller' भी नहीं था),
+        // तो होम पेज पर रीडायरेक्ट करें, बशर्ते वे पहले से होम पर न हों या लॉगिन/रजिस्ट्रेशन पर न हों.
+        if (currentPath !== "/" && currentPath !== "/login" && currentPath !== "/register-seller") {
+          console.log("AuthGuard: User has no specific role, redirecting to / (Home).");
+          setLocation("/");
+        }
+        break;
+    }
+  }, [user, loading, setLocation]);
+
   if (loading) {
-    return <div>Loading authentication...</div>; // या कोई स्पिनर
+    return <div>Loading authentication...</div>;
   }
 
   // यदि कोई रीडायरेक्ट नहीं होता है, तो बच्चे के कॉम्पोनेंट रेंडर करें
