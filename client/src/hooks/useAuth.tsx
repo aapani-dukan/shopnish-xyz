@@ -1,161 +1,129 @@
 // client/src/hooks/useAuth.tsx
 
 import { useEffect, useState } from "react";
-import {
-  getAuth,
-  onAuthStateChanged,
-  getRedirectResult,
-  User as FirebaseUser,
-} from "firebase/auth";
+import { getAuth, onAuthStateChanged, User as FirebaseUser, getRedirectResult, GoogleAuthProvider } from "firebase/auth"; // getRedirectResult को इम्पोर्ट करें
 import { app } from "@/lib/firebase";
+import axios from "axios";
 
-interface Seller {
-  id: number;
-  userId: string;
-  storeName: string;
-  approvalStatus: "approved" | "pending" | "rejected";
-  rejectionReason?: string;
-}
-
+// User interface with roles
 interface User {
   uid: string;
-  name: string | null;
   email: string | null;
-  phone?: string | null;
-  photoURL?: string | null;
-  provider?: any[]; // Firebase Auth ProviderData
-  seller?: Seller | null;
-  role?: "approved-seller" | "not-approved-seller" | "admin" | "delivery" | null; 
+  firstName?: string;
+  lastName?: string;
+  role?: "customer" | "seller" | "admin" | "delivery" | "approved-seller" | "not-approved-seller" | null;
+  seller?: any; // Add seller info for seller users
 }
 
-export function useAuth() {
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+interface AuthState {
+  user: User | null;
+  loading: boolean;
+}
+
+const auth = getAuth(app);
+
+export const useAuth = () => {
+  const [authState, setAuthState] = useState<AuthState>({
+    user: null,
+    loading: true, // Start loading as we're checking auth state
+  });
 
   useEffect(() => {
-    const auth = getAuth(app);
-    let unsubscribeFromAuthStateChanged: (() => void) | undefined;
-
-    const fetchUserAndSeller = async (firebaseUser: FirebaseUser) => {
+    // 1. Handle redirect result first
+    const handleRedirectResult = async () => {
       try {
-        const idToken = await firebaseUser.getIdToken();
-        console.log("useAuth: Fetching user and seller data for UID:", firebaseUser.uid);
-
-        // Fetch user data
-        const responseUser = await fetch("/api/auth/me", {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${idToken}`,
-            "Content-Type": "application/json",
-          },
-        });
-
-        if (!responseUser.ok) {
-          // यदि यूजर डेटा फेच नहीं हो पाता, तो एरर लॉग करें लेकिन यूजर को null न करें
-          // यह सुनिश्चित करने के लिए कि कम से कम Firebase Auth यूजर ऑब्जेक्ट सेट हो
-          console.error(`useAuth: Failed to fetch user data: ${responseUser.statusText}`);
-          // throw new Error(`Failed to fetch user data: ${responseUser.statusText}`); // यह throw हटा दें
-        }
-        const dataUser = responseUser.ok ? await responseUser.json() : null; // यदि सफल नहीं तो null
-
-        let sellerData: Seller | null = null;
-        let role: User["role"] = null;
-
-        // Attempt to fetch seller data
-        const responseSeller = await fetch("/api/sellers/me", {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${idToken}`,
-            "Content-Type": "application/json",
-          },
-        });
-
-        if (responseSeller.ok) {
-          sellerData = await responseSeller.json();
-          if (sellerData.approvalStatus === "approved") {
-            role = "approved-seller";
-          } else {
-            role = "not-approved-seller";
-          }
-          console.log("useAuth: Seller data fetched, role:", role);
-        } else if (responseSeller.status === 404) {
-            console.log("useAuth: No seller profile found for this user (404).");
-            // role null रहेगा
+        const result = await getRedirectResult(auth);
+        if (result) {
+          // User signed in with redirect
+          console.log("✅ useAuth: Google Redirect result found!", result.user);
+          // Now proceed to fetch user details and role
+          await fetchUserDetails(result.user);
         } else {
-            console.error("useAuth: Failed to fetch seller data:", responseSeller.status, responseSeller.statusText);
-            // role null रहेगा
-        }
-        
-        const finalUser: User = {
-          uid: firebaseUser.uid, // FirebaseUser से UID लें
-          name: dataUser?.name || firebaseUser.displayName, // या डेटा से या Firebase से
-          email: dataUser?.email || firebaseUser.email,
-          phone: dataUser?.phone || firebaseUser.phoneNumber,
-          photoURL: dataUser?.photoURL || firebaseUser.photoURL,
-          provider: dataUser?.provider || firebaseUser.providerData,
-          role, 
-          seller: sellerData,
-        };
-
-        setUser(finalUser);
-        console.log("useAuth: User state updated:", finalUser);
-
-      } catch (err) {
-        console.error("useAuth: Auth Error during data fetch (catch block):", err);
-        // यहां भी सुनिश्चित करें कि setLoading(false) चले
-        setUser(null); // यदि कोई बड़ी एरर हो तो यूजर को नल कर दें
-      } finally {
-        // यह सुनिश्चित करता है कि डेटा फेच होने के बाद या एरर होने पर लोडिंग बंद हो जाए
-        setLoading(false); 
-      }
-    };
-
-    // Firebase ऑथेंटिकेशन स्टेट को हैंडल करने का मुख्य लॉजिक
-    const handleAuthState = async () => {
-      try {
-        // 1. पहले getRedirectResult को चेक करें
-        const redirectResult = await getRedirectResult(auth);
-        
-        if (redirectResult?.user) {
-          console.log("useAuth: getRedirectResult found a user. Proceeding to fetch data.");
-          await fetchUserAndSeller(redirectResult.user);
-        } else {
-          // 2. यदि कोई रीडायरेक्ट परिणाम नहीं है, तो onAuthStateChanged लिसनर सेट करें
-          console.log("useAuth: No redirect result found. Setting up onAuthStateChanged listener.");
-          unsubscribeFromAuthStateChanged = onAuthStateChanged(auth, async (firebaseUser) => {
+          console.log("🟠 useAuth: No redirect result found. Setting up onAuthStateChanged listener.");
+          // If no redirect result, proceed with onAuthStateChanged listener
+          // This also covers initial load when user is already signed in (e.g., direct access)
+          onAuthStateChanged(auth, async (firebaseUser) => {
             if (firebaseUser) {
-              console.log("useAuth: onAuthStateChanged detected a user. Proceeding to fetch data.");
-              await fetchUserAndSeller(firebaseUser);
+              console.log("🟢 useAuth: User detected by onAuthStateChanged:", firebaseUser.uid);
+              await fetchUserDetails(firebaseUser);
             } else {
-              console.log("useAuth: No user detected by onAuthStateChanged. Setting user to null.");
-              setUser(null);
-              setLoading(false); // यदि कोई यूजर नहीं है, तो लोडिंग बंद करें
+              console.log("🔴 useAuth: No user detected by onAuthStateChanged. Setting user to null.");
+              setAuthState({ user: null, loading: false });
             }
           });
         }
-      } catch (error) {
-        console.error("useAuth: Error in handleAuthState (main logic):", error);
-        setUser(null);
-      } finally {
-        // यह सुनिश्चित करता है कि लोडिंग बंद हो जाए, भले ही कोई एरर हो
-        // यह `fetchUserAndSeller` के `finally` ब्लॉक को डुप्लिकेट नहीं करेगा,
-        // बल्कि यह शुरुआती लोडिंग के लिए एक सुरक्षा जाल है।
-        if (user === null) { // अगर user अभी भी null है तो setLoading(false) करें
-             setLoading(false);
+      } catch (error: any) {
+        console.error("❌ useAuth: Error getting redirect result or during onAuthStateChanged:", error);
+        // Handle specific errors for getRedirectResult if needed
+        if (error.code === 'auth/popup-closed-by-user' || error.code === 'auth/cancelled-popup-request') {
+          console.warn("User cancelled sign-in flow.");
+        } else if (error.code === 'auth/auth-domain-config-error' || error.code === 'auth/unauthorized-domain') {
+          console.error("Firebase Auth Domain Configuration Error: Check Firebase Console 'Authorized Domains'.");
         }
+        setAuthState({ user: null, loading: false });
       }
     };
 
-    handleAuthState(); // फंक्शन को कॉल करें
+    handleRedirectResult();
 
-    // Cleanup function
+    // Cleanup listener on unmount (if onAuthStateChanged was set up)
+    // Note: getRedirectResult is one-time, so no specific cleanup for it
     return () => {
-      if (unsubscribeFromAuthStateChanged) {
-        console.log("useAuth: Cleaning up onAuthStateChanged listener.");
-        unsubscribeFromAuthStateChanged();
-      }
+      // If onAuthStateChanged was set up, it will be cleaned up
+      // by subsequent calls or component unmount.
+      // For onAuthStateChanged, you can store the unsubscribe function
+      // and call it here if needed, but for typical app lifecycle, it's often fine.
     };
-  }, []); // Empty dependency array means this effect runs once on mount
 
-  return { user, loading };
-}
+  }, []); // Run only once on mount
+
+  const fetchUserDetails = async (firebaseUser: FirebaseUser) => {
+    try {
+      const idToken = await firebaseUser.getIdToken();
+
+      // Attempt to get user details from your backend
+      const [authMeRes, sellerMeRes] = await Promise.allSettled([
+        axios.get("/api/auth/me", { headers: { Authorization: `Bearer ${idToken}` } }),
+        axios.get("/api/sellers/me", { headers: { Authorization: `Bearer ${idToken}` } })
+      ]);
+
+      let userData: User = {
+        uid: firebaseUser.uid,
+        email: firebaseUser.email,
+        firstName: firebaseUser.displayName?.split(" ")[0] || "",
+        lastName: firebaseUser.displayName?.split(" ")[1] || "",
+        role: "customer", // Default role
+      };
+
+      if (authMeRes.status === "fulfilled" && authMeRes.value.data) {
+        // Assume /api/auth/me gives generic user info and possibly a base role
+        // For simplicity, using firebaseUser info directly for customer for now
+        // If your /api/auth/me provides specific roles/details, use them here.
+      } else if (authMeRes.status === "rejected") {
+          console.warn("/api/auth/me call failed:", authMeRes.reason);
+          // If /api/auth/me fails, we can still proceed with Firebase user but role might be default.
+      }
+
+
+      if (sellerMeRes.status === "fulfilled" && sellerMeRes.value.data) {
+        userData.seller = sellerMeRes.value.data;
+        userData.role = sellerMeRes.value.data.approvalStatus === "approved" ? "approved-seller" : "not-approved-seller";
+        console.log("💚 useAuth: Seller info fetched, role:", userData.role);
+      } else if (sellerMeRes.status === "rejected") {
+          console.log("🧡 useAuth: /api/sellers/me failed or no seller found for user (expected for non-sellers):", sellerMeRes.reason);
+          // If seller API fails, it's fine for non-sellers, keep default customer role.
+      }
+
+      setAuthState({ user: userData, loading: false });
+      console.log("🔵 useAuth: User state updated:", userData.role);
+
+    } catch (error) {
+      console.error("❌ useAuth: Error fetching user details from backend:", error);
+      setAuthState({ user: null, loading: false }); // Fallback to null user on backend fetch error
+    }
+  };
+
+  return authState;
+};
+
+      
