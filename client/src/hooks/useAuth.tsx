@@ -25,7 +25,7 @@ interface User {
   photoURL?: string | null;
   provider?: any[]; // Firebase Auth ProviderData
   seller?: Seller | null;
-  role?: "approved-seller" | "not-approved-seller" | "admin" | "delivery" | null; // Added more roles for clarity
+  role?: "approved-seller" | "not-approved-seller" | "admin" | "delivery" | null; 
 }
 
 export function useAuth() {
@@ -51,9 +51,12 @@ export function useAuth() {
         });
 
         if (!responseUser.ok) {
-          throw new Error(`Failed to fetch user data: ${responseUser.statusText}`);
+          // यदि यूजर डेटा फेच नहीं हो पाता, तो एरर लॉग करें लेकिन यूजर को null न करें
+          // यह सुनिश्चित करने के लिए कि कम से कम Firebase Auth यूजर ऑब्जेक्ट सेट हो
+          console.error(`useAuth: Failed to fetch user data: ${responseUser.statusText}`);
+          // throw new Error(`Failed to fetch user data: ${responseUser.statusText}`); // यह throw हटा दें
         }
-        const dataUser = await responseUser.json();
+        const dataUser = responseUser.ok ? await responseUser.json() : null; // यदि सफल नहीं तो null
 
         let sellerData: Seller | null = null;
         let role: User["role"] = null;
@@ -72,29 +75,25 @@ export function useAuth() {
           if (sellerData.approvalStatus === "approved") {
             role = "approved-seller";
           } else {
-            role = "not-approved-seller"; // या "seller" जैसा आप उपयोग करते हैं
+            role = "not-approved-seller";
           }
           console.log("useAuth: Seller data fetched, role:", role);
         } else if (responseSeller.status === 404) {
-            console.log("useAuth: No seller profile found for this user.");
-            role = null; // User is authenticated but not a seller.
+            console.log("useAuth: No seller profile found for this user (404).");
+            // role null रहेगा
         } else {
             console.error("useAuth: Failed to fetch seller data:", responseSeller.status, responseSeller.statusText);
-            role = null; // Default to null if seller fetch fails for other reasons
+            // role null रहेगा
         }
         
-        // Note: Admin/Delivery roles would typically come from custom claims
-        // or a separate API call. Assuming for now they are not handled here.
-        // If your backend sets custom claims, you'd read them from firebaseUser.getIdTokenResult(true)
-
         const finalUser: User = {
-          uid: dataUser.uid,
-          name: dataUser.name,
-          email: dataUser.email,
-          phone: dataUser.phone,
-          photoURL: dataUser.photoURL,
-          provider: dataUser.provider,
-          role, // This will be 'approved-seller', 'not-approved-seller', or null
+          uid: firebaseUser.uid, // FirebaseUser से UID लें
+          name: dataUser?.name || firebaseUser.displayName, // या डेटा से या Firebase से
+          email: dataUser?.email || firebaseUser.email,
+          phone: dataUser?.phone || firebaseUser.phoneNumber,
+          photoURL: dataUser?.photoURL || firebaseUser.photoURL,
+          provider: dataUser?.provider || firebaseUser.providerData,
+          role, 
           seller: sellerData,
         };
 
@@ -102,39 +101,52 @@ export function useAuth() {
         console.log("useAuth: User state updated:", finalUser);
 
       } catch (err) {
-        console.error("useAuth: Auth Error during data fetch:", err);
-        setUser(null);
+        console.error("useAuth: Auth Error during data fetch (catch block):", err);
+        // यहां भी सुनिश्चित करें कि setLoading(false) चले
+        setUser(null); // यदि कोई बड़ी एरर हो तो यूजर को नल कर दें
       } finally {
-        setLoading(false);
+        // यह सुनिश्चित करता है कि डेटा फेच होने के बाद या एरर होने पर लोडिंग बंद हो जाए
+        setLoading(false); 
       }
     };
 
-    // 1. सबसे पहले getRedirectResult को चेक करें
-    getRedirectResult(auth)
-      .then((result) => {
-        if (result?.user) {
-          console.log("useAuth: getRedirectResult found a user. Fetching details...");
-          fetchUserAndSeller(result.user);
+    // Firebase ऑथेंटिकेशन स्टेट को हैंडल करने का मुख्य लॉजिक
+    const handleAuthState = async () => {
+      try {
+        // 1. पहले getRedirectResult को चेक करें
+        const redirectResult = await getRedirectResult(auth);
+        
+        if (redirectResult?.user) {
+          console.log("useAuth: getRedirectResult found a user. Proceeding to fetch data.");
+          await fetchUserAndSeller(redirectResult.user);
         } else {
           // 2. यदि कोई रीडायरेक्ट परिणाम नहीं है, तो onAuthStateChanged लिसनर सेट करें
           console.log("useAuth: No redirect result found. Setting up onAuthStateChanged listener.");
-          unsubscribeFromAuthStateChanged = onAuthStateChanged(auth, (firebaseUser) => {
+          unsubscribeFromAuthStateChanged = onAuthStateChanged(auth, async (firebaseUser) => {
             if (firebaseUser) {
-              console.log("useAuth: onAuthStateChanged detected a user. Fetching details...");
-              fetchUserAndSeller(firebaseUser);
+              console.log("useAuth: onAuthStateChanged detected a user. Proceeding to fetch data.");
+              await fetchUserAndSeller(firebaseUser);
             } else {
-              console.log("useAuth: No user detected by onAuthStateChanged.");
+              console.log("useAuth: No user detected by onAuthStateChanged. Setting user to null.");
               setUser(null);
-              setLoading(false);
+              setLoading(false); // यदि कोई यूजर नहीं है, तो लोडिंग बंद करें
             }
           });
         }
-      })
-      .catch((error) => {
-        console.error("useAuth: Error from getRedirectResult:", error);
+      } catch (error) {
+        console.error("useAuth: Error in handleAuthState (main logic):", error);
         setUser(null);
-        setLoading(false);
-      });
+      } finally {
+        // यह सुनिश्चित करता है कि लोडिंग बंद हो जाए, भले ही कोई एरर हो
+        // यह `fetchUserAndSeller` के `finally` ब्लॉक को डुप्लिकेट नहीं करेगा,
+        // बल्कि यह शुरुआती लोडिंग के लिए एक सुरक्षा जाल है।
+        if (user === null) { // अगर user अभी भी null है तो setLoading(false) करें
+             setLoading(false);
+        }
+      }
+    };
+
+    handleAuthState(); // फंक्शन को कॉल करें
 
     // Cleanup function
     return () => {
