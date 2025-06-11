@@ -2,14 +2,13 @@
 
 import { useEffect } from 'react';
 import { useLocation } from 'wouter';
-import { useAuth } from '@/hooks/useAuth'; // Your centralized auth hook
+import { useAuth } from '@/hooks/useAuth';
 
 export default function AuthRedirectGuard({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
   const [, setLocation] = useLocation();
 
   useEffect(() => {
-    // 1. जब ऑथेंटिकेशन लोड हो रहा हो, तो कुछ न करें
     if (loading) {
       return;
     }
@@ -19,8 +18,6 @@ export default function AuthRedirectGuard({ children }: { children: React.ReactN
 
     // केस 1: यूजर लॉग इन नहीं है
     if (!user) {
-      // अगर यूजर लॉग इन नहीं है और current path `/login` नहीं है, तो उसे `/login` पर भेजें
-      // loginRole को यहां देखने की जरूरत नहीं क्योंकि login.tsx इसे हैंडल करेगा
       if (currentPath !== "/login") {
         console.log("AuthGuard: User not logged in, redirecting to /login from:", currentPath);
         setLocation("/login");
@@ -28,19 +25,33 @@ export default function AuthRedirectGuard({ children }: { children: React.ReactN
       return;
     }
 
-    // केस 2: यूजर लॉग इन है
-    // प्राथमिकता: `sessionStorage.loginRole` को देखें अगर `user.role` अभी तक सेट नहीं हुआ है या default है
-    // यह `Become a Seller` फ्लो को सुनिश्चित करेगा कि वे सीधे रजिस्ट्रेशन पर जाएं.
+    // केस 2: यूजर लॉग इन है लेकिन उसका रोल अभी तक निर्धारित नहीं हुआ है (initial state)
+    // यह 'Become a Seller' फ्लो को सुनिश्चित करेगा
     if (user.role === null || user.role === undefined) { 
-        if (loginRole === "seller" && currentPath !== "/register-seller") {
-            console.log("AuthGuard: User logged in with default/null role, 'seller' flow, redirecting to /register-seller from:", currentPath);
-            setLocation("/register-seller");
+        if (loginRole === "seller") { // अगर loginRole 'seller' है
+            // उसे /register-seller पर भेजें, भले ही currentPath कुछ भी हो
+            if (currentPath !== "/register-seller") {
+                console.log("AuthGuard: User logged in with default/null role, 'seller' flow, redirecting to /register-seller from:", currentPath);
+                setLocation("/register-seller");
+            }
             sessionStorage.removeItem("loginRole"); // उपयोग के बाद फ़्लैग हटा दें
-            return;
+            return; // रीडायरेक्ट के बाद बाहर निकलें
+        } 
+        // अगर loginRole 'seller' नहीं है और user.role भी null है,
+        // तो इसका मतलब है कि यह एक सामान्य लॉग इन यूजर है जिसका कोई खास रोल नहीं है।
+        // इसे होम पेज पर भेजें, बशर्ते यह पहले से होम या लॉगिन पर न हो।
+        if (currentPath !== "/" && currentPath !== "/login") {
+            console.log("AuthGuard: Logged in user with no specific role, redirecting to / (Home).");
+            setLocation("/");
+            return; // रीडायरेक्ट के बाद बाहर निकलें
         }
+        // अगर user.role null है और loginRole भी 'seller' नहीं है,
+        // और currentPath या तो '/' या '/login' या '/register-seller' है,
+        // तो यहीं रहने दें और children रेंडर करें.
+        return;
     }
 
-    // केस 3: यूजर लॉग इन है और user.role सेट है (या `loginRole` 'seller' नहीं था)
+    // केस 3: यूजर लॉग इन है और user.role सेट है
     switch (user.role) {
       case "approved-seller":
         if (currentPath !== "/seller-dashboard") {
@@ -67,11 +78,13 @@ export default function AuthRedirectGuard({ children }: { children: React.ReactN
         }
         break;
       default:
-        // अगर कोई विशेष रोल नहीं है (और `loginRole` 'seller' भी नहीं था),
-        // तो होम पेज पर रीडायरेक्ट करें, बशर्ते वे पहले से होम पर न हों या लॉगिन/रजिस्ट्रेशन पर न हों.
-        if (currentPath !== "/" && currentPath !== "/login" && currentPath !== "/register-seller") {
-          console.log("AuthGuard: User has no specific role, redirecting to / (Home).");
-          setLocation("/");
+        // ✅ यहाँ बदलाव: अगर user.role डिफाइंड है लेकिन इनमें से कोई भी नहीं है,
+        // और यूजर होम या लॉगिन पेज पर नहीं है, तो उसे होम पर भेजें।
+        // यह उन यूजर्स के लिए है जो लॉग इन हैं लेकिन उनका कोई विशेष भूमिका नहीं है
+        // और वे किसी गलत पेज पर फंस गए हैं।
+        if (currentPath !== "/" && currentPath !== "/login") {
+            console.log("AuthGuard: Logged in user with unrecognized role, redirecting to / (Home).");
+            setLocation("/");
         }
         break;
     }
