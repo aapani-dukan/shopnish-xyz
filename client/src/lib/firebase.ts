@@ -1,43 +1,50 @@
 // client/src/lib/firebase.ts
 import { initializeApp } from "firebase/app";
-import {
-  getAuth,
-  GoogleAuthProvider,
-  signInWithRedirect,
+import { 
+  getAuth, 
+  GoogleAuthProvider, 
+  signInWithRedirect, 
+  getRedirectResult, // ✅ इसे इम्पोर्ट करें
+  onAuthStateChanged, // ✅ इसे इम्पोर्ट करें
+  signOut, // ✅ इसे इम्पोर्ट करें
+  User as FirebaseUser // ✅ इसे इम्पोर्ट करें (Firebase के User टाइप के लिए)
 } from "firebase/auth";
 
-// ✅ Firebase configuration
+// ✅ Firebase configuration - सुनिश्चित करें कि आप .env फ़ाइल का उपयोग कर रहे हैं
 const firebaseConfig = {
-  apiKey: "AIzaSyChdYrxfxkfj6m04WT0nOBl5xCP62udcPU",
-  authDomain: "aapani-dukan.firebaseapp.com",
-  projectId: "aapani-dukan",
-  storageBucket: "aapani-dukan.firebasestorage.app",
-  messagingSenderId: "352463214204",
-  appId: "1:352463214204:web:a3adc9ef1d8af0de1fdbf9"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN, // Use .env variable for full domain
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET, // Add if you have it
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID, // Add if you have it
+  appId: import.meta.env.VITE_FIREBASE_APP_ID
 };
 
 // ✅ Initialize Firebase
 export const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
+export const googleProvider = new GoogleAuthProvider(); // ✅ Google Provider को एक्सपोर्ट करें
 
-// 🔐 Google Login Handler — सिर्फ seller के लिए role set करें
-export const startGoogleLogin = (role?: "seller") => {
-  if (role === "seller") {
-    sessionStorage.setItem("loginRole", "seller");
-    console.log("🟢 Seller role set in sessionStorage");
-  } else {
-    // ✅ यहाँ बदलाव: केवल 'loginRole' को हटाएँ, अन्य Firebase-संबंधित आइटम नहीं
-    // यह Firebase के इंटरनल सेशन स्टोरेज को प्रभावित नहीं करेगा।
-    if (sessionStorage.getItem("loginRole")) { // केवल तभी हटाने का प्रयास करें जब यह मौजूद हो
-        sessionStorage.removeItem("loginRole");
-        console.log("🟡 loginRole removed from sessionStorage.");
-    }
-  }
-
-  const provider = new GoogleAuthProvider();
-  signInWithRedirect(auth, provider);
+// ✅ यहां signInWithRedirect को सीधे कॉल करने के लिए एक फ़ंक्शन बनाएं
+export const initiateGoogleSignInRedirect = () => {
+  signInWithRedirect(auth, googleProvider);
 };
 
-// ✅ For debugging in browser
+// ✅ handleRedirectResult को भी एक्सपोर्ट करें ताकि useAuth इसे कॉल कर सके
+export const handleGoogleRedirectResult = () => {
+  return getRedirectResult(auth);
+};
+
+// ✅ onAuthStateChanged listener को एक्सपोर्ट करें
+export const firebaseOnAuthStateChanged = (callback: (user: FirebaseUser | null) => void) => {
+  return onAuthStateChanged(auth, callback);
+};
+
+// ✅ signOut फंक्शन को एक्सपोर्ट करें
+export const firebaseSignOut = () => {
+  return signOut(auth);
+};
+
+// ✅ For debugging in browser (if needed)
 // @ts-ignore
-if (typeof window !== "undefined") window.startGoogleLogin = startGoogleLogin;
+if (typeof window !== "undefined") window.initiateGoogleSignInRedirect = initiateGoogleSignInRedirect;
