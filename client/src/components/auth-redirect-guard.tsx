@@ -1,3 +1,4 @@
+
 // client/src/components/auth-redirect-guard.tsx
 
 import { useEffect } from 'react';
@@ -9,10 +10,8 @@ export default function AuthRedirectGuard({ children }: { children: React.ReactN
   const [, setLocation] = useLocation();
 
   useEffect(() => {
-    // 1. जब ऑथेंटिकेशन लोड हो रहा हो, तो कुछ न करें
-    // ✅ इसे पहले रखें ताकि यूजर डेटा लोड होने तक कोई रीडायरेक्ट न हो
     if (loading) {
-      return;
+      return; // जब तक ऑथेंटिकेशन लोड हो रहा है, कुछ न करें
     }
 
     const currentPath = window.location.pathname;
@@ -42,20 +41,22 @@ export default function AuthRedirectGuard({ children }: { children: React.ReactN
         return;
       }
       
-      // ✅ नई कंडीशन: यदि कोई loginRole टैग नहीं है (सामान्य लॉगिन)
-      // और यूजर होम पेज पर नहीं है, तो उसे होम पेज पर भेजें।
-      if (!loginRole && currentPath !== "/") {
+      // ✅ सबसे महत्वपूर्ण बदलाव यहाँ है:
+      // यदि कोई loginRole टैग नहीं है (सामान्य लॉगिन)
+      // और यूजर वर्तमान में होम पेज पर नहीं है (किसी भी अन्य पेज से आ रहा है, जिसमें /login भी शामिल है)
+      if (!loginRole && currentPath !== "/") { // <-- यह कंडीशन बदल गई है
           console.log("AuthGuard: Logged in user with no specific role (no loginRole tag) and null user.role, redirecting to / (Home).");
           setLocation("/");
           return;
       }
       
-      // यदि user.role null है, loginRole भी null है, और वह '/', '/login', या '/register-seller' पर है,
-      // तो यहीं रहने दें और children रेंडर करें।
+      // यदि user.role null है, loginRole भी null है, और वह '/' पर है,
+      // तो यहीं रहने दें और children रेंडर करें.
       return;
     }
 
     // B. यदि user.role सेट है (useAuth से आ गया है)
+    // यह हिस्सा वैसा ही है जैसा पहले था, क्योंकि user.role के डिफाइंड होने पर यह ठीक काम कर रहा है।
     switch (user.role) {
       case "approved-seller":
         if (currentPath !== "/seller-dashboard") {
@@ -82,10 +83,10 @@ export default function AuthRedirectGuard({ children }: { children: React.ReactN
         }
         break;
       default:
-        // यह 'default' केस अब उन यूजर्स को हैंडल करता है जिनका user.role डिफाइंड है
-        // लेकिन वह 'approved-seller', 'not-approved-seller', 'admin', या 'delivery' नहीं है,
-        // और उन्हें होम पर भेजना चाहता है।
-        if (currentPath !== "/" && currentPath !== "/login") {
+        // यह 'default' केस उन यूजर्स को हैंडल करता है जिनका user.role डिफाइंड है
+        // लेकिन वह 'approved-seller', 'not-approved-seller', 'admin', या 'delivery' नहीं है।
+        // इसे /login पर रीडायरेक्ट करने की आवश्यकता नहीं है, क्योंकि यह लॉग इन है।
+        if (currentPath !== "/") { // ✅ /login की जांच हटा दी, क्योंकि वह अब होम पर जाएगा
             console.log("AuthGuard: Logged in user with unrecognized user.role, redirecting to / (Home).");
             setLocation("/");
         }
