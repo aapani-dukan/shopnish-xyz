@@ -14,10 +14,11 @@ export default function AuthRedirectGuard({ children }: { children: React.ReactN
     }
 
     const currentPath = window.location.pathname;
-    const loginRole = sessionStorage.getItem("loginRole");
+    const loginRole = sessionStorage.getItem("loginRole"); // sessionStorage से फ्लैग पढ़ें
 
     // केस 1: यूजर लॉग इन नहीं है
     if (!user) {
+      // अगर यूजर लॉग इन नहीं है और current path `/login` नहीं है, तो उसे `/login` पर भेजें
       if (currentPath !== "/login") {
         console.log("AuthGuard: User not logged in, redirecting to /login from:", currentPath);
         setLocation("/login");
@@ -25,28 +26,29 @@ export default function AuthRedirectGuard({ children }: { children: React.ReactN
       return;
     }
 
-    // केस 2: यूजर लॉग इन है लेकिन उसका रोल अभी तक निर्धारित नहीं हुआ है (initial state)
-    // यह 'Become a Seller' फ्लो को सुनिश्चित करेगा
+    // केस 2: यूजर लॉग इन है लेकिन उसका रोल अभी तक निर्धारित नहीं हुआ है (initial state from useAuth)
+    // या उसका रोल 'seller'/'approved-seller'/'admin'/'delivery' में से कोई नहीं है।
     if (user.role === null || user.role === undefined) { 
-        if (loginRole === "seller") { // अगर loginRole 'seller' है
-            // उसे /register-seller पर भेजें, भले ही currentPath कुछ भी हो
+        if (loginRole === "seller") { // यदि loginRole 'seller' है, तो उसे रजिस्ट्रेशन पर भेजें
             if (currentPath !== "/register-seller") {
                 console.log("AuthGuard: User logged in with default/null role, 'seller' flow, redirecting to /register-seller from:", currentPath);
                 setLocation("/register-seller");
             }
-            sessionStorage.removeItem("loginRole"); // उपयोग के बाद फ़्लैग हटा दें
-            return; // रीडायरेक्ट के बाद बाहर निकलें
+            sessionStorage.removeItem("loginRole"); // उपयोग के बाद फ्लैग हटा दें
+            return;
         } 
-        // अगर loginRole 'seller' नहीं है और user.role भी null है,
-        // तो इसका मतलब है कि यह एक सामान्य लॉग इन यूजर है जिसका कोई खास रोल नहीं है।
-        // इसे होम पेज पर भेजें, बशर्ते यह पहले से होम या लॉगिन पर न हो।
-        if (currentPath !== "/" && currentPath !== "/login") {
-            console.log("AuthGuard: Logged in user with no specific role, redirecting to / (Home).");
+        
+        // ✅ यह नई कंडीशन है जो आपने मांगी है:
+        // यदि कोई टैग नहीं है (loginRole null है), और यूजर किसी विशेष रोल के पेज पर नहीं है,
+        // तो उसे होम पेज पर भेजें।
+        if (!loginRole && currentPath !== "/") { // अगर loginRole नहीं है AND currentPath होम नहीं है
+            console.log("AuthGuard: Logged in user with no specific role (no loginRole tag), redirecting to / (Home).");
             setLocation("/");
-            return; // रीडायरेक्ट के बाद बाहर निकलें
+            return;
         }
-        // अगर user.role null है और loginRole भी 'seller' नहीं है,
-        // और currentPath या तो '/' या '/login' या '/register-seller' है,
+        
+        // यदि user.role null है और loginRole भी 'seller' नहीं है,
+        // और currentPath या तो '/', '/login', या '/register-seller' है,
         // तो यहीं रहने दें और children रेंडर करें.
         return;
     }
@@ -78,10 +80,9 @@ export default function AuthRedirectGuard({ children }: { children: React.ReactN
         }
         break;
       default:
-        // ✅ यहाँ बदलाव: अगर user.role डिफाइंड है लेकिन इनमें से कोई भी नहीं है,
-        // और यूजर होम या लॉगिन पेज पर नहीं है, तो उसे होम पर भेजें।
-        // यह उन यूजर्स के लिए है जो लॉग इन हैं लेकिन उनका कोई विशेष भूमिका नहीं है
-        // और वे किसी गलत पेज पर फंस गए हैं।
+        // यह 'default' केस अब उन यूजर्स को हैंडल करता है जिनका user.role डिफाइंड है
+        // लेकिन वह 'approved-seller', 'not-approved-seller', 'admin', या 'delivery' नहीं है,
+        // और उन्हें होम पर भेजना चाहता है।
         if (currentPath !== "/" && currentPath !== "/login") {
             console.log("AuthGuard: Logged in user with unrecognized role, redirecting to / (Home).");
             setLocation("/");
@@ -94,6 +95,5 @@ export default function AuthRedirectGuard({ children }: { children: React.ReactN
     return <div>Loading authentication...</div>;
   }
 
-  // यदि कोई रीडायरेक्ट नहीं होता है, तो बच्चे के कॉम्पोनेंट रेंडर करें
   return <>{children}</>;
 }
