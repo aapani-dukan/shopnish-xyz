@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useCartStore } from "@/lib/store";
 import CartModal from "./cart-modal";
-import { startGoogleLogin } from "@/lib/firebase"; // ✅ import Google login handler
+import { startGoogleLogin } from "@/lib/firebase";
 
 interface Category {
   id: number;
@@ -73,12 +73,12 @@ export default function Header({ categories }: HeaderProps) {
                 <span className="sr-only">Wishlist</span>
               </Button>
 
-              {/* ✅ Updated Become a Seller button with role tag */}
+              {/* Become a Seller */}
               <Button
                 onClick={() => {
                   console.log("🟢 Seller login started");
-                  sessionStorage.setItem("loginRole", "seller"); // ✅ role stored
-                  startGoogleLogin("seller"); // ✅ redirect-based login
+                  sessionStorage.setItem("loginRole", "seller");
+                  startGoogleLogin("seller");
                 }}
                 variant="outline"
                 className="ml-4"
@@ -86,6 +86,7 @@ export default function Header({ categories }: HeaderProps) {
                 Become a Seller
               </Button>
 
+              {/* Cart Button */}
               <Button
                 variant="ghost"
                 size="sm"
@@ -101,6 +102,7 @@ export default function Header({ categories }: HeaderProps) {
                 <span className="sr-only">Shopping cart</span>
               </Button>
 
+              {/* Account Icon */}
               <Button variant="ghost" size="sm" className="text-gray-600 hover:text-primary">
                 <User className="h-5 w-5" />
                 <span className="sr-only">Account</span>
@@ -125,7 +127,7 @@ export default function Header({ categories }: HeaderProps) {
         </div>
       </header>
 
-      {/* Modals */}
+      {/* Cart Modal */}
       <CartModal isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} />
     </>
   );
