@@ -1,50 +1,56 @@
-// client/src/lib/firebase.ts
 import { initializeApp } from "firebase/app";
-import { 
-  getAuth, 
-  GoogleAuthProvider, 
-  signInWithRedirect, 
-  getRedirectResult, // ✅ इसे इम्पोर्ट करें
-  onAuthStateChanged, // ✅ इसे इम्पोर्ट करें
-  signOut, // ✅ इसे इम्पोर्ट करें
-  User as FirebaseUser // ✅ इसे इम्पोर्ट करें (Firebase के User टाइप के लिए)
+import {
+  getAuth,
+  GoogleAuthProvider,
+  signInWithRedirect,
+  getRedirectResult,
+  onAuthStateChanged,
+  signOut,
+  User as FirebaseUser,
 } from "firebase/auth";
 
-// ✅ Firebase configuration - सुनिश्चित करें कि आप .env फ़ाइल का उपयोग कर रहे हैं
+// ✅ Firebase configuration - values from .env file
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN, // Use .env variable for full domain
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
   projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET, // Add if you have it
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID, // Add if you have it
-  appId: import.meta.env.VITE_FIREBASE_APP_ID
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
 };
 
-// ✅ Initialize Firebase
+// ✅ Initialize Firebase app
 export const app = initializeApp(firebaseConfig);
-export const auth = getAuth(app);
-export const googleProvider = new GoogleAuthProvider(); // ✅ Google Provider को एक्सपोर्ट करें
 
-// ✅ यहां signInWithRedirect को सीधे कॉल करने के लिए एक फ़ंक्शन बनाएं
-export const initiateGoogleSignInRedirect = () => {
+// ✅ Initialize Firebase Auth
+export const auth = getAuth(app);
+
+// ✅ Setup Google provider
+export const googleProvider = new GoogleAuthProvider();
+
+// ✅ Role-based sign-in using sessionStorage
+export const startGoogleLogin = (role: "seller" | "customer" = "customer") => {
+  sessionStorage.setItem("loginRole", role); // 🟢 store role for redirect flow
   signInWithRedirect(auth, googleProvider);
 };
 
-// ✅ handleRedirectResult को भी एक्सपोर्ट करें ताकि useAuth इसे कॉल कर सके
+// ✅ Handle redirect result after Google sign-in
 export const handleGoogleRedirectResult = () => {
   return getRedirectResult(auth);
 };
 
-// ✅ onAuthStateChanged listener को एक्सपोर्ट करें
+// ✅ Listen for auth state changes
 export const firebaseOnAuthStateChanged = (callback: (user: FirebaseUser | null) => void) => {
   return onAuthStateChanged(auth, callback);
 };
 
-// ✅ signOut फंक्शन को एक्सपोर्ट करें
+// ✅ Sign out the current user
 export const firebaseSignOut = () => {
   return signOut(auth);
 };
 
-// ✅ For debugging in browser (if needed)
+// ✅ Optional: Debugging helper in browser
 // @ts-ignore
-if (typeof window !== "undefined") window.initiateGoogleSignInRedirect = initiateGoogleSignInRedirect;
+if (typeof window !== "undefined") {
+  window.startGoogleLogin = startGoogleLogin;
+}
