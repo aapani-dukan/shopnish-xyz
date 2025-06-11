@@ -1,21 +1,18 @@
 // client/src/pages/login.tsx
 
-import { useEffect } from "react"; // useEffect की अब आवश्यकता नहीं है अगर getRedirectResult हटा रहे हैं
-import { getAuth, GoogleAuthProvider, signInWithRedirect } from "firebase/auth"; // getRedirectResult हटा दिया
+import { getAuth, GoogleAuthProvider, signInWithRedirect } from "firebase/auth";
 import { app } from "@/lib/firebase"; 
 import { Button } from "@/components/ui/button";
+import { startGoogleLogin } from "@/lib/firebase"; // ✅ इसे इम्पोर्ट करें
 
 export default function Login() {
-  const auth = getAuth(app);
-
-  // useEffect हटा दिया गया क्योंकि getRedirectResult अब useAuth में हैंडल होगा
-  // और login.tsx का काम सिर्फ लॉगिन ट्रिगर करना है।
+  // const auth = getAuth(app); // अब सीधे startGoogleLogin से Google Auth को एक्सेस करें
 
   const handleLogin = () => {
-    const provider = new GoogleAuthProvider();
-    sessionStorage.removeItem("loginRole"); // सामान्य लॉगिन के लिए सुनिश्चित करें कि कोई पुराना फ्लैग न हो
-    console.log("🔵 login.tsx: Initiating Google sign-in redirect.");
-    signInWithRedirect(auth, provider);
+    // ✅ अब startGoogleLogin यूटिलिटी फ़ंक्शन का उपयोग करें
+    // कोई role पैरामीटर पास नहीं कर रहे हैं, इसलिए यह loginRole को हटा देगा
+    console.log("🔵 login.tsx: Calling startGoogleLogin for general user.");
+    startGoogleLogin(); 
   };
 
   return (
