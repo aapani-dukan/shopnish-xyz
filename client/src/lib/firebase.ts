@@ -26,8 +26,12 @@ export const startGoogleLogin = (role?: "seller") => {
     sessionStorage.setItem("loginRole", "seller");
     console.log("🟢 Seller role set in sessionStorage");
   } else {
-    // अगर कोई पुराना role पड़ा है तो हटा दो
-    sessionStorage.removeItem("loginRole");
+    // ✅ यहाँ बदलाव: केवल 'loginRole' को हटाएँ, अन्य Firebase-संबंधित आइटम नहीं
+    // यह Firebase के इंटरनल सेशन स्टोरेज को प्रभावित नहीं करेगा।
+    if (sessionStorage.getItem("loginRole")) { // केवल तभी हटाने का प्रयास करें जब यह मौजूद हो
+        sessionStorage.removeItem("loginRole");
+        console.log("🟡 loginRole removed from sessionStorage.");
+    }
   }
 
   const provider = new GoogleAuthProvider();
