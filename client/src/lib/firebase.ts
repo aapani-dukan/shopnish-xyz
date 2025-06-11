@@ -34,6 +34,9 @@ export const startGoogleLogin = (role: "seller" | "customer" = "customer") => {
   signInWithRedirect(auth, googleProvider);
 };
 
+// ✅ Compatibility alias for older imports
+export const initiateGoogleSignInRedirect = startGoogleLogin;
+
 // ✅ Handle redirect result after Google sign-in
 export const handleGoogleRedirectResult = () => {
   return getRedirectResult(auth);
