@@ -1,129 +1,103 @@
 // client/src/hooks/useAuth.tsx
-
 import { useEffect, useState } from "react";
-import { getAuth, onAuthStateChanged, User as FirebaseUser, getRedirectResult, GoogleAuthProvider } from "firebase/auth"; // getRedirectResult को इम्पोर्ट करें
-import { app } from "@/lib/firebase";
-import axios from "axios";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { firebaseOnAuthStateChanged, handleGoogleRedirectResult, firebaseSignOut } from "@/lib/firebase"; // नए एक्सपोर्ट्स को इम्पोर्ट करें
+import type { User as FirebaseUser } from "firebase/auth"; // FirebaseUser टाइप इम्पोर्ट करें
+import axios from "axios"; // axios का उपयोग करें
 
-// User interface with roles
 interface User {
   uid: string;
   email: string | null;
   firstName?: string;
   lastName?: string;
   role?: "customer" | "seller" | "admin" | "delivery" | "approved-seller" | "not-approved-seller" | null;
-  seller?: any; // Add seller info for seller users
+  // `seller` property is managed by useSeller hook, not here directly
 }
-
-interface AuthState {
-  user: User | null;
-  loading: boolean;
-}
-
-const auth = getAuth(app);
 
 export const useAuth = () => {
-  const [authState, setAuthState] = useState<AuthState>({
-    user: null,
-    loading: true, // Start loading as we're checking auth state
-  });
+  const queryClient = useQueryClient();
+  const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
+  const [isFirebaseLoading, setIsFirebaseLoading] = useState(true);
 
   useEffect(() => {
-    // 1. Handle redirect result first
-    const handleRedirectResult = async () => {
+    // 1. Firebase रीडायरेक्ट परिणाम को संभालें (पहली बार पेज लोड होने पर)
+    const processRedirectAndListen = async () => {
       try {
-        const result = await getRedirectResult(auth);
+        const result = await handleGoogleRedirectResult(); // Firebase से रीडायरेक्ट परिणाम प्राप्त करें
         if (result) {
-          // User signed in with redirect
-          console.log("✅ useAuth: Google Redirect result found!", result.user);
-          // Now proceed to fetch user details and role
-          await fetchUserDetails(result.user);
-        } else {
-          console.log("🟠 useAuth: No redirect result found. Setting up onAuthStateChanged listener.");
-          // If no redirect result, proceed with onAuthStateChanged listener
-          // This also covers initial load when user is already signed in (e.g., direct access)
-          onAuthStateChanged(auth, async (firebaseUser) => {
-            if (firebaseUser) {
-              console.log("🟢 useAuth: User detected by onAuthStateChanged:", firebaseUser.uid);
-              await fetchUserDetails(firebaseUser);
-            } else {
-              console.log("🔴 useAuth: No user detected by onAuthStateChanged. Setting user to null.");
-              setAuthState({ user: null, loading: false });
-            }
-          });
+          // यदि रीडायरेक्ट परिणाम है, तो उपयोगकर्ता को Firebase से सेट करें
+          setFirebaseUser(result.user);
+          console.log("✅ useAuth: Google Redirect result processed!");
+          // तुरंत बैकएंड डेटा को इनवैलिडेट करें ताकि यह नया डेटा फेच करे
+          queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
         }
-      } catch (error: any) {
-        console.error("❌ useAuth: Error getting redirect result or during onAuthStateChanged:", error);
-        // Handle specific errors for getRedirectResult if needed
-        if (error.code === 'auth/popup-closed-by-user' || error.code === 'auth/cancelled-popup-request') {
-          console.warn("User cancelled sign-in flow.");
-        } else if (error.code === 'auth/auth-domain-config-error' || error.code === 'auth/unauthorized-domain') {
-          console.error("Firebase Auth Domain Configuration Error: Check Firebase Console 'Authorized Domains'.");
-        }
-        setAuthState({ user: null, loading: false });
+      } catch (error) {
+        console.error("❌ useAuth: Error processing Google Redirect result:", error);
+        // यहां त्रुटि हैंडलिंग करें, जैसे उपयोगकर्ता को लॉगआउट करना या त्रुटि संदेश दिखाना
+        firebaseSignOut(); // त्रुटि पर लॉगआउट करना उचित हो सकता है
+      } finally {
+        // 2. onAuthStateChanged लिसनर को सेट करें
+        // यह सुनिश्चित करता है कि Firebase ऑथ स्टेट में किसी भी बदलाव को पकड़ा जाए (लॉगिन/लॉगआउट/टोकन रिफ्रेश)
+        const unsubscribe = firebaseOnAuthStateChanged((user) => {
+          setFirebaseUser(user);
+          setIsFirebaseLoading(false); // Firebase लोडिंग समाप्त
+          // जब Firebase ऑथ स्टेट बदलता है, तो backend user query को इनवैलिडेट करें
+          queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] }); 
+          console.log("🔥 Firebase onAuthStateChanged: User changed to", user ? user.uid : "null");
+        });
+        return () => unsubscribe(); // कॉम्पोनेंट अनमाउंट होने पर लिसनर को क्लीनअप करें
       }
     };
 
-    handleRedirectResult();
+    processRedirectAndListen();
+  }, [queryClient]); // queryClient dependencies array में है
 
-    // Cleanup listener on unmount (if onAuthStateChanged was set up)
-    // Note: getRedirectResult is one-time, so no specific cleanup for it
-    return () => {
-      // If onAuthStateChanged was set up, it will be cleaned up
-      // by subsequent calls or component unmount.
-      // For onAuthStateChanged, you can store the unsubscribe function
-      // and call it here if needed, but for typical app lifecycle, it's often fine.
-    };
-
-  }, []); // Run only once on mount
-
-  const fetchUserDetails = async (firebaseUser: FirebaseUser) => {
-    try {
+  // React Query का उपयोग करके अपने बैकएंड से उपयोगकर्ता विवरण प्राप्त करें
+  const { data: backendUser, isLoading: isBackendLoading } = useQuery<User>({
+    queryKey: ["/api/auth/user"],
+    queryFn: async () => {
+      if (!firebaseUser) {
+        // यदि कोई Firebase उपयोगकर्ता नहीं है, तो backend fetch करने का प्रयास न करें
+        return Promise.reject(new Error("No Firebase user found for backend fetch."));
+      }
       const idToken = await firebaseUser.getIdToken();
-
-      // Attempt to get user details from your backend
-      const [authMeRes, sellerMeRes] = await Promise.allSettled([
-        axios.get("/api/auth/me", { headers: { Authorization: `Bearer ${idToken}` } }),
-        axios.get("/api/sellers/me", { headers: { Authorization: `Bearer ${idToken}` } })
-      ]);
-
-      let userData: User = {
-        uid: firebaseUser.uid,
-        email: firebaseUser.email,
-        firstName: firebaseUser.displayName?.split(" ")[0] || "",
-        lastName: firebaseUser.displayName?.split(" ")[1] || "",
-        role: "customer", // Default role
-      };
-
-      if (authMeRes.status === "fulfilled" && authMeRes.value.data) {
-        // Assume /api/auth/me gives generic user info and possibly a base role
-        // For simplicity, using firebaseUser info directly for customer for now
-        // If your /api/auth/me provides specific roles/details, use them here.
-      } else if (authMeRes.status === "rejected") {
-          console.warn("/api/auth/me call failed:", authMeRes.reason);
-          // If /api/auth/me fails, we can still proceed with Firebase user but role might be default.
+      const response = await axios.get("/api/auth/me", {
+        headers: { Authorization: `Bearer ${idToken}` },
+      });
+      // ✅ सुनिश्चित करें कि आपका backend JSON ऑब्जेक्ट के साथ user data लौटाता है
+      return response.data; 
+    },
+    // इस क्वेरी को केवल तभी सक्षम करें जब Firebase उपयोगकर्ता मौजूद हो और Firebase लोडिंग समाप्त हो
+    enabled: !!firebaseUser && !isFirebaseLoading, 
+    retry: false, // ऑथेंटिकेशन मुद्दों पर फिर से प्रयास न करें
+    staleTime: 5 * 60 * 1000, // डेटा को 5 मिनट के लिए ताजा मानें
+    // यदि backend fetch विफल रहता है (जैसे 401 Unauthorized), तो Firebase उपयोगकर्ता को लॉगआउट करें
+    onError: (error) => {
+      console.error("❌ useAuth: Error fetching user data from backend:", error);
+      // यदि यह 401 या 403 है, तो Firebase सत्र को भी साफ़ करें
+      if (axios.isAxiosError(error) && (error.response?.status === 401 || error.response?.status === 403)) {
+        firebaseSignOut();
+        queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] }); // क्वेरी को साफ़ करें
       }
-
-
-      if (sellerMeRes.status === "fulfilled" && sellerMeRes.value.data) {
-        userData.seller = sellerMeRes.value.data;
-        userData.role = sellerMeRes.value.data.approvalStatus === "approved" ? "approved-seller" : "not-approved-seller";
-        console.log("💚 useAuth: Seller info fetched, role:", userData.role);
-      } else if (sellerMeRes.status === "rejected") {
-          console.log("🧡 useAuth: /api/sellers/me failed or no seller found for user (expected for non-sellers):", sellerMeRes.reason);
-          // If seller API fails, it's fine for non-sellers, keep default customer role.
-      }
-
-      setAuthState({ user: userData, loading: false });
-      console.log("🔵 useAuth: User state updated:", userData.role);
-
-    } catch (error) {
-      console.error("❌ useAuth: Error fetching user details from backend:", error);
-      setAuthState({ user: null, loading: false }); // Fallback to null user on backend fetch error
     }
+  });
+
+  // कुल लोडिंग स्थिति
+  const isLoading = isFirebaseLoading || isBackendLoading;
+
+  // FirebaseUser और backendUser डेटा को संयोजित करें
+  const combinedUser: User | null = firebaseUser && backendUser ? {
+    uid: firebaseUser.uid,
+    email: firebaseUser.email,
+    firstName: firebaseUser.displayName?.split(" ")[0] || backendUser.firstName || "",
+    lastName: firebaseUser.displayName?.split(" ")[1] || backendUser.lastName || "",
+    role: backendUser.role, // बैकएंड से भूमिका लें
+    // अन्य फ़ील्ड यदि आवश्यक हो तो जोड़ें
+  } : null;
+
+  return {
+    user: combinedUser,
+    isLoading,
+    isAuthenticated: !!combinedUser && !isLoading, // केवल तभी प्रमाणित जब उपयोगकर्ता डेटा उपलब्ध हो और लोडिंग समाप्त हो
   };
-
-  return authState;
 };
-
-      
