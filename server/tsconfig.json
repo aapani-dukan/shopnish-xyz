@@ -1,0 +1,28 @@
+// server/tsconfig.json (आपके प्रोजेक्ट के server/ फ़ोल्डर के अंदर)
+{
+  "extends": "../tsconfig.json", // यह रूट tsconfig.json को एक्सटेंड करेगा
+  "compilerOptions": {
+    "composite": true,
+    "tsBuildInfoFile": "../node_modules/.tsbuildinfo/tsconfig.server.tsbuildinfo",
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "allowSyntheticDefaultImports": true,
+    "strict": true,
+    "noEmit": false, // सर्वर के लिए हम अक्सर JS आउटपुट चाहते हैं
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "types": ["node"], // Node.js के लिए प्रकार शामिल करें
+    "lib": ["ES2022"], // Node.js के लिए आवश्यक लाइब्रेरी
+    "outDir": "../dist" // आपके बिल्ड आउटपुट डायरेक्टरी के अनुसार समायोजित करें
+  },
+  "include": [
+    "**/*.ts", // server फ़ोल्डर में सभी .ts फ़ाइलें
+    "**/*.tsx"  // यदि server फ़ोल्डर में .tsx फ़ाइलें हैं
+  ],
+  "exclude": [
+    "node_modules",
+    "dist"
+  ]
+}
