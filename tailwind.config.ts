@@ -52,7 +52,7 @@ export default {
           "5": "hsl(var(--chart-5))",
         },
 
-         /* client/src/index.css या theme.css */
+@layer base {        /* client/src/index.css या theme.css */
 :root {
   --background: 0 0% 100%;
   --foreground: 222.2 47.4% 11.2%;
@@ -84,7 +84,8 @@ export default {
   --sidebar-accent-foreground: 222.2 47.4% 11.2%;
   --sidebar-border: 214.3 31.8% 91.4%;
   --sidebar-ring: 221.2 83.2% 53.3%;
-        }, 
+}
+  }, 
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
           foreground: "hsl(var(--sidebar-foreground))",
