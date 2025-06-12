@@ -1,40 +1,27 @@
-import { defineConfig } from "vite";
-import react from "@vitejs/plugin-react";
-import path from "path";
-import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
+// client/vite.config.ts
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
 
-//👇 यह async plugin conditionally लोड करने के लिए wrapper चाहिए
-async function getPlugins() {
-  const plugins = [
-    react(),
-    runtimeErrorOverlay(),
-  ];
-
-  if (
-    process.env.NODE_ENV !== "production" &&
-    process.env.REPL_ID !== undefined
-  ) {
-    const { cartographer } = await import("@replit/vite-plugin-cartographer");
-    plugins.push(cartographer());
-  }
-
-  return plugins;
-}
-
-export default defineConfig(async () => ({
-  plugins: await getPlugins(),
+export default defineConfig({
+  plugins: [react()],
+  define: {
+    // Vite को बताएँ कि process.env.NODE_ENV क्या है (Node.js-specific)
+    'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV || 'development'),
+    // कुछ लाइब्रेरीज़ 'global' ऑब्जेक्ट की अपेक्षा करती हैं; उन्हें ब्राउज़र में 'window' पर मैप करें
+    'global': 'window',
+    // 'Buffer' को 'buffer' पैकेज में 'Buffer' क्लास से मैप करें
+    'Buffer': ['buffer', 'Buffer'],
+  },
   resolve: {
     alias: {
-      "@": path.resolve(import.meta.dirname, "client", "src"),
-      "@shared": path.resolve(import.meta.dirname, "shared"),
-      "@assets": path.resolve(import.meta.dirname, "attached_assets"),
+      // Node.js के 'buffer' मॉड्यूल को ब्राउज़र पॉलीफ़िल से मैप करें
+      'buffer': 'buffer/',
+      // Node.js के 'stream' मॉड्यूल को ब्राउज़र पॉलीफ़िल से मैप करें
+      'stream': 'stream-browserify',
+      // Node.js के 'util' मॉड्यूल को ब्राउज़र पॉलीफ़िल से मैप करें
+      'util': 'util/',
+      // यदि आपको किसी अन्य Node.js मॉड्यूल के लिए भी ऐसी ही समस्या आती है तो उन्हें यहां जोड़ सकते हैं,
+      // जैसे 'crypto' को 'crypto-browserify' से, 'path' को 'path-browserify' से आदि।
     },
   },
-  root: path.resolve(import.meta.dirname, "client"),
-  build: {
-    outDir: path.resolve(import.meta.dirname, "dist/public"),
-    emptyOutDir: true,
-  },
-  // 👇 यह जरूरी है ताकि HTML fallback मिले (SPA routing support)
-  appType: "spa",
-}));
+});
