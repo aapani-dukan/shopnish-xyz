@@ -13,7 +13,6 @@ const __dirname = path.dirname(__filename);
 
 const viteLogger = createLogger();
 
-// सुनिश्चित करें कि 'export' कीवर्ड यहां मौजूद है
 export function log(message: string, source = "express") {
   const formattedTime = new Date().toLocaleTimeString("en-US", {
     hour: "numeric",
@@ -25,7 +24,6 @@ export function log(message: string, source = "express") {
   console.log(`${formattedTime} [${source}] ${message}`);
 }
 
-// सुनिश्चित करें कि 'export' कीवर्ड यहां मौजूद है
 export async function setupVite(app: Express, server: Server) {
   const serverOptions = {
     middlewareMode: true,
@@ -73,27 +71,24 @@ export async function setupVite(app: Express, server: Server) {
   });
 }
 
-// यह फंक्शन भी export होना चाहिए यदि server/index.ts इसका उपयोग करता है
 export function serveStatic(app: Express) {
-  // __dirname को ESM में परिभाषित करें (यह यहाँ फिर से परिभाषित किया गया है क्योंकि यह एक अलग स्कोप हो सकता है,
-  // या आप इसे फ़ाइल के शीर्ष पर एक बार परिभाषित कर सकते हैं यदि यह सभी फंक्शन्स द्वारा साझा किया गया है)
   const __filenameLocal = fileURLToPath(import.meta.url);
   const __dirnameLocal = path.dirname(__filenameLocal);
 
+  // क्लाइंट बिल्ड आउटपुट के लिए सही पाथ
+  const clientBuildPath = path.resolve(__dirnameLocal, "..", "client", "dist");
+  log(`Serving static files from: ${clientBuildPath}`); // लॉगिंग जोड़ें
 
-  const distPath = path.resolve(__dirnameLocal, "..", "dist"); // dist फोल्डर रूट में होता है
-  log(`Checking for build directory at: ${distPath}`);
-
-  if (!fs.existsSync(distPath)) {
+  if (!fs.existsSync(clientBuildPath)) {
     throw new Error(
-      `Could not find the build directory: ${distPath}, make sure to build the client first`,
+      `Could not find the client build directory: ${clientBuildPath}, make sure to build the client first`,
     );
   }
 
-  app.use(express.static(distPath));
+  app.use(express.static(clientBuildPath));
 
   // fall through to index.html if the file doesn't exist
   app.use("*", (_req, res) => {
-    res.sendFile(path.resolve(distPath, "index.html"));
+    res.sendFile(path.resolve(clientBuildPath, "index.html"));
   });
 }
