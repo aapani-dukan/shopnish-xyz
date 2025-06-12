@@ -1,0 +1,14 @@
+// client/tsconfig.node.json
+{
+  "compilerOptions": {
+    "composite": true,
+    "skipLibCheck": true,
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "allowSyntheticDefaultImports": true,
+    "strict": true,
+    "noEmit": true,
+    "types": ["node"] // Node.js types for Vite config
+  },
+  "include": ["vite.config.ts"] // Vite कॉन्फ़िग फ़ाइल को शामिल करें
+}
