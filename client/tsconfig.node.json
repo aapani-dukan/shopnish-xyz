@@ -1,4 +1,4 @@
-// client/tsconfig.node.json
+
 {
   "compilerOptions": {
     "composite": true,
@@ -8,7 +8,7 @@
     "allowSyntheticDefaultImports": true,
     "strict": true,
     "noEmit": true,
-    "types": ["node"] // Node.js types for Vite config
+    "types": ["node"] 
   },
-  "include": ["vite.config.ts"] // Vite कॉन्फ़िग फ़ाइल को शामिल करें
+  "include": ["vite.config.ts"] 
 }
