@@ -2,8 +2,8 @@
 import express, { type Request, Response, NextFunction } from "express";
 import cors from "cors";
 import { registerRoutes } from "./routes";
-import { setupVite, log } from "./vite";
-import { serveStatic } from "./serveStatic"; // ✅ Updated
+// ✅ यहां बदलाव करें: serveStatic को ./vite से इम्पोर्ट करें
+import { setupVite, log, serveStatic } from "./vite"; // serveStatic को भी vite.ts से इम्पोर्ट करें
 
 const app = express();
 
@@ -59,7 +59,8 @@ app.use((req, res, next) => {
   if (app.get("env") === "development") {
     await setupVite(app, server);
   } else {
-    serveStatic(app); // ✅ updated fallback logic included
+    // serveStatic अब ./vite से आ रहा है, जिसमें सही पाथ है
+    serveStatic(app);
   }
 
   // ✅ Start server
