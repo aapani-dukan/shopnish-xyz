@@ -1,0 +1,32 @@
+// client/tsconfig.json
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "useDefineForClassFields": true,
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "skipLibCheck": true,
+
+    /* Bundler mode */
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "jsx": "react-jsx",
+
+    /* Linting */
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+
+    /* Path Aliases */
+    "baseUrl": "./", // client/tsconfig.json के लिए बेस URL client/ ही रहेगा
+    "paths": {
+      "@/*": ["./src/*"] // @/ client/src/ को मैप करेगा
+    }
+  },
+  "include": ["src"], // client/src फोल्डर को शामिल करें
+  "references": [{ "path": "./tsconfig.node.json" }] // यह client/tsconfig.node.json को इंगित करेगा
+}
