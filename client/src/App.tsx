@@ -7,6 +7,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/useAuth";
 import { useSeller } from "@/hooks/useSeller";
 import { useEffect } from "react"; // useEffect को इम्पोर्ट करें
+import "./index.css";
 
 // Pages/Components
 import Landing from "@/pages/landing";
