@@ -47,24 +47,21 @@ export async function setupVite(app: Express, server: Server) {
   });
 }
 
-/* ─────────────── Prod-mode: serve built static files ─────────────── */
+/* ─────────────── Prod-mode: serve built static files 
 export function serveStatic(app: Express) {
-  // React build अब root/dist में है
-  // server/vite.ts → serveStatic function में यह बदलें:
-const clientBuildPath = path.resolve(__dirnameLocal, "..", "client", "dist");
-  log(`Serving static files from: ${distPath}`);
+  const clientBuildPath = path.resolve(__dirname, "..", "client", "dist");
+  log(`Serving static files from: ${clientBuildPath}`);
 
-  if (!fs.existsSync(distPath)) {
+  if (!fs.existsSync(clientBuildPath)) {
     throw new Error(
-      `❌  Build folder not found: ${distPath}. Run "npm run build" first.`
+      `Could not find the client build directory: ${clientBuildPath}, make sure to build the client first`,
     );
   }
 
-  // Static assets
-  app.use(express.static(distPath));
+  app.use(express.static(clientBuildPath));
 
-  // SPA fallback
-  app.get("*", (_req, res) => {
-    res.sendFile(path.join(distPath, "index.html"));
+  // fallback to index.html
+  app.use("*", (_req, res) => {
+    res.sendFile(path.resolve(clientBuildPath, "index.html"));
   });
 }
