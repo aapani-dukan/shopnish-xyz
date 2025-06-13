@@ -1,6 +1,6 @@
 // server/vite.ts
 import express, { type Express } from "express";
-import fs   from "fs";
+import fs from "fs";
 import path from "path";
 import { createServer as createViteServer, createLogger } from "vite";
 import { type Server } from "http";
@@ -31,7 +31,7 @@ export async function setupVite(app: Express, server: Server) {
 
   app.use(vite.middlewares);
 
-  // Always serve fresh index.html in dev
+  // always serve fresh index.html in dev
   app.use("*", async (req, res, next) => {
     try {
       const templatePath = path.resolve(__dirname, "..", "client", "index.html");
@@ -47,21 +47,20 @@ export async function setupVite(app: Express, server: Server) {
   });
 }
 
-/* ─────────────── Prod-mode: serve built static files 
+/* ─────────────── Prod-mode: serve built static files ─────────────── */
 export function serveStatic(app: Express) {
-  const clientBuildPath = path.resolve(__dirname, "..", "client", "dist");
-  log(`Serving static files from: ${clientBuildPath}`);
+  /* React build अब root/dist में है */
+  const distPath = path.resolve(__dirname, "..", "client", "dist");
+  log(`Serving static files from: ${distPath}`);
 
-  if (!fs.existsSync(clientBuildPath)) {
-    throw new Error(
-      `Could not find the client build directory: ${clientBuildPath}, make sure to build the client first`,
-    );
+  if (!fs.existsSync(distPath)) {
+    throw new Error(`Build folder not found: ${distPath}. Run "npm run build" first.`);
   }
 
-  app.use(express.static(clientBuildPath));
+  app.use(express.static(distPath));
 
-  // fallback to index.html
-  app.use("*", (_req, res) => {
-    res.sendFile(path.resolve(clientBuildPath, "index.html"));
+  // SPA fallback
+  app.get("*", (_req, res) => {
+    res.sendFile(path.join(distPath, "index.html"));
   });
 }
