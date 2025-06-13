@@ -9,7 +9,7 @@
     "noEmit": true,
     "baseUrl": "./",
     "paths": {
-      "@shared/schema/*": ["shared/backend/schema/*"]
+      "@shared/*": ["shared/*"]  
     }
   },
   "include": [
