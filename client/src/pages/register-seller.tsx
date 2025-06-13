@@ -4,7 +4,7 @@ import React from 'react';
 import { useAuth } from "@/hooks/useAuth";
 // **यहां बदलाव किया गया है:** SellerRegistrationForm को named import के रूप में इम्पोर्ट करें
 import { SellerRegistrationForm } from "@/components/seller/SellerRegistrationForm"; // ✅ अब यह सही है
-import Loader from "../../../shared/frotend/Loader"; // सुनिश्चित करें कि Loader का पाथ सही है
+import Loader from "../../../shared/frontend/Loader"; // सुनिश्चित करें कि Loader का पाथ सही है
 import { useLocation } from 'wouter';
 
 export default function RegisterSeller() {
