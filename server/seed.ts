@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { categories, users, stores, products } from "@shared/schema";
+import { categories, users, stores, products } from "@shared/backend/schema";
 
 export async function seedDatabase() {
   try {
