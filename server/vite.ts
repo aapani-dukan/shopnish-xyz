@@ -76,7 +76,7 @@ export function serveStatic(app: Express) {
   const __dirnameLocal = path.dirname(__filenameLocal);
 
   // क्लाइंट बिल्ड आउटपुट के लिए सही पाथ
-  const clientBuildPath = path.resolve(__dirnameLocal, "..", "client", "dist");
+  const clientBuildPath = path.resolve(__dirnameLocal, "..", "dist");
   log(`Serving static files from: ${clientBuildPath}`); // लॉगिंग जोड़ें
 
   if (!fs.existsSync(clientBuildPath)) {
