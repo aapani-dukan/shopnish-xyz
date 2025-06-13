@@ -12,13 +12,7 @@
     "db:push": "drizzle-kit push"
   },
 
-  "dependencies": {
-    /* … आपकी बनी हुई dependencies … */
-  },
-  "devDependencies": {
-    /* … dev deps … */
-  }
-}
+  
   
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
