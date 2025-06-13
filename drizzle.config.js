@@ -1,7 +1,7 @@
 const { defineConfig } = require('drizzle-kit');
 
 module.exports = defineConfig({
-  schema: './shared/schema.ts',          // ← अपना schema path
+  schema: './shared/backend/schema.ts',          // ← अपना schema path
   out: './server/migrations',            // ← migrations यहीं बनेंगी
   dialect: 'postgresql',                 // ← enum-value ठीक
   dbCredentials: {
