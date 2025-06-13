@@ -10,7 +10,7 @@ import sellersApplyRouter from "../routes/sellers/apply";
 import sellersApproveRouter from "../routes/sellers/approve";
 import sellersRejectRouter from "../routes/sellers/reject";
 import sellerMeRoute from "../routes/sellerMe";
-import authRoutes from "./routes/authRoutes";
+import authRoutes from "../../routes/authRoutes";
 
 // ✅ अब यह कोई HTTP सर्वर नहीं लौटाएगा, बल्कि केवल राउट्स रजिस्टर करेगा
 export async function registerRoutes(app: Express): Promise<void> {
