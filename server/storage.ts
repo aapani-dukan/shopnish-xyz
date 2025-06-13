@@ -5,7 +5,7 @@ import {
   type Product, type InsertProduct, type CartItem, type InsertCartItem,
   type Order, type InsertOrder, type OrderItem, type InsertOrderItem,
   type Review, type InsertReview,type seller
-} from "@shared/schema";
+} from "@shared/backend/schema";
 
 export interface IStorage {
   // Authentication & Users
