@@ -17,7 +17,8 @@
     "outDir": "../dist",
     "baseUrl": "..",
     "paths": {
-      "@shared/schema/*": ["shared/backend/schema/*"]
+    "@shared/backend/*": ["shared/backend/*"],
+    "@shared/frontend/*": ["shared/frontend/*"]
     }
   },
   "include": ["**/*.ts", "**/*.tsx"],
