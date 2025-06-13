@@ -19,7 +19,7 @@ export default defineConfig(({ command }) => {
     define: {
       'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV || 'development'),
       'global': 'window',
-      'Buffer': ['buffer', 'Buffer'],
+      
     },
     resolve: {
       alias: {
