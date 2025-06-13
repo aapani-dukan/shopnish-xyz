@@ -2,7 +2,7 @@
 import express, { type Express } from "express"; // Express टाइप को भी इम्पोर्ट करें
 import { storage } from "./storage";
 import { seedDatabase } from "./seed";
-import { insertProductSchema, insertCartItemSchema, insertOrderSchema, insertReviewSchema } from "@shared/schema";
+import { insertProductSchema, insertCartItemSchema, insertOrderSchema, insertReviewSchema } from "@shared/backend/schema";
 import { z } from "zod";
 // routes.ts
 import pendingSellersRoute from "../routes/sellers/pending";
