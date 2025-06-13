@@ -1,6 +1,6 @@
 import { Router, Request, Response, NextFunction } from "express";
 import { db } from "../../server/db";
-import { sellers } from "../../shared/schema";
+import { sellers } from "../../shared/backend/schema";
 
 const router = Router();
 
