@@ -50,7 +50,8 @@ export async function setupVite(app: Express, server: Server) {
 /* ─────────────── Prod-mode: serve built static files ─────────────── */
 export function serveStatic(app: Express) {
   // React build अब root/dist में है
-  const distPath = path.resolve(__dirname, "..", "dist");
+  // server/vite.ts → serveStatic function में यह बदलें:
+const clientBuildPath = path.resolve(__dirnameLocal, "..", "client", "dist");
   log(`Serving static files from: ${distPath}`);
 
   if (!fs.existsSync(distPath)) {
