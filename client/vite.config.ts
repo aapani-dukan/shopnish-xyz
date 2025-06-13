@@ -25,7 +25,7 @@ export default defineConfig(({ command }) => {
       alias: {
         '@': path.resolve(__dirname, './src'),
         // ✅ यह सुनिश्चित करें कि @shared केवल उन फाइलों को इम्पोर्ट करे जो ब्राउज़र-संगत हैं
-        '@shared': path.resolve(__dirname, '..', 'shared'), 
+        '@shared': path.resolve(__dirname, '..', 'shared','frontend'), 
         'buffer': 'buffer/',
         'stream': 'stream-browserify',
         'util': 'util/',
