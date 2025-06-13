@@ -1,5 +1,5 @@
-import express  from "express";
-import { createServer, type Server } from "http";
+// server/routes.ts
+import express, { type Express } from "express"; // Express टाइप को भी इम्पोर्ट करें
 import { storage } from "./storage";
 import { seedDatabase } from "./seed";
 import { insertProductSchema, insertCartItemSchema, insertOrderSchema, insertReviewSchema } from "@shared/schema";
@@ -11,7 +11,9 @@ import sellersApproveRouter from "../routes/sellers/approve";
 import sellersRejectRouter from "../routes/sellers/reject";
 import sellerMeRoute from "../routes/sellerMe";
 import authRoutes from "./routes/authRoutes";
-export async function registerRoutes(app: Express): Promise<Server> {
+
+// ✅ अब यह कोई HTTP सर्वर नहीं लौटाएगा, बल्कि केवल राउट्स रजिस्टर करेगा
+export async function registerRoutes(app: Express): Promise<void> {
   // Seed database on startup
   try {
     await seedDatabase();
@@ -19,6 +21,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   } catch (error) {
     console.error("Failed to seed database:", error);
   }
+
   // Categories
   app.get("/api/categories", async (req, res) => {
     try {
@@ -28,11 +31,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to fetch categories" });
     }
   });
-app.use("/api/sellers/pending", pendingSellersRoute);
+
+  app.use("/api/sellers/pending", pendingSellersRoute);
   app.use("/api/sellers/apply", sellersApplyRouter);
-app.use("/api/sellers/approve", sellersApproveRouter);
-app.use("/api/sellers/reject", sellersRejectRouter);
-  app.use(sellerMeRoute); // ✅ yeh zaroori hai
+  app.use("/api/sellers/approve", sellersApproveRouter);
+  app.use("/api/sellers/reject", sellersRejectRouter);
+  app.use(sellerMeRoute);
+  app.use(authRoutes); // Auth routes ko bhi add karein agar yeh ek Express Router hai
+  
   // Products
   app.get("/api/products", async (req, res) => {
     try {
@@ -49,8 +55,6 @@ app.use("/api/sellers/reject", sellersRejectRouter);
       res.status(500).json({ message: "Failed to fetch products" });
     }
   });
-
-
 
   app.get("/api/products/:id", async (req, res) => {
     try {
@@ -224,6 +228,7 @@ app.use("/api/sellers/reject", sellersRejectRouter);
     }
   });
 
-  const httpServer = createServer(app);
-  return httpServer;
+  // ✅ यह लाइन हटा दें
+  // const httpServer = createServer(app);
+  // return httpServer;
 }
