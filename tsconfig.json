@@ -1,26 +1,24 @@
-// tsconfig.json (आपके प्रोजेक्ट रूट में)
 {
   "compilerOptions": {
-    "composite": true, // यदि आप प्रोजेक्ट संदर्भों का उपयोग कर रहे हैं तो आवश्यक है
+    "composite": true,
     "skipLibCheck": true,
     "module": "ESNext",
     "moduleResolution": "bundler",
     "allowSyntheticDefaultImports": true,
     "strict": true,
-    "noEmit": true, // या false यदि आप सीधे इस tsconfig से JS फ़ाइलें जनरेट करना चाहते हैं
-    "baseUrl": "./", // यह महत्वपूर्ण है
+    "noEmit": true,
+    "baseUrl": "./",
     "paths": {
-      // यह पाथ एलियासिंग आपके shared फ़ोल्डर के लिए है
-      "@shared/*": ["./shared/*"]
+      "@shared/schema/*": ["shared/backend/schema/*"]
     }
   },
   "include": [
-    "server/**/*.ts",  // सर्वर-साइड TypeScript फ़ाइलें
-    "shared/**/*.ts",   // साझा TypeScript फ़ाइलें
-    "shared/**/*.tsx"   // यदि साझा फ़ोल्डर में TSX फ़ाइलें हैं
+    "server/**/*.ts",
+    "shared/**/*.ts",
+    "shared/**/*.tsx"
   ],
   "references": [
-    { "path": "./client" }, // client फ़ोल्डर के लिए tsconfig.json को रेफर करें
-    { "path": "./server" }  // यदि server फ़ोल्डर में tsconfig.json है तो उसे रेफर करें
+    { "path": "./client" },
+    { "path": "./server" }
   ]
 }
