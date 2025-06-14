@@ -16,8 +16,16 @@ import SellerStatusPage from "@/pages/seller-status";
 import SellerDashboard from "@/pages/seller-dashboard";
 
 function AppRouter() {
-  const { isAuthenticated, isLoading: isAuthLoading } = useAuth();
-  const { isSeller, seller, isLoading: isSellerLoading } = useSeller();
+  const {
+    isAuthenticated,
+    isLoading: isAuthLoading,
+    isInitialized, // ✅ जोड़ा गया
+  } = useAuth();
+  const {
+    isSeller,
+    seller,
+    isLoading: isSellerLoading,
+  } = useSeller();
   const [location, setLocation] = useLocation();
   const currentPath = location;
 
@@ -31,6 +39,16 @@ function AppRouter() {
     console.log("currentPath:", currentPath);
   }, [isAuthenticated, isSeller, seller, currentPath]);
 
+  // 🔒 Firebase init होने तक wait करें
+  if (!isInitialized) {
+    return (
+      <div className="h-screen flex items-center justify-center">
+        <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" />
+      </div>
+    );
+  }
+
+  // ⏳ Auth या Seller की loading
   if (isLoading) {
     return (
       <div className="h-screen flex items-center justify-center">
@@ -39,13 +57,12 @@ function AppRouter() {
     );
   }
 
-  // 🚫 Unauthenticated users
+  // 🚫 Not Authenticated
   if (!isAuthenticated) {
     if (currentPath !== "/" && currentPath !== "/login") {
       setLocation("/");
       return null;
     }
-
     return (
       <Switch>
         <Route path="/" component={Landing} />
@@ -55,7 +72,7 @@ function AppRouter() {
     );
   }
 
-  // 🔁 Seller redirect logic
+  // 🔁 Seller Redirection Logic
   if (isSeller) {
     if (seller?.approvalStatus === "approved") {
       if (currentPath === "/register-seller" || currentPath === "/seller-status") {
