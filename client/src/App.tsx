@@ -1,68 +1,22 @@
 import { Switch, Route, useLocation } from "wouter";
-import { QueryClientProvider } from "@tanstack/react-query";
-import { queryClient } from "./lib/queryClient";
-
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
-import { useSeller } from "@/hooks/useSeller";
-import { useEffect } from "react";
-import "./index.css";
 
-// Pages
 import Landing from "@/pages/landing";
 import Home from "@/pages/home";
-import NotFound from "@/pages/not-found";
-import RegisterSellerPage from "@/pages/register-seller";
-import SellerStatusPage from "@/pages/seller-status";
-import SellerDashboard from "@/pages/seller-dashboard";
+import NotFound from "@/pages/not-found"; // simple component showing 404
 
-function AppRouter() {
-  const {
-    isAuthenticated,
-    isLoading: isAuthLoading,
-    isInitialized, // ✅ जोड़ा गया
-  } = useAuth();
-  const {
-    isSeller,
-    seller,
-    isLoading: isSellerLoading,
-  } = useSeller();
-  const [location, setLocation] = useLocation();
-  const currentPath = location;
+const qc = new QueryClient();
 
-  const isLoading = isAuthLoading || isSellerLoading;
+function Routes() {
+  const { isAuthenticated, isLoading } = useAuth();
+  const [loc, setLoc] = useLocation();
 
-  useEffect(() => {
-    console.log("--- Auth + Seller State ---");
-    console.log("isAuthenticated:", isAuthenticated);
-    console.log("isSeller:", isSeller);
-    console.log("approvalStatus:", seller?.approvalStatus);
-    console.log("currentPath:", currentPath);
-  }, [isAuthenticated, isSeller, seller, currentPath]);
+  if (isLoading) return <div className="flex h-screen items-center justify-center">⌛</div>;
 
-  // 🔒 Firebase init होने तक wait करें
-  if (!isInitialized) {
-    return (
-      <div className="h-screen flex items-center justify-center">
-        <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" />
-      </div>
-    );
-  }
-
-  // ⏳ Auth या Seller की loading
-  if (isLoading) {
-    return (
-      <div className="h-screen flex items-center justify-center">
-        <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" />
-      </div>
-    );
-  }
-
-  // 🚫 Not Authenticated
+  // If NOT logged in → always on landing
   if (!isAuthenticated) {
-    if (currentPath !== "/" && currentPath !== "/login") {
-      setLocation("/");
-      return null;
-    }
+    if (loc !== "/" && loc !== "/login") setLoc("/");
     return (
       <Switch>
         <Route path="/" component={Landing} />
@@ -72,43 +26,19 @@ function AppRouter() {
     );
   }
 
-  // 🔁 Seller Redirection Logic
-  if (isSeller) {
-    if (seller?.approvalStatus === "approved") {
-      if (currentPath === "/register-seller" || currentPath === "/seller-status") {
-        setLocation("/seller-dashboard");
-        return null;
-      }
-    } else {
-      if (currentPath !== "/seller-status" && currentPath !== "/register-seller") {
-        setLocation("/seller-status");
-        return null;
-      }
-    }
-  } else {
-    if (currentPath === "/seller-dashboard") {
-      setLocation("/register-seller");
-      return null;
-    }
-  }
-
+  // Logged‑in user → home page only
   return (
     <Switch>
       <Route path="/" component={Home} />
-      <Route path="/register-seller" component={RegisterSellerPage} />
-      <Route path="/seller-status" component={SellerStatusPage} />
-      <Route path="/seller-dashboard" component={SellerDashboard} />
       <Route component={NotFound} />
     </Switch>
   );
 }
 
-function App() {
+export default function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <AppRouter />
+    <QueryClientProvider client={qc}>
+      <Routes />
     </QueryClientProvider>
   );
 }
-
-export default App;
