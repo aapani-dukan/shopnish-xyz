@@ -1,14 +1,20 @@
 // client/src/pages/products.tsx
+import { Router, Request, Response, NextFunction } from "express";
 
-import React from "react";
 
-const Products: React.FC = () => {
-  return (
-    <div className="p-4">
-      <h1 className="text-2xl font-bold">Products Page</h1>
-      <p>All approved products will appear here.</p>
-    </div>
-  );
-};
+const router = Router();
 
-export default Products;
+router.get("/", async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const approvedProducts = await prisma.product.findMany({
+      where: { approvalStatus: "approved" },
+      orderBy: { approvedAt: "desc" },
+    });
+
+    res.json(approvedProducts);
+  } catch (error) {
+    next(error);
+  }
+});
+
+export default router
