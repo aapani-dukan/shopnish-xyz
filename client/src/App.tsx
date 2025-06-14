@@ -3,7 +3,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth"; // Make sure the path is correct
 
-import Login from "@/pages/Login"; // Make sure the path is correct
+import Login from "@/pages/login"; // Make sure the path is correct
 import Dashboard from "@/pages/Dashboard"; // Make sure the path is correct
 
 export default function App() {
