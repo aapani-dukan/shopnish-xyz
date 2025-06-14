@@ -1,16 +1,4 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import LandingPage from "./pages/landing";
-import Dashboard from "./pages/Dashboard";
+import ReactDOM from "react-dom/client";
+import App from "./App";
 
-function App() {
-  return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<LandingPage />} />
-        <Route path="/dashboard" element={<Dashboard />} />
-      </Routes>
-    </BrowserRouter>
-  );
-}
-
-export default App;
+ReactDOM.createRoot(document.getElementById("root")!).render(<App />);
