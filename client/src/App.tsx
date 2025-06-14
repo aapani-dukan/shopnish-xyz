@@ -12,7 +12,7 @@ import "./index.css";
 // Pages/Components
 import Landing from "@/pages/landing";
 import Home from "@/pages/home";
-import Products from "@/pages/products";
+//import Products from "@/pages/products";
 import SellerDashboard from "@/pages/seller-dashboard";
 import Checkout from "@/pages/checkout";
 import AdminLogin from "@/pages/admin-login";
@@ -83,8 +83,8 @@ function AppRouter() {
   return (
     <Switch>
       <Route path="/" component={Home} />
-      <Route path="/products" component={Products} />
-      <Route path="/products/:category" component={Products} />
+   //   <Route path="/products" component={Products} />
+   //   <Route path="/products/:category" component={Products} />
       <Route path="/checkout" component={Checkout} />
       <Route path="/register-seller" component={RegisterSellerPage} />
       <Route path="/seller-status" component={SellerStatusPage} />
