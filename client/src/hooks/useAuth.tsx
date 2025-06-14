@@ -22,6 +22,8 @@ export const useAuth = () => {
   const [isFirebaseLoading, setIsFirebaseLoading] = useState(true);
 
   useEffect(() => {
+    let unsubscribe: () => void;
+
     const processRedirectAndListen = async () => {
       try {
         const result = await handleGoogleRedirectResult();
@@ -34,34 +36,37 @@ export const useAuth = () => {
         console.error("❌ useAuth: Error processing Google Redirect result:", error);
         firebaseSignOut();
       } finally {
-        const unsubscribe = firebaseOnAuthStateChanged((user) => {
+        unsubscribe = firebaseOnAuthStateChanged((user) => {
           setFirebaseUser(user);
           setIsFirebaseLoading(false);
           queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
           console.log("🔥 Firebase onAuthStateChanged: User changed to", user ? user.uid : "null");
         });
-        return () => unsubscribe();
       }
     };
 
     processRedirectAndListen();
-  }, [queryClient]);
-// client/src/hooks/useAuth.tsx  (queryFn के ऊपर)
-console.log("↪️ Calling /api/auth/me with token", idToken.slice(0,12), "...");
 
-// client/src/hooks/useSeller.tsx (queryFn के ऊपर)
-const idToken = await firebase.auth().currentUser?.getIdToken();
-console.log("↪️ Calling /api/sellers/me token", idToken?.slice(0,12), "...");
+    // ✅ Proper cleanup
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
+  }, [queryClient]);
+
   const { data: backendUser, isLoading: isBackendLoading } = useQuery<User>({
     queryKey: ["/api/auth/user"],
     queryFn: async () => {
       if (!firebaseUser) {
         return Promise.reject(new Error("No Firebase user found for backend fetch."));
       }
+
       const idToken = await firebaseUser.getIdToken();
+      console.log("↪️ Calling /api/auth/me with token", idToken.slice(0, 12), "...");
+
       const response = await axios.get("/api/auth/me", {
         headers: { Authorization: `Bearer ${idToken}` },
       });
+
       return response.data;
     },
     enabled: !!firebaseUser && !isFirebaseLoading,
@@ -92,7 +97,7 @@ console.log("↪️ Calling /api/sellers/me token", idToken?.slice(0,12), "...")
   return {
     user: combinedUser,
     isLoading,
-    isInitialized: !isFirebaseLoading, // ✅ नई लाइन जोड़ी गई
+    isInitialized: !isFirebaseLoading,
     isAuthenticated: !!combinedUser && !isLoading,
   };
 };
