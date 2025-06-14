@@ -1,59 +1,34 @@
-import { initializeApp } from "firebase/app";
+import {
+  initializeApp,
+  getApps,
+  getApp,
+} from "firebase/app";
 import {
   getAuth,
   GoogleAuthProvider,
   signInWithRedirect,
-  getRedirectResult,
   onAuthStateChanged,
+  User,
   signOut,
-  User as FirebaseUser,
+  getRedirectResult,
 } from "firebase/auth";
 
-// ✅ Firebase configuration - values from .env file
+// ✅  Replace with *your* web‑app credentials
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  apiKey: "<API_KEY>",
+  authDomain: "<PROJECT_ID>.firebaseapp.com",
+  projectId: "<PROJECT_ID>",
+  appId: "<APP_ID>",
 };
 
-// ✅ Initialize Firebase app
-export const app = initializeApp(firebaseConfig);
-
-// ✅ Initialize Firebase Auth
+// Initialise once
+const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 
-// ✅ Setup Google provider
 export const googleProvider = new GoogleAuthProvider();
 
-// ✅ Role-based sign-in using sessionStorage
-export const startGoogleLogin = (role: "seller" | "customer" = "customer") => {
-  sessionStorage.setItem("loginRole", role); // 🟢 store role for redirect flow
-  signInWithRedirect(auth, googleProvider);
-};
-
-// ✅ Compatibility alias for older imports
-export const initiateGoogleSignInRedirect = startGoogleLogin;
-
-// ✅ Handle redirect result after Google sign-in
-export const handleGoogleRedirectResult = () => {
-  return getRedirectResult(auth);
-};
-
-// ✅ Listen for auth state changes
-export const firebaseOnAuthStateChanged = (callback: (user: FirebaseUser | null) => void) => {
-  return onAuthStateChanged(auth, callback);
-};
-
-// ✅ Sign out the current user
-export const firebaseSignOut = () => {
-  return signOut(auth);
-};
-
-// ✅ Optional: Debugging helper in browser
-// @ts-ignore
-if (typeof window !== "undefined") {
-  window.startGoogleLogin = startGoogleLogin;
-}
+// 👉 Helpers
+export const startGoogleRedirect = () => signInWithRedirect(auth, googleProvider);
+export const getRedirectUser = () => getRedirectResult(auth);
+export const listenAuth = (cb: (u: User | null) => void) => onAuthStateChanged(auth, cb);
+export const firebaseSignOut = () => signOut(auth);
