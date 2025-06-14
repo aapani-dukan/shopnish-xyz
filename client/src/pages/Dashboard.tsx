@@ -1,25 +1,10 @@
-import { useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { auth } from "@/lib/firebase";
-import { onAuthStateChanged, signOut } from "firebase/auth";
+import { firebaseSignOut } from "@/lib/firebase";
 
 export default function Dashboard() {
-  const navigate = useNavigate();
-
-  useEffect(() => {
-    onAuthStateChanged(auth, (user) => {
-      if (!user) {
-        navigate("/"); // Not logged in? ⛔ go to login
-      }
-    });
-  }, []);
-
   return (
-    <div>
-      <h1>Welcome to Dashboard</h1>
-      <button onClick={() => signOut(auth).then(() => navigate("/"))}>
-        Logout
-      </button>
+    <div style={{display:"flex",height:"100vh",alignItems:"center",justifyContent:"center",flexDirection:"column"}}>
+      <h2>🎉 Logged in!</h2>
+      <button onClick={firebaseSignOut} style={{padding:"8px 16px"}}>Sign out</button>
     </div>
   );
 }
