@@ -3,6 +3,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "./lib/queryClient";
 
 import { useAuth } from "@/hooks/useAuth";
+import { useSeller } from "@/hooks/useSeller";
 import { useEffect } from "react";
 import "./index.css";
 
@@ -10,19 +11,27 @@ import "./index.css";
 import Landing from "@/pages/landing";
 import Home from "@/pages/home";
 import NotFound from "@/pages/not-found";
+import RegisterSellerPage from "@/pages/register-seller";
+import SellerStatusPage from "@/pages/seller-status";
+import SellerDashboard from "@/pages/seller-dashboard";
 
 function AppRouter() {
   const { isAuthenticated, isLoading: isAuthLoading } = useAuth();
+  const { isSeller, seller, isLoading: isSellerLoading } = useSeller();
   const [location, setLocation] = useLocation();
   const currentPath = location;
 
-  useEffect(() => {
-    console.log("--- Auth Debug ---");
-    console.log("isAuthenticated:", isAuthenticated);
-    console.log("currentPath:", currentPath);
-  }, [isAuthenticated, currentPath]);
+  const isLoading = isAuthLoading || isSellerLoading;
 
-  if (isAuthLoading) {
+  useEffect(() => {
+    console.log("--- Auth + Seller State ---");
+    console.log("isAuthenticated:", isAuthenticated);
+    console.log("isSeller:", isSeller);
+    console.log("approvalStatus:", seller?.approvalStatus);
+    console.log("currentPath:", currentPath);
+  }, [isAuthenticated, isSeller, seller, currentPath]);
+
+  if (isLoading) {
     return (
       <div className="h-screen flex items-center justify-center">
         <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" />
@@ -30,7 +39,7 @@ function AppRouter() {
     );
   }
 
-  // 🔐 अगर user authenticated नहीं है तो केवल "/" और "/login" allow करें
+  // 🚫 Unauthenticated users
   if (!isAuthenticated) {
     if (currentPath !== "/" && currentPath !== "/login") {
       setLocation("/");
@@ -46,11 +55,32 @@ function AppRouter() {
     );
   }
 
-  // ✅ Authenticated user के लिए बाकी routes allow
+  // 🔁 Seller redirect logic
+  if (isSeller) {
+    if (seller?.approvalStatus === "approved") {
+      if (currentPath === "/register-seller" || currentPath === "/seller-status") {
+        setLocation("/seller-dashboard");
+        return null;
+      }
+    } else {
+      if (currentPath !== "/seller-status" && currentPath !== "/register-seller") {
+        setLocation("/seller-status");
+        return null;
+      }
+    }
+  } else {
+    if (currentPath === "/seller-dashboard") {
+      setLocation("/register-seller");
+      return null;
+    }
+  }
+
   return (
     <Switch>
       <Route path="/" component={Home} />
-      <Route path="/home" component={Home} />
+      <Route path="/register-seller" component={RegisterSellerPage} />
+      <Route path="/seller-status" component={SellerStatusPage} />
+      <Route path="/seller-dashboard" component={SellerDashboard} />
       <Route component={NotFound} />
     </Switch>
   );
