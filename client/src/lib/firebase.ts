@@ -1,25 +1,18 @@
 import { initializeApp } from "firebase/app";
-import {
-  getAuth,
-  GoogleAuthProvider,
-  signInWithRedirect,
-  getRedirectResult
-} from "firebase/auth";
+import { getAuth, GoogleAuthProvider, signInWithRedirect, getRedirectResult, onAuthStateChanged, signOut } from "firebase/auth";
 
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  apiKey:            import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain:        import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId:         import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  appId:             import.meta.env.VITE_FIREBASE_APP_ID,
 };
 
-const app = initializeApp(firebaseConfig);
+const app   = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 
-export const startGoogleRedirect = () => {
-  const provider = new GoogleAuthProvider();
-  signInWithRedirect(auth, provider);
-};
-
-export const getRedirectUser = () => {
-  return getRedirectResult(auth);
-};
+// helper wrappers
+export const startGoogleRedirect   = () => signInWithRedirect(auth, new GoogleAuthProvider());
+export const getRedirectUser       = () => getRedirectResult(auth);
+export const listenAuth            = (cb:(user:any)=>void) => onAuthStateChanged(auth, cb);
+export const firebaseSignOut       = () => signOut(auth);
