@@ -46,7 +46,12 @@ export const useAuth = () => {
 
     processRedirectAndListen();
   }, [queryClient]);
+// client/src/hooks/useAuth.tsx  (queryFn के ऊपर)
+console.log("↪️ Calling /api/auth/me with token", idToken.slice(0,12), "...");
 
+// client/src/hooks/useSeller.tsx (queryFn के ऊपर)
+const idToken = await firebase.auth().currentUser?.getIdToken();
+console.log("↪️ Calling /api/sellers/me token", idToken?.slice(0,12), "...");
   const { data: backendUser, isLoading: isBackendLoading } = useQuery<User>({
     queryKey: ["/api/auth/user"],
     queryFn: async () => {
