@@ -1,34 +1,19 @@
-import {
-  initializeApp,
-  getApps,
-  getApp,
-} from "firebase/app";
-import {
-  getAuth,
-  GoogleAuthProvider,
-  signInWithRedirect,
-  onAuthStateChanged,
-  User,
-  signOut,
-  getRedirectResult,
-} from "firebase/auth";
+// client/src/lib/firebase.ts
 
-// ✅  Replace with *your* web‑app credentials
+import { initializeApp } from "firebase/app";
+import { getAuth, GoogleAuthProvider } from "firebase/auth";
+
 const firebaseConfig = {
-  apiKey: "<API_KEY>",
-  authDomain: "<PROJECT_ID>.firebaseapp.com",
-  projectId: "<PROJECT_ID>",
-  appId: "<APP_ID>",
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
 };
 
-// Initialise once
-const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
-export const auth = getAuth(app);
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const provider = new GoogleAuthProvider();
 
-export const googleProvider = new GoogleAuthProvider();
-
-// 👉 Helpers
-export const startGoogleRedirect = () => signInWithRedirect(auth, googleProvider);
-export const getRedirectUser = () => getRedirectResult(auth);
-export const listenAuth = (cb: (u: User | null) => void) => onAuthStateChanged(auth, cb);
-export const firebaseSignOut = () => signOut(auth);
+export { app, auth, provider };
