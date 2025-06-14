@@ -12,15 +12,15 @@ import "./index.css";
 // Pages/Components
 import Landing from "@/pages/landing";
 import Home from "@/pages/home";
-import Products from "@/pages/products";
+//import Products from "@/pages/products";
 //import SellerDashboard from "@/pages/seller-dashboard";
-import Checkout from "@/pages/checkout";
+//import Checkout from "@/pages/checkout";
 //import AdminLogin from "@/pages/admin-login";
 //import AdminDashboard from "@/pages/admin-dashboard";
 import DeliveryLogin from "@/pages/delivery-login";
 import DeliveryDashboard from "@/pages/delivery-dashboard";
 import NotFound from "@/pages/not-found";
-import ProtectedSellerRoute from "@/components/ProtectedSellerRoute";
+//import ProtectedSellerRoute from "@/components/ProtectedSellerRoute";
 //import RegisterSellerPage from "@/pages/register-seller";
 //import SellerStatusPage from "@/pages/seller-status";
 
