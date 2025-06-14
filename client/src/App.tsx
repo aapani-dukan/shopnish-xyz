@@ -13,7 +13,7 @@ import "./index.css";
 import Landing from "@/pages/landing";
 import Home from "@/pages/home";
 import Products from "@/pages/products";
-import SellerDashboard from "@/pages/seller-dashboard";
+//import SellerDashboard from "@/pages/seller-dashboard";
 //import Checkout from "@/pages/checkout";
 //import AdminLogin from "@/pages/admin-login";
 //import AdminDashboard from "@/pages/admin-dashboard";
