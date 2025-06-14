@@ -1,44 +1,28 @@
-import { Switch, Route, useLocation } from "wouter";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 
-import Landing from "@/pages/landing";
-import Home from "@/pages/home";
-import NotFound from "@/pages/not-found"; // simple component showing 404
-
-const qc = new QueryClient();
-
-function Routes() {
-  const { isAuthenticated, isLoading } = useAuth();
-  const [loc, setLoc] = useLocation();
-
-  if (isLoading) return <div className="flex h-screen items-center justify-center">⌛</div>;
-
-  // If NOT logged in → always on landing
-  if (!isAuthenticated) {
-    if (loc !== "/" && loc !== "/login") setLoc("/");
-    return (
-      <Switch>
-        <Route path="/" component={Landing} />
-        <Route path="/login" component={Landing} />
-        <Route component={NotFound} />
-      </Switch>
-    );
-  }
-
-  // Logged‑in user → home page only
-  return (
-    <Switch>
-      <Route path="/" component={Home} />
-      <Route component={NotFound} />
-    </Switch>
-  );
-}
+import Landing    from "@/pages/Landing";
+import Dashboard  from "@/pages/Dashboard";
 
 export default function App() {
+  const { isAuthenticated, isLoading } = useAuth();
+
+  if (isLoading) {
+    return <div style={{display:"flex",height:"100vh",alignItems:"center",justifyContent:"center"}}>Loading…</div>;
+  }
+
   return (
-    <QueryClientProvider client={qc}>
-      <Routes />
-    </QueryClientProvider>
+    <BrowserRouter>
+      <Routes>
+        {/* Public */}
+        <Route path="/" element={ isAuthenticated ? <Navigate to="/dashboard" replace /> : <Landing/> } />
+
+        {/* Private */}
+        <Route path="/dashboard" element={ isAuthenticated ? <Dashboard/> : <Navigate to="/" replace /> } />
+
+        {/* catch-all */}
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </BrowserRouter>
   );
 }
