@@ -18,7 +18,7 @@ router.get("/api/sellers/me", verifyToken, async (req: AuthenticatedRequest, res
     });
 
     if (!seller) {
-      return res.status(404).json({ message: "Seller not found" });
+      return res.status(204).json({ message: "Seller not found" });
     }
 
     res.json(seller);
