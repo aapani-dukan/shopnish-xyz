@@ -1,7 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 
-import Landing    from "@/pages/Landing";
+import Landing    from "@/pages/landing";
 import Dashboard  from "@/pages/Dashboard";
 
 export default function App() {
