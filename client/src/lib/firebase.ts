@@ -12,28 +12,20 @@ import {
   User
 } from "firebase/auth";
 
-// 🔧 अपनी ENV values यहाँ लगाइए
+/* 🔑  env से कॉन्फ़िग */
 const firebaseConfig = {
-  apiKey:   import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId:  import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  apiKey:        import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain:    import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId:     import.meta.env.VITE_FIREBASE_PROJECT_ID,
 };
 
 const app  = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 const provider = new GoogleAuthProvider();
 
-/* ---------- helpers ---------- */
-
-// (a) Google redirect trigger
-export const googleRedirectLogin = () => signInWithRedirect(auth, provider);
-
-// (b) redirect result loader
-export const getRedirectUser = () => getRedirectResult(auth);   // <— यही export missing था
-
-// (c) listenAuth  – एक thin wrapper जो useAuth से call होगा
-export const listenAuth = (cb: (u: User|null)=>void) =>
+/* === consistent helper names === */
+export const startGoogleRedirect = () => signInWithRedirect(auth, provider); // ⬅️ नया नाम
+export const getRedirectUser     = () => getRedirectResult(auth);
+export const listenAuth          = (cb: (u: User | null) => void) =>
   onAuthStateChanged(auth, cb);
-
-// (d) sign-out
-export const firebaseSignOut = () => signOut(auth);
+export const firebaseSignOut     = () => signOut(auth);
