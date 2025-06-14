@@ -13,7 +13,7 @@ export default defineConfig(({ command }) => {
   return {
     // Vite will watch files inside client/ (default “.” here - because we are already **inside** client)
     root: './',
-    base: isProduction ? '/' : '/',
+    base: isProduction ? './' : '/',
 
     plugins: [react()],
 
