@@ -1,34 +1,23 @@
 import { useEffect, useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
-import {
-  auth,
-  getRedirectUser,
-  listenAuth,
-  firebaseSignOut,
-} from "@/lib/firebase";
-import type { User } from "firebase/auth";
+import { auth, getRedirectUser, listenAuth, firebaseSignOut } from "@/lib/firebase";
 
-export const useAuth = () => {
-  const qc = useQueryClient();
-  const [firebaseUser, setFirebaseUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+export function useAuth() {
+  const [user,   setUser]   = useState<any|null>(null);
+  const [loading,setLoad]   = useState(true);
 
   useEffect(() => {
-    // 1️⃣ capture redirect result (one‑time)
-    getRedirectUser().finally(() => {
-      // 2️⃣ *always* attach permanent listener
-      const unsub = listenAuth((u) => {
-        setFirebaseUser(u);
-        setLoading(false);
-      });
-      return () => unsub();
-    });
+    // 1️⃣ redirect result (first load after Google)
+    (async () => {
+      try {
+        const res = await getRedirectUser();
+        if (res?.user) setUser(res.user);
+      } catch (e) { console.error(e); firebaseSignOut(); }
+    })();
+
+    // 2️⃣ listener – runs always
+    const un = listenAuth(u => { setUser(u); setLoad(false); });
+    return () => un();
   }, []);
 
-  return {
-    user: firebaseUser,
-    isLoading: loading,
-    isAuthenticated: !!firebaseUser,
-    logout: firebaseSignOut,
-  };
-};
+  return { user, isAuthenticated: !!user, isLoading: loading };
+}
