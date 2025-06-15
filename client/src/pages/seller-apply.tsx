@@ -3,7 +3,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Store, ArrowLeft, Rocket, Percent, Zap, Headphones, Globe } from "lucide-react";
 import { Link } from "wouter";
-import SellerApplicationModal from "@/components/seller-application-modal";
+import SellerRegistrationModal from "@/components/seller-registration-modal";
 
 export default function SellerApplyPage() {
   const { signOut } = useAuth();
