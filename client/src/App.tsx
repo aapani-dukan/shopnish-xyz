@@ -1,52 +1,37 @@
 // src/App.tsx
+import { Switch, Route } from "wouter";
+import { queryClient } from "./lib/queryClient";
+import { QueryClientProvider } from "@tanstack/react-query";
+import { Toaster } from "@/components/ui/toaster";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import Home from "@/pages/home";
+import ProductDetail from "@/pages/product-detail";
+import Cart from "@/pages/cart";
+import Checkout from "@/pages/checkout";
+import NotFound from "@/pages/not-found";
 
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { useAuth } from "@/hooks/useAuth"; // Make sure the path is correct
-
-import Login from "@/pages/login"; // Make sure the path is correct
-import Dashboard from "@/pages/Dashboard"; // Make sure the path is correct
-
-export default function App() {
-  const { isAuthenticated, isLoading } = useAuth();
-
-  // Show a loading screen while authentication state is being determined
-  if (isLoading) {
-    return (
-      <div style={{
-        display: "flex",
-        height: "100vh",
-        alignItems: "center",
-        justifyContent: "center",
-        fontSize: "24px",
-        color: "#555",
-        fontFamily: "Arial, sans-serif",
-        backgroundColor: "#fff"
-      }}>
-        Loading authentication...
-      </div>
-    );
-  }
-
+function Router() {
   return (
-    <BrowserRouter>
-      <Routes>
-        {/* Public Route: Login Page */}
-        {/* If authenticated, redirect to Dashboard; otherwise, show Login page */}
-        <Route
-          path="/"
-          element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <Login />}
-        />
-
-        {/* Private Route: Dashboard Page */}
-        {/* If authenticated, show Dashboard; otherwise, redirect to Login page */}
-        <Route
-          path="/dashboard"
-          element={isAuthenticated ? <Dashboard /> : <Navigate to="/" replace />}
-        />
-
-        {/* Catch-all route: Redirects any unknown path to the home page */}
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </BrowserRouter>
+    <Switch>
+      <Route path="/" component={Home} />
+      <Route path="/product/:id" component={ProductDetail} />
+      <Route path="/cart" component={Cart} />
+      <Route path="/checkout" component={Checkout} />
+      <Route component={NotFound} />
+    </Switch>
   );
 }
+
+function App() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <Toaster />
+        <Router />
+      </TooltipProvider>
+    </QueryClientProvider>
+  );
+}
+
+export default A
+  pp;
