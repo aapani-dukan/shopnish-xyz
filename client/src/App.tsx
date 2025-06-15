@@ -85,8 +85,9 @@ return ( <Switch> {/* -------- Authentication -------- */} <Route path="/auth"> 
 
 /**
 
-Root component: wires up providers & router. */ function App() { return ( <QueryClientProvider client={queryClient}> <TooltipProvider> <AuthProvider> <Toaster /> <AppRouter /> </AuthProvider> </TooltipProvider> </QueryClientProvide
-                                                                                                                                                                                                                     r> ); }
+Root component: wires up providers & router. */ function App() { return ( <QueryClientProvider client={queryClient}> <TooltipProvider> <AuthProvider> <Toaster /> <AppRouter /> </AuthProvider> </TooltipProvider> </QueryClientProvider>
+    );
+         }
 
 
 export default App;
