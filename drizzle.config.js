@@ -5,7 +5,7 @@ module.exports = defineConfig({
   out: './server/migrations',            // ← migrations यहीं बनेंगी
   dialect: 'postgresql',                 // ← enum-value ठीक
   dbCredentials: {
-    url: 'postgresql://neondb_owner:npg_98LZoDWjpxkK@ep-falling-mud-a8ib7jxz-pooler.eastus2.azure.neon.tech/neondb?sslmode=require',
+    postgresql://shopnishu_user:LDaO1MrBi45i7kVzcrU2VekEkNkeJUKH@dpg-d16qqtgdl3ps739nvv90-a.oregon-postgres.render.com/shopnish_db
     // ↑ NOTE: फ़ील्ड-नाम “url” है, “connectionString” नहीं
   },
 });
