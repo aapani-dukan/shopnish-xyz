@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useCartStore } from "@/lib/store";
 import CartModal from "./cart-modal";
-import { startGoogleLogin } from "@/lib/firebase";
+import { signInWithGoogle } from "@/lib/firebase";     // ⬅️ popup-flow
 
 interface Category {
   id: number;
@@ -59,7 +59,7 @@ export default function Header({ categories }: HeaderProps) {
                 <Button
                   type="submit"
                   size="sm"
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 p-0 h-auto bg-transparent hover:bg-transparent text-gray-400 hover:text-primary"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 p-0 h-auto bg-transparent hover:bg-transparent text-gray-400 hover:text-primary"
                 >
                   <Search className="h-4 w-4" />
                 </Button>
@@ -78,7 +78,7 @@ export default function Header({ categories }: HeaderProps) {
                 onClick={() => {
                   console.log("🟢 Seller login started");
                   sessionStorage.setItem("loginRole", "seller");
-                  startGoogleLogin("seller");
+                  signInWithGoogle();               // ⬅️ popup login
                 }}
                 variant="outline"
                 className="ml-4"
