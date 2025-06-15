@@ -1,5 +1,2 @@
+# Sensitive
 .env
-node_modules/
-dist/
-client/dist/
-server/migrations/
