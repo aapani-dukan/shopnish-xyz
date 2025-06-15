@@ -5,6 +5,6 @@ module.exports = defineConfig({
   out: './server/migrations',
   dialect: 'postgresql',
   dbCredentials: {
-    url: 'postgresql://shopnishu_user:LDaO1MrBi45i7kVzcrU2VekEkNkeJUKH@dpg-d16qqtgdl3ps739nvv90-a.oregon-postgres.render.com/shopnish_db?sslmode=require',
+    url: 'postgresql://shopnishu_user:LDaO1MrBi45i7kVzcrU2VekEkNkeJUKH@dpg-d16qqtgdl3ps739nvv90-a/shopnish_db',
   },
 });
