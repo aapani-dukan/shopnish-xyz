@@ -1,11 +1,12 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { Link, useLocation } from "wouter";
-import { Search, Heart, ShoppingCart, User, Menu } from "lucide-react";
+import { Search, Heart, ShoppingCart, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useCartStore } from "@/lib/store";
 import CartModal from "./cart-modal";
+import { signInWithGoogle } from "@/lib/firebase";     // ⬅️ popup-flow
 
 interface Category {
   id: number;
@@ -21,7 +22,7 @@ export default function Header({ categories }: HeaderProps) {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [, setLocation] = useLocation();
-  const totalItems = useCartStore(state => state.getTotalItems());
+  const totalItems = useCartStore((state) => state.getTotalItems());
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -58,7 +59,7 @@ export default function Header({ categories }: HeaderProps) {
                 <Button
                   type="submit"
                   size="sm"
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 p-0 h-auto bg-transparent hover:bg-transparent text-gray-400 hover:text-primary"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 p-0 h-auto bg-transparent hover:bg-transparent text-gray-400 hover:text-primary"
                 >
                   <Search className="h-4 w-4" />
                 </Button>
@@ -71,7 +72,21 @@ export default function Header({ categories }: HeaderProps) {
                 <Heart className="h-5 w-5" />
                 <span className="sr-only">Wishlist</span>
               </Button>
-              
+
+              {/* Become a Seller */}
+              <Button
+                onClick={() => {
+                  console.log("🟢 Seller login started");
+                  sessionStorage.setItem("loginRole", "seller");
+                  signInWithGoogle();               // ⬅️ popup login
+                }}
+                variant="outline"
+                className="ml-4"
+              >
+                Become a Seller
+              </Button>
+
+              {/* Cart Button */}
               <Button
                 variant="ghost"
                 size="sm"
@@ -86,7 +101,8 @@ export default function Header({ categories }: HeaderProps) {
                 )}
                 <span className="sr-only">Shopping cart</span>
               </Button>
-              
+
+              {/* Account Icon */}
               <Button variant="ghost" size="sm" className="text-gray-600 hover:text-primary">
                 <User className="h-5 w-5" />
                 <span className="sr-only">Account</span>
@@ -111,6 +127,7 @@ export default function Header({ categories }: HeaderProps) {
         </div>
       </header>
 
+      {/* Cart Modal */}
       <CartModal isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} />
     </>
   );
