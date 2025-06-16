@@ -1,4 +1,3 @@
-// client/src/pages/products.tsx
 import { Router, Request, Response, NextFunction } from "express";
 
 
