@@ -1,46 +1,50 @@
-// client/src/pages/landing.tsx
-import { Button } from "@/components/ui/button";
-import { initiateGoogleSignInRedirect } from "@/lib/firebase"; // Firebase फंक्शन को इम्पोर्ट करें
-import { useAuth } from "@/hooks/useAuth"; // useAuth इम्पोर्ट करें
-import { useLocation } from "wouter"; // useLocation इम्पोर्ट करें
+"use client";
+
+import { signInWithGoogle } from "@/lib/firebase"; // popup वाला function import करें
 import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
 
-export default function Landing() {
-  const { isAuthenticated, isLoading } = useAuth();
-  const [, setLocation] = useLocation();
+export default function LandingPage() {
+  const router = useRouter();
 
-  // यदि उपयोगकर्ता पहले से लॉग इन है, तो उसे होम पेज पर रीडायरेक्ट करें
-  useEffect(() => {
-    if (!isLoading && isAuthenticated) {
-      console.log("Landing page: User already authenticated, redirecting to home.");
-      setLocation("/");
+  const handleGoogleLogin = async () => {
+    try {
+      const result = await signInWithGoogle();
+      const user = result.user;
+
+      if (user) {
+        const idToken = await user.getIdToken();
+
+        const response = await fetch("/api/auth/me", {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${idToken}`,
+            "Content-Type": "application/json",
+          },
+        });
+
+        const userData = await response.json();
+
+        // 🔀 रीडायरेक्शन लॉजिक यूज़र के role/status के हिसाब से करें
+        if (userData.role === "seller") {
+          if (userData.approvalStatus === "approved") {
+            router.push("/seller-dashboard");
+          } else {
+            router.push("/register-seller");
+          }
+        } else {
+          router.push("/"); // General customer
+        }
+      }
+    } catch (error) {
+      console.error("Google login failed:", error);
     }
-  }, [isAuthenticated, isLoading, setLocation]);
-
-  const handleGoogleLogin = () => {
-    console.log("🔵 Landing.tsx: Initiating Google Sign-in Redirect.");
-    // sessionStorage.setItem("loginRole", "customer"); // यदि आप ग्राहक के लिए डिफ़ॉल्ट भूमिका चाहते हैं, तो यहां सेट करें
-    initiateGoogleSignInRedirect(); // Firebase Google Sign-in Redirect शुरू करें
   };
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-100 px-4">
-        <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" />
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100 px-4">
-      <div className="bg-white p-8 rounded-2xl shadow-md w-full max-w-sm text-center space-y-6">
-        <h1 className="text-2xl font-bold text-gray-800">Welcome to Aap Ka Mall</h1>
-        <p className="text-gray-600">Please login with Google to continue</p>
-
-        <Button onClick={handleGoogleLogin}>
-          Continue with Google
-        </Button>
-      </div>
+    <div className="min-h-screen flex items-center justify-center bg-gray-100">
+      <Button onClick={handleGoogleLogin}>Login with Google</Button>
     </div>
   );
 }
