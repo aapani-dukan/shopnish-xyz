@@ -5,13 +5,12 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
-const __dirname  = path.dirname(__filename);
+const __dirname = path.dirname(__filename);
 
 export default defineConfig(({ command }) => {
   const isProduction = command === 'build';
 
   return {
-    // Vite will watch files inside client/ (default “.” here - because we are already **inside** client)
     root: './',
     base: isProduction ? './' : '/',
 
@@ -24,11 +23,11 @@ export default defineConfig(({ command }) => {
 
     resolve: {
       alias: {
-        '@':       path.resolve(__dirname, './src'),
-        '@shared': path.resolve(__dirname, '..', 'shared'), // browser-safe shared code
-        buffer:    'buffer/',
-        stream:    'stream-browserify',
-        util:      'util/'
+        '@': path.resolve(__dirname, './src'),
+        '@shared': path.resolve(__dirname, '..', 'shared'),
+        buffer: 'buffer/',
+        stream: 'stream-browserify',
+        util: 'util/'
       }
     },
 
@@ -40,8 +39,7 @@ export default defineConfig(({ command }) => {
     },
 
     build: {
-      // ⬇️  **Key change** — output goes one level up, into root/dist
-      outDir: path.resolve(__dirname, 'dist/public'),
+      outDir: path.resolve(__dirname, '..', 'dist/public'),  // ✅ IMPORTANT FIX
       emptyOutDir: true,
       sourcemap: true,
       chunkSizeWarningLimit: 1000,
