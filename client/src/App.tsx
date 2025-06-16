@@ -18,6 +18,7 @@ import SellerDashboard from "@/pages/seller-dashboard";
 import SellerApplyPage from "@/pages/seller-apply";
 import SellerStatusPage from "@/pages/seller-status";
 import NotFound from "@/pages/not-found";
+import AdminDashboard from "@/pages/admin-dashboard"; // ✅ ADDED
 
 // Loader UI
 function Loader() {
@@ -47,7 +48,7 @@ function SellerProtectedRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
-// All routing and redirection logic
+// AppRouter with all logic
 function AppRouter() {
   const { firebaseUser, loading: authLoading, user } = useAuth();
   const { isSeller, seller, isLoading: sellerLoading } = useSeller();
@@ -57,18 +58,16 @@ function AppRouter() {
   const isLoading = authLoading || sellerLoading;
 
   useEffect(() => {
-    console.log("--- AppRouter State Update ---");
-    console.log("  isLoading:", isLoading);
-    console.log("  firebaseUser:", firebaseUser);
-    console.log("  isSeller:", isSeller);
-    console.log("  seller status:", seller?.approvalStatus);
-    console.log("  currentPath:", currentPath);
-    console.log("----------------------------");
+    console.log("--- AppRouter State ---");
+    console.log("firebaseUser:", firebaseUser);
+    console.log("isSeller:", isSeller);
+    console.log("seller:", seller);
+    console.log("path:", currentPath);
   }, [isLoading, firebaseUser, isSeller, seller, currentPath]);
 
   if (isLoading) return <Loader />;
 
-  // Case 1: Not logged in
+  // Not logged in
   if (!firebaseUser) {
     if (currentPath !== "/" && currentPath !== "/auth") {
       setLocation("/");
@@ -79,14 +78,11 @@ function AppRouter() {
         <Route path="/" component={AuthPage} />
         <Route path="/auth" component={AuthPage} />
         <Route component={NotFound} />
-           <Route path="/" component={Home} />
-      
-      <Route path="/seller-dashboard" component={SellerDashboard} />
       </Switch>
     );
   }
 
-  // Case 2: Seller logic
+  // Seller-specific routing
   if (isSeller) {
     if (seller?.approvalStatus === "approved") {
       if (
@@ -155,13 +151,20 @@ function AppRouter() {
         </ProtectedRoute>
       </Route>
 
-      {/* Fallback */}
+      {/* Admin Route (optional, for future use) */}
+      <Route path="/admin-dashboard">
+        <ProtectedRoute>
+          <AdminDashboard />
+        </ProtectedRoute>
+      </Route>
+
+      {/* 404 */}
       <Route component={NotFound} />
     </Switch>
   );
 }
 
-// Root App component
+// Root App Component
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
