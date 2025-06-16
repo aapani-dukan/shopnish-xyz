@@ -79,6 +79,9 @@ function AppRouter() {
         <Route path="/" component={AuthPage} />
         <Route path="/auth" component={AuthPage} />
         <Route component={NotFound} />
+           <Route path="/" component={Home} />
+      <Route path="/admin-dashboard" component={AdminDashboard} />
+      <Route path="/seller-dashboard" component={SellerDashboard} />
       </Switch>
     );
   }
