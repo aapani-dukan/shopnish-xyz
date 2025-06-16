@@ -11,7 +11,8 @@ const firebaseConfig = {
   appId: "1:352463214204:web:a3adc9ef1d8af0de1fdbf9"
 };
 
-const app = initializeApp(firebaseConfig);
+// Firebase ऐप को इनिशियलाइज़ करें और इसे एक्सपोर्ट करें
+export const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 
 const provider = new GoogleAuthProvider();
