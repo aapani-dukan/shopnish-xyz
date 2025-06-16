@@ -41,7 +41,7 @@ export default defineConfig(({ command }) => {
 
     build: {
       // ⬇️  **Key change** — output goes one level up, into root/dist
-      outDir: path.resolve(__dirname, 'dist'),
+      outDir: path.resolve(__dirname, 'dist,public'),
       emptyOutDir: true,
       sourcemap: true,
       chunkSizeWarningLimit: 1000,
