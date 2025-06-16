@@ -70,7 +70,7 @@
 /* ✅ Base styles using Tailwind utilities */
 @layer base {
   * {
-    @apply border-border;
+    @apply border;
   }
 
   body {
