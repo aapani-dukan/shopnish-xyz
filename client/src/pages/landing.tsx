@@ -1,12 +1,12 @@
 "use client";
 
-import { signInWithGoogle } from "@/lib/firebase"; // popup वाला function import करें
+import { signInWithGoogle } from "@/lib/firebase";
 import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 
 export default function LandingPage() {
-  const router = useRouter();
+  const navigate = useNavigate();
 
   const handleGoogleLogin = async () => {
     try {
@@ -26,15 +26,14 @@ export default function LandingPage() {
 
         const userData = await response.json();
 
-        // 🔀 रीडायरेक्शन लॉजिक यूज़र के role/status के हिसाब से करें
         if (userData.role === "seller") {
           if (userData.approvalStatus === "approved") {
-            router.push("/seller-dashboard");
+            navigate("/seller-dashboard");
           } else {
-            router.push("/register-seller");
+            navigate("/register-seller");
           }
         } else {
-          router.push("/"); // General customer
+          navigate("/");
         }
       }
     } catch (error) {
