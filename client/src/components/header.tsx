@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useCartStore } from "@/lib/store";
 import CartModal from "./cart-modal";
-import { signInWithGoogle } from "@/lib/firebase";     // ⬅️ popup-flow
+import { startGoogleLogin } from "@/lib/firebase"; // ✅ import Google login handler
 
 interface Category {
   id: number;
@@ -59,7 +59,7 @@ export default function Header({ categories }: HeaderProps) {
                 <Button
                   type="submit"
                   size="sm"
-                  className="absolute right-3 top-1/2 -translate-y-1/2 p-0 h-auto bg-transparent hover:bg-transparent text-gray-400 hover:text-primary"
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 p-0 h-auto bg-transparent hover:bg-transparent text-gray-400 hover:text-primary"
                 >
                   <Search className="h-4 w-4" />
                 </Button>
@@ -73,12 +73,12 @@ export default function Header({ categories }: HeaderProps) {
                 <span className="sr-only">Wishlist</span>
               </Button>
 
-              {/* Become a Seller */}
+              {/* ✅ Updated Become a Seller button with role tag */}
               <Button
                 onClick={() => {
                   console.log("🟢 Seller login started");
-                  sessionStorage.setItem("loginRole", "seller");
-                  signInWithGoogle();               // ⬅️ popup login
+                  sessionStorage.setItem("loginRole", "seller"); // ✅ role stored
+                  startGoogleLogin("seller"); // ✅ redirect-based login
                 }}
                 variant="outline"
                 className="ml-4"
@@ -86,7 +86,6 @@ export default function Header({ categories }: HeaderProps) {
                 Become a Seller
               </Button>
 
-              {/* Cart Button */}
               <Button
                 variant="ghost"
                 size="sm"
@@ -102,7 +101,6 @@ export default function Header({ categories }: HeaderProps) {
                 <span className="sr-only">Shopping cart</span>
               </Button>
 
-              {/* Account Icon */}
               <Button variant="ghost" size="sm" className="text-gray-600 hover:text-primary">
                 <User className="h-5 w-5" />
                 <span className="sr-only">Account</span>
@@ -127,7 +125,7 @@ export default function Header({ categories }: HeaderProps) {
         </div>
       </header>
 
-      {/* Cart Modal */}
+      {/* Modals */}
       <CartModal isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} />
     </>
   );
