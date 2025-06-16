@@ -1,47 +1,65 @@
-// server/vite.ts
 import express, { type Express } from "express";
-import fs   from "fs";
+import fs from "fs";
 import path from "path";
-import { fileURLToPath } from "url";
 import { createServer as createViteServer, createLogger } from "vite";
 import { type Server } from "http";
+import viteConfig from "../vite.config";
 import { nanoid } from "nanoid";
 
-/* ───────────── helpers ───────────── */
-const __filename = fileURLToPath(import.meta.url);
-const __dirname  = path.dirname(__filename);
 const viteLogger = createLogger();
 
-export function log(msg: string, src = "express") {
-  const t = new Date().toLocaleTimeString("en-US", { hour12: true });
-  console.log(`${t} [${src}] ${msg}`);
+export function log(message: string, source = "express") {
+  const formattedTime = new Date().toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: true,
+  });
+
+  console.log(`${formattedTime} [${source}] ${message}`);
 }
 
-/* ───────────── Dev mode (HMR) ───────────── */
 export async function setupVite(app: Express, server: Server) {
+  const serverOptions = {
+    middlewareMode: true,
+    hmr: { server },
+    allowedHosts: true,
+  };
+
   const vite = await createViteServer({
+    ...viteConfig,
     configFile: false,
     customLogger: {
       ...viteLogger,
-      error: (m, o) => { viteLogger.error(m, o); process.exit(1); }
+      error: (msg, options) => {
+        viteLogger.error(msg, options);
+        process.exit(1);
+      },
     },
-    server: { middlewareMode: true, hmr: { server }, allowedHosts: true },
-    appType: "custom"
+    server: serverOptions,
+    appType: "custom",
   });
 
   app.use(vite.middlewares);
-
-  // fresh index.html each request
   app.use("*", async (req, res, next) => {
+    const url = req.originalUrl;
+
     try {
-      const tpl = path.resolve(__dirname, "..", "client", "index.html");
-      let html  = await fs.promises.readFile(tpl, "utf-8");
-      html      = html.replace(
-        'src="/src/main.tsx"',
-        `src="/src/main.tsx?v=${nanoid()}"`
+      const clientTemplate = path.resolve(
+        import.meta.dirname,
+        "..",
+        "client",
+        "index.html",
       );
-      html      = await vite.transformIndexHtml(req.originalUrl, html);
-      res.status(200).type("html").end(html);
+
+      // always reload the index.html file from disk incase it changes
+      let template = await fs.promises.readFile(clientTemplate, "utf-8");
+      template = template.replace(
+        `src="/src/main.tsx"`,
+        `src="/src/main.tsx?v=${nanoid()}"`,
+      );
+      const page = await vite.transformIndexHtml(url, template);
+      res.status(200).set({ "Content-Type": "text/html" }).end(page);
     } catch (e) {
       vite.ssrFixStacktrace(e as Error);
       next(e);
@@ -49,20 +67,19 @@ export async function setupVite(app: Express, server: Server) {
   });
 }
 
-/* ───────────── Prod mode (static) ───────────── */
 export function serveStatic(app: Express) {
-  const distPath = path.resolve(__dirname, "..", "client", "dist");
-  log(`Serving static files from: ${distPath}`);
+  const distPath = path.resolve(import.meta.dirname, "public");
 
   if (!fs.existsSync(distPath)) {
-    throw new Error(`❌ Build folder not found: ${distPath}. Run "npm run build" first.`);
+    throw new Error(
+      `Could not find the build directory: ${distPath}, make sure to build the client first`,
+    );
   }
 
-  // assets
   app.use(express.static(distPath));
 
-  // SPA fallback
-  app.get("*", (_req, res) => {
-    res.sendFile(path.join(distPath, "index.html"));
+  // fall through to index.html if the file doesn't exist
+  app.use("*", (_req, res) => {
+    res.sendFile(path.resolve(distPath, "index.html"));
   });
 }

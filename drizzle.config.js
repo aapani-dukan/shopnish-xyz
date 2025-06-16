@@ -1,10 +1,14 @@
-const { defineConfig } = require('drizzle-kit');
+ror("DATABASE_URL, ensure the database is provisioned");
+};
 
-module.exports = defineConfig({
-  schema: './shared/backend/schema.ts',
-  out: './server/migrations',
-  dialect: 'postgresql',
+if (!process.env.DATABASE_URL) {
+  throw new Er
+
+export default defineConfig({
+  out: "./miimport { defineConfig } from "drizzle-kit"grations",
+  schema: "./shared/schema.ts",
+  dialect: "postgresql",
   dbCredentials: {
-    url: 'postgresql://shopnishu_user:LDaO1MrBi45i7kVzcrU2VekEkNkeJUKH@dpg-d16qqtgdl3ps739nvv90-a.oregon-postgres.render.com/shopnish_db?sslmode=require',
+    url: process.env.DATABASE_URL,
   },
 });

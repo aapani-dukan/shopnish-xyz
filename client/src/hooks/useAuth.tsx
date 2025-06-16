@@ -1,66 +1,79 @@
 // src/hooks/useAuth.ts
+import { createContext, useContext, useEffect, useState } from "react";
+import { User as FirebaseUser, onAuthStateChanged } from "firebase/auth";
+import { auth, handleRedirectResult } from "@/lib/firebase";
+import { apiRequest } from "@/lib/queryClient";
+import { User } from "@shared/schema";
 
-import { useState, useEffect } from "react";
-import { User } from "firebase/auth"; // Import User type
-import {
-  listenForAuthChanges,
-  getRedirectUserResult,
-  firebaseSignOut,
-} from "@/lib/firebase";
-
-interface AuthState {
+interface AuthContextType {
+  firebaseUser: FirebaseUser | null;
   user: User | null;
-  isAuthenticated: boolean;
-  isLoading: boolean;
+  loading: boolean;
+  signOut: () => Promise<void>;
 }
 
-export function useAuth(): AuthState {
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    let isMounted = true; // To prevent state updates on unmounted component
-
-    // Handle potential redirect result first
-    const handleRedirectResult = async () => {
-      try {
-        const result = await getRedirectUserResult();
-        if (isMounted && result?.user) {
-          setUser(result.user);
-          // setLoading(false); // We'll let the listener handle final loading state
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      setFirebaseUser(firebaseUser);
+      
+      if (firebaseUser) {
+        try {
+          // Create or get user in our database
+          const userData = {
+            firebaseUid: firebaseUser.uid,
+            email: firebaseUser.email!,
+            name: firebaseUser.displayName || firebaseUser.email!,
+          };
+          
+          const response = await apiRequest("POST", "/api/users", userData);
+          const user = await response.json();
+          setUser(user);
+        } catch (error) {
+          console.error("Error creating/fetching user:", error);
         }
-      } catch (error) {
-        if (isMounted) {
-          console.error("Error during redirect result:", error);
-          // Optional: Force sign out on redirect error
-          firebaseSignOut();
-        }
-      } finally {
-        // This ensures that after redirect attempt, the listener takes over.
-        // We set loading to false via the listener below.
+      } else {
+        setUser(null);
       }
-    };
-
-    handleRedirectResult();
-
-    // Listen for auth state changes (this runs immediately and then on changes)
-    const unsubscribe = listenForAuthChanges((currentUser) => {
-      if (isMounted) {
-        setUser(currentUser);
-        setLoading(false); // Set loading to false once initial auth state is known
-      }
+      
+      setLoading(false);
     });
 
-    // Cleanup function: unsubscribe from auth listener and set isMounted to false
-    return () => {
-      isMounted = false;
-      unsubscribe();
-    };
-  }, []); // Empty dependency array means this runs once on mount
+    return unsubscribe;
+  }, []);
 
-  return {
-    user,
-    isAuthenticated: !!user, // Convert user object to boolean (true if user exists)
-    isLoading: loading,
+  const signOut = async () => {
+    try {
+      await auth.signOut();
+    } catch (error) {
+      console.error("Error signing out:", error);
+    }
   };
+
+  return (
+    <AuthContext.Provider
+      value={{
+        firebaseUser,
+        user,
+        loading,
+        signOut,
+      }}
+    >
+      {children}
+    </AuthContext.Provider>
+  );
+}
+
+export function useAuth() {
+  const context = useContext(AuthContext);
+  if (context === undefined) {
+    throw new Error("useAuth must be used within an AuthProvider");
+  }
+  return context;
 }
