@@ -1,3 +1,4 @@
+// Client/src/pages/delivery-login.tsx
 import { useEffect, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -5,8 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useLocation } from "wouter";
 import { apiRequest } from "@/lib/queryClient";
 import { Truck } from "lucide-react";
-import { getAuth, GoogleAuthProvider, signInWithPopup } from "firebase/auth";
-import { app } from "@/lib/firebase";
+import { signInWithGooglePopup } from "@/lib/firebase"; // Common function import
 
 export default function DeliveryLogin() {
   const [, navigate] = useLocation();
@@ -16,9 +16,8 @@ export default function DeliveryLogin() {
   const handleFirebasePopupLogin = async () => {
     setLoading(true);
     try {
-      const auth = getAuth(app);
-      const provider = new GoogleAuthProvider();
-      const result = await signInWithPopup(auth, provider);
+      // Use the common Firebase sign-in function
+      const result = await signInWithGooglePopup();
       const user = result.user;
 
       // Send token to backend
@@ -33,7 +32,7 @@ export default function DeliveryLogin() {
         Authorization: `Bearer ${token}`,
       });
 
-      if (res.user.approvalStatus === "approved") {
+      if (res.user && res.user.approvalStatus === "approved") {
         toast({ title: "Login Successful", description: `Welcome ${res.user.firstName}` });
         navigate("/delivery-dashboard");
       } else {
