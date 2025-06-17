@@ -59,5 +59,3 @@ if (!location.startsWith("/")) {
 
 return null;
 }
-Eh code google se aaye user ko pakadega ya nahi
-
