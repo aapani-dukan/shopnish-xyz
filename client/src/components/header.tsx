@@ -1,8 +1,8 @@
+// Header.tsx
 import React from "react";
 import { useCartStore } from "@/lib/store";
 import CartModal from "./cart-modal";
-import { signInWithGoogle } from "@/lib/firebase";
-import { Link } from "wouter"; // ✅ Correct for Wouter
+import { Link, useLocation } from "wouter";
 
 interface Category {
   id: string;
@@ -15,14 +15,7 @@ interface HeaderProps {
 
 const Header: React.FC<HeaderProps> = ({ categories }) => {
   const { items, isCartOpen, toggleCart } = useCartStore();
-
-  const handleLogin = async () => {
-    try {
-      await signInWithGoogle();
-    } catch (error) {
-      console.error("❌ Google login failed:", error);
-    }
-  };
+  const [, navigate] = useLocation();
 
   return (
     <header className="bg-white shadow-md px-4 py-3 flex items-center justify-between">
@@ -55,8 +48,9 @@ const Header: React.FC<HeaderProps> = ({ categories }) => {
           )}
         </button>
 
+        {/* 👇 Only navigates to Auth Page */}
         <button
-          onClick={handleLogin}
+          onClick={() => navigate("/login")}
           className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
         >
           Become a Seller
