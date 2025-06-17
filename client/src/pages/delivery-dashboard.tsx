@@ -1,4 +1,4 @@
-"use client";
+
 
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";           // ⬅️ react-router v6
