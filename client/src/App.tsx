@@ -1,3 +1,4 @@
+// Client/src/App.tsx
 import { Switch, Route } from "wouter";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "./lib/queryClient";
@@ -21,12 +22,12 @@ import DeliveryDashboard from "@/pages/delivery-dashboard";
 import DeliveryApplyPage from "@/pages/delivery-apply";
 
 // ✅ Centralized auth-based routing
-import { AuthRedirectGuard } from "@/components/auth-redirect-guard";
+import { AuthRedirectGuard } from "@/components/auth-redirect-guard"; // यह शायद src/guards/AuthRedirectGuard.tsx है
 
 function AppRouter() {
   return (
     <>
-      <AuthRedirectGuard />
+      {/* AuthRedirectGuard अब सिर्फ एक जगह App component में होगा */}
 
       <Switch>
         {/* Public and Customer Routes */}
@@ -61,7 +62,8 @@ function App() {
       <TooltipProvider>
         <AuthProvider>
           <Toaster />
-          <AuthRedirectGuard /> 
+          {/* AuthRedirectGuard को यहां रखें, AppRouter के बाहर */}
+          <AuthRedirectGuard />
           <AppRouter />
         </AuthProvider>
       </TooltipProvider>
