@@ -61,6 +61,7 @@ function App() {
       <TooltipProvider>
         <AuthProvider>
           <Toaster />
+          <AuthRedirectGuard /> 
           <AppRouter />
         </AuthProvider>
       </TooltipProvider>
