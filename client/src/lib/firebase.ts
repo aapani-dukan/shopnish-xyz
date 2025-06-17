@@ -1,3 +1,4 @@
+// Client/src/lib/firebase.ts
 // src/lib/firebase.ts
 import { initializeApp } from "firebase/app";
 import { getAuth, signInWithPopup, getRedirectResult, GoogleAuthProvider, signOut } from "firebase/auth";
