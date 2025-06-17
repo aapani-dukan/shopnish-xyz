@@ -1,37 +1,92 @@
-import { useState } from "react"; import { useMutation } from "@tanstack/react-query"; import { useLocation } from "wouter"; import { Card, CardContent, CardHeader, CardTitle, Button, Input, Label, } from "@/components/ui"; // ← barrel export (adjust if needed) import { Truck } from "lucide-react"; import { useToast } from "@/hooks/use-toast"; import { apiRequest } from "@/lib/queryClient";
+import { useState } from "react";
+import { useToast } from "@/hooks/use-toast";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useLocation } from "wouter";
+import { apiRequest } from "@/lib/queryClient";
+import { Truck } from "lucide-react";
 
-/**
+export default function DeliveryLogin() {
+  const [, navigate] = useLocation();
+  const { toast } = useToast();
 
-DeliveryLogin (simplified)
+  const [loading, setLoading] = useState(false);
 
-1️⃣ "Login"  ─ checks approval status → dashboard OR toast "please register first"
+  const handleLogin = async () => {
+    setLoading(true);
+    try {
+      const email = localStorage.getItem("deliveryBoyEmail");
+      const token = localStorage.getItem("deliveryBoyToken");
 
-2️⃣ "Register" ─ navigates to /delivery-apply for form submission */ export default function DeliveryLogin() { const [, navigate] = useLocation(); const { toast }  = useToast();
+      if (!email || !token) {
+        toast({
+          title: "Not Logged In",
+          description: "Please register or login to continue.",
+          variant: "destructive",
+        });
+        setLoading(false);
+        return;
+      }
 
+      const res = await apiRequest("GET", "/api/delivery/me", null, {
+        Authorization: `Bearer ${token}`,
+      });
 
-const [email, setEmail] = useState(""); const [password, setPassword] = useState("");
+      if (res.user.approvalStatus === "approved") {
+        navigate("/delivery-dashboard");
+      } else {
+        toast({
+          title: "Approval Pending",
+          description: "You are not approved yet. Please wait for admin approval.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Login Failed",
+        description: "Invalid or expired session. Please register or try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
-/* ——— login mutation ——— */ const loginMutation = useMutation({ mutationFn: async (payload: { email: string; password: string }) => { // backend returns { approved: boolean, token: string, deliveryBoyId: string } return apiRequest("POST", "/api/delivery/login", payload).then(r => r.json()); }, onSuccess: (data) => { if (data.approved) { localStorage.setItem("deliveryBoyToken", data.token); localStorage.setItem("deliveryBoyId",   data.deliveryBoyId); navigate("/delivery-dashboard"); } else { toast({ title: "Approval Pending", description: "Please register first or wait for admin approval.", variant: "destructive", }); } }, onError: () => { toast({ title: "Login Failed", description: "Invalid credentials.", variant: "destructive", }); }, });
+  const handleRegister = () => {
+    navigate("/delivery-apply");
+  };
 
-const handleLoginClick = () => { if (!email || !password) { toast({ title: "Required", description: "Enter email & password", variant: "destructive" }); return; } loginMutation.mutate({ email, password }); };
-
-return ( <div className="min-h-screen flex items-center justify-center bg-blue-50 py-10 px-4"> <Card className="w-full max-w-md shadow-lg"> <CardHeader className="text-center space-y-2"> <div className="mx-auto w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center"> <Truck className="w-8 h-8 text-white" /> </div> <CardTitle>Welcome Delivery Partner</CardTitle> <p className="text-sm text-gray-600">Choose an option below</p> </CardHeader> <CardContent className="space-y-6"> {/* simple email/password inputs */} <div className="space-y-4"> <div> <Label htmlFor="d-email">Email</Label> <Input id="d-email" value={email} onChange={e => setEmail(e.target.value)} placeholder="john@delivery.com" /> </div> <div> <Label htmlFor="d-pass">Password</Label> <Input id="d-pass" type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••" /> </div> </div>
-
-<Button className="w-full" onClick={handleLoginClick} disabled={loginMutation.isPending}>
-        {loginMutation.isPending ? "Checking…" : "Login"}
-      </Button>
-
-      <div className="flex items-center justify-center">
-        <span className="text-xs text-gray-500">OR</span>
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 px-4 py-12">
+      <div className="max-w-md w-full">
+        <Card className="shadow-xl">
+          <CardHeader className="text-center">
+            <div className="w-16 h-16 mx-auto bg-blue-600 rounded-full flex items-center justify-center mb-4">
+              <Truck className="w-8 h-8 text-white" />
+            </div>
+            <CardTitle className="text-2xl font-bold">Welcome Delivery Boy</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <Button
+              className="w-full"
+              onClick={handleLogin}
+              disabled={loading}
+            >
+              {loading ? "Checking..." : "Login"}
+            </Button>
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={handleRegister}
+            >
+              Register
+            </Button>
+          </CardContent>
+        </Card>
+        <p className="mt-6 text-center text-sm text-gray-600">
+          Need help? Contact support@shopnish.com
+        </p>
       </div>
-
-      <Button variant="outline" className="w-full" onClick={() => navigate("/delivery-apply")}>  
-        Register as Delivery Boy
-      </Button>
-    </CardContent>
-  </Card>
-</div>
-
-); }
-
-                                                                
+    </div>
+  );
+}
