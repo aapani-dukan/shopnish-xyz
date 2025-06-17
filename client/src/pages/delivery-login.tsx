@@ -1,38 +1,40 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useLocation } from "wouter";
 import { apiRequest } from "@/lib/queryClient";
 import { Truck } from "lucide-react";
+import { getAuth, GoogleAuthProvider, signInWithPopup } from "firebase/auth";
+import { app } from "@/lib/firebase";
 
 export default function DeliveryLogin() {
   const [, navigate] = useLocation();
   const { toast } = useToast();
-
   const [loading, setLoading] = useState(false);
 
-  const handleLogin = async () => {
+  const handleFirebasePopupLogin = async () => {
     setLoading(true);
     try {
-      const email = localStorage.getItem("deliveryBoyEmail");
-      const token = localStorage.getItem("deliveryBoyToken");
+      const auth = getAuth(app);
+      const provider = new GoogleAuthProvider();
+      const result = await signInWithPopup(auth, provider);
+      const user = result.user;
 
-      if (!email || !token) {
-        toast({
-          title: "Not Logged In",
-          description: "Please register or login to continue.",
-          variant: "destructive",
-        });
-        setLoading(false);
-        return;
-      }
+      // Send token to backend
+      const token = await user.getIdToken();
 
+      // Save in localStorage
+      localStorage.setItem("deliveryBoyToken", token);
+      localStorage.setItem("deliveryBoyEmail", user.email || "");
+
+      // Call backend to check approval
       const res = await apiRequest("GET", "/api/delivery/me", null, {
         Authorization: `Bearer ${token}`,
       });
 
       if (res.user.approvalStatus === "approved") {
+        toast({ title: "Login Successful", description: `Welcome ${res.user.firstName}` });
         navigate("/delivery-dashboard");
       } else {
         toast({
@@ -41,10 +43,11 @@ export default function DeliveryLogin() {
           variant: "destructive",
         });
       }
-    } catch (error) {
+    } catch (err) {
+      console.error("Login failed:", err);
       toast({
         title: "Login Failed",
-        description: "Invalid or expired session. Please register or try again.",
+        description: "Something went wrong during login.",
         variant: "destructive",
       });
     } finally {
@@ -69,15 +72,16 @@ export default function DeliveryLogin() {
           <CardContent className="space-y-4">
             <Button
               className="w-full"
-              onClick={handleLogin}
+              onClick={handleFirebasePopupLogin}
               disabled={loading}
             >
-              {loading ? "Checking..." : "Login"}
+              {loading ? "Checking..." : "Login with Google"}
             </Button>
             <Button
               variant="outline"
               className="w-full"
               onClick={handleRegister}
+              disabled={loading}
             >
               Register
             </Button>
