@@ -1,61 +1,61 @@
-// client/src/components/auth-redirect-guard.tsx
 import { useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useLocation } from "wouter";
 
 export function AuthRedirectGuard() {
-const [location, navigate] = useLocation();
-const { user, loading } = useAuth();
+  const [location, navigate] = useLocation();
+  const { user, loading } = useAuth();
 
-useEffect(() => {
-if (loading) return;
+  useEffect(() => {
+    if (loading) return;
 
-// ✅ Public routes – allow access without login  
-const publicPaths = ["/", "/product", "/cart", "/checkout"];  
-const isPublic = publicPaths.some((path) =>  
-  location.startsWith(path)  
-);  
+    // 🧪 Debug logs
+    console.log("AuthRedirectGuard → location:", location);
+    console.log("AuthRedirectGuard → user:", user);
 
-if (isPublic) return;  
+    const publicPaths = ["/", "/product", "/cart", "/checkout"];
+    const isPublic = publicPaths.some((path) => location.startsWith(path));
 
-// 🔒 Redirect logic  
-if (!user) {  
-  navigate("/login");  
-  return;  
-}  
+    if (isPublic) return;
 
-// ✅ Seller redirect logic  
-if (user.role === "seller") {  
-  if (user.seller?.approvalStatus === "approved") {  
-    if (!location.startsWith("/seller-dashboard")) {  
-      navigate("/seller-dashboard");  
-    }  
-  } else {  
-    if (!location.startsWith("/register-seller")) {  
-      navigate("/register-seller");  
-    }  
-  }  
-  return;  
-}  
+    // 🔒 User not logged in
+    if (!user) {
+      navigate("/login");
+      return;
+    }
 
-// ✅ Admin redirect logic (optional)  
-if (user.role === "admin" && !location.startsWith("/admin-dashboard")) {  
-  navigate("/admin-dashboard");  
-  return;  
-}  
+    // ✅ Seller
+    if (user.role === "seller") {
+      if (user.seller?.approvalStatus === "approved") {
+        if (!location.startsWith("/seller-dashboard")) {
+          navigate("/seller-dashboard");
+        }
+      } else {
+        if (!location.startsWith("/register-seller")) {
+          navigate("/register-seller");
+        }
+      }
+      return;
+    }
 
-// ✅ Delivery redirect logic (optional)  
-if (user.role === "delivery" && !location.startsWith("/delivery-dashboard")) {  
-  navigate("/delivery-dashboard");  
-  return;  
-}  
+    // ✅ Admin
+    if (user.role === "admin" && !location.startsWith("/admin-dashboard")) {
+      navigate("/admin-dashboard");
+      return;
+    }
 
-// ✅ Default fallback for customers or unknown roles  
-if (!location.startsWith("/")) {  
-  navigate("/");  
-}
+    // ✅ Delivery
+    if (user.role === "delivery" && !location.startsWith("/delivery-dashboard")) {
+      navigate("/delivery-dashboard");
+      return;
+    }
 
-}, [user, loading, location, navigate]);
+    // ✅ Default fallback for customers
+    if (!location.startsWith("/")) {
+      navigate("/");
+    }
 
-return null;
+  }, [user, loading]);
+
+  return null;
 }
