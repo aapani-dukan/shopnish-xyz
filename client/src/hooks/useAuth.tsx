@@ -1,5 +1,3 @@
-// src/hooks/useAuth.ts
-
 import React, {
   createContext,
   useContext,
@@ -7,7 +5,11 @@ import React, {
   useState,
   ReactNode,
 } from "react";
-import { User as FirebaseUser, onAuthStateChanged } from "firebase/auth";
+import {
+  User as FirebaseUser,
+  onAuthStateChanged,
+  getRedirectResult,
+} from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { apiRequest } from "@/lib/queryClient";
 import { User } from "@shared/schema";
@@ -27,6 +29,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    const fetchRedirectResult = async () => {
+      try {
+        const result = await getRedirectResult(auth);
+        if (result?.user) {
+          setFirebaseUser(result.user);
+
+          const userData = {
+            firebaseUid: result.user.uid,
+            email: result.user.email!,
+            name: result.user.displayName || result.user.email!,
+          };
+
+          const response = await apiRequest("POST", "/api/users", userData);
+          const user = await response.json();
+
+          setUser(user);
+        }
+      } catch (error) {
+        console.error("❌ Redirect login error:", error);
+      }
+    };
+
+    fetchRedirectResult();
+
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       setFirebaseUser(firebaseUser);
 
