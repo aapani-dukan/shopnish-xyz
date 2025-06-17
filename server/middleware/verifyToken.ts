@@ -1,6 +1,6 @@
 // server/middleware/verifyToken.ts
 import { Request, Response, NextFunction } from "express";
-import { verifyAndDecodeToken } from "../utils/authUtils"; // नई यूटिलिटी फ़ाइल इम्पोर्ट करें
+import { verifyAndDecodeToken } from "../util/authUtils"; // नई यूटिलिटी फ़ाइल इम्पोर्ट करें
 
 export interface AuthenticatedRequest extends Request {
   user?: {
