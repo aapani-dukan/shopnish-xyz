@@ -5,6 +5,7 @@ import admin from "firebase-admin";
 
 const router = express.Router();
 
+// 🔐 Get current logged-in user's info
 router.get("/api/auth/me", async (req, res) => {
   const authHeader = req.headers.authorization;
 
@@ -18,10 +19,6 @@ router.get("/api/auth/me", async (req, res) => {
     const decodedToken = await admin.auth().verifyIdToken(idToken);
     const uid = decodedToken.uid;
 
-    // 👉 अगर आप अपने DB में यूज़र का डेटा रखते हैं (जैसे Prisma में), तो यहां से निकालिए:
-    // const user = await prisma.user.findUnique({ where: { firebaseUid: uid } });
-
-    // या Firebase user से सीधे data निकालिए
     const userRecord = await admin.auth().getUser(uid);
 
     return res.status(200).json({
@@ -29,8 +26,9 @@ router.get("/api/auth/me", async (req, res) => {
       email: userRecord.email,
       name: userRecord.displayName,
     });
+
   } catch (error) {
-    console.error("Token verification error:", error);
+    console.error("❌ Token verification error:", error);
     return res.status(401).json({ message: "Invalid or expired token" });
   }
 });
