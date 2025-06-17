@@ -1,64 +1,55 @@
-// Client/src/pages/login.tsx
-
-
-
+// Client/src/pages/Login.tsx
+"use client";
+import React, { useState } from "react";
 import { signInWithGoogle } from "@/lib/firebase";
-import "@/index.css";
-import { useState } from "react";
-import GoogleIcon from "@/components/ui/GoogleIcon";
 import { useNavigate } from "react-router-dom";
-import { apiRequest } from "@/lib/queryClient";
+import { Button } from "@/components/ui/button";
+import GoogleIcon from "@/components/ui/GoogleIcon";
+import { apiRequest } from "@/lib/queryClient"; // fetch /api/users
 
 export default function Login() {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  const handleGoogleLogin = async () => {
+  const handleGoogle = async () => {
     try {
       setLoading(true);
-
       const result = await signInWithGoogle();
-      const user = result.user;
+      const fbUser = result.user;
+      if (!fbUser) return;
 
-      if (user) {
-        const idToken = await user.getIdToken();
+      // Sync with backend
+      await apiRequest("POST", "/api/users", {
+        firebaseUid: fbUser.uid,
+        email: fbUser.email!,
+        name: fbUser.displayName || fbUser.email!,
+      });
 
-        const response = await apiRequest("GET", "/api/auth/me", undefined, idToken);
-        const userData = await response.json();
+      // Get token for further auth
+      const token = await fbUser.getIdToken();
+      const res = await fetch("/api/auth/me", { headers: { Authorization: `Bearer ${token}` } });
+      const me = await res.json();
 
-        if (userData.role === "seller") {
-          if (userData.approvalStatus === "approved") {
-            navigate("/seller-dashboard");
-          } else {
-            navigate("/register-seller");
-          }
-        } else {
-          navigate("/");
-        }
+      // Redirect based on role
+      if (me.role === "seller") {
+        me.approvalStatus === "approved" ? navigate("/seller-dashboard") : navigate("/seller-apply");
+      } else {
+        navigate("/");
       }
-    } catch (error) {
-      console.error("Google login failed:", error);
+    } catch (e) {
+      console.error("Google login error:", e);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50">
-      <div className="space-y-6 text-center">
-        <h2 className="text-2xl font-semibold text-gray-900">
-          Welcome – Please Log In
-        </h2>
-
-        <button
-          onClick={handleGoogleLogin}
-          disabled={loading}
-          className="inline-flex items-center gap-2 rounded-md bg-blue-600 px-5 py-3 text-white shadow hover:bg-blue-700"
-        >
-          <GoogleIcon />
-          {loading ? "Signing in…" : "Continue with Google"}
-        </button>
-      </div>
+    <div className="...">
+      <Button onClick={handleGoogle} disabled={loading}>
+        <GoogleIcon /> {loading ? "Signing in…" : "Continue with Google"}
+      </Button>
     </div>
   );
 }
+
+
