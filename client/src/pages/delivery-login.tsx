@@ -1,156 +1,37 @@
-import { useState } from "react";
-import { useMutation } from "@tanstack/react-query";
-import { useLocation } from "wouter";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
-import { Truck, User, Lock } from "lucide-react";
-import { getAuth, signInWithRedirect, GoogleAuthProvider } from "firebase/auth";
-import { app } from "@/lib/firebase";
+import { useState } from "react"; import { useMutation } from "@tanstack/react-query"; import { useLocation } from "wouter"; import { Card, CardContent, CardHeader, CardTitle, Button, Input, Label, } from "@/components/ui"; // ← barrel export (adjust if needed) import { Truck } from "lucide-react"; import { useToast } from "@/hooks/use-toast"; import { apiRequest } from "@/lib/queryClient";
 
-export default function DeliveryLogin() {
-  const [, navigate] = useLocation();
-  const { toast } = useToast();
+/**
 
-  const [credentials, setCredentials] = useState({ email: "", password: "" });
+DeliveryLogin (simplified)
 
-  const loginMutation = useMutation({
-    mutationFn: async (loginData: { email: string; password: string }) => {
-      return await apiRequest("POST", "/api/delivery/login", loginData);
-    },
-    onSuccess: (data) => {
-      localStorage.setItem("deliveryBoyToken", data.token);
-      localStorage.setItem("deliveryBoyId", data.user.id);
-      toast({
-        title: "Login Successful",
-        description: `Welcome back, ${data.user.firstName}!`,
-      });
-      navigate("/delivery-dashboard");
-    },
-    onError: () => {
-      toast({
-        title: "Login Failed",
-        description: "Invalid email or password. Please try again.",
-        variant: "destructive",
-      });
-    },
-  });
+1️⃣ "Login"  ─ checks approval status → dashboard OR toast "please register first"
 
-  const handleLogin = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!credentials.email || !credentials.password) {
-      toast({
-        title: "Required Fields",
-        description: "Please enter both email and password",
-        variant: "destructive",
-      });
-      return;
-    }
-    loginMutation.mutate(credentials);
-  };
+2️⃣ "Register" ─ navigates to /delivery-apply for form submission */ export default function DeliveryLogin() { const [, navigate] = useLocation(); const { toast }  = useToast();
 
-  const handleGoogleLogin = () => {
-    const auth = getAuth(app);
-    const provider = new GoogleAuthProvider();
-    signInWithRedirect(auth, provider);
-  };
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center py-12 px-4">
-      <div className="max-w-md w-full">
-        <div className="text-center mb-8">
-          <div className="mx-auto w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center mb-4">
-            <Truck className="w-8 h-8 text-white" />
-          </div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Delivery Partner</h1>
-          <p className="text-gray-600">Sign in to your delivery dashboard</p>
-        </div>
+const [email, setEmail] = useState(""); const [password, setPassword] = useState("");
 
-        <Card className="shadow-lg">
-          <CardHeader>
-            <CardTitle className="text-center">Welcome Back</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleLogin} className="space-y-4">
-              <div>
-                <Label htmlFor="email">Email Address</Label>
-                <div className="relative">
-                  <User className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                  <Input
-                    id="email"
-                    type="email"
-                    value={credentials.email}
-                    onChange={(e) => setCredentials({ ...credentials, email: e.target.value })}
-                    placeholder="Enter your email"
-                    className="pl-10"
-                  />
-                </div>
-              </div>
+/* ——— login mutation ——— */ const loginMutation = useMutation({ mutationFn: async (payload: { email: string; password: string }) => { // backend returns { approved: boolean, token: string, deliveryBoyId: string } return apiRequest("POST", "/api/delivery/login", payload).then(r => r.json()); }, onSuccess: (data) => { if (data.approved) { localStorage.setItem("deliveryBoyToken", data.token); localStorage.setItem("deliveryBoyId",   data.deliveryBoyId); navigate("/delivery-dashboard"); } else { toast({ title: "Approval Pending", description: "Please register first or wait for admin approval.", variant: "destructive", }); } }, onError: () => { toast({ title: "Login Failed", description: "Invalid credentials.", variant: "destructive", }); }, });
 
-              <div>
-                <Label htmlFor="password">Password</Label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                  <Input
-                    id="password"
-                    type="password"
-                    value={credentials.password}
-                    onChange={(e) => setCredentials({ ...credentials, password: e.target.value })}
-                    placeholder="Enter your password"
-                    className="pl-10"
-                  />
-                </div>
-              </div>
+const handleLoginClick = () => { if (!email || !password) { toast({ title: "Required", description: "Enter email & password", variant: "destructive" }); return; } loginMutation.mutate({ email, password }); };
 
-              <Button
-                type="submit"
-                className="w-full"
-                disabled={loginMutation.isPending}
-              >
-                {loginMutation.isPending ? "Signing In..." : "Sign In"}
-              </Button>
-            </form>
+return ( <div className="min-h-screen flex items-center justify-center bg-blue-50 py-10 px-4"> <Card className="w-full max-w-md shadow-lg"> <CardHeader className="text-center space-y-2"> <div className="mx-auto w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center"> <Truck className="w-8 h-8 text-white" /> </div> <CardTitle>Welcome Delivery Partner</CardTitle> <p className="text-sm text-gray-600">Choose an option below</p> </CardHeader> <CardContent className="space-y-6"> {/* simple email/password inputs */} <div className="space-y-4"> <div> <Label htmlFor="d-email">Email</Label> <Input id="d-email" value={email} onChange={e => setEmail(e.target.value)} placeholder="john@delivery.com" /> </div> <div> <Label htmlFor="d-pass">Password</Label> <Input id="d-pass" type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••" /> </div> </div>
 
-            <div className="mt-6 p-4 bg-blue-50 rounded-lg">
-              <p className="text-sm font-medium text-blue-800 mb-2">Demo Credentials:</p>
-              <div className="space-y-1 text-sm text-blue-700">
-                <p>Email: ravi.delivery@shopnish.com</p>
-                <p>Password: delivery123</p>
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                className="mt-2 w-full"
-                onClick={() =>
-                  setCredentials({
-                    email: "ravi.delivery@shopnish.com",
-                    password: "delivery123",
-                  })
-                }
-              >
-                Use Demo Credentials
-              </Button>
-            </div>
+<Button className="w-full" onClick={handleLoginClick} disabled={loginMutation.isPending}>
+        {loginMutation.isPending ? "Checking…" : "Login"}
+      </Button>
 
-            <Button
-              variant="outline"
-              className="mt-4 w-full"
-              onClick={handleGoogleLogin}
-            >
-              Sign in with Google
-            </Button>
-          </CardContent>
-        </Card>
-
-        <div className="text-center mt-6">
-          <p className="text-sm text-gray-600">
-            Need help? Contact support at support@shopnish.com
-          </p>
-        </div>
+      <div className="flex items-center justify-center">
+        <span className="text-xs text-gray-500">OR</span>
       </div>
-    </div>
-  );
-}
+
+      <Button variant="outline" className="w-full" onClick={() => navigate("/delivery-apply")}>  
+        Register as Delivery Boy
+      </Button>
+    </CardContent>
+  </Card>
+</div>
+
+); }
+
+                                                                
