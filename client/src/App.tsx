@@ -27,7 +27,7 @@ import { AuthRedirectGuard } from "@/components/auth-redirect-guard"; // यह 
 function AppRouter() {
   return (
     <>
-      {/* AuthRedirectGuard अब सिर्फ एक जगह App component में होगा */}
+    
 
       <Switch>
         {/* Public and Customer Routes */}
