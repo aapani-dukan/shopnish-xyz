@@ -1,34 +1,34 @@
 // routes/authRoutes.ts
 
 import express from "express";
-import admin from "firebase-admin";
+import { verifyAndDecodeToken } from "../server/util/authUtils"; // नई यूटिलिटी फ़ाइल इम्पोर्ट करें
 
 const router = express.Router();
 
-// 🔐 Get current logged-in user's info
+/**
+ * 🔐 GET /api/auth/me
+ * Verifies Firebase ID token from Authorization header
+ * and returns basic user info.
+ */
 router.get("/api/auth/me", async (req, res) => {
   const authHeader = req.headers.authorization;
 
   if (!authHeader?.startsWith("Bearer ")) {
-    return res.status(401).json({ message: "Missing token" });
+    return res.status(401).json({ message: "Missing or invalid token format" });
   }
 
   const idToken = authHeader.split(" ")[1];
 
   try {
-    const decodedToken = await admin.auth().verifyIdToken(idToken);
-    const uid = decodedToken.uid;
-
-    const userRecord = await admin.auth().getUser(uid);
+    const userInfo = await verifyAndDecodeToken(idToken); // यूटिलिटी फ़ंक्शन का उपयोग करें
 
     return res.status(200).json({
-      uid: userRecord.uid,
-      email: userRecord.email,
-      name: userRecord.displayName,
+      uid: userInfo.uid,
+      email: userInfo.email,
+      name: userInfo.name,
     });
-
   } catch (error) {
-    console.error("❌ Token verification error:", error);
+    console.error("❌ Token verification failed:", error);
     return res.status(401).json({ message: "Invalid or expired token" });
   }
 });
