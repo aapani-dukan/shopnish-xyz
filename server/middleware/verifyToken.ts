@@ -1,7 +1,6 @@
 // server/middleware/verifyToken.ts
-
 import { Request, Response, NextFunction } from "express";
-import admin from "firebase-admin";
+import { verifyAndDecodeToken } from "../utils/authUtils"; // नई यूटिलिटी फ़ाइल इम्पोर्ट करें
 
 export interface AuthenticatedRequest extends Request {
   user?: {
@@ -25,16 +24,7 @@ export const verifyToken = async (
   const idToken = authHeader.split(" ")[1];
 
   try {
-    const decodedToken = await admin.auth().verifyIdToken(idToken);
-
-    const userRecord = await admin.auth().getUser(decodedToken.uid);
-
-    req.user = {
-      uid: userRecord.uid,
-      email: userRecord.email || "",
-      name: userRecord.displayName || "",
-    };
-
+    req.user = await verifyAndDecodeToken(idToken); // यूटिलिटी फ़ंक्शन का उपयोग करें
     next();
   } catch (error) {
     console.error("Firebase token verification failed:", error);
