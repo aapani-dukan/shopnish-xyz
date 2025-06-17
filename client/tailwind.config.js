@@ -1,140 +1,84 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+import type { Config } from "tailwindcss";
 
-:root {
-  --background: 0 0% 100%;
-  --foreground: 20 14.3% 4.1%;
-  --muted: 60 4.8% 95.9%;
-  --muted-foreground: 25 5.3% 44.7%;
-  --popover: 0 0% 100%;
-  --popover-foreground: 20 14.3% 4.1%;
-  --card: 0 0% 100%;
-  --card-foreground: 20 14.3% 4.1%;
-  --border: 20 5.9% 90%;
-  --input: 20 5.9% 90%;
-  --primary: 13 100% 60%;
-  --primary-foreground: 210 40% 98%;
-  --secondary: 60 4.8% 95.9%;
-  --secondary-foreground: 24 9.8% 10%;
-  --accent: 60 4.8% 95.9%;
-  --accent-foreground: 24 9.8% 10%;
-  --destructive: 0 84.2% 60.2%;
-  --destructive-foreground: 60 9.1% 97.8%;
-  --ring: 20 14.3% 4.1%;
-  --radius: 0.5rem;
+const config: Config = {
+  darkMode: ["class"],
+  content: ["./index.html", "./src/**/*.{js,jsx,ts,tsx}"],
+  theme: {
+    extend: {
+      borderRadius: {
+        lg: "var(--radius)",
+        md: "calc(var(--radius) - 2px)",
+        sm: "calc(var(--radius) - 4px)",
+      },
+      colors: {
+        background: "hsl(var(--background))",
+        foreground: "hsl(var(--foreground))",
+        card: {
+          DEFAULT: "hsl(var(--card))",
+          foreground: "hsl(var(--card-foreground))",
+        },
+        popover: {
+          DEFAULT: "hsl(var(--popover))",
+          foreground: "hsl(var(--popover-foreground))",
+        },
+        primary: {
+          DEFAULT: "hsl(var(--primary))",
+          foreground: "hsl(var(--primary-foreground))",
+        },
+        secondary: {
+          DEFAULT: "hsl(var(--secondary))",
+          foreground: "hsl(var(--secondary-foreground))",
+        },
+        muted: {
+          DEFAULT: "hsl(var(--muted))",
+          foreground: "hsl(var(--muted-foreground))",
+        },
+        accent: {
+          DEFAULT: "hsl(var(--accent))",
+          foreground: "hsl(var(--accent-foreground))",
+        },
+        destructive: {
+          DEFAULT: "hsl(var(--destructive))",
+          foreground: "hsl(var(--destructive-foreground))",
+        },
+        border: "hsl(var(--border))",
+        input: "hsl(var(--input))",
+        ring: "hsl(var(--ring))",
+        chart: {
+          "1": "hsl(var(--chart-1))",
+          "2": "hsl(var(--chart-2))",
+          "3": "hsl(var(--chart-3))",
+          "4": "hsl(var(--chart-4))",
+          "5": "hsl(var(--chart-5))",
+        },
+        sidebar: {
+          DEFAULT: "hsl(var(--sidebar-background))",
+          foreground: "hsl(var(--sidebar-foreground))",
+          primary: "hsl(var(--sidebar-primary))",
+          "primary-foreground": "hsl(var(--sidebar-primary-foreground))",
+          accent: "hsl(var(--sidebar-accent))",
+          "accent-foreground": "hsl(var(--sidebar-accent-foreground))",
+          border: "hsl(var(--sidebar-border))",
+          ring: "hsl(var(--sidebar-ring))",
+        },
+      },
+      keyframes: {
+        "accordion-down": {
+          from: { height: "0" },
+          to: { height: "var(--radix-accordion-content-height)" },
+        },
+        "accordion-up": {
+          from: { height: "var(--radix-accordion-content-height)" },
+          to: { height: "0" },
+        },
+      },
+      animation: {
+        "accordion-down": "accordion-down 0.2s ease-out",
+        "accordion-up": "accordion-up 0.2s ease-out",
+      },
+    },
+  },
+  plugins: [require("tailwindcss-animate"), require("@tailwindcss/typography")],
+};
 
-  --chart-1: 240 100% 50%;
-  --chart-2: 120 100% 40%;
-  --chart-3: 60 100% 50%;
-  --chart-4: 0 100% 60%;
-  --chart-5: 300 100% 50%;
-
-  --sidebar-background: 240 5% 96%;
-  --sidebar-foreground: 240 10% 20%;
-  --sidebar-primary: 13 100% 60%;
-  --sidebar-primary-foreground: 210 40% 98%;
-  --sidebar-accent: 60 4.8% 95.9%;
-  --sidebar-accent-foreground: 24 9.8% 10%;
-  --sidebar-border: 20 5.9% 90%;
-  --sidebar-ring: 20 14.3% 4.1%;
-}
-
-.dark {
-  --background: 240 10% 3.9%;
-  --foreground: 0 0% 98%;
-  --muted: 240 3.7% 15.9%;
-  --muted-foreground: 240 5% 64.9%;
-  --popover: 240 10% 3.9%;
-  --popover-foreground: 0 0% 98%;
-  --card: 240 10% 3.9%;
-  --card-foreground: 0 0% 98%;
-  --border: 240 3.7% 15.9%;
-  --input: 240 3.7% 15.9%;
-  --primary: 13 100% 60%;
-  --primary-foreground: 210 40% 98%;
-  --secondary: 240 3.7% 15.9%;
-  --secondary-foreground: 0 0% 98%;
-  --accent: 240 3.7% 15.9%;
-  --accent-foreground: 0 0% 98%;
-  --destructive: 0 62.8% 30.6%;
-  --destructive-foreground: 0 0% 98%;
-  --ring: 240 4.9% 83.9%;
-  --radius: 0.5rem;
-}
-
-@layer base {
-  * {
-    @apply border-border;
-  }
-
-  body {
-    @apply font-sans antialiased bg-background text-foreground;
-  }
-}
-
-@layer components {
-  .line-clamp-2 {
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-  }
-}
-
-@layer utilities {
-  .bg-background {
-    background-color: hsl(var(--background));
-  }
-  .text-foreground {
-    color: hsl(var(--foreground));
-  }
-  .bg-card {
-    background-color: hsl(var(--card));
-  }
-  .text-card-foreground {
-    color: hsl(var(--card-foreground));
-  }
-  .bg-primary {
-    background-color: hsl(var(--primary));
-  }
-  .text-primary-foreground {
-    color: hsl(var(--primary-foreground));
-  }
-  .bg-secondary {
-    background-color: hsl(var(--secondary));
-  }
-  .text-secondary-foreground {
-    color: hsl(var(--secondary-foreground));
-  }
-  .bg-muted {
-    background-color: hsl(var(--muted));
-  }
-  .text-muted-foreground {
-    color: hsl(var(--muted-foreground));
-  }
-  .bg-accent {
-    background-color: hsl(var(--accent));
-  }
-  .text-accent-foreground {
-    color: hsl(var(--accent-foreground));
-  }
-  .bg-popover {
-    background-color: hsl(var(--popover));
-  }
-  .text-popover-foreground {
-    color: hsl(var(--popover-foreground));
-  }
-  .bg-destructive {
-    background-color: hsl(var(--destructive));
-  }
-  .text-destructive-foreground {
-    color: hsl(var(--destructive-foreground));
-  }
-  .border-border {
-    border-color: hsl(var(--border));
-  }
-  .ring-ring {
-    box-shadow: 0 0 0 1px hsl(var(--ring));
-  }
-    }
+export default config;
