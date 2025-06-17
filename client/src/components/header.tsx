@@ -1,8 +1,8 @@
 import React from "react";
-import Link from "next/link";
 import { useCartStore } from "@/lib/store";
 import CartModal from "./cart-modal";
-import { signInWithGoogle } from "@/lib/firebase"; // ✅ Updated import
+import { signInWithGoogle } from "@/lib/firebase";
+import { Link } from "wouter"; // ✅ Correct for Wouter
 
 interface Category {
   id: string;
@@ -18,7 +18,7 @@ const Header: React.FC<HeaderProps> = ({ categories }) => {
 
   const handleLogin = async () => {
     try {
-      await signInWithGoogle(); // ✅ Firebase login trigger
+      await signInWithGoogle();
     } catch (error) {
       console.error("❌ Google login failed:", error);
     }
