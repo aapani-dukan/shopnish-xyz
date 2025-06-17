@@ -1,21 +1,58 @@
-// Client/src/pages/login.tsx
-import { signInWithGoogle } from "@/lib/firebase";
-import "@/index.css";
+// src/pages/Login.tsx
+"use client";
+
 import { useState } from "react";
-import GoogleIcon from "@/components/ui/GoogleIcon"; // GoogleIcon इम्पोर्ट करें
+import { signInWithGoogle } from "@/lib/firebase";
+import { Button } from "@/components/ui/button";
+import GoogleIcon from "@/components/ui/GoogleIcon";
+import { useLocation } from "wouter";          // 🔄 wouter navigate
 
 export default function Login() {
+  const [, navigate] = useLocation();          // navigate("/path")
   const [loading, setLoading] = useState(false);
 
-  const handleGooglePopup = async () => {
+  /** Google popup-login + role-based redirect */
+  const handleGoogleLogin = async () => {
     try {
       setLoading(true);
-      await signInWithGoogle();
+
+      // 1️⃣ Firebase popup
+      const result = await signInWithGoogle();
+      const firebaseUser = result.user;
+      if (!firebaseUser) return;
+
+      // 2️⃣ JWT Id-token
+      const idToken = await firebaseUser.getIdToken();
+
+      // 3️⃣ Call backend to get enriched user / role
+      const res = await fetch("/api/auth/me", {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${idToken}`,
+          "Content-Type": "application/json",
+        },
+      });
+
+      const userData = await res.json();
+
+      // 4️⃣ Role-based navigation
+      if (userData.role === "seller") {
+        if (userData.approvalStatus === "approved") {
+          navigate("/seller-dashboard");
+        } else {
+          navigate("/register-seller");
+        }
+      } else {
+        navigate("/");                         // customer / default
+      }
+    } catch (err) {
+      console.error("❌ Google login failed:", err);
     } finally {
       setLoading(false);
     }
   };
 
+  /* UI */
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-50">
       <div className="space-y-6 text-center">
@@ -23,14 +60,14 @@ export default function Login() {
           Welcome – Please Log In
         </h2>
 
-        <button
-          onClick={handleGooglePopup}
+        <Button
+          onClick={handleGoogleLogin}
           disabled={loading}
           className="inline-flex items-center gap-2 rounded-md bg-blue-600 px-5 py-3 text-white shadow hover:bg-blue-700"
         >
-          <GoogleIcon /> {/* यहां GoogleIcon कॉम्पोनेंट का उपयोग करें */}
+          <GoogleIcon />
           {loading ? "Signing in…" : "Continue with Google"}
-        </button>
+        </Button>
       </div>
     </div>
   );
