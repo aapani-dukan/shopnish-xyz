@@ -5,7 +5,7 @@ import { signInWithGoogle } from "@/lib/firebase";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import GoogleIcon from "@/components/ui/GoogleIcon";
-import { apiRequest } from "@/lib/queryClient"; // fetch /api/users
+import { apiRequest } from "@/lib/apiRequest"; // fetch /api/users
 
 export default function Login() {
   const [loading, setLoading] = useState(false);
