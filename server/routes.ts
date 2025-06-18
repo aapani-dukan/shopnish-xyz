@@ -1,9 +1,11 @@
 // server/routes.ts
-import express, { type Express } from "express"; // Express टाइप को भी इम्पोर्ट करें
+import express, { type Express, Request, Response } from "express"; // Request, Response भी इम्पोर्ट करें
 import { storage } from "./storage";
 import { seedDatabase } from "./seed";
 import { insertProductSchema, insertCartItemSchema, insertOrderSchema, insertReviewSchema } from "@shared/backend/schema";
 import { z } from "zod";
+import { verifyToken, AuthenticatedRequest } from "./middleware/verifyToken"; // verifyToken और AuthenticatedRequest इम्पोर्ट करें
+
 // routes.ts
 import pendingSellersRoute from "../routes/sellers/pending";
 import sellersApplyRouter from "../routes/sellers/apply";
@@ -22,6 +24,67 @@ export async function registerRoutes(app: Express): Promise<void> {
     console.error("Failed to seed database:", error);
   }
 
+  // --- ऑथेंटिकेशन रूट्स ---
+
+  // ✅ नया लॉगिन/टोकन सत्यापन रूट जोड़ा गया है
+  // यह रूट फ्रंटएंड से Firebase ID टोकन प्राप्त करेगा।
+  // verifyToken मिडिलवेयर टोकन को सत्यापित करेगा और req.user में यूज़र डेटा अटैच करेगा।
+  app.post("/api/auth/login", verifyToken, async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      // यदि verifyToken मिडिलवेयर सफल होता है, तो req.user में डिकोडेड टोकन जानकारी होगी
+      if (!req.user) {
+        // यह स्थिति केवल तभी होनी चाहिए जब verifyToken में कोई अप्रत्याशित समस्या हो
+        return res.status(401).json({ message: "Authentication failed: No user information available after token verification." });
+      }
+
+      const { email, uid, displayName } = req.user;
+
+      // आप यहां डेटाबेस में यूज़र को चेक/बना सकते हैं यदि आवश्यक हो
+      // उदाहरण के लिए, एक placeholder storage.getUserByEmail और storage.createUser फ़ंक्शन का उपयोग किया गया है।
+      // आपको अपनी storage.ts फ़ाइल में इन्हें लागू करना होगा।
+      let user = await storage.getUserByEmail(email); // आपको इसे storage.ts में जोड़ना होगा
+      if (!user) {
+        // यदि यूज़र मौजूद नहीं है, तो उसे बनाएं
+        user = await storage.createUser({ // आपको इसे storage.ts में जोड़ना होगा
+          email: email,
+          firebaseUid: uid, // Firebase UID को स्टोर करें
+          name: displayName || email.split('@')[0],
+          // अन्य आवश्यक फील्ड्स (जैसे रोल, प्रोफाइल जानकारी)
+        });
+        console.log(`New user created in database: ${user.email} (UID: ${user.firebaseUid})`);
+      } else {
+        console.log(`Existing user logged in: ${user.email} (UID: ${user.firebaseUid})`);
+      }
+
+      // सक्सेसफुल रिस्पांस भेजें जिसमें यूज़र डेटा शामिल हो
+      res.json({
+        message: "Authentication successful",
+        user: {
+          id: user.id, // डेटाबेस से यूज़र ID (अगर आप इसे स्टोर करते हैं)
+          email: user.email,
+          name: user.name,
+          firebaseUid: user.firebaseUid,
+          // अन्य यूज़र डेटा जो आप फ्रंटएंड को भेजना चाहते हैं
+        }
+      });
+
+    } catch (error) {
+      console.error("Error during /api/auth/login:", error);
+      // सुनिश्चित करें कि यह JSON प्रतिक्रिया भेजता है
+      res.status(500).json({ message: "Internal server error during authentication process." });
+    }
+  });
+
+
+  // --- विक्रेता रूट्स ---
+  app.use("/api/sellers/pending", pendingSellersRoute);
+  app.use("/api/sellers/apply", sellersApplyRouter);
+  app.use("/api/sellers/approve", sellersApproveRouter);
+  app.use("/api/sellers/reject", sellersRejectRouter);
+  app.use(sellerMeRoute);
+
+
+  // --- बाकी के API रूट्स ---
   // Categories
   app.get("/api/categories", async (req, res) => {
     try {
@@ -32,19 +95,12 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
 
-  app.use("/api/sellers/pending", pendingSellersRoute);
-  app.use("/api/sellers/apply", sellersApplyRouter);
-  app.use("/api/sellers/approve", sellersApproveRouter);
-  app.use("/api/sellers/reject", sellersRejectRouter);
-  app.use(sellerMeRoute);
-  
-  
   // Products
   app.get("/api/products", async (req, res) => {
     try {
       const { categoryId, featured, search } = req.query;
       const filters: any = {};
-      
+
       if (categoryId) filters.categoryId = parseInt(categoryId as string);
       if (featured) filters.featured = featured === 'true';
       if (search) filters.search = search as string;
@@ -60,7 +116,7 @@ export async function registerRoutes(app: Express): Promise<void> {
     try {
       const id = parseInt(req.params.id);
       const product = await storage.getProduct(id);
-      
+
       if (!product) {
         return res.status(404).json({ message: "Product not found" });
       }
@@ -123,7 +179,7 @@ export async function registerRoutes(app: Express): Promise<void> {
     try {
       const id = parseInt(req.params.id);
       const success = await storage.removeFromCart(id);
-      
+
       if (!success) {
         return res.status(404).json({ message: "Cart item not found" });
       }
@@ -141,7 +197,7 @@ export async function registerRoutes(app: Express): Promise<void> {
         userId ? parseInt(userId as string) : undefined,
         sessionId as string
       );
-      
+
       res.json({ message: "Cart cleared", success });
     } catch (error) {
       res.status(500).json({ message: "Failed to clear cart" });
@@ -152,7 +208,7 @@ export async function registerRoutes(app: Express): Promise<void> {
   app.post("/api/orders", async (req, res) => {
     try {
       const { order, items } = req.body;
-      
+
       const orderValidation = insertOrderSchema.safeParse(order);
       if (!orderValidation.success) {
         return res.status(400).json({ message: "Invalid order data" });
@@ -173,7 +229,7 @@ export async function registerRoutes(app: Express): Promise<void> {
     try {
       const { customerId } = req.query;
       const filters: any = {};
-      
+
       if (customerId) {
         filters.customerId = parseInt(customerId as string);
       }
@@ -189,7 +245,7 @@ export async function registerRoutes(app: Express): Promise<void> {
     try {
       const id = parseInt(req.params.id);
       const order = await storage.getOrder(id);
-      
+
       if (!order) {
         return res.status(404).json({ message: "Order not found" });
       }
@@ -215,7 +271,7 @@ export async function registerRoutes(app: Express): Promise<void> {
     try {
       const productId = parseInt(req.params.id);
       const reviewData = { ...req.body, productId };
-      
+
       const validation = insertReviewSchema.safeParse(reviewData);
       if (!validation.success) {
         return res.status(400).json({ message: "Invalid review data" });
@@ -227,8 +283,4 @@ export async function registerRoutes(app: Express): Promise<void> {
       res.status(500).json({ message: "Failed to create review" });
     }
   });
-
-  // ✅ यह लाइन हटा दें
-  // const httpServer = createServer(app);
-  // return httpServer;
-}
+  }
