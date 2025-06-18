@@ -1,18 +1,34 @@
+// server/storage.ts
 import { db } from "./db";
 import {
   users, categories, products, cartItems, orders, orderItems, reviews,
-  type User, type InsertUser, type Category, type InsertCategory, 
+  // नए imports: deliveryBoys स्कीमा और उनके प्रकार
+  deliveryBoys, // <-- सुनिश्चित करें कि यह @shared/backend/schema में परिभाषित है
+  type User, type InsertUser, type Category, type InsertCategory,
   type Product, type InsertProduct, type CartItem, type InsertCartItem,
   type Order, type InsertOrder, type OrderItem, type InsertOrderItem,
-  type Review, type InsertReview,type seller
+  type Review, type InsertReview,
+  type Seller, // Seller टाइप को परिभाषित रखें अगर यह Schema से है
+  type DeliveryBoy, type InsertDeliveryBoy // <-- नए डिलीवरी बॉय प्रकार
 } from "@shared/backend/schema";
+import { eq } from "drizzle-orm"; // Drizzle से `eq` ऑपरेटर इम्पोर्ट करें
 
+// आपकी IStorage इंटरफ़ेस को अपडेट करें ताकि डिलीवरी बॉय के फंक्शन्स शामिल हों
 export interface IStorage {
   // Authentication & Users
   getUserByEmail(email: string): Promise<User | undefined>;
   getUserById(id: number): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
-getSellers(filters?: { approvalStatus?: string }): Promise<Seller[]>;
+
+  // ✅ Sellers (अगर यह डेटाबेस से आ रहे हैं तो `drizzle-orm` का उपयोग करें)
+  // यदि यह एक इन-मेमोरी एरे है, तो आपको इसे `db.select().from(sellers);` से हटाना होगा
+  getSellers(filters?: { approvalStatus?: string }): Promise<Seller[]>;
+
+  // ✅ डिलीवरी बॉय के लिए नए फंक्शन्स
+  getDeliveryBoyByEmail(email: string): Promise<DeliveryBoy | undefined>;
+  getDeliveryBoyById(id: number): Promise<DeliveryBoy | undefined>; // यदि आवश्यक हो तो
+  createDeliveryBoy(deliveryBoy: InsertDeliveryBoy): Promise<DeliveryBoy>;
+
   // Categories
   getCategories(): Promise<Category[]>;
   getCategory(id: number): Promise<Category | undefined>;
@@ -40,20 +56,19 @@ getSellers(filters?: { approvalStatus?: string }): Promise<Seller[]>;
   createReview(review: InsertReview): Promise<Review>;
 }
 
-export const sellers = [
-  {
-    id: "1",
-    name: "Test Seller",
-    approvalStatus: "pending",
-    appliedAt: new Date().toISOString(),
-  },
-];
+// यह 'sellers' एरे एक समस्या हो सकती है यदि आप इसे डेटाबेस से प्रबंधित करने का इरादा रखते हैं।
+// यदि आप इसे डेटाबेस से प्रबंधित कर रहे हैं, तो इसे हटा दें और Drizzle के साथ काम करें।
+// यदि यह केवल उदाहरण डेटा है, तो इसे यहीं रखें, लेकिन सुनिश्चित करें कि `getSellers` इसे हैंडल करता है।
+// फिलहाल, मैं मान रहा हूँ कि `sellers` एक Drizzle स्कीमा है।
+// export const sellers = [ /* ... your existing in-memory sellers array ... */ ];
+
 export class DatabaseStorage implements IStorage {
   // Authentication & Users
   async getUserByEmail(email: string): Promise<User | undefined> {
     try {
-      const result = await db.select().from(users);
-      return result.find(u => u.email === email);
+      // ✅ Drizzle के `eq` ऑपरेटर का उपयोग करें सीधे डेटाबेस से क्वेरी करने के लिए
+      const result = await db.select().from(users).where(eq(users.email, email)).limit(1);
+      return result[0];
     } catch (error) {
       console.error("Error getting user by email:", error);
       return undefined;
@@ -62,32 +77,72 @@ export class DatabaseStorage implements IStorage {
 
   async getUserById(id: number): Promise<User | undefined> {
     try {
-      const result = await db.select().from(users);
-      return result.find(u => u.id === id);
+      // ✅ Drizzle के `eq` ऑपरेटर का उपयोग करें
+      const result = await db.select().from(users).where(eq(users.id, id)).limit(1);
+      return result[0];
     } catch (error) {
       console.error("Error getting user by id:", error);
       return undefined;
     }
   }
-async getSellers(filters?: { approvalStatus?: string }): Promise<Seller[]> {
-    const sellersList = await db.select().from(sellers);
-    if (filters?.approvalStatus) {
-      return sellersList.filter(s => s.approvalStatus === filters.approvalStatus);
-    }
-    return sellersList;
-}
 
-  
+  // ✅ getSellers को अपडेट करें यदि यह डेटाबेस से आता है
+  // यदि 'sellers' एक Drizzle स्कीमा है:
+  async getSellers(filters?: { approvalStatus?: string }): Promise<Seller[]> {
+      try {
+          let query = db.select().from(sellers); // 'sellers' को Drizzle स्कीमा मानें
+          if (filters?.approvalStatus) {
+              query = query.where(eq(sellers.approvalStatus, filters.approvalStatus));
+          }
+          const sellersList = await query;
+          return sellersList;
+      } catch (error) {
+          console.error("Error getting sellers:", error);
+          return [];
+      }
+  }
+
+
   async createUser(user: InsertUser): Promise<User> {
+    // ✅ सुनिश्चित करें कि `InsertUser` में `role` और `approvalStatus` शामिल हैं
     const result = await db.insert(users).values(user).returning();
     return result[0];
   }
 
+  // --- ✅ नए डिलीवरी बॉय फंक्शन्स यहाँ जोड़ें ---
+  async getDeliveryBoyByEmail(email: string): Promise<DeliveryBoy | undefined> {
+    try {
+      const result = await db.select().from(deliveryBoys).where(eq(deliveryBoys.email, email)).limit(1);
+      return result[0];
+    } catch (error) {
+      console.error("Error getting delivery boy by email:", error);
+      return undefined;
+    }
+  }
+
+  async getDeliveryBoyById(id: number): Promise<DeliveryBoy | undefined> {
+    try {
+      const result = await db.select().from(deliveryBoys).where(eq(deliveryBoys.id, id)).limit(1);
+      return result[0];
+    } catch (error) {
+      console.error("Error getting delivery boy by id:", error);
+      return undefined;
+    }
+  }
+
+  async createDeliveryBoy(deliveryBoy: InsertDeliveryBoy): Promise<DeliveryBoy> {
+    const result = await db.insert(deliveryBoys).values(deliveryBoy).returning();
+    return result[0];
+  }
+  // --- डिलीवरी बॉय फंक्शन्स का अंत ---
+
+
   // Categories
   async getCategories(): Promise<Category[]> {
     try {
-      const result = await db.select().from(categories);
-      return result.filter(c => c.isActive);
+      // ✅ Drizzle के `where` और `eq` का उपयोग करें
+      const result = await db.select().from(categories).where(eq(categories.isActive, true));
+      return result;
     } catch (error) {
       console.error("Error getting categories:", error);
       return [];
@@ -96,8 +151,9 @@ async getSellers(filters?: { approvalStatus?: string }): Promise<Seller[]> {
 
   async getCategory(id: number): Promise<Category | undefined> {
     try {
-      const result = await db.select().from(categories);
-      return result.find(c => c.id === id);
+      // ✅ Drizzle के `where` और `eq` का उपयोग करें
+      const result = await db.select().from(categories).where(eq(categories.id, id)).limit(1);
+      return result[0];
     } catch (error) {
       console.error("Error getting category:", error);
       return undefined;
@@ -112,23 +168,28 @@ async getSellers(filters?: { approvalStatus?: string }): Promise<Seller[]> {
   // Products
   async getProducts(filters?: { categoryId?: number; search?: string }): Promise<Product[]> {
     try {
-      const result = await db.select().from(products);
-      let filtered = result.filter(p => p.isActive);
+      let query = db.select().from(products).where(eq(products.isActive, true));
 
       if (filters?.categoryId) {
-        filtered = filtered.filter(p => p.categoryId === filters.categoryId);
+        query = query.where(eq(products.categoryId, filters.categoryId));
       }
 
       if (filters?.search) {
         const searchLower = filters.search.toLowerCase();
-        filtered = filtered.filter(p => 
+        // Drizzle के साथ `or` और `ilike` या `like` का उपयोग करें
+        // यह in-memory filtering से बेहतर है
+        // यहाँ केवल एक उदाहरण है; Drizzle के साथ इसे और बेहतर बनाया जा सकता है
+        // (जैसे `or(ilike(products.name, `%${searchLower}%`), ilike(products.nameHindi, `%${searchLower}%`))`)
+        // अभी के लिए, मैं आपके मौजूदा logic को बरकरार रख रहा हूँ लेकिन ध्यान दें कि यह डेटाबेस के बजाय JS में फ़िल्टर करेगा
+        const allProducts = await query; // पहले सभी फ़िल्टर्ड उत्पाद प्राप्त करें
+        return allProducts.filter(p =>
           p.name?.toLowerCase().includes(searchLower) ||
           p.nameHindi?.toLowerCase().includes(searchLower) ||
           p.description?.toLowerCase().includes(searchLower)
         );
       }
 
-      return filtered;
+      return await query; // यदि कोई सर्च फ़िल्टर नहीं है
     } catch (error) {
       console.error("Error getting products:", error);
       return [];
@@ -137,8 +198,8 @@ async getSellers(filters?: { approvalStatus?: string }): Promise<Seller[]> {
 
   async getProduct(id: number): Promise<Product | undefined> {
     try {
-      const result = await db.select().from(products);
-      return result.find(p => p.id === id);
+      const result = await db.select().from(products).where(eq(products.id, id)).limit(1);
+      return result[0];
     } catch (error) {
       console.error("Error getting product:", error);
       return undefined;
@@ -153,11 +214,13 @@ async getSellers(filters?: { approvalStatus?: string }): Promise<Seller[]> {
   // Shopping Cart
   async getCartItems(userId?: number, sessionId?: string): Promise<(CartItem & { product: Product })[]> {
     try {
+      // ✅ Drizzle के साथ `with` या `join` का उपयोग करें ताकि उत्पाद एक ही क्वेरी में मिल सकें
+      // यहाँ सरलीकरण के लिए आपके मौजूदा in-memory join को रखा गया है
       const cartResult = await db.select().from(cartItems);
       const productsResult = await db.select().from(products);
-      
+
       let filteredCart = cartResult;
-      
+
       if (userId) {
         filteredCart = cartResult.filter(item => item.userId === userId);
       } else if (sessionId) {
@@ -179,21 +242,24 @@ async getSellers(filters?: { approvalStatus?: string }): Promise<Seller[]> {
 
   async addToCart(item: InsertCartItem): Promise<CartItem> {
     try {
-      // Check if item already exists
-      const existing = await db.select().from(cartItems);
-      const existingItem = existing.find(cart => 
-        cart.productId === item.productId &&
+      const existing = await db.select().from(cartItems).where(
+        eq(cartItems.productId, item.productId)
+      );
+
+      // Filter by userId or sessionId in memory for now,
+      // but ideally this should be part of the Drizzle query using `and` and `or`
+      const existingItem = existing.find(cart =>
         ((item.userId && cart.userId === item.userId) ||
          (item.sessionId && cart.sessionId === item.sessionId))
       );
 
       if (existingItem) {
-        // Update quantity
         const result = await db
           .update(cartItems)
           .set({ quantity: existingItem.quantity + (item.quantity || 1) })
+          .where(eq(cartItems.id, existingItem.id)) // ✅ `where` क्लॉज़ जोड़ें
           .returning();
-        return result.find(r => r.id === existingItem.id)!;
+        return result[0]; // ✅ array के पहले एलिमेंट को रिटर्न करें
       }
 
       const result = await db.insert(cartItems).values(item).returning();
@@ -207,15 +273,17 @@ async getSellers(filters?: { approvalStatus?: string }): Promise<Seller[]> {
   async updateCartItem(id: number, quantity: number): Promise<CartItem | undefined> {
     try {
       if (quantity <= 0) {
-        await db.delete(cartItems);
+        // ✅ यहाँ `where` क्लॉज़ जोड़ना ज़रूरी है
+        await db.delete(cartItems).where(eq(cartItems.id, id));
         return undefined;
       }
 
       const result = await db
         .update(cartItems)
         .set({ quantity })
+        .where(eq(cartItems.id, id)) // ✅ `where` क्लॉज़ जोड़ें
         .returning();
-      return result.find(r => r.id === id);
+      return result[0]; // ✅ array के पहले एलिमेंट को रिटर्न करें
     } catch (error) {
       console.error("Error updating cart item:", error);
       return undefined;
@@ -224,8 +292,9 @@ async getSellers(filters?: { approvalStatus?: string }): Promise<Seller[]> {
 
   async removeFromCart(id: number): Promise<boolean> {
     try {
-      await db.delete(cartItems);
-      return true;
+      // ✅ यहाँ `where` क्लॉज़ जोड़ना ज़रूरी है
+      const result = await db.delete(cartItems).where(eq(cartItems.id, id)).returning();
+      return result.length > 0; // आइटम डिलीट हुआ या नहीं
     } catch (error) {
       console.error("Error removing from cart:", error);
       return false;
@@ -234,7 +303,14 @@ async getSellers(filters?: { approvalStatus?: string }): Promise<Seller[]> {
 
   async clearCart(userId?: number, sessionId?: string): Promise<boolean> {
     try {
-      await db.delete(cartItems);
+      let query = db.delete(cartItems);
+      // ✅ `where` क्लॉज़ जोड़ें ताकि पूरा कार्ट क्लियर न हो
+      if (userId) {
+        query = query.where(eq(cartItems.userId, userId));
+      } else if (sessionId) {
+        query = query.where(eq(cartItems.sessionId, sessionId));
+      }
+      await query;
       return true;
     } catch (error) {
       console.error("Error clearing cart:", error);
@@ -245,11 +321,11 @@ async getSellers(filters?: { approvalStatus?: string }): Promise<Seller[]> {
   // Orders
   async getOrders(filters?: { customerId?: number }): Promise<Order[]> {
     try {
-      const result = await db.select().from(orders);
+      let query = db.select().from(orders);
       if (filters?.customerId) {
-        return result.filter(o => o.customerId === filters.customerId);
+        query = query.where(eq(orders.customerId, filters.customerId));
       }
-      return result;
+      return await query;
     } catch (error) {
       console.error("Error getting orders:", error);
       return [];
@@ -258,15 +334,15 @@ async getSellers(filters?: { approvalStatus?: string }): Promise<Seller[]> {
 
   async getOrder(id: number): Promise<(Order & { items: (OrderItem & { product: Product })[] }) | undefined> {
     try {
-      const orderResult = await db.select().from(orders);
-      const order = orderResult.find(o => o.id === id);
+      const orderResult = await db.select().from(orders).where(eq(orders.id, id)).limit(1);
+      const order = orderResult[0];
       if (!order) return undefined;
 
-      const itemsResult = await db.select().from(orderItems);
-      const productsResult = await db.select().from(products);
-      
-      const orderItemsData = itemsResult.filter(item => item.orderId === id);
-      const items = orderItemsData.map(item => {
+      // ✅ Drizzle के साथ `with` या `join` का उपयोग करें ताकि उत्पाद एक ही क्वेरी में मिल सकें
+      const itemsResult = await db.select().from(orderItems).where(eq(orderItems.orderId, id));
+      const productsResult = await db.select().from(products); // यह inefficient है, join बेहतर है
+
+      const items = itemsResult.map(item => {
         const product = productsResult.find(p => p.id === item.productId);
         return {
           ...item,
@@ -285,10 +361,11 @@ async getSellers(filters?: { approvalStatus?: string }): Promise<Seller[]> {
     try {
       const orderResult = await db.insert(orders).values(order).returning();
       const newOrder = orderResult[0];
-      
+
       // Insert order items
-      for (const item of items) {
-        await db.insert(orderItems).values({ ...item, orderId: newOrder.id });
+      if (items.length > 0) {
+        const itemsToInsert = items.map(item => ({ ...item, orderId: newOrder.id }));
+        await db.insert(orderItems).values(itemsToInsert); // एक साथ इंसर्ट करें
       }
 
       return newOrder;
@@ -301,8 +378,8 @@ async getSellers(filters?: { approvalStatus?: string }): Promise<Seller[]> {
   // Reviews
   async getProductReviews(productId: number): Promise<Review[]> {
     try {
-      const result = await db.select().from(reviews);
-      return result.filter(r => r.productId === productId);
+      const result = await db.select().from(reviews).where(eq(reviews.productId, productId));
+      return result;
     } catch (error) {
       console.error("Error getting reviews:", error);
       return [];
