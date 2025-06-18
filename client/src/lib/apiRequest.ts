@@ -1,5 +1,3 @@
-// client/src/lib/apiRequest.ts
-
 export async function apiRequest(
   method: string,
   url: string,
