@@ -62,14 +62,14 @@ export const stores = pgTable("stores", {
 // ✅ insertSellerSchema की आवश्यकता नहीं होगी यदि आप `users` टेबल में `role` का उपयोग कर रहे हैं।
 // यदि आप इसे एक अलग 'sellers' टेबल के रूप में उपयोग कर रहे हैं, तो इसे `createInsertSchema` से बनाना बेहतर है।
 // फिलहाल, मैंने इसे हटा दिया है क्योंकि यह `users` टेबल के लिए ऑथेंटिकेशन लॉजिक को ओवरलैप कर रहा है।
-// export const insertSellerSchema = z.object({
-//   email: z.string().email(),
-//   password: z.string().min(6),
-//   firstName: z.string().min(1),
-//   lastName: z.string().min(1),
-//   phone: z.string().min(10),
-//   role: z.literal("seller").default("seller"),
-// });
+ export const insertSellerSchema = z.object({
+   email: z.string().email(),
+   password: z.string().min(6),
+  firstName: z.string().min(1),
+   lastName: z.string().min(1),
+   phone: z.string().min(10),
+   role: z.literal("seller").default("seller"),
+ });
 
 
 // Product categories for essentials
