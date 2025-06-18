@@ -35,8 +35,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           const user = await response.json();
           setUser(user);
         } catch (error) {
-          console.error("Error creating/fetching user:", error);
-        }
+        console.error("Error creating/fetching user:", error); // सिंगल स्पेस
+          
       } else {
         setUser(null);
       }
