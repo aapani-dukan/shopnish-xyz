@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useState } from "react";
 import { User as FirebaseUser, onAuthStateChanged } from "firebase/auth";
 import { auth, handleRedirectResult } from "@/lib/firebase";
 import { apiRequest } from "@/lib/queryClient";
-import { User } from "@shared/schema";
+import { User } from "@shared/backend/schema";
 
 interface AuthContextType {
   firebaseUser: FirebaseUser | null;
