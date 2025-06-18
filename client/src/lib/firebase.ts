@@ -1,5 +1,3 @@
-// Client/src/lib/firebase.ts
-// src/lib/firebase.ts
 import { initializeApp } from "firebase/app";
 import { getAuth, signInWithPopup, getRedirectResult, GoogleAuthProvider, signOut } from "firebase/auth";
 
@@ -12,8 +10,7 @@ const firebaseConfig = {
   appId: "1:352463214204:web:a3adc9ef1d8af0de1fdbf9"
 };
 
-// Firebase ऐप को इनिशियलाइज़ करें और इसे एक्सपोर्ट करें
-export const app = initializeApp(firebaseConfig);
+const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 
 const provider = new GoogleAuthProvider();
