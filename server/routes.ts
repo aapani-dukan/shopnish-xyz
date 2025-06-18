@@ -1,10 +1,10 @@
 // server/routes.ts
-import express, { type Express, Request, Response } from "express"; // Request, Response भी इम्पोर्ट करें
+import express, { type Express, Request, Response } from "express";
 import { storage } from "./storage";
 import { seedDatabase } from "./seed";
 import { insertProductSchema, insertCartItemSchema, insertOrderSchema, insertReviewSchema } from "@shared/backend/schema";
 import { z } from "zod";
-import { verifyToken, AuthenticatedRequest } from "./middleware/verifyToken"; // verifyToken और AuthenticatedRequest इम्पोर्ट करें
+import { verifyToken, AuthenticatedRequest } from "./middleware/verifyToken";
 
 // routes.ts
 import pendingSellersRoute from "../routes/sellers/pending";
@@ -14,9 +14,7 @@ import sellersRejectRouter from "../routes/sellers/reject";
 import sellerMeRoute from "../routes/sellerMe";
 
 
-// ✅ अब यह कोई HTTP सर्वर नहीं लौटाएगा, बल्कि केवल राउट्स रजिस्टर करेगा
 export async function registerRoutes(app: Express): Promise<void> {
-  // Seed database on startup
   try {
     await seedDatabase();
     console.log("Database seeded successfully");
@@ -26,51 +24,49 @@ export async function registerRoutes(app: Express): Promise<void> {
 
   // --- ऑथेंटिकेशन रूट्स ---
 
-  // ✅ नया लॉगिन/टोकन सत्यापन रूट जोड़ा गया है
-  // यह रूट फ्रंटएंड से Firebase ID टोकन प्राप्त करेगा।
-  // verifyToken मिडिलवेयर टोकन को सत्यापित करेगा और req.user में यूज़र डेटा अटैच करेगा।
   app.post("/api/auth/login", verifyToken, async (req: AuthenticatedRequest, res: Response) => {
     try {
-      // यदि verifyToken मिडिलवेयर सफल होता है, तो req.user में डिकोडेड टोकन जानकारी होगी
       if (!req.user) {
-        // यह स्थिति केवल तभी होनी चाहिए जब verifyToken में कोई अप्रत्याशित समस्या हो
         return res.status(401).json({ message: "Authentication failed: No user information available after token verification." });
       }
 
       const { email, uid, displayName } = req.user;
 
-      // आप यहां डेटाबेस में यूज़र को चेक/बना सकते हैं यदि आवश्यक हो
-      // उदाहरण के लिए, एक placeholder storage.getUserByEmail और storage.createUser फ़ंक्शन का उपयोग किया गया है।
-      // आपको अपनी storage.ts फ़ाइल में इन्हें लागू करना होगा।
-      let user = await storage.getUserByEmail(email); // आपको इसे storage.ts में जोड़ना होगा
+      // डेटाबेस में यूज़र को खोजें या नया बनाएं
+      let user = await storage.getUserByEmail(email); // <-- सुनिश्चित करें कि यह आपके storage.ts में है
+
       if (!user) {
         // यदि यूज़र मौजूद नहीं है, तो उसे बनाएं
-        user = await storage.createUser({ // आपको इसे storage.ts में जोड़ना होगा
+        user = await storage.createUser({ // <-- सुनिश्चित करें कि यह आपके storage.ts में है
           email: email,
-          firebaseUid: uid, // Firebase UID को स्टोर करें
+          firebaseUid: uid,
           name: displayName || email.split('@')[0],
-          // अन्य आवश्यक फील्ड्स (जैसे रोल, प्रोफाइल जानकारी)
+          role: "customer", // ✅ नया यूज़र डिफ़ॉल्ट रूप से 'customer' होगा
+          approvalStatus: "approved" // ✅ customer के लिए डिफ़ॉल्ट 'approved'
+          // अन्य आवश्यक फील्ड्स
         });
         console.log(`New user created in database: ${user.email} (UID: ${user.firebaseUid})`);
       } else {
         console.log(`Existing user logged in: ${user.email} (UID: ${user.firebaseUid})`);
       }
 
-      // सक्सेसफुल रिस्पांस भेजें जिसमें यूज़र डेटा शामिल हो
+      // सक्सेसफुल रिस्पांस भेजें जिसमें यूज़र का पूरा डेटा शामिल हो,
+      // जिसमें role और approvalStatus भी हों।
       res.json({
         message: "Authentication successful",
         user: {
-          id: user.id, // डेटाबेस से यूज़र ID (अगर आप इसे स्टोर करते हैं)
+          id: user.id,
           email: user.email,
           name: user.name,
           firebaseUid: user.firebaseUid,
-          // अन्य यूज़र डेटा जो आप फ्रंटएंड को भेजना चाहते हैं
+          role: user.role, // ✅ user.role को यहां से भेजें
+          approvalStatus: user.approvalStatus, // ✅ user.approvalStatus को यहां से भेजें
+          // यदि आपके user ऑब्जेक्ट में अन्य फ़ील्ड हैं जो आप फ्रंटएंड को भेजना चाहते हैं, तो उन्हें भी जोड़ें
         }
       });
 
     } catch (error) {
       console.error("Error during /api/auth/login:", error);
-      // सुनिश्चित करें कि यह JSON प्रतिक्रिया भेजता है
       res.status(500).json({ message: "Internal server error during authentication process." });
     }
   });
@@ -283,4 +279,4 @@ export async function registerRoutes(app: Express): Promise<void> {
       res.status(500).json({ message: "Failed to create review" });
     }
   });
-  }
+}
