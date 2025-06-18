@@ -21,7 +21,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       setFirebaseUser(firebaseUser);
-      
+
       if (firebaseUser) {
         try {
           // Create or get user in our database
@@ -30,17 +30,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             email: firebaseUser.email!,
             name: firebaseUser.displayName || firebaseUser.email!,
           };
-          
+
           const response = await apiRequest("POST", "/api/users", userData);
           const user = await response.json();
           setUser(user);
         } catch (error) {
-        console.error("Error creating/fetching user:", error); // सिंगल स्पेस
-          
-      } else {
+          console.error("Error creating/fetching user:", error); // सिंगल स्पेस और सही
+        }
+      } // <--- ✅ यह मिसिंग '}' है जो 'if (firebaseUser)' ब्लॉक को बंद करता है
+      else {
         setUser(null);
       }
-      
+
       setLoading(false);
     });
 
