@@ -83,6 +83,7 @@ export const categories = pgTable("categories", {
   isActive: boolean("is_active").default(true),
   sortOrder: integer("sort_order").default(0),
 });
+// @shared/backend/schema.ts
 
 // Products from different sellers
 export const products = pgTable("products", {
@@ -104,9 +105,12 @@ export const products = pgTable("products", {
   minOrderQty: integer("min_order_qty").default(1),
   maxOrderQty: integer("max_order_qty").default(100),
   isActive: boolean("is_active").default(true),
+  // ✅ यहां 'featured' कॉलम जोड़ें
+  featured: boolean("featured").default(false), // एक boolean कॉलम, default false
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
+
 
 // Delivery areas and charges
 export const deliveryAreas = pgTable("delivery_areas", {
