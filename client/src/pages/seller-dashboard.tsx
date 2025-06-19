@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { insertProductSchema, insertSellerSchema, insertCategorySchema } from "@shared/backend/schema";
+import { insertProductSchema, insertCategorySchema } from "@shared/backend/schema";
 import type { Seller, ProductWithSeller, Category, OrderWithItems } from "@shared/backend/schema";
 import { apiRequest } from "@/lib/apiRequest";
 import { useToast } from "@/hooks/use-toast";
