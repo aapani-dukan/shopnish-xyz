@@ -1,10 +1,11 @@
+Delivery- login.tsx se ja rahi hai GET request 
 // Client/src/pages/delivery-login.tsx
 import { useEffect, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useLocation } from "wouter";
-// import { apiRequest } from "@/lib/apiRequest"; // अब इसकी सीधी जरूरत नहीं होगी अगर आप fetch का उपयोग कर रहे हैं
+import { apiRequest } from "@/lib/apiRequest";
 import { Truck } from "lucide-react";
 import { signInWithGooglePopup } from "@/lib/firebase"; // Common function import
 
@@ -16,48 +17,24 @@ export default function DeliveryLogin() {
   const handleFirebasePopupLogin = async () => {
     setLoading(true);
     try {
+      // Use the common Firebase sign-in function
       const result = await signInWithGooglePopup();
       const user = result.user;
 
-      if (!user) {
-        throw new Error("Firebase user not found after sign-in.");
-      }
-
-      // Send token to backend using POST method to a new dedicated login endpoint
+      // Send token to backend
       const token = await user.getIdToken();
 
-      const response = await fetch("/api/delivery/login", { // ✅ नया POST URL
-        method: "POST", // ✅ मेथड POST होना चाहिए
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`, // टोकन भेजना ज़रूरी है
-        },
-        body: JSON.stringify({
-          firebaseUid: user.uid,
-          email: user.email || "",
-          name: user.displayName || user.email || "",
-        }),
+      // Save in localStorage
+      localStorage.setItem("deliveryBoyToken", token);
+      localStorage.setItem("deliveryBoyEmail", user.email || "");
+
+      // Call backend to check approval
+      const res = await apiRequest("GET", "/api/delivery/me", null, {
+        Authorization: `Bearer ${token}`,
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Failed to authenticate with backend.");
-      }
-
-      const backendResponse = await response.json();
-      const deliveryBoy = backendResponse.user; // सर्वर से आया हुआ डिलीवरी बॉय डेटा
-
-      if (!deliveryBoy) {
-        throw new Error("Delivery boy data not received from backend.");
-      }
-
-      // Save in localStorage (आप अपने टोकन और ईमेल को localStorage में सेव कर सकते हैं)
-      localStorage.setItem("deliveryBoyToken", token);
-      localStorage.setItem("deliveryBoyEmail", deliveryBoy.email || ""); // या backendResponse से ईमेल
-
-      // Call backend to check approval (यह अब ऊपर वाले fetch कॉल में शामिल हो जाएगा)
-      if (deliveryBoy.approvalStatus === "approved") { // ✅ सर्वर रिस्पांस से approvalStatus चेक करें
-        toast({ title: "Login Successful", description: `Welcome ${deliveryBoy.name || deliveryBoy.email}` });
+      if (res.user && res.user.approvalStatus === "approved") {
+        toast({ title: "Login Successful", description: `Welcome ${res.user.firstName}` });
         navigate("/delivery-dashboard");
       } else {
         toast({
@@ -66,11 +43,11 @@ export default function DeliveryLogin() {
           variant: "destructive",
         });
       }
-    } catch (err: any) { // err को any टाइप दें ताकि message प्रॉपर्टी एक्सेस कर सकें
-      console.error("Delivery login failed:", err);
+    } catch (err) {
+      console.error("Login failed:", err);
       toast({
         title: "Login Failed",
-        description: err.message || "Something went wrong during login.",
+        description: "Something went wrong during login.",
         variant: "destructive",
       });
     } finally {
