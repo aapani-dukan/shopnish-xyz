@@ -32,8 +32,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             name: firebaseUser.displayName || firebaseUser.email!,
           };
           console.log("UserData prepared for /api/users:", userData); // लॉगिंग जोड़ी गई
-
-          const response = await apiRequest("POST", "/api/users", userData);
+const response = await apiRequest("POST", "/api/auth/login", userData);
+          
+          
           console.log("API request to /api/users successful. Response received."); // लॉगिंग जोड़ी गई
           const user = await response.json();
           setUser(user);
