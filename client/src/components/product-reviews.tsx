@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/apiRequest";
+import { apiRequest } from "@/lib/queryClient";
 import { Star, User, MessageSquare } from "lucide-react";
 
 interface Review {
