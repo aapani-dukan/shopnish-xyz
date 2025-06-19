@@ -9,7 +9,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 //import { insertSellerSchema } from "@shared/schema";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/apiRequest";
+import { apiRequest } from "@/lib/quetyClient";
 import { useToast } from "@/hooks/use-toast";
 import { useSellerRegistrationStore } from "@/lib/store";
 import { useAuth } from "@/hooks/useAuth";
