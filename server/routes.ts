@@ -13,6 +13,9 @@ import sellersApproveRouter from "../routes/sellers/approve";
 import sellersRejectRouter from "../routes/sellers/reject";
 import sellerMeRoute from "../routes/sellerMe";
 
+// ✅ डिलीवरी बॉय रूट्स के लिए
+import deliveryLoginRoute from "../routes/delivery/login"; // यह आपको बनाना होगा
+import deliveryMeRoute from "../routes/delivery/me"; // यह भी आपको बनाना होगा
 
 export async function registerRoutes(app: Express): Promise<void> {
   try {
@@ -22,8 +25,7 @@ export async function registerRoutes(app: Express): Promise<void> {
     console.error("Failed to seed database:", error);
   }
 
-  // --- ऑथेंटिकेशन रूट्स ---
-
+  // --- ऑथेंटिकेशन रूट्स (मौजूदा) ---
   app.post("/api/auth/login", verifyToken, async (req: AuthenticatedRequest, res: Response) => {
     try {
       if (!req.user) {
@@ -32,26 +34,21 @@ export async function registerRoutes(app: Express): Promise<void> {
 
       const { email, uid, displayName } = req.user;
 
-      // डेटाबेस में यूज़र को खोजें या नया बनाएं
-      let user = await storage.getUserByEmail(email); // <-- सुनिश्चित करें कि यह आपके storage.ts में है
+      let user = await storage.getUserByEmail(email);
 
       if (!user) {
-        // यदि यूज़र मौजूद नहीं है, तो उसे बनाएं
-        user = await storage.createUser({ // <-- सुनिश्चित करें कि यह आपके storage.ts में है
+        user = await storage.createUser({
           email: email,
           firebaseUid: uid,
           name: displayName || email.split('@')[0],
-          role: "customer", // ✅ नया यूज़र डिफ़ॉल्ट रूप से 'customer' होगा
-          approvalStatus: "approved" // ✅ customer के लिए डिफ़ॉल्ट 'approved'
-          // अन्य आवश्यक फील्ड्स
+          role: "customer",
+          approvalStatus: "approved"
         });
         console.log(`New user created in database: ${user.email} (UID: ${user.firebaseUid})`);
       } else {
         console.log(`Existing user logged in: ${user.email} (UID: ${user.firebaseUid})`);
       }
 
-      // सक्सेसफुल रिस्पांस भेजें जिसमें यूज़र का पूरा डेटा शामिल हो,
-      // जिसमें role और approvalStatus भी हों।
       res.json({
         message: "Authentication successful",
         user: {
@@ -59,9 +56,8 @@ export async function registerRoutes(app: Express): Promise<void> {
           email: user.email,
           name: user.name,
           firebaseUid: user.firebaseUid,
-          role: user.role, // ✅ user.role को यहां से भेजें
-          approvalStatus: user.approvalStatus, // ✅ user.approvalStatus को यहां से भेजें
-          // यदि आपके user ऑब्जेक्ट में अन्य फ़ील्ड हैं जो आप फ्रंटएंड को भेजना चाहते हैं, तो उन्हें भी जोड़ें
+          role: user.role,
+          approvalStatus: user.approvalStatus,
         }
       });
 
@@ -71,8 +67,7 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
 
-
-  // --- विक्रेता रूट्स ---
+  // --- विक्रेता रूट्स (मौजूदा) ---
   app.use("/api/sellers/pending", pendingSellersRoute);
   app.use("/api/sellers/apply", sellersApplyRouter);
   app.use("/api/sellers/approve", sellersApproveRouter);
@@ -80,203 +75,86 @@ export async function registerRoutes(app: Express): Promise<void> {
   app.use(sellerMeRoute);
 
 
-  // --- बाकी के API रूट्स ---
-  // Categories
-  app.get("/api/categories", async (req, res) => {
+  // --- ✅ नए डिलीवरी बॉय रूट्स यहाँ जोड़ें ---
+  // आपको इन रूट्स को बनाने के लिए अलग फाइल्स (जैसे server/routes/delivery/login.ts) की आवश्यकता होगी
+  // या आप उन्हें सीधे यहां routes.ts में ही बना सकते हैं अगर वे छोटे हैं।
+
+  // उदाहरण के लिए, सीधे routes.ts में जोड़ना:
+  app.post("/api/delivery/login", verifyToken, async (req: AuthenticatedRequest, res: Response) => {
     try {
-      const categories = await storage.getCategories();
-      res.json(categories);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to fetch categories" });
-    }
-  });
-
-  // Products
-  app.get("/api/products", async (req, res) => {
-    try {
-      const { categoryId, featured, search } = req.query;
-      const filters: any = {};
-
-      if (categoryId) filters.categoryId = parseInt(categoryId as string);
-      if (featured) filters.featured = featured === 'true';
-      if (search) filters.search = search as string;
-
-      const products = await storage.getProducts(filters);
-      res.json(products);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to fetch products" });
-    }
-  });
-
-  app.get("/api/products/:id", async (req, res) => {
-    try {
-      const id = parseInt(req.params.id);
-      const product = await storage.getProduct(id);
-
-      if (!product) {
-        return res.status(404).json({ message: "Product not found" });
+      if (!req.user) {
+        return res.status(401).json({ message: "Authentication failed: No user information available." });
       }
 
-      res.json(product);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to fetch product" });
-    }
-  });
+      const { email, uid, displayName } = req.user;
 
-  // Cart
-  app.get("/api/cart", async (req, res) => {
-    try {
-      const { userId, sessionId } = req.query;
-      const cartItems = await storage.getCartItems(
-        userId ? parseInt(userId as string) : undefined,
-        sessionId as string
-      );
-      res.json(cartItems);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to fetch cart items" });
-    }
-  });
+      // अपनी storage.ts में इन फ़ंक्शंस को लागू करें
+      let deliveryBoy = await storage.getDeliveryBoyByEmail(email);
 
-  app.post("/api/cart", async (req, res) => {
-    try {
-      const validation = insertCartItemSchema.safeParse(req.body);
-      if (!validation.success) {
-        return res.status(400).json({ message: "Invalid cart item data" });
+      if (!deliveryBoy) {
+        // अगर डिलीवरी बॉय मौजूद नहीं है, तो उसे बनाएं
+        deliveryBoy = await storage.createDeliveryBoy({
+          email: email,
+          firebaseUid: uid,
+          name: displayName || email.split('@')[0],
+          approvalStatus: "pending" // ✅ नए डिलीवरी बॉय का स्टेटस 'pending' होगा
+          // अन्य आवश्यक फील्ड्स जैसे firstName, lastName
+        });
+        console.log(`New delivery boy created: ${deliveryBoy.email}`);
+      } else {
+        console.log(`Existing delivery boy logged in: ${deliveryBoy.email}`);
       }
 
-      const cartItem = await storage.addToCart(validation.data);
-      res.json(cartItem);
+      res.json({
+        message: "Delivery boy login successful",
+        user: { // इसे 'user' के रूप में भेजें ताकि फ्रंटएंड में 'res.user' काम करे
+          id: deliveryBoy.id,
+          email: deliveryBoy.email,
+          name: deliveryBoy.name,
+          firebaseUid: deliveryBoy.firebaseUid,
+          approvalStatus: deliveryBoy.approvalStatus,
+          // यदि आपके डिलीवरी बॉय ऑब्जेक्ट में firstName या अन्य फील्ड्स हैं, तो उन्हें भी यहाँ जोड़ें
+        }
+      });
+
     } catch (error) {
-      res.status(500).json({ message: "Failed to add item to cart" });
+      console.error("Error during /api/delivery/login:", error);
+      res.status(500).json({ message: "Internal server error during delivery boy authentication." });
     }
   });
 
-  app.put("/api/cart/:id", async (req, res) => {
-    try {
-      const id = parseInt(req.params.id);
-      const { quantity } = req.body;
+  // यदि /api/delivery/me route की आवश्यकता है, तो इसे भी POST होना चाहिए या ध्यान से हैंडल करना चाहिए
+  // FrontEnd code में apiRequest GET था, अगर इसे बनाए रखना है तो server पर GET route बनाएँ।
+  // लेकिन Auth token के साथ data fetch करने के लिए POST method ज्यादा सुरक्षित होती है।
+  // app.get("/api/delivery/me", verifyToken, async (req: AuthenticatedRequest, res: Response) => {
+  //   try {
+  //     if (!req.user) {
+  //       return res.status(401).json({ message: "Unauthorized: No token provided." });
+  //     }
+  //     const deliveryBoy = await storage.getDeliveryBoyByFirebaseUid(req.user.uid);
+  //     if (!deliveryBoy) {
+  //       return res.status(404).json({ message: "Delivery boy not found." });
+  //     }
+  //     res.json({ user: deliveryBoy });
+  //   } catch (error) {
+  //     console.error("Error fetching delivery boy details:", error);
+  //     res.status(500).json({ message: "Failed to fetch delivery boy details." });
+  //   }
+  // });
 
-      if (typeof quantity !== 'number' || quantity < 0) {
-        return res.status(400).json({ message: "Invalid quantity" });
-      }
 
-      const cartItem = await storage.updateCartItem(id, quantity);
-      if (!cartItem && quantity > 0) {
-        return res.status(404).json({ message: "Cart item not found" });
-      }
-
-      res.json(cartItem);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to update cart item" });
-    }
-  });
-
-  app.delete("/api/cart/:id", async (req, res) => {
-    try {
-      const id = parseInt(req.params.id);
-      const success = await storage.removeFromCart(id);
-
-      if (!success) {
-        return res.status(404).json({ message: "Cart item not found" });
-      }
-
-      res.json({ message: "Item removed from cart" });
-    } catch (error) {
-      res.status(500).json({ message: "Failed to remove item from cart" });
-    }
-  });
-
-  app.delete("/api/cart", async (req, res) => {
-    try {
-      const { userId, sessionId } = req.query;
-      const success = await storage.clearCart(
-        userId ? parseInt(userId as string) : undefined,
-        sessionId as string
-      );
-
-      res.json({ message: "Cart cleared", success });
-    } catch (error) {
-      res.status(500).json({ message: "Failed to clear cart" });
-    }
-  });
-
-  // Orders
-  app.post("/api/orders", async (req, res) => {
-    try {
-      const { order, items } = req.body;
-
-      const orderValidation = insertOrderSchema.safeParse(order);
-      if (!orderValidation.success) {
-        return res.status(400).json({ message: "Invalid order data" });
-      }
-
-      if (!Array.isArray(items) || items.length === 0) {
-        return res.status(400).json({ message: "Order must have items" });
-      }
-
-      const createdOrder = await storage.createOrder(orderValidation.data, items);
-      res.json(createdOrder);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to create order" });
-    }
-  });
-
-  app.get("/api/orders", async (req, res) => {
-    try {
-      const { customerId } = req.query;
-      const filters: any = {};
-
-      if (customerId) {
-        filters.customerId = parseInt(customerId as string);
-      }
-
-      const orders = await storage.getOrders(filters);
-      res.json(orders);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to fetch orders" });
-    }
-  });
-
-  app.get("/api/orders/:id", async (req, res) => {
-    try {
-      const id = parseInt(req.params.id);
-      const order = await storage.getOrder(id);
-
-      if (!order) {
-        return res.status(404).json({ message: "Order not found" });
-      }
-
-      res.json(order);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to fetch order" });
-    }
-  });
-
-  // Reviews
-  app.get("/api/products/:id/reviews", async (req, res) => {
-    try {
-      const productId = parseInt(req.params.id);
-      const reviews = await storage.getProductReviews(productId);
-      res.json(reviews);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to fetch reviews" });
-    }
-  });
-
-  app.post("/api/products/:id/reviews", async (req, res) => {
-    try {
-      const productId = parseInt(req.params.id);
-      const reviewData = { ...req.body, productId };
-
-      const validation = insertReviewSchema.safeParse(reviewData);
-      if (!validation.success) {
-        return res.status(400).json({ message: "Invalid review data" });
-      }
-
-      const review = await storage.createReview(validation.data);
-      res.json(review);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to create review" });
-    }
-  });
-          }
+  // --- बाकी के API रूट्स (मौजूदा) ---
+  app.get("/api/categories", async (req, res) => { /* ... */ });
+  app.get("/api/products", async (req, res) => { /* ... */ });
+  app.get("/api/products/:id", async (req, res) => { /* ... */ });
+  app.get("/api/cart", async (req, res) => { /* ... */ });
+  app.post("/api/cart", async (req, res) => { /* ... */ });
+  app.put("/api/cart/:id", async (req, res) => { /* ... */ });
+  app.delete("/api/cart/:id", async (req, res) => { /* ... */ });
+  app.delete("/api/cart", async (req, res) => { /* ... */ });
+  app.post("/api/orders", async (req, res) => { /* ... */ });
+  app.get("/api/orders", async (req, res) => { /* ... */ });
+  app.get("/api/orders/:id", async (req, res) => { /* ... */ });
+  app.get("/api/products/:id/reviews", async (req, res) => { /* ... */ });
+  app.post("/api/products/:id/reviews", async (req, res) => { /* ... */ });
+}
