@@ -8,7 +8,7 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 
-import { apiRequest } from "@/lib/apiRequest";
+import { apiRequest } from "@/lib/queryclient";
 import { useToast } from "@/hooks/use-toast";
 
 import { Button } from "@/components/ui/button";
