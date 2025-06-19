@@ -1,13 +1,15 @@
-
-import { pgTable, text, serial, integer, decimal, boolean, timestamp, json } from "drizzle-orm/pg-core";
+// @shared/backend/schema.ts
+import { pgTable, text, serial, integer, decimal, boolean, timestamp, json, varchar } from "drizzle-orm/pg-core"; // varchar को इम्पोर्ट करें
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
 
-
+// ✅ ध्यान दें: `sellers` Zod ऑब्जेक्ट है, Drizzle स्कीमा नहीं।
+// यदि आप इसे डेटाबेस टेबल के रूप में उपयोग करना चाहते हैं, तो इसे `pgTable` में बदलना होगा।
+// फिलहाल, मैं इसे छोड़ रहा हूँ, लेकिन यह संभावित रूप से एक असंगति का स्रोत है।
 export const sellers = z.object({
   id: z.string().uuid(),
-  userId: z.string(),
+  userId: z.string(), // यह 'users' टेबल के 'id' से रेफरेंस होना चाहिए अगर यह DB से है
   businessName: z.string(),
   email: z.string().email(),
   phone: z.string().optional(),
@@ -19,15 +21,19 @@ export const sellers = z.object({
   updatedAt: z.date(),
 });
 
+
 // User roles: customer, seller, admin, delivery_boy
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
+  firebaseUid: text("firebase_uid").unique(), // ✅ Firebase UID यहाँ जोड़ें
   email: text("email").notNull().unique(),
-  password: text("password").notNull(),
-  firstName: text("first_name").notNull(),
-  lastName: text("last_name").notNull(),
-  phone: text("phone").notNull(),
-  role: text("role").notNull().default("customer"), // customer, seller, admin, delivery_boy
+  // password: text("password").notNull(), // ✅ यदि आप Firebase Auth का उपयोग कर रहे हैं तो इसकी आवश्यकता नहीं है
+  name: text("name"), // ✅ यूज़र का नाम यहाँ जोड़ें
+  firstName: text("first_name"), // इसे optional या हटा सकते हैं यदि 'name' ही काफी है
+  lastName: text("last_name"),   // इसे optional या हटा सकते हैं
+  phone: text("phone"),          // इसे optional या हटा सकते हैं
+  role: varchar("role", { enum: ["customer", "seller", "admin", "delivery_boy"] }).notNull().default("customer"), // ✅ varchar और enum का उपयोग करें
+  approvalStatus: varchar("approval_status", { enum: ["pending", "approved", "rejected"] }).notNull().default("approved"), // ✅ अप्रूवल स्टेटस जोड़ें
   address: text("address"),
   city: text("city"),
   pincode: text("pincode"),
@@ -53,14 +59,18 @@ export const stores = pgTable("stores", {
 });
 
 
-export const insertSellerSchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(6),
-  firstName: z.string().min(1),
-  lastName: z.string().min(1),
-  phone: z.string().min(10),
-  role: z.literal("seller").default("seller"),
-});
+// ✅ insertSellerSchema की आवश्यकता नहीं होगी यदि आप `users` टेबल में `role` का उपयोग कर रहे हैं।
+// यदि आप इसे एक अलग 'sellers' टेबल के रूप में उपयोग कर रहे हैं, तो इसे `createInsertSchema` से बनाना बेहतर है।
+// फिलहाल, मैंने इसे हटा दिया है क्योंकि यह `users` टेबल के लिए ऑथेंटिकेशन लॉजिक को ओवरलैप कर रहा है।
+// export const insertSellerSchema = z.object({
+//   email: z.string().email(),
+//   password: z.string().min(6),
+//   firstName: z.string().min(1),
+//   lastName: z.string().min(1),
+//   phone: z.string().min(10),
+//   role: z.literal("seller").default("seller"),
+// });
+
 
 // Product categories for essentials
 export const categories = pgTable("categories", {
@@ -112,7 +122,11 @@ export const deliveryAreas = pgTable("delivery_areas", {
 // Delivery boys
 export const deliveryBoys = pgTable("delivery_boys", {
   id: serial("id").primaryKey(),
-  userId: integer("user_id").references(() => users.id),
+  firebaseUid: text("firebase_uid").unique().notNull(), // ✅ Firebase UID यहाँ जोड़ें
+  email: text("email").unique().notNull(), // ✅ ईमेल यहाँ जोड़ें
+  name: text("name"), // ✅ नाम यहाँ जोड़ें
+  approvalStatus: varchar("approval_status", { enum: ["pending", "approved", "rejected"] }).notNull().default("pending"), // ✅ अप्रूवल स्टेटस यहाँ जोड़ें
+  // userId: integer("user_id").references(() => users.id), // ✅ इसे हटा दें या optional करें यदि आप Firebase UID से सीधे लिंक कर रहे हैं
   vehicleType: text("vehicle_type").notNull(), // bike, cycle, auto
   vehicleNumber: text("vehicle_number"),
   licenseNumber: text("license_number"),
@@ -169,7 +183,7 @@ export const orderItems = pgTable("order_items", {
 
 // Order tracking/status updates
 export const orderTracking = pgTable("order_tracking", {
-  id: serial("id").primaryKey(),
+  id: serial("id").primaryaryKey(),
   orderId: integer("order_id").references(() => orders.id),
   status: text("status").notNull(),
   message: text("message"),
@@ -256,11 +270,15 @@ export const reviews = pgTable("reviews", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-// Insert schemas
+// --- Insert schemas ---
+// ✅ `users` के लिए updated insert schema
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
+  // यदि `firstName`, `lastName`, `phone` optional हैं या `name` से आ रहे हैं
+  // तो उन्हें भी omit या optional करें
+  // password: true, // Firebase Auth के साथ password की आवश्यकता नहीं
 });
 
 export const insertStoreSchema = createInsertSchema(stores).omit({
@@ -282,9 +300,11 @@ export const insertDeliveryAreaSchema = createInsertSchema(deliveryAreas).omit({
   id: true,
 });
 
+// ✅ `deliveryBoys` के लिए updated insert schema
 export const insertDeliveryBoySchema = createInsertSchema(deliveryBoys).omit({
   id: true,
   createdAt: true,
+  // userId: true, // यदि आप इसे हटा रहे हैं तो यहाँ भी omit करें
 });
 
 export const insertCartItemSchema = createInsertSchema(cartItems).omit({
@@ -335,9 +355,9 @@ export const insertReviewSchema = createInsertSchema(reviews).omit({
   createdAt: true,
 });
 
-// Types
+// --- Types ---
 export type User = typeof users.$inferSelect;
-export type InsertUser = z.infer<typeof insertUserSchema>;
+export type InsertUser = z.infer<typeof insertUserSchema>; // ✅ यह अब updated schema से infer होगा
 
 export type Store = typeof stores.$inferSelect;
 export type InsertStore = z.infer<typeof insertStoreSchema>;
@@ -352,7 +372,7 @@ export type DeliveryArea = typeof deliveryAreas.$inferSelect;
 export type InsertDeliveryArea = z.infer<typeof insertDeliveryAreaSchema>;
 
 export type DeliveryBoy = typeof deliveryBoys.$inferSelect;
-export type InsertDeliveryBoy = z.infer<typeof insertDeliveryBoySchema>;
+export type InsertDeliveryBoy = z.infer<typeof insertDeliveryBoySchema>; // ✅ यह अब updated schema से infer होगा
 
 export type CartItem = typeof cartItems.$inferSelect;
 export type InsertCartItem = z.infer<typeof insertCartItemSchema>;
@@ -383,3 +403,29 @@ export type InsertServiceBooking = z.infer<typeof insertServiceBookingSchema>;
 
 export type Review = typeof reviews.$inferSelect;
 export type InsertReview = z.infer<typeof insertReviewSchema>;
+
+// ✅ Seller type को Drizzle स्कीमा से Infer करें यदि आप इसे डेटाबेस से उपयोग कर रहे हैं।
+// यदि यह केवल एक Zod ऑब्जेक्ट है, तो इसे ऐसा ही छोड़ दें, लेकिन यह डेटाबेस से सीधे काम नहीं करेगा।
+// मैं मान रहा हूँ कि आप इसे डेटाबेस टेबल के रूप में उपयोग करना चाहेंगे।
+// तो आपको पहले `sellers` को `pgTable` में बदलना होगा अगर वह नहीं है।
+// यदि आप seller के लिए अलग टेबल बनाते हैं तो यह कुछ ऐसा होगा:
+/*
+export const sellersPgTable = pgTable("sellers", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id).unique().notNull(), // One-to-one with users table
+  businessName: text("business_name").notNull(),
+  // Add other seller specific fields as needed
+  approvalStatus: varchar("approval_status", { enum: ["pending", "approved", "rejected"] }).notNull().default("pending"),
+  approvedAt: timestamp("approved_at"),
+  rejectionReason: text("rejection_reason"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+export type Seller = typeof sellersPgTable.$inferSelect;
+export type InsertSeller = typeof sellersPgTable.$inferInsert;
+*/
+
+// यदि `sellers` केवल एक Zod object है और आप उसे database table की तरह use नहीं कर रहे, तो उसे वैसे ही छोड़ दें
+// और `getSellers` function `storage.ts` में उसे in-memory handle करेगा।
+// यहाँ आपके मौजूदा Zod object पर आधारित `Seller` type है:
+export type Seller = z.infer<typeof sellers>;
