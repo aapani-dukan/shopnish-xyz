@@ -1,4 +1,4 @@
-Eh lo backend schema is ko bhi update kar do 
+
 import { pgTable, text, serial, integer, decimal, boolean, timestamp, json } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
