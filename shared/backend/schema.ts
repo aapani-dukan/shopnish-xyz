@@ -183,7 +183,7 @@ export const orderItems = pgTable("order_items", {
 
 // Order tracking/status updates
 export const orderTracking = pgTable("order_tracking", {
-  id: serial("id").primaryaryKey(),
+  id: serial("id").primaryKey(),
   orderId: integer("order_id").references(() => orders.id),
   status: text("status").notNull(),
   message: text("message"),
