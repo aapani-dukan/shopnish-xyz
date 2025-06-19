@@ -15,7 +15,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { insertProductSchema,insertSellerSchema,insertCategorySchema } from "@shared/backend/schema";
 import type { Seller, ProductWithSeller, Category, OrderWithItems } from "@shared/backend/schema";
-import { apiRequest } from "@/lib/apiRequest";
+import { apiRequest } from "@/lib/query Client";
 import { useToast } from "@/hooks/use-toast";
 import { 
   Package, 
