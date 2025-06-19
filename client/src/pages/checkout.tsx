@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/apiRequest";
+import { apiRequest } from "@/lib/queryClient";
 import { ShoppingCart, MapPin, CreditCard, Check } from "lucide-react";
 
 interface CartItem {
