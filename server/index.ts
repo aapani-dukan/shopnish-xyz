@@ -9,10 +9,15 @@ import * as admin from 'firebase-admin';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import { Pool } from 'pg';
-import path from 'path'; // 'path' मॉड्यूल इम्पोर्ट करें
+import path from 'path';
+import { fileURLToPath } from 'url'; // ESM-संगत __dirname के लिए यह नया इम्पोर्ट है
 
 const app = express();
 let server: Server;
+
+// ESM में __dirname और __filename को डिफाइन करें
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 app.use(cors());
 app.use(express.json());
@@ -20,19 +25,26 @@ app.use(express.urlencoded({ extended: false }));
 
 // --- Firebase Admin SDK Initialization START ---
 try {
-  const serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
+  // Base64 एन्कोडेड कुंजी को पर्यावरण वेरिएबल से प्राप्त करें
+  const serviceAccountBase64 = process.env.FIREBASE_SERVICE_ACCOUNT_KEY_BASE64;
 
-  if (!serviceAccountJson) {
-    console.error("FIREBASE_SERVICE_ACCOUNT_KEY environment variable is not set. Firebase Admin SDK will not be initialized.");
+  if (!serviceAccountBase64) {
+    console.error("FIREBASE_SERVICE_ACCOUNT_KEY_BASE64 environment variable is not set. Firebase Admin SDK will not be initialized.");
   } else {
-    const serviceAccount = JSON.parse(serviceAccountJson);
-    admin.initializeApp({
-      credential: admin.credential.cert(serviceAccount),
-    });
-    log("Firebase Admin SDK initialized successfully.");
+    try {
+      // Base64 स्ट्रिंग को डीकोड करके JSON में पार्स करें
+      const serviceAccountJson = Buffer.from(serviceAccountBase64, 'base64').toString('utf8');
+      const serviceAccount = JSON.parse(serviceAccountJson);
+      admin.initializeApp({
+        credential: admin.credential.cert(serviceAccount),
+      });
+      log("Firebase Admin SDK initialized successfully.");
+    } catch (parseError) {
+      console.error("Failed to parse Firebase Service Account JSON after Base64 decoding:", parseError);
+    }
   }
 } catch (error) {
-  console.error("Failed to initialize Firebase Admin SDK. Check FIREBASE_SERVICE_ACCOUNT_KEY format:", error);
+  console.error("Failed to initialize Firebase Admin SDK. Check FIREBASE_SERVICE_ACCOUNT_KEY_BASE64 environment variable or decoding process:", error);
 }
 // --- Firebase Admin SDK Initialization END ---
 
@@ -40,12 +52,12 @@ try {
 async function runMigrations() {
   const connectionString = process.env.DATABASE_URL;
 
-  console.log("Checking DATABASE_URL..."); // नया लॉग
+  console.log("Checking DATABASE_URL...");
   if (!connectionString) {
     console.error("DATABASE_URL environment variable is not set. Drizzle migrations cannot run.");
     return;
   }
-  console.log("DATABASE_URL is set."); // नया लॉग
+  console.log("DATABASE_URL is set.");
 
   const pool = new Pool({
     connectionString: connectionString,
@@ -58,35 +70,40 @@ async function runMigrations() {
 
   try {
     console.log("Starting Drizzle migrations...");
-    // सुनिश्चित करें कि यह पाथ सही है। __dirname 'server' फ़ोल्डर को संदर्भित करता है।
-    // 'migration' फ़ोल्डर 'server' के ठीक अंदर है।
+    // अब __dirname सही ढंग से डिफाइन है
     const migrationsPath = path.resolve(__dirname, 'migration');
-    console.log(`Attempting to run migrations from: ${migrationsPath}`); // यह लॉग पहले भी था, अब और भी महत्वपूर्ण है।
+    console.log(`Attempting to run migrations from: ${migrationsPath}`);
 
     await migrate(db, { migrationsFolder: migrationsPath });
     console.log("Drizzle Migrations complete!");
   } catch (error) {
     console.error("Drizzle Migrations failed:", error);
-    // यहां एरर को फिर से फेंकने या प्रोसेस को बंद करने पर विचार करें,
-    // यदि डेटाबेस माइग्रेशन महत्वपूर्ण है, तो यह ऐप को बिना स्कीमा के चलने से रोकेगा।
+    // यदि माइग्रेशन विफल हो तो ऐप को क्रैश करने पर विचार करें, क्योंकि डेटाबेस स्कीमा के बिना ऐप काम नहीं करेगा
     // throw error;
-    // process.exit(1); // यदि माइग्रेशन विफल हो तो ऐप को क्रैश करें
+    // process.exit(1);
   } finally {
-    console.log("Attempting to end database pool..."); // नया लॉग
+    console.log("Attempting to end database pool...");
     try {
-      await pool.end(); // पूल को बंद करना महत्वपूर्ण है
-      console.log("Database pool ended successfully."); // नया लॉग
+      await pool.end();
+      console.log("Database pool ended successfully.");
     } catch (poolError) {
-      console.error("Failed to end database pool:", poolError); // नया लॉग
+      console.error("Failed to end database pool:", poolError);
     }
   }
 }
 
 // सर्वर शुरू होने से पहले माइग्रेशन चलाएं
 (async () => {
-  console.log("Executing runMigrations function..."); // नया लॉग
+  console.log("Executing runMigrations function...");
   await runMigrations(); // <-- माइग्रेशन को चलाएं
-  console.log("Migrations function finished. Proceeding with server setup..."); // नया लॉग
+  console.log("Migrations function finished. Proceeding with server setup...");
+
+  // Seed database (अगर यह आपके setup में है)
+  // लॉग्स में 'Database already seeded' और 'Database seeded successfully' दिख रहे थे
+  // तो यह भाग आपके codebase में कहीं और है जो 'runMigrations' के बाद चल रहा है।
+  // सुनिश्चित करें कि seeding का लॉजिक भी tables बनने के बाद ही चलता है।
+  // अगर seeding में भी `products` टेबल की ज़रूरत है, तो वह भी माइग्रेशन के बाद ही होनी चाहिए।
+  // यहाँ पर कोई बदलाव नहीं कर रहा हूँ क्योंकि seeding लॉजिक इस फाइल में पूरा नहीं दिख रहा।
 
   const isDev = app.get("env") === "development";
 
@@ -117,8 +134,6 @@ async function runMigrations() {
     log(`Serving on port ${port} in ${app.get("env")} mode`)
   );
 })();
-// --- Drizzle Migrations END ---
-
 
 app.use((req, res, next) => {
   const start = Date.now();
