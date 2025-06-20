@@ -5,7 +5,7 @@ import { seedDatabase } from "./seed";
 import { z } from "zod";
 import { verifyToken, AuthenticatedRequest } from "./middleware/verifyToken";
 import { requireAuth } from "./middleware/requireAuth";
-import { parseIntParam } from "./utils/parseIntParam";
+import { parseIntParam } from "./util/parseIntParam";
 import {
   insertCartItemSchema,
   insertOrderSchema,
