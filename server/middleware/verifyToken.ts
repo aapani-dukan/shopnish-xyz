@@ -1,6 +1,7 @@
 // server/middleware/verifyToken.ts
+
 import { Request, Response, NextFunction } from "express";
-import { verifyAndDecodeToken } from "../util/authUtils"; // नई यूटिलिटी फ़ाइल इम्पोर्ट करें
+import { verifyAndDecodeToken } from "../util/authUtils";
 
 export interface AuthenticatedRequest extends Request {
   user?: {
@@ -24,10 +25,15 @@ export const verifyToken = async (
   const idToken = authHeader.split(" ")[1];
 
   try {
-    req.user = await verifyAndDecodeToken(idToken); // यूटिलिटी फ़ंक्शन का उपयोग करें
+    const decoded = await verifyAndDecodeToken(idToken);
+    req.user = {
+      uid: decoded.uid,
+      email: decoded.email,
+      name: decoded.name || decoded.displayName || "",
+    };
     next();
-  } catch (error) {
-    console.error("Firebase token verification failed:", error);
+  } catch (error: any) {
+    console.error("❌ Firebase token verification failed:", error.message || error);
     return res.status(401).json({ message: "Invalid or expired token" });
   }
 };
