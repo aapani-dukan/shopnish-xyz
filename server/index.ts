@@ -83,7 +83,7 @@ async function runMigrations() {
 
   try {
     console.log("Starting Drizzle migrations...");
-    const migrationsPath = path.resolve(__dirname, 'migration'); // सुनिश्चित करें कि 'migration' नाम छोटा 'm' से है
+    const migrationsPath = path.resolve(__dirname, 'migrations'); // सुनिश्चित करें कि 'migration' नाम छोटा 'm' से है
     console.log(`Attempting to run migrations from: ${migrationsPath}`);
 
     await migrate(db, { migrationsFolder: migrationsPath });
