@@ -11,8 +11,6 @@ import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import { Pool } from 'pg';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import fs from 'fs'; // 'fs' मॉड्यूल इम्पोर्ट करें
-import os from 'os'; // 'os' मॉड्यूल इम्पोर्ट करें
 
 const app = express();
 let server: Server;
@@ -27,33 +25,23 @@ app.use(express.urlencoded({ extended: false }));
 
 // --- Firebase Admin SDK Initialization START ---
 try {
-  const serviceAccountBase64 = process.env.FIREBASE_SERVICE_ACCOUNT_KEY_BASE64;
+  // अब हम सीधे FIREBASE_SERVICE_ACCOUNT_KEY का उपयोग कर रहे हैं
+  const serviceAccountJsonString = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
 
-  if (!serviceAccountBase64) {
-    console.error("FIREBASE_SERVICE_ACCOUNT_KEY_BASE64 environment variable is not set. Firebase Admin SDK will not be initialized.");
+  if (!serviceAccountJsonString) {
+    console.error("FIREBASE_SERVICE_ACCOUNT_KEY environment variable is not set. Firebase Admin SDK will not be initialized.");
   } else {
     try {
-      const serviceAccountJson = Buffer.from(serviceAccountBase64, 'base64').toString('utf8');
+      const serviceAccount = JSON.parse(serviceAccountJsonString);
 
-      // एक टेम्पररी फ़ाइल बनाएँ
-      const tempFilePath = path.join(os.tmpdir(), `firebase-service-account-${Date.now()}.json`);
-      fs.writeFileSync(tempFilePath, serviceAccountJson); // JSON स्ट्रिंग को फ़ाइल में लिखें
-
+      // Firebase Admin SDK को सीधे ऑब्जेक्ट से इनिशियलाइज़ करें
       admin.initializeApp({
-        credential: admin.credential.cert(tempFilePath), // फ़ाइल पाथ से क्रेडेंशियल पढ़ें
+        credential: admin.credential.cert(serviceAccount),
       });
+      // यहां log() का उपयोग करें ताकि Render logs में दिखे
       log("Firebase Admin SDK initialized successfully.");
-
-      // ऐप बंद होने पर टेम्पररी फ़ाइल को हटा दें (वैकल्पिक, लेकिन अच्छा अभ्यास)
-      process.on('exit', () => {
-        if (fs.existsSync(tempFilePath)) {
-          fs.unlinkSync(tempFilePath);
-          log(`Temporary Firebase service account file deleted: ${tempFilePath}`);
-        }
-      });
-
     } catch (firebaseInitError) {
-      console.error("Failed to initialize Firebase Admin SDK. Check FIREBASE_SERVICE_ACCOUNT_KEY_BASE64 format or file handling:", firebaseInitError);
+      console.error("Failed to initialize Firebase Admin SDK. Check FIREBASE_SERVICE_ACCOUNT_KEY content or parsing:", firebaseInitError);
     }
   }
 } catch (error) {
@@ -65,6 +53,7 @@ try {
 async function runMigrations() {
   const connectionString = process.env.DATABASE_URL;
 
+  console.log("Executing runMigrations function..."); // जोड़ा गया लॉग
   console.log("Checking DATABASE_URL...");
   if (!connectionString) {
     console.error("DATABASE_URL environment variable is not set. Drizzle migrations cannot run.");
@@ -83,18 +72,14 @@ async function runMigrations() {
 
   try {
     console.log("Starting Drizzle migrations...");
-    const migrationsPath = path.resolve(__dirname, 'migrations'); // सुनिश्चित करें कि 'migration' नाम छोटा 'm' से है
+    // सुनिश्चित करें कि यह 'migrations' है जैसा कि आपके 'server' फ़ोल्डर में है
+    const migrationsPath = path.resolve(__dirname, 'migrations'); 
     console.log(`Attempting to run migrations from: ${migrationsPath}`);
 
     await migrate(db, { migrationsFolder: migrationsPath });
     console.log("Drizzle Migrations complete!");
   } catch (error) {
     console.error("Drizzle Migrations failed:", error);
-    // यहां एरर को फिर से फेंकने या प्रोसेस को बंद करने पर विचार करें,
-    // यदि डेटाबेस माइग्रेशन महत्वपूर्ण है, तो यह ऐप को बिना स्कीमा के चलने से रोकेगा।
-    // मौजूदा एरर "relation already exists" एक अच्छा संकेत है कि टेबल बनी हुई हैं।
-    // throw error;
-    // process.exit(1); // यदि माइग्रेशन विफल हो तो ऐप को क्रैश करें
   } finally {
     console.log("Attempting to end database pool...");
     try {
@@ -108,9 +93,8 @@ async function runMigrations() {
 
 // सर्वर शुरू होने से पहले माइग्रेशन चलाएं
 (async () => {
-  console.log("Executing runMigrations function...");
-  await runMigrations();
-  console.log("Migrations function finished. Proceeding with server setup...");
+  await runMigrations(); // Migrations function is now called directly here
+  console.log("Migrations function finished. Proceeding with server setup..."); // जोड़ा गया लॉग
 
   const isDev = app.get("env") === "development";
 
