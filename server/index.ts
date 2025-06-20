@@ -1,17 +1,16 @@
 // server/index.ts
-
 import express, { type Request, type Response, type NextFunction } from "express";
 import cors from "cors";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { createServer, type Server } from "http";
-import * as admin from 'firebase-admin';
+import admin from "firebase-admin"; // ✅ केवल यही रखना है
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import { Pool } from 'pg';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import admin from "firebase-admin";
+
 const app = express();
 let server: Server;
 
@@ -24,8 +23,6 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
 // --- Firebase Admin SDK Initialization START ---
-
-
 try {
   const serviceAccountJsonString = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
 
@@ -34,7 +31,6 @@ try {
   } else {
     const serviceAccount = JSON.parse(serviceAccountJsonString);
 
-    // ✅ Check if admin.credential exists before calling .cert()
     if (admin.credential && typeof admin.credential.cert === 'function') {
       admin.initializeApp({
         credential: admin.credential.cert(serviceAccount),
@@ -47,11 +43,8 @@ try {
 } catch (err) {
   console.error("❌ Failed to initialize Firebase Admin SDK. Check FIREBASE_SERVICE_ACCOUNT_KEY content or parsing:", err);
 }
-    
-  
- catch (error) {
-  console.error("An unexpected error occurred during Firebase Admin SDK initialization process:", error);
-}
+// --- Firebase Admin SDK Initialization END ---
+
 // --- Firebase Admin SDK Initialization END ---
 
 // --- Drizzle Migrations START ---
