@@ -9,7 +9,8 @@
     "dev": "concurrently \"npm run server:dev\" \"npm run client:dev\"",
     "server:dev": "nodemon --exec ts-node-esm server/index.ts",
     "client:dev": "cd client && vite",
-    "db:push": "drizzle-kit push:pg --no-prompt" 
+    "db:push": "drizzle-kit push:pg --accept-data-loss"
+    
   },
   
   "dependencies": {
