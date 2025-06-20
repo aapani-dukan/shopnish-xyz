@@ -1,11 +1,11 @@
+// server/index.ts
+
 import express, { type Request, type Response, type NextFunction } from "express";
 import cors from "cors";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { createServer, type Server } from "http";
-import * as admin from 'firebase-admin'; // Firebase Admin SDK इम्पोर्ट करें
-
-// Drizzle माइग्रेशन के लिए इम्पोर्ट
+import * as admin from 'firebase-admin';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import { Pool } from 'pg';
@@ -40,15 +40,17 @@ try {
 async function runMigrations() {
   const connectionString = process.env.DATABASE_URL;
 
+  console.log("Checking DATABASE_URL..."); // नया लॉग
   if (!connectionString) {
     console.error("DATABASE_URL environment variable is not set. Drizzle migrations cannot run.");
-    return; // माइग्रेशन के बिना आगे बढ़ें या सर्वर बंद करें
+    return;
   }
+  console.log("DATABASE_URL is set."); // नया लॉग
 
   const pool = new Pool({
     connectionString: connectionString,
     ssl: {
-      rejectUnauthorized: false // Render PostgreSQL के लिए अक्सर आवश्यक होता है
+      rejectUnauthorized: false
     }
   });
 
@@ -56,23 +58,36 @@ async function runMigrations() {
 
   try {
     console.log("Starting Drizzle migrations...");
-    // अब 'server/migration' पाथ का उपयोग कर रहे हैं।
-    // __dirname 'server' फ़ोल्डर को संदर्भित करता है, इसलिए 'migration' सीधे अंदर है।
-    await migrate(db, { migrationsFolder: path.resolve(__dirname, './migration') }); 
+    // सुनिश्चित करें कि यह पाथ सही है। __dirname 'server' फ़ोल्डर को संदर्भित करता है।
+    // 'migration' फ़ोल्डर 'server' के ठीक अंदर है।
+    const migrationsPath = path.resolve(__dirname, 'migration');
+    console.log(`Attempting to run migrations from: ${migrationsPath}`); // यह लॉग पहले भी था, अब और भी महत्वपूर्ण है।
+
+    await migrate(db, { migrationsFolder: migrationsPath });
     console.log("Drizzle Migrations complete!");
   } catch (error) {
     console.error("Drizzle Migrations failed:", error);
-    // आप यहां सर्वर को बंद करने पर विचार कर सकते हैं यदि डेटाबेस माइग्रेशन महत्वपूर्ण है
-    // process.exit(1);
+    // यहां एरर को फिर से फेंकने या प्रोसेस को बंद करने पर विचार करें,
+    // यदि डेटाबेस माइग्रेशन महत्वपूर्ण है, तो यह ऐप को बिना स्कीमा के चलने से रोकेगा।
+    // throw error;
+    // process.exit(1); // यदि माइग्रेशन विफल हो तो ऐप को क्रैश करें
   } finally {
-    await pool.end(); // पूल को बंद करना महत्वपूर्ण है
+    console.log("Attempting to end database pool..."); // नया लॉग
+    try {
+      await pool.end(); // पूल को बंद करना महत्वपूर्ण है
+      console.log("Database pool ended successfully."); // नया लॉग
+    } catch (poolError) {
+      console.error("Failed to end database pool:", poolError); // नया लॉग
+    }
   }
 }
 
 // सर्वर शुरू होने से पहले माइग्रेशन चलाएं
 (async () => {
+  console.log("Executing runMigrations function..."); // नया लॉग
   await runMigrations(); // <-- माइग्रेशन को चलाएं
-  // Rest of your server startup logic
+  console.log("Migrations function finished. Proceeding with server setup..."); // नया लॉग
+
   const isDev = app.get("env") === "development";
 
   if (!isDev) {
@@ -122,5 +137,3 @@ app.use((req, res, next) => {
   });
   next();
 });
-
-// The main server startup logic is now inside the async IIFE after runMigrations()
