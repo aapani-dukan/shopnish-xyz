@@ -4,7 +4,7 @@ import express, { type Request, type Response, type NextFunction } from "express
 import cors from "cors";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
-import { createServer, type Server } = "http";
+import { createServer, type Server } from "http";
 import * as admin from 'firebase-admin';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { migrate } from 'drizzle-orm/node-postgres/migrator';
