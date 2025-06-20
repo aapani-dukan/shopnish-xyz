@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "",
   "main": "dist/index.js",
+  "type":"module",
   "scripts": {
     "start": "NODE_ENV=production node dist/index.js",
     "build": "cd client && vite build && cd .. && esbuild server/index.ts --bundle --platform=node --packages=external --format=esm --outdir=dist",
