@@ -4,7 +4,6 @@ import cors from "cors";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { createServer, type Server } from "http";
-import admin from "firebase-admin";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
 import { Pool } from "pg";
@@ -20,32 +19,6 @@ const __dirname = path.dirname(__filename);
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
-
-// --- Firebase Admin SDK Initialization ---
-try {
-  const projectId = process.env.FIREBASE_PROJECT_ID;
-  const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
-  const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, "\n");
-
-  if (!projectId || !clientEmail || !privateKey) {
-    console.error("❌ Missing Firebase environment variables.");
-  } else {
-    if (!admin.apps.length) {
-      admin.initializeApp({
-        credential: admin.credential.cert({
-          projectId,
-          clientEmail,
-          privateKey,
-        }),
-      });
-      console.log("✅ Firebase Admin initialized successfully.");
-    } else {
-      console.log("ℹ️ Firebase Admin already initialized.");
-    }
-  }
-} catch (err) {
-  console.error("❌ Failed to initialize Firebase Admin SDK:", err);
-}
 
 // --- Drizzle Migrations ---
 async function runMigrations() {
@@ -75,7 +48,6 @@ async function runMigrations() {
     await migrate(db, { migrationsFolder: migrationsPath });
     console.log("✅ Drizzle migrations completed successfully.");
   } catch (error: any) {
-    // ✅ Ignore 'relation already exists' error and continue
     if (error?.code === "42P07") {
       console.warn("⚠️ Table already exists. Skipping migration.");
     } else {
@@ -94,10 +66,13 @@ async function runMigrations() {
 
 // --- Start Server ---
 (async () => {
-  await runMigrations();
-  console.log("✅ Migrations done. Starting server setup...");
-
   const isDev = app.get("env") === "development";
+
+  if (isDev) {
+    await runMigrations();
+  }
+
+  console.log("✅ Migrations done. Starting server setup...");
 
   if (!isDev) {
     await registerRoutes(app);
