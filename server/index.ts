@@ -1,5 +1,4 @@
-// server/index.ts
-
+//server/index.ts
 import express, { type Request, type Response, type NextFunction } from "express";
 import cors from "cors";
 import { registerRoutes } from "./routes";
@@ -22,7 +21,7 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-// --- Firebase Admin SDK Initialization START ---
+// --- Firebase Admin SDK Initialization ---
 try {
   const projectId = process.env.FIREBASE_PROJECT_ID;
   const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
@@ -31,21 +30,24 @@ try {
   if (!projectId || !clientEmail || !privateKey) {
     console.error("❌ Missing Firebase environment variables.");
   } else {
-    admin.initializeApp({
-      credential: admin.credential.cert({
-        projectId,
-        clientEmail,
-        privateKey,
-      }),
-    });
-    console.log("✅ Firebase Admin initialized successfully.");
+    if (!admin.apps.length) {
+      admin.initializeApp({
+        credential: admin.credential.cert({
+          projectId,
+          clientEmail,
+          privateKey,
+        }),
+      });
+      console.log("✅ Firebase Admin initialized successfully.");
+    } else {
+      console.log("ℹ️ Firebase Admin already initialized.");
+    }
   }
 } catch (err) {
   console.error("❌ Failed to initialize Firebase Admin SDK:", err);
 }
-// --- Firebase Admin SDK Initialization END ---
 
-// --- Drizzle Migrations START ---
+// --- Drizzle Migrations ---
 async function runMigrations() {
   const connectionString = process.env.DATABASE_URL;
 
@@ -72,8 +74,13 @@ async function runMigrations() {
 
     await migrate(db, { migrationsFolder: migrationsPath });
     console.log("✅ Drizzle migrations completed successfully.");
-  } catch (error) {
-    console.error("❌ Drizzle Migrations failed:", error);
+  } catch (error: any) {
+    // ✅ Ignore 'relation already exists' error and continue
+    if (error?.code === "42P07") {
+      console.warn("⚠️ Table already exists. Skipping migration.");
+    } else {
+      console.error("❌ Drizzle Migrations failed:", error);
+    }
   } finally {
     console.log("🔁 Closing database pool...");
     try {
