@@ -5,7 +5,7 @@ import {
   type User, type InsertUser, type Category, type InsertCategory, 
   type Product, type InsertProduct, type CartItem, type InsertCartItem,
   type Order, type InsertOrder, type OrderItem, type InsertOrderItem,
-  type Review, type InsertReview,type seller,deliveryBoys,type DeliveryBoy,typeInsertDeliveryBoy
+  type Review, type InsertReview,type Seller,deliveryBoys,type DeliveryBoy,typeInsertDeliveryBoy
 } from "@shared/backend/schema";
 
 
