@@ -11,7 +11,7 @@ import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import { Pool } from 'pg';
 import path from 'path';
 import { fileURLToPath } from 'url';
-
+import admin from "firebase-admin";
 const app = express();
 let server: Server;
 
@@ -24,24 +24,29 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
 // --- Firebase Admin SDK Initialization START ---
+
+
 try {
-  // अब हम सीधे FIREBASE_SERVICE_ACCOUNT_KEY का उपयोग कर रहे हैं
   const serviceAccountJsonString = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
 
   if (!serviceAccountJsonString) {
-    console.error("FIREBASE_SERVICE_ACCOUNT_KEY environment variable is not set. Firebase Admin SDK will not be initialized.");
+    console.error("FIREBASE_SERVICE_ACCOUNT_KEY is not set.");
   } else {
-    try {
-      const serviceAccount = JSON.parse(serviceAccountJsonString);
+    const serviceAccount = JSON.parse(serviceAccountJsonString);
 
-      // Firebase Admin SDK को सीधे ऑब्जेक्ट से इनिशियलाइज़ करें
+    // ✅ Check if admin.credential exists before calling .cert()
+    if (admin.credential && typeof admin.credential.cert === 'function') {
       admin.initializeApp({
         credential: admin.credential.cert(serviceAccount),
       });
-      // यहां log() का उपयोग करें ताकि Render logs में दिखे
-      log("Firebase Admin SDK initialized successfully.");
-    } catch (firebaseInitError) {
-      console.error("Failed to initialize Firebase Admin SDK. Check FIREBASE_SERVICE_ACCOUNT_KEY content or parsing:", firebaseInitError);
+      console.log("✅ Firebase Admin initialized successfully.");
+    } else {
+      console.error("❌ admin.credential.cert is undefined. Make sure firebase-admin is imported correctly.");
+    }
+  }
+} catch (err) {
+  console.error("❌ Failed to initialize Firebase Admin SDK. Check FIREBASE_SERVICE_ACCOUNT_KEY content or parsing:", err);
+}
     }
   }
 } catch (error) {
