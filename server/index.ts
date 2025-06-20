@@ -1,20 +1,21 @@
 // server/index.ts
+
 import express, { type Request, type Response, type NextFunction } from "express";
 import cors from "cors";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { createServer, type Server } from "http";
-import admin from "firebase-admin"; // ✅ केवल यही रखना है
-import { drizzle } from 'drizzle-orm/node-postgres';
-import { migrate } from 'drizzle-orm/node-postgres/migrator';
-import { Pool } from 'pg';
-import path from 'path';
-import { fileURLToPath } from 'url';
+import admin from "firebase-admin";
+import { drizzle } from "drizzle-orm/node-postgres";
+import { migrate } from "drizzle-orm/node-postgres/migrator";
+import { Pool } from "pg";
+import path from "path";
+import { fileURLToPath } from "url";
 
 const app = express();
 let server: Server;
 
-// ESM में __dirname और __filename को डिफाइन करें
+// ESM compatible __dirname and __filename
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -27,11 +28,11 @@ try {
   const serviceAccountJsonString = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
 
   if (!serviceAccountJsonString) {
-    console.error("FIREBASE_SERVICE_ACCOUNT_KEY is not set.");
+    console.error("❌ FIREBASE_SERVICE_ACCOUNT_KEY is not set.");
   } else {
     const serviceAccount = JSON.parse(serviceAccountJsonString);
 
-    if (admin.credential && typeof admin.credential.cert === 'function') {
+    if (admin.credential && typeof admin.credential.cert === "function") {
       admin.initializeApp({
         credential: admin.credential.cert(serviceAccount),
       });
@@ -41,64 +42,60 @@ try {
     }
   }
 } catch (err) {
-  console.error("❌ Failed to initialize Firebase Admin SDK. Check FIREBASE_SERVICE_ACCOUNT_KEY content or parsing:", err);
+  console.error("❌ Failed to initialize Firebase Admin SDK:", err);
 }
-// --- Firebase Admin SDK Initialization END ---
-
 // --- Firebase Admin SDK Initialization END ---
 
 // --- Drizzle Migrations START ---
 async function runMigrations() {
   const connectionString = process.env.DATABASE_URL;
 
-  console.log("Executing runMigrations function..."); // जोड़ा गया लॉग
+  console.log("Executing runMigrations function...");
   console.log("Checking DATABASE_URL...");
   if (!connectionString) {
-    console.error("DATABASE_URL environment variable is not set. Drizzle migrations cannot run.");
+    console.error("❌ DATABASE_URL environment variable is not set.");
     return;
   }
-  console.log("DATABASE_URL is set.");
 
   const pool = new Pool({
-    connectionString: connectionString,
+    connectionString,
     ssl: {
-      rejectUnauthorized: false
-    }
+      rejectUnauthorized: false,
+    },
   });
 
   const db = drizzle(pool);
 
   try {
-    console.log("Starting Drizzle migrations...");
-    // सुनिश्चित करें कि यह 'migrations' है जैसा कि आपके 'server' फ़ोल्डर में है
-    const migrationsPath = path.resolve(__dirname, 'migrations'); 
-    console.log(`Attempting to run migrations from: ${migrationsPath}`);
+    console.log("🚀 Starting Drizzle migrations...");
+    const migrationsPath = path.resolve(__dirname, "migrations");
+    console.log(`📁 Running migrations from: ${migrationsPath}`);
 
     await migrate(db, { migrationsFolder: migrationsPath });
-    console.log("Drizzle Migrations complete!");
+    console.log("✅ Drizzle migrations completed successfully.");
   } catch (error) {
-    console.error("Drizzle Migrations failed:", error);
+    console.error("❌ Drizzle Migrations failed:", error);
   } finally {
-    console.log("Attempting to end database pool...");
+    console.log("🔁 Closing database pool...");
     try {
       await pool.end();
-      console.log("Database pool ended successfully.");
+      console.log("✅ Database pool closed.");
     } catch (poolError) {
-      console.error("Failed to end database pool:", poolError);
+      console.error("❌ Failed to close database pool:", poolError);
     }
   }
 }
 
-// सर्वर शुरू होने से पहले माइग्रेशन चलाएं
+// --- Start Server ---
 (async () => {
-  await runMigrations(); // Migrations function is now called directly here
-  console.log("Migrations function finished. Proceeding with server setup..."); // जोड़ा गया लॉग
+  await runMigrations();
+  console.log("✅ Migrations done. Starting server setup...");
 
   const isDev = app.get("env") === "development";
 
   if (!isDev) {
     await registerRoutes(app);
-    log("Running in production mode, serving static files…");
+    log("🌐 Production mode: Serving static files...");
     serveStatic(app);
   }
 
@@ -112,7 +109,7 @@ async function runMigrations() {
   const port = process.env.PORT || 5000;
 
   if (isDev) {
-    log("Running in development mode (Vite HMR)…");
+    log("⚙️ Development mode (Vite HMR)...");
     server = createServer(app);
     await setupVite(app, server);
   } else {
@@ -120,17 +117,18 @@ async function runMigrations() {
   }
 
   server.listen({ port, host: "0.0.0.0" }, () =>
-    log(`Serving on port ${port} in ${app.get("env")} mode`)
+    log(`🚀 Server listening on port ${port} in ${app.get("env")} mode`)
   );
 })();
 
+// --- Request Logging for /api routes ---
 app.use((req, res, next) => {
   const start = Date.now();
   const p = req.path;
   let captured: unknown;
 
   const orig = res.json.bind(res);
-  res.json = (body, ...rest) => (captured = body, orig(body, ...rest));
+  res.json = (body, ...rest) => ((captured = body), orig(body, ...rest));
 
   res.on("finish", () => {
     if (!p.startsWith("/api")) return;
@@ -139,5 +137,6 @@ app.use((req, res, next) => {
     if (captured) line += ` :: ${JSON.stringify(captured)}`;
     log(line.length > 90 ? line.slice(0, 89) + "…" : line);
   });
+
   next();
 });
