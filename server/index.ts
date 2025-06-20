@@ -15,7 +15,6 @@ import { fileURLToPath } from "url";
 const app = express();
 let server: Server;
 
-// ESM compatible __dirname and __filename
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -25,21 +24,21 @@ app.use(express.urlencoded({ extended: false }));
 
 // --- Firebase Admin SDK Initialization START ---
 try {
-  const serviceAccountJsonString = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
+  const projectId = process.env.FIREBASE_PROJECT_ID;
+  const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
+  const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, "\n");
 
-  if (!serviceAccountJsonString) {
-    console.error("❌ FIREBASE_SERVICE_ACCOUNT_KEY is not set.");
+  if (!projectId || !clientEmail || !privateKey) {
+    console.error("❌ Missing Firebase environment variables.");
   } else {
-    const serviceAccount = JSON.parse(serviceAccountJsonString);
-
-    if (admin.credential && typeof admin.credential.cert === "function") {
-      admin.initializeApp({
-        credential: admin.credential.cert(serviceAccount),
-      });
-      console.log("✅ Firebase Admin initialized successfully.");
-    } else {
-      console.error("❌ admin.credential.cert is undefined. Make sure firebase-admin is imported correctly.");
-    }
+    admin.initializeApp({
+      credential: admin.credential.cert({
+        projectId,
+        clientEmail,
+        privateKey,
+      }),
+    });
+    console.log("✅ Firebase Admin initialized successfully.");
   }
 } catch (err) {
   console.error("❌ Failed to initialize Firebase Admin SDK:", err);
