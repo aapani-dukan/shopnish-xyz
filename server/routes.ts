@@ -6,6 +6,11 @@ import { z } from "zod";
 import { verifyToken, AuthenticatedRequest } from "./middleware/verifyToken";
 import { requireAuth } from "./middleware/requireAuth";
 import { parseIntParam } from "./utils/parseIntParam";
+import {
+  insertCartItemSchema,
+  insertOrderSchema,
+  insertReviewSchema,
+} from "../shared/backend/schema";
 
 // Routers
 import pendingSellersRouter from "../routes/sellers/pending";
