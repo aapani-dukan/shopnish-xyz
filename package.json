@@ -10,7 +10,7 @@
     "server:dev": "nodemon --exec ts-node-esm server/index.ts",
     "client:dev": "cd client && vite",
     "db:push": "drizzle-kit push:pg --accept-data-loss", 
-    "db:generate": "drizzle-kit generate:pg", // 
+    "db:generate": "drizzle-kit generate:pg", 
     "db:migrate": "ts-node-esm server/db/migrate.ts" 
   },
   
