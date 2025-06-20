@@ -5,8 +5,9 @@ import {
   type User, type InsertUser, type Category, type InsertCategory, 
   type Product, type InsertProduct, type CartItem, type InsertCartItem,
   type Order, type InsertOrder, type OrderItem, type InsertOrderItem,
-  type Review, type InsertReview,type seller
+  type Review, type InsertReview,type seller,deliveryBoys,type DeliveryBoy,typeInsertDeliveryBoy
 } from "@shared/backend/schema";
+
 
 export interface IStorage {
   // Authentication & Users
@@ -151,6 +152,61 @@ async getSellers(filters?: { approvalStatus?: string }): Promise<Seller[]> {
     return result[0];
   }
 
+
+
+
+
+  // ...आपके existing methods के नीचे नीचे 👇 ये जोड़ें
+
+  // -------------------- CART WRAPPERS --------------------
+
+  async getCartItemsByUserId(userId: number) {
+    return this.getCartItems(userId);
+  }
+
+  async addCartItem(item: InsertCartItem) {
+    return this.addToCart(item);
+  }
+
+  async updateCartItemQuantity(id: number, _userId: number, quantity: number) {
+    return this.updateCartItem(id, quantity);
+  }
+
+  async removeCartItem(id: number, _userId: number) {
+    return this.removeFromCart(id);
+  }
+
+  // ------------------ DELIVERY BOY METHODS ------------------
+
+  async getDeliveryBoyByEmail(email: string): Promise<DeliveryBoy | undefined> {
+    const list = await db.select().from(deliveryBoys);
+    return list.find(b => b.email === email);
+  }
+
+  async getDeliveryBoyByFirebaseUid(firebaseUid: string): Promise<DeliveryBoy | undefined> {
+    const list = await db.select().from(deliveryBoys);
+    return list.find(b => b.firebaseUid === firebaseUid);
+  }
+
+  async createDeliveryBoy(data: InsertDeliveryBoy): Promise<DeliveryBoy> {
+    const result = await db.insert(deliveryBoys).values(data).returning();
+    return result[0];
+  }
+
+  // --------------- createOrder OVERLOAD (Optional items) ---------------
+
+  async createOrder(order: InsertOrder, items: InsertOrderItem[] = []): Promise<Order> {
+    const orderResult = await db.insert(orders).values(order).returning();
+    const newOrder = orderResult[0];
+
+    for (const item of items) {
+      await db.insert(orderItems).values({ ...item, orderId: newOrder.id });
+    }
+
+    return newOrder;
+  }
+}
+  
   // Shopping Cart
   async getCartItems(userId?: number, sessionId?: string): Promise<(CartItem & { product: Product })[]> {
     try {
