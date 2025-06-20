@@ -1,11 +1,9 @@
-// server/util/authUtils.ts
-
 import admin from "firebase-admin";
 
 /**
- * Safe Firebase-Admin initialization.
- * इससे "The default Firebase app already exists" और
- * "application default credentials" वाली दिक्कत नहीं आएगी।
+ * Safe Firebase Admin SDK initialization:
+ * इससे "The default Firebase app already exists" या
+ * "Missing credentials" जैसी errors नहीं आएंगी।
  */
 if (!admin.apps.length) {
   const projectId = process.env.FIREBASE_PROJECT_ID;
@@ -13,7 +11,7 @@ if (!admin.apps.length) {
   const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, "\n");
 
   if (!projectId || !clientEmail || !privateKey) {
-    throw new Error("Missing Firebase environment variables");
+    throw new Error("❌ Missing Firebase environment variables.");
   }
 
   admin.initializeApp({
@@ -23,19 +21,22 @@ if (!admin.apps.length) {
       privateKey,
     }),
   });
+
+  console.log("✅ Firebase Admin initialized inside authUtils.ts");
 }
 
 /**
- * Verify the Firebase ID token sent from the frontend.
- * @param token Bearer token from the client
- * @returns decoded payload if valid; otherwise throws
+ * Verifies and decodes a Firebase ID token.
+ * @param token - The Firebase ID token from the client (Bearer token)
+ * @returns Decoded token if valid
+ * @throws Error if token is invalid or expired
  */
 export async function verifyAndDecodeToken(token: string) {
   try {
-    const decoded = await admin.auth().verifyIdToken(token);
-    return decoded;
-  } catch (err) {
-    console.error("Firebase token verification failed:", err);
+    const decodedToken = await admin.auth().verifyIdToken(token);
+    return decodedToken;
+  } catch (error) {
+    console.error("❌ Firebase token verification failed:", error);
     throw new Error("Invalid or expired token");
   }
 }
