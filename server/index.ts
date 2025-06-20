@@ -47,9 +47,9 @@ try {
 } catch (err) {
   console.error("❌ Failed to initialize Firebase Admin SDK. Check FIREBASE_SERVICE_ACCOUNT_KEY content or parsing:", err);
 }
-    }
-  }
-} catch (error) {
+    
+  
+ catch (error) {
   console.error("An unexpected error occurred during Firebase Admin SDK initialization process:", error);
 }
 // --- Firebase Admin SDK Initialization END ---
