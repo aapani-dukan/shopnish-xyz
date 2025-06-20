@@ -205,10 +205,10 @@ async getSellers(filters?: { approvalStatus?: string }): Promise<Seller[]> {
 
     return newOrder;
   }
-}
+
   
   // Shopping Cart
-  async getCartItems(userId?: number, sessionId?: string): Promise<(CartItem & { product: Product })[]>; {
+  async getCartItems(userId?: number, sessionId?: string): Promise<(CartItem & { product: Product })[]> {
     try {
       const cartResult = await db.select().from(cartItems);
       const productsResult = await db.select().from(products);
