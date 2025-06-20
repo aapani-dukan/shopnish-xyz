@@ -9,8 +9,9 @@
     "dev": "concurrently \"npm run server:dev\" \"npm run client:dev\"",
     "server:dev": "nodemon --exec ts-node-esm server/index.ts",
     "client:dev": "cd client && vite",
-    "db:push": "drizzle-kit push:pg --accept-data-loss"
-    
+    "db:push": "drizzle-kit push:pg --accept-data-loss", // इसे ऐसे ही रहने दें, लेकिन हम इसका उपयोग नहीं करेंगे
+    "db:generate": "drizzle-kit generate:pg", // <--- नई स्क्रिप्ट
+    "db:migrate": "ts-node-esm server/db/migrate.ts" // <--- नई स्क्रिप्ट (नई फ़ाइल का पथ)
   },
   
   "dependencies": {
@@ -124,6 +125,7 @@
     "@vitejs/plugin-react": "^4.3.2",
     "autoprefixer": "^10.4.20",
     "cross-env": "^7.0.3",
+   "concurrently": "^8.2.2",
     "drizzle-kit": "^0.31.1",
     "esbuild": "^0.25.0",
     "nodemon": "^3.1.3",
