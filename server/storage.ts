@@ -338,22 +338,6 @@ async getSellers(filters?: { approvalStatus?: string }): Promise<Seller[]> {
     }
   }
 
-  async createOrder(order: InsertOrder, items: InsertOrderItem[]): Promise<Order> {
-    try {
-      const orderResult = await db.insert(orders).values(order).returning();
-      const newOrder = orderResult[0];
-      
-      // Insert order items
-      for (const item of items) {
-        await db.insert(orderItems).values({ ...item, orderId: newOrder.id });
-      }
-
-      return newOrder;
-    } catch (error) {
-      console.error("Error creating order:", error);
-      throw error;
-    }
-  }
 
   // Reviews
   async getProductReviews(productId: number): Promise<Review[]> {
