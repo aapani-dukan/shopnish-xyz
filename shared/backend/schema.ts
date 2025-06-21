@@ -20,7 +20,7 @@ export const sellers = z.object({
   createdAt: z.date(),
   updatedAt: z.date(),
 });
-🆕 Seller application table
+ Seller application table
 export const sellerApplications = pgTable("seller_applications", {
   id:            serial("id").primaryKey(),
   userId:        integer("user_id").references(() => users.id).notNull(),
