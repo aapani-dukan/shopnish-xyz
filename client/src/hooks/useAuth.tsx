@@ -29,6 +29,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             firebaseUid: firebaseUser.uid,
             email: firebaseUser.email!,
             name: firebaseUser.displayName || firebaseUser.email!,
+            role:"customer",
+            approvalStatus:"approved",
           };
           
           const response = await apiRequest("POST", "/api/users", userData);
