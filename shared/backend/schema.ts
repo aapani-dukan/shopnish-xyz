@@ -20,6 +20,23 @@ export const sellers = z.object({
   createdAt: z.date(),
   updatedAt: z.date(),
 });
+🆕 Seller application table
+export const sellerApplications = pgTable("seller_applications", {
+  id:            serial("id").primaryKey(),
+  userId:        integer("user_id").references(() => users.id).notNull(),
+  businessName:  text("business_name").notNull(),
+  gstNumber:     text("gst_number"),
+  phone:         text("phone"),
+  address:       text("address"),
+  city:          text("city"),
+  pincode:       text("pincode"),
+  approvalStatus: varchar("approval_status", {
+    enum: ["pending", "approved", "rejected"],
+  }).default("pending"),
+
+  createdAt:     timestamp("created_at").defaultNow(),
+  updatedAt:     timestamp("updated_at").defaultNow(),
+});
 
 
 // User roles: customer, seller, admin, delivery_boy
