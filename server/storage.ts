@@ -2,7 +2,7 @@
 import { db } from "./db";
 import {
   users, categories, products, cartItems, orders, orderItems, reviews,
-  type User, type InsertUser, type Category, type InsertCategory, 
+  type User, type InsertUser, type Category, type InsertCategory, type InsertSellerAplicationSchema,
   type Product, type InsertProduct, type CartItem, type InsertCartItem,
   type Order, type InsertOrder, type OrderItem, type InsertOrderItem,
   type Review, type InsertReview,type Seller,deliveryBoys,type DeliveryBoy,typeInsertDeliveryBoy
