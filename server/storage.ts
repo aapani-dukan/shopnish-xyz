@@ -120,7 +120,19 @@ async getUserByFirebaseUid(firebaseUid: string): Promise<User | undefined> {
     const result = await db.insert(categories).values(category).returning();
     return result[0];
   }
+  // ------------ Seller Application -------------
+  async getSellerApplicationByUserId(userId: number) {
+    const rows = await db
+      .select()
+      .from(sellerApplications)              // <-- आपकी sellerApplications टेबल
+      .where(eq(sellerApplications.userId, userId));
+    return rows[0];
+  }
 
+  async createSellerApplication(data: InsertSellerApplication) {
+    const [row] = await db.insert(sellerApplications).values(data).returning();
+    return row;
+    
   // Products
   async getProducts(filters?: { categoryId?: number; search?: string }): Promise<Product[]> {
     try {
