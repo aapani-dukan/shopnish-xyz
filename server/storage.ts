@@ -132,7 +132,7 @@ async getUserByFirebaseUid(firebaseUid: string): Promise<User | undefined> {
   async createSellerApplication(data: InsertSellerApplication) {
     const [row] = await db.insert(sellerApplications).values(data).returning();
     return row;
-    
+  }
   // Products
   async getProducts(filters?: { categoryId?: number; search?: string }): Promise<Product[]> {
     try {
