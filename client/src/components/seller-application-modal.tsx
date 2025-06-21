@@ -7,14 +7,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { insertSellerSchema } from "@shared/backend/schema";
-import { insertSellerApplicationSchema } from "@shared)backend/schema";
+import { insertSellerApplicationSchema } from "@shared/backend/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
 import { Check, X } from "lucide-react";
 
-const formSchema = insertSellerSchema.extend({
+const formSchema = insertSellerApplicationSchema.extend({
   name: z.string().min(1, "Name is required"),
   mobile: z.string().min(10, "Mobile number must be at least 10 digits"),
 });
@@ -58,7 +57,7 @@ export default function SellerApplicationModal({ isOpen, onClose }: SellerApplic
       setShowSuccess(true);
       reset();
       queryClient.invalidateQueries({ queryKey: ["/api/users"] });
-      
+
       setTimeout(() => {
         setShowSuccess(false);
         onClose();
@@ -114,7 +113,7 @@ export default function SellerApplicationModal({ isOpen, onClose }: SellerApplic
             </Button>
           </div>
         </DialogHeader>
-        
+
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div>
             <Label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
@@ -130,7 +129,7 @@ export default function SellerApplicationModal({ isOpen, onClose }: SellerApplic
               <p className="text-red-500 text-sm mt-1">{errors.name.message}</p>
             )}
           </div>
-          
+
           <div>
             <Label htmlFor="mobile" className="block text-sm font-medium text-gray-700 mb-2">
               Mobile Number
@@ -146,7 +145,7 @@ export default function SellerApplicationModal({ isOpen, onClose }: SellerApplic
               <p className="text-red-500 text-sm mt-1">{errors.mobile.message}</p>
             )}
           </div>
-          
+
           <div className="pt-4">
             <Button
               type="submit"
