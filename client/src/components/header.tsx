@@ -2,7 +2,7 @@
 import React from "react";
 import { useCartStore } from "@/lib/store";
 import CartModal from "./cart-modal";
-import { Link, useLocation } from "wouter";
+import { Link } from "wouter";
 
 interface Category {
   id: string;
@@ -15,7 +15,6 @@ interface HeaderProps {
 
 const Header: React.FC<HeaderProps> = ({ categories }) => {
   const { items, isCartOpen, toggleCart } = useCartStore();
-  const [, navigate] = useLocation();
 
   return (
     <header className="bg-white shadow-md px-4 py-3 flex items-center justify-between">
@@ -48,9 +47,9 @@ const Header: React.FC<HeaderProps> = ({ categories }) => {
           )}
         </button>
 
-        {/* 👇 Only navigates to Auth Page */}
+        {/* ✅ Redirects to /auth with full reload (so Firebase redirect flow works smoothly) */}
         <button
-          onClick={() => navigate("/auth")}
+          onClick={() => (window.location.href = "/auth")}
           className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
         >
           Become a Seller
