@@ -7,13 +7,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { insertSellerApplicationSchema } from "@shared/schema";
+import { insertSellerSchema } from "@shared/backend/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
 import { Check, X } from "lucide-react";
 
-const formSchema = insertSellerApplicationSchema.extend({
+const formSchema = insertSellerSchema.extend({
   name: z.string().min(1, "Name is required"),
   mobile: z.string().min(10, "Mobile number must be at least 10 digits"),
 });
