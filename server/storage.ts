@@ -11,6 +11,8 @@ import {
 
 export interface IStorage {
   // Authentication & Users
+   getUserByFirebaseUid(firebaseUid: string): Promise<User | undefined>; 
+  
   getUserByEmail(email: string): Promise<User | undefined>;
   getUserById(id: number): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
