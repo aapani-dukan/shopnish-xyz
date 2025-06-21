@@ -289,14 +289,21 @@ export const reviews = pgTable("reviews", {
 
 // --- Insert schemas ---
 // ✅ `users` के लिए updated insert schema
-export const insertUserSchema = createInsertSchema(users).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-  // यदि `firstName`, `lastName`, `phone` optional हैं या `name` से आ रहे हैं
-  // तो उन्हें भी omit या optional करें
-  // password: true, // Firebase Auth के साथ password की आवश्यकता नहीं
-});
+export const insertUserSchema = createInsertSchema(users)
+  .omit({
+    id: true,
+    createdAt: true,
+    updatedAt: true,
+  })
+  .partial({          // ✅ सब optional कर दिया
+    role: true,
+    approvalStatus: true,
+  })
+  .required({         // ✅ सिर्फ ज़रूरी fields पक्की रखीं
+    firebaseUid: true,
+    email: true,
+    name: true,
+  });
 
 export const insertStoreSchema = createInsertSchema(stores).omit({
   id: true,
