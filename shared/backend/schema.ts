@@ -349,7 +349,10 @@ export const insertServiceBookingSchema = createInsertSchema(serviceBookings).om
   id: true,
   createdAt: true,
 });
-
+export const insertSellerApplicationSchema = createInsertSchema(sellerApplications).omit({
+  id: true,
+  createdAt: true,
+});
 export const insertReviewSchema = createInsertSchema(reviews).omit({
   id: true,
   createdAt: true,
