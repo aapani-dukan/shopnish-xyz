@@ -80,7 +80,15 @@ async getSellers(filters?: { approvalStatus?: string }): Promise<Seller[]> {
     }
     return sellersList;
 }
-
+async getUserByFirebaseUid(firebaseUid: string): Promise<User | undefined> {
+  try {
+    const result = await db.select().from(users);
+    return result.find(u => u.firebaseUid === firebaseUid);
+  } catch (error) {
+    console.error("Error getting user by Firebase UID:", error);
+    return undefined;
+  }
+}
   
   async createUser(user: InsertUser): Promise<User> {
     const result = await db.insert(users).values(user).returning();
