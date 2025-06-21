@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-//import { insertSellerSchema } from "@shared/schema";
+import { insertSellerSchema } from "@shared/backend/schema";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/quetyClient";
 import { useToast } from "@/hooks/use-toast";
