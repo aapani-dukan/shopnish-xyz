@@ -1,6 +1,7 @@
+// routes/sellers/approve.ts
 import { Router, Request, Response, NextFunction } from "express";
 import { db } from "../../server/db";
-import { sellers } from "../../shared/backend/schema";
+import { sellers, users } from "../../shared/backend/schema";
 
 const router = Router();
 
@@ -12,6 +13,7 @@ router.post("/", async (req: Request, res: Response, next: NextFunction) => {
       return res.status(400).json({ message: "sellerId is required" });
     }
 
+    // 1. Find the seller
     const existingSeller = await db.query.sellers.findFirst({
       where: sellers.id.eq(sellerId),
     });
@@ -20,7 +22,7 @@ router.post("/", async (req: Request, res: Response, next: NextFunction) => {
       return res.status(404).json({ message: "Seller not found" });
     }
 
-    // Update seller approval status to approved
+    // 2. Approve the seller
     const updatedSeller = await db
       .update(sellers)
       .set({
@@ -31,7 +33,16 @@ router.post("/", async (req: Request, res: Response, next: NextFunction) => {
       .where(sellers.id.eq(sellerId))
       .returning();
 
-    res.json(updatedSeller);
+    // 3. Update user role to "seller"
+    await db
+      .update(users)
+      .set({ role: "seller" })
+      .where(users.firebaseUid.eq(existingSeller.firebaseUid));
+
+    res.json({
+      message: "Seller approved and role updated to 'seller'",
+      seller: updatedSeller,
+    });
   } catch (error) {
     next(error);
   }
