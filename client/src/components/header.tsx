@@ -1,8 +1,11 @@
-//Header.tsx
+// Header.tsx
 import React from "react";
-import { useCartStore } from "@/lib/store";
-import CartModal from "./cart-modal";
 import { Link } from "wouter";
+
+import { useCartStore } from "@/lib/store";
+import { useAuth } from "@/hooks/useAuth";
+
+import CartModal from "./cart-modal";
 
 interface Category {
   id: string;
@@ -15,13 +18,26 @@ interface HeaderProps {
 
 const Header: React.FC<HeaderProps> = ({ categories }) => {
   const { items, isCartOpen, toggleCart } = useCartStore();
+  const { user } = useAuth();               // 🔑 हमारा लॉग-इन यूज़र
+
+  // 👉 Seller बटन का नया logic
+  const handleBecomeSeller = () => {
+    if (!user) return;                      // extra safety, पर हूम पेज तक no-login आता नहीं
+    if (user.isApprovedSeller) {
+      window.location.href = "/seller-dashboard";
+    } else {
+      window.location.href = "/seller-apply";
+    }
+  };
 
   return (
     <header className="bg-white shadow-md px-4 py-3 flex items-center justify-between">
+      {/* Logo / Home */}
       <Link href="/" className="text-xl font-bold text-blue-600">
         Shopnish
       </Link>
 
+      {/* Category links */}
       <nav className="space-x-4">
         {categories.map((category) => (
           <Link
@@ -34,7 +50,9 @@ const Header: React.FC<HeaderProps> = ({ categories }) => {
         ))}
       </nav>
 
+      {/* Cart + Become-Seller */}
       <div className="flex items-center space-x-4">
+        {/* Cart */}
         <button
           onClick={toggleCart}
           className="relative text-gray-700 hover:text-blue-600"
@@ -47,15 +65,16 @@ const Header: React.FC<HeaderProps> = ({ categories }) => {
           )}
         </button>
 
-        {/* ✅ Redirects to /auth with full reload (so Firebase redirect flow works smoothly) */}
+        {/* Become a Seller */}
         <button
-          onClick={() => (window.location.href = "/auth")}
+          onClick={handleBecomeSeller}
           className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
         >
           Become a Seller
         </button>
       </div>
 
+      {/* Cart modal */}
       <CartModal isOpen={isCartOpen} onClose={toggleCart} />
     </header>
   );
