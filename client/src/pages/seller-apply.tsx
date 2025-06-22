@@ -89,7 +89,7 @@ export default function SellerApplyPage() {
         </div>
       </main>
 
-      <SellerApplicationModal 
+      <SellerRegistrationModal 
         isOpen={isModalOpen} 
         onClose={() => setIsModalOpen(false)} 
       />
