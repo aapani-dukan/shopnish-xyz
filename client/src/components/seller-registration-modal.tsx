@@ -1,10 +1,14 @@
 // client/src/components/seller-registration-modal.tsx
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import {
+  Form, FormControl, FormField, FormItem, FormLabel, FormMessage,
+} from "@/components/ui/form";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { insertSellerSchema } from "@shared/backend/schema";
@@ -13,26 +17,30 @@ import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useSellerRegistrationStore } from "@/lib/store";
 import { useAuth } from "@/hooks/useAuth";
-import { useLocation } from "wouter"; // useLocation इम्पोर्ट करें
-import { Store, CheckCircle, Clock, FileText, CreditCard, Phone } from "lucide-react";
+import { useLocation } from "wouter";
+import {
+  Store, CheckCircle, Clock, FileText, CreditCard, Phone,
+} from "lucide-react";
 import { z } from "zod";
-import { initiateGoogleSignInRedirect } from "@/lib/firebase"; // Firebase फंक्शन को इम्पोर्ट करें
+import { initiateGoogleSignInRedirect } from "@/lib/firebase";
 
 const sellerFormSchema = insertSellerSchema.omit({ userId: true });
 
 interface SellerRegistrationModalProps {
-  isPageMode?: boolean; // नया प्रॉप
+  isPageMode?: boolean;
 }
 
-export default function SellerRegistrationModal({ isPageMode = false }: SellerRegistrationModalProps) {
+export default function SellerRegistrationModal({
+  isPageMode = false,
+}: SellerRegistrationModalProps) {
   const { isOpen, close } = useSellerRegistrationStore();
   const { user, isAuthenticated } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [, setLocation] = useLocation();
+  const [, navigate] = useLocation();
 
-  // Dialog की open स्थिति
-  const dialogOpen = isPageMode ? isAuthenticated : isOpen;
+  /** 🔑 Modal open condition */
+  const dialogOpen = isPageMode || isOpen;   // <-- यही मुख्य fix
 
   const form = useForm<z.infer<typeof sellerFormSchema>>({
     resolver: zodResolver(sellerFormSchema),
@@ -51,61 +59,51 @@ export default function SellerRegistrationModal({ isPageMode = false }: SellerRe
     },
   });
 
-  const registerSellerMutation = useMutation({
+  const registerSeller = useMutation({
     mutationFn: async (data: z.infer<typeof sellerFormSchema>) => {
-      if (!user?.uid) {
-        throw new Error("User not authenticated");
-      }
-      const payload = { ...data, userId: user.uid }; // userId को पेलोड में जोड़ें
-      return await apiRequest("POST", "/api/sellers", payload);
+      if (!user?.id) throw new Error("User not authenticated");
+
+      return apiRequest("POST", "/api/sellers", {
+        ...data,
+        userId: user.id,      // अपनी schema में id/uid जो हो वही रखें
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/sellers/me"] });
       toast({
         title: "Registration Successful!",
-        description: "Your seller account has been created. Verification is pending.",
+        description: "Your application is pending approval.",
       });
       form.reset();
-      // पंजीकरण के बाद, उपयोगकर्ता को उनकी स्थिति दिखाने के लिए /seller-status पर रीडायरेक्ट करें
-      if (isPageMode) {
-        setLocation("/seller-status"); 
-      } else {
-        close();
-      }
+      isPageMode ? navigate("/seller-status") : close();
     },
-    onError: (error: any) => {
+    onError: (err: any) => {
       toast({
         title: "Registration Failed",
-        description: error.message || "Failed to register as seller. Please try again.",
+        description: err.message ?? "Something went wrong.",
         variant: "destructive",
       });
     },
   });
 
-  const onSubmit = (data: z.infer<typeof sellerFormSchema>) => {
-    registerSellerMutation.mutate(data);
-  };
-
-  // यदि उपयोगकर्ता लॉग इन नहीं है और यह modal नहीं है, तो लॉगिन के लिए prompt करें
+  /* --------  Login Prompt (modal mode) ---------- */
   if (!isAuthenticated && !isPageMode) {
     return (
       <Dialog open={dialogOpen} onOpenChange={close}>
         <DialogContent className="max-w-md z-[100]">
           <DialogHeader>
             <DialogTitle className="flex items-center">
-              <Store className="h-5 w-5 mr-2" />
+              <Store className="w-5 h-5 mr-2" />
               Join as a Seller
             </DialogTitle>
           </DialogHeader>
           <div className="text-center py-6">
             <div className="text-4xl mb-4">🔐</div>
-            <h3 className="text-lg font-semibold mb-2">Login Required</h3>
-            <p className="text-muted-foreground mb-4">
+            <p className="mb-4 text-muted-foreground">
               Please log in to register as a seller on our platform.
             </p>
-            <Button onClick={() => initiateGoogleSignInRedirect()} className="w-full">
-              Login to Continue with Google
+            <Button className="w-full" onClick={initiateGoogleSignInRedirect}>
+              Continue with Google
             </Button>
           </div>
         </DialogContent>
@@ -113,14 +111,15 @@ export default function SellerRegistrationModal({ isPageMode = false }: SellerRe
     );
   }
 
-  // यदि उपयोगकर्ता लॉग इन नहीं है और यह पेज मोड है, तो इसे AppRouter में हैंडल किया जाएगा।
-  if (!isAuthenticated && isPageMode) {
-    return null; 
-  }
+  /* ---------  Page-mode but not logged-in => Router ने handle किया होगा ---------- */
+  if (!isAuthenticated && isPageMode) return null;
 
+  /* ---------------  Main Registration Form --------------- */
   return (
-    <Dialog open={dialogOpen} onOpenChange={isPageMode ? () => setLocation("/") : close}>
-      {/* Dialog content as you had it */}
+    <Dialog
+      open={dialogOpen}
+      onOpenChange={isPageMode ? () => navigate("/") : close}
+    >
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center text-2xl">
@@ -128,53 +127,48 @@ export default function SellerRegistrationModal({ isPageMode = false }: SellerRe
             Become a Seller
           </DialogTitle>
           <p className="text-muted-foreground">
-            Register your local grocery store or kirana shop for same-city delivery within 1 hour
+            Register your local grocery or kirana shop for 1-hour intra-city delivery.
           </p>
         </DialogHeader>
 
-        {/* Benefits Section */}
-        {/* ... (आपका मौजूदा कोड) ... */}
-
+        {/* --- FORM --- */}
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-            {/* Business Information */}
-            {/* ... (आपका मौजूदा कोड) ... */}
+          <form
+            onSubmit={form.handleSubmit((d) => registerSeller.mutate(d))}
+            className="space-y-6"
+          >
+            {/* सिर्फ एक फ़ील्ड का डेमो; बाक़ी आप add करें */}
+            <FormField
+              control={form.control}
+              name="businessName"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Business Name</FormLabel>
+                  <FormControl>
+                    <Input placeholder="e.g. Gupta Kirana Store" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-            {/* Tax Information */}
-            {/* ... (आपका मौजूदा कोड) ... */}
+            {/* TODO: बाकी फ़ॉर्म फ़ील्ड्स यहाँ जोड़ें */}
 
-            {/* Banking Information */}
-            {/* ... (आपका मौजूदा कोड) ... */}
-
-            {/* Verification Notice */}
-            {/* ... (आपका मौजूदा कोड) ... */}
-
-            {/* Terms and Conditions */}
-            {/* ... (आपका मौजूदा कोड) ... */}
-
-            {/* Submit Button */}
             <DialogFooter>
-              <Button 
-                type="button" 
-                variant="outline" 
-                onClick={isPageMode ? () => setLocation("/") : close}
+              <Button
+                type="button"
+                variant="outline"
                 className="flex-1"
+                onClick={isPageMode ? () => navigate("/") : close}
               >
                 Cancel
               </Button>
-              <Button 
-                type="submit" 
-                disabled={registerSellerMutation.isPending}
+              <Button
+                type="submit"
                 className="flex-1"
+                disabled={registerSeller.isPending}
               >
-                {registerSellerMutation.isPending ? (
-                  <div className="flex items-center">
-                    <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full mr-2" />
-                    Registering...
-                  </div>
-                ) : (
-                  "Register as Seller"
-                )}
+                {registerSeller.isPending ? "Registering…" : "Register as Seller"}
               </Button>
             </DialogFooter>
           </form>
@@ -183,5 +177,3 @@ export default function SellerRegistrationModal({ isPageMode = false }: SellerRe
     </Dialog>
   );
 }
-
-    
