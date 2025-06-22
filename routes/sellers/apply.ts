@@ -1,9 +1,13 @@
+// routes/sellers/apply.ts
 import { Router, Request, Response, NextFunction } from "express";
 import { db } from "../../server/db";
-import { sellers } from "../../shared/backend/schema";
+import { sellers, users } from "../../shared/backend/schema";
 
 const router = Router();
 
+/**
+ * Body ⇒ { userId, businessName, businessAddress?, phoneNumber }
+ */
 router.post("/", async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { userId, businessName, businessAddress, phoneNumber } = req.body;
@@ -12,7 +16,7 @@ router.post("/", async (req: Request, res: Response, next: NextFunction) => {
       return res.status(400).json({ message: "Missing required fields" });
     }
 
-    // Check if seller already applied or approved
+    /* ─────────── 1️⃣ पहले से आवेदन या approve तो नहीं? ─────────── */
     const existingSeller = await db.query.sellers.findFirst({
       where: sellers.userId.eq(userId),
     });
@@ -23,19 +27,31 @@ router.post("/", async (req: Request, res: Response, next: NextFunction) => {
       });
     }
 
-    // Insert new seller application with pending status
-    const newSellerApplication = await db.insert(sellers).values({
-      userId,
-      businessName,
-      businessAddress,
-      phoneNumber,
-      approvalStatus: "pending",
-      appliedAt: new Date(),
-    }).returning();
+    /* ─────────── 2️⃣ नया आवेदन create (status: pending) ─────────── */
+    const [newSeller] = await db
+      .insert(sellers)
+      .values({
+        userId,
+        businessName,
+        businessAddress,
+        phoneNumber,
+        approvalStatus: "pending",
+        appliedAt: new Date(),
+      })
+      .returning();
 
+    /* ─────────── 3️⃣ उसी user की role = pending_seller कर दें ─────────── */
+    const [updatedUser] = await db
+      .update(users)
+      .set({ role: "pending_seller" })
+      .where(users.id.eq(userId))
+      .returning();
+
+    /* ─────────── 4️⃣ Done ─────────── */
     res.status(201).json({
       message: "Seller application submitted",
-      newSellerApplication,
+      seller: newSeller,
+      user: updatedUser,
     });
   } catch (error) {
     next(error);
