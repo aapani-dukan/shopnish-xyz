@@ -50,7 +50,7 @@ const Header: React.FC<HeaderProps> = ({ categories }) => {
 
         {/* 👇 Only navigates to Auth Page */}
         <button
-          onClick={() => navigate("/login")}
+          onClick={() => navigate("/auth")}
           className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
         >
           Become a Seller
