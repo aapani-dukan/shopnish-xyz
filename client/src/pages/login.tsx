@@ -1,6 +1,7 @@
-// client/src/pages/login.tsx
+/* client/src/pages/login.tsx */
 "use client";
-import React, { useState } from "react";
+
+import { useState } from "react";
 import { signInWithGoogle } from "@/lib/firebase";
 import { Button } from "@/components/ui/button";
 import GoogleIcon from "@/components/ui/GoogleIcon";
@@ -13,17 +14,18 @@ export default function Login() {
   const handleGoogle = async () => {
     try {
       setLoading(true);
-      const result = await signInWithGoogle();
-      const fbUser = result.user;
+
+      const { user: fbUser } = await signInWithGoogle();
       if (!fbUser) return;
 
       const token = await fbUser.getIdToken();
 
-      const response = await fetch("/api/auth/login", {
+      /* backend auth */
+      await fetch("/api/auth/login", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`,
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           firebaseUid: fbUser.uid,
@@ -32,31 +34,11 @@ export default function Login() {
         }),
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(`Server authentication failed: ${errorData.message || response.statusText}`);
-      }
-
-      const serverResponse = await response.json();
-      console.log("Server login successful:", serverResponse);
-
-      const user = serverResponse.user;
-      if (!user) {
-        throw new Error("User data not received from server.");
-      }
-
-      // 🔁 Redirect based on role and approval
-      if (user.role === "seller") {
-        user.approvalStatus === "approved"
-          ? navigate("/seller-dashboard")
-          : navigate("/seller-apply");
-      } else {
-        navigate("/");
-      }
-
-    } catch (e) {
-      console.error("Google login error:", e);
-      alert("Login failed. Please try again.");
+      /* सामान्य यूज़र को होम पर भेजें */
+      navigate("/");
+    } catch (err) {
+      console.error("Login error:", err);
+      alert("Login failed, please try again.");
     } finally {
       setLoading(false);
     }
