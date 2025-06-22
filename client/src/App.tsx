@@ -23,7 +23,7 @@ import DeliveryApplyPage from "@/pages/delivery-apply";
 import LoginPage from "@/pages/login";
 // ✅ Centralized auth-based routing
 import { AuthRedirectGuard } from "@/components/auth-redirect-guard"; // यह शायद src/guards/AuthRedirectGuard.tsx है
-import { PendingPage } from "@/pages/seller-pending";
+import PendingPage from "@/pages/seller-pending";
 function AppRouter() {
   return (
     <>
