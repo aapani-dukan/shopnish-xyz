@@ -41,7 +41,7 @@ function AppRouter() {
         <Route path="/seller-dashboard" component={SellerDashboard} />
         <Route path="/seller-apply" component={SellerApplyPage} />
         <Route path="/seller-status" component={SellerStatusPage} />
-         <Route path="/login" component={Login} />
+         <Route path="/login" component={LoginPage} />
         {/* Delivery Routes */}
         <Route path="/delivery-dashboard" component={DeliveryDashboard} />
         <Route path="/delivery-apply" component={DeliveryApplyPage} />
