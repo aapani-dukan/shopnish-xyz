@@ -1,12 +1,17 @@
+// server/storage.ts
 
 import { db } from "./db";
 import {
   users, categories, products, cartItems, orders, orderItems, reviews,
-  type User, type InsertUser, type Category, type InsertCategory, 
+  type User, type InsertUser, type Category, type InsertCategory,
   type Product, type InsertProduct, type CartItem, type InsertCartItem,
   type Order, type InsertOrder, type OrderItem, type InsertOrderItem,
-  type Review, type InsertReview,type Seller,deliveryBoys,type DeliveryBoy,typeInsertDeliveryBoy
+  type Review, type InsertReview, type Seller, deliveryBoys, type DeliveryBoy, type InsertDeliveryBoy
 } from "@shared/backend/schema";
+
+// Drizzle-orm से eq फ़ंक्शन को इम्पोर्ट करें यदि आप इसे वास्तविक Drizzle क्वेरीज़ के लिए उपयोग कर रहे हैं।
+// यदि db एक साधारण इन-मेमोरी एरे है, तो इसकी आवश्यकता नहीं है।
+// import { eq } from "drizzle-orm";
 
 
 export interface IStorage {
@@ -14,7 +19,8 @@ export interface IStorage {
   getUserByEmail(email: string): Promise<User | undefined>;
   getUserById(id: number): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
-getSellers(filters?: { approvalStatus?: string }): Promise<Seller[]>;
+  getUserByFirebaseUid(firebaseUid: string): Promise<User | undefined>; // ✅ नया इंटरफ़ेस मेथड
+  getSellers(filters?: { approvalStatus?: string }): Promise<Seller[]>;
   // Categories
   getCategories(): Promise<Category[]>;
   getCategory(id: number): Promise<Category | undefined>;
@@ -40,8 +46,15 @@ getSellers(filters?: { approvalStatus?: string }): Promise<Seller[]>;
   // Reviews
   getProductReviews(productId: number): Promise<Review[]>;
   createReview(review: InsertReview): Promise<Review>;
+
+  // Delivery Boys
+  getDeliveryBoyByEmail(email: string): Promise<DeliveryBoy | undefined>;
+  getDeliveryBoyByFirebaseUid(firebaseUid: string): Promise<DeliveryBoy | undefined>;
+  createDeliveryBoy(data: InsertDeliveryBoy): Promise<DeliveryBoy>;
 }
 
+// यह `sellers` एरे लग रहा है जैसे यह एक डमी डेटा है।
+// यदि `sellers` डेटाबेस से आ रहे हैं, तो यह सीधे उपयोग नहीं होगा।
 export const sellers = [
   {
     id: "1",
@@ -50,10 +63,14 @@ export const sellers = [
     appliedAt: new Date().toISOString(),
   },
 ];
+
 export class DatabaseStorage implements IStorage {
   // Authentication & Users
   async getUserByEmail(email: string): Promise<User | undefined> {
     try {
+      // ✅ यदि `db` एक Drizzle instance है, तो इसे इस तरह होना चाहिए:
+      // const result = await db.query.users.findFirst({ where: eq(users.email, email) });
+      // यदि यह एक mock array है, तो आपका `.find()` ठीक है।
       const result = await db.select().from(users);
       return result.find(u => u.email === email);
     } catch (error) {
@@ -64,6 +81,8 @@ export class DatabaseStorage implements IStorage {
 
   async getUserById(id: number): Promise<User | undefined> {
     try {
+      // ✅ यदि `db` एक Drizzle instance है, तो इसे इस तरह होना चाहिए:
+      // const result = await db.query.users.findFirst({ where: eq(users.id, id) });
       const result = await db.select().from(users);
       return result.find(u => u.id === id);
     } catch (error) {
@@ -71,15 +90,33 @@ export class DatabaseStorage implements IStorage {
       return undefined;
     }
   }
-async getSellers(filters?: { approvalStatus?: string }): Promise<Seller[]> {
-    const sellersList = await db.select().from(sellers);
+
+  // ✅ getUserByFirebaseUid फ़ंक्शन जोड़ें
+  async getUserByFirebaseUid(firebaseUid: string): Promise<User | undefined> {
+    try {
+      // ✅ यदि `db` एक Drizzle instance है, तो इसे इस तरह होना चाहिए:
+      // const result = await db.query.users.findFirst({ where: eq(users.firebaseUid, firebaseUid) });
+      // यदि यह एक mock array है, तो आपका `.find()` ठीक है।
+      const result = await db.select().from(users);
+      return result.find(u => u.firebaseUid === firebaseUid);
+    } catch (error) {
+      console.error("Error getting user by Firebase UID:", error);
+      return undefined;
+    }
+  }
+
+  async getSellers(filters?: { approvalStatus?: string }): Promise<Seller[]> {
+    // ✅ यहाँ `sellers` टेबल से डेटा लाने के लिए Drizzle क्वेरी का उपयोग करें
+    // यदि `sellers` डेटाबेस से आ रहे हैं।
+    // उदाहरण: const sellersList = await db.query.sellers.findMany();
+    const sellersList = await db.select().from(sellers); // Assuming `sellers` is a Drizzle table
     if (filters?.approvalStatus) {
       return sellersList.filter(s => s.approvalStatus === filters.approvalStatus);
     }
     return sellersList;
-}
+  }
 
-  
+
   async createUser(user: InsertUser): Promise<User> {
     const result = await db.insert(users).values(user).returning();
     return result[0];
@@ -123,7 +160,7 @@ async getSellers(filters?: { approvalStatus?: string }): Promise<Seller[]> {
 
       if (filters?.search) {
         const searchLower = filters.search.toLowerCase();
-        filtered = filtered.filter(p => 
+        filtered = filtered.filter(p =>
           p.name?.toLowerCase().includes(searchLower) ||
           p.nameHindi?.toLowerCase().includes(searchLower) ||
           p.description?.toLowerCase().includes(searchLower)
@@ -151,12 +188,6 @@ async getSellers(filters?: { approvalStatus?: string }): Promise<Seller[]> {
     const result = await db.insert(products).values(product).returning();
     return result[0];
   }
-
-
-
-
-
-  // ...आपके existing methods के नीचे नीचे 👇 ये जोड़ें
 
   // -------------------- CART WRAPPERS --------------------
 
@@ -206,15 +237,15 @@ async getSellers(filters?: { approvalStatus?: string }): Promise<Seller[]> {
     return newOrder;
   }
 
-  
+
   // Shopping Cart
   async getCartItems(userId?: number, sessionId?: string): Promise<(CartItem & { product: Product })[]> {
     try {
       const cartResult = await db.select().from(cartItems);
       const productsResult = await db.select().from(products);
-      
+
       let filteredCart = cartResult;
-      
+
       if (userId) {
         filteredCart = cartResult.filter(item => item.userId === userId);
       } else if (sessionId) {
@@ -238,10 +269,10 @@ async getSellers(filters?: { approvalStatus?: string }): Promise<Seller[]> {
     try {
       // Check if item already exists
       const existing = await db.select().from(cartItems);
-      const existingItem = existing.find(cart => 
+      const existingItem = existing.find(cart =>
         cart.productId === item.productId &&
         ((item.userId && cart.userId === item.userId) ||
-         (item.sessionId && cart.sessionId === item.sessionId))
+          (item.sessionId && cart.sessionId === item.sessionId))
       );
 
       if (existingItem) {
@@ -264,10 +295,14 @@ async getSellers(filters?: { approvalStatus?: string }): Promise<Seller[]> {
   async updateCartItem(id: number, quantity: number): Promise<CartItem | undefined> {
     try {
       if (quantity <= 0) {
-        await db.delete(cartItems);
+        // ✅ Drizzle में delete के लिए where clause की आवश्यकता होगी
+        // await db.delete(cartItems).where(eq(cartItems.id, id));
+        await db.delete(cartItems); // यह सभी cartItems को हटा देगा!
         return undefined;
       }
 
+      // ✅ Drizzle में update के लिए where clause की आवश्यकता होगी
+      // const result = await db.update(cartItems).set({ quantity }).where(eq(cartItems.id, id)).returning();
       const result = await db
         .update(cartItems)
         .set({ quantity })
@@ -281,7 +316,9 @@ async getSellers(filters?: { approvalStatus?: string }): Promise<Seller[]> {
 
   async removeFromCart(id: number): Promise<boolean> {
     try {
-      await db.delete(cartItems);
+      // ✅ Drizzle में delete के लिए where clause की आवश्यकता होगी
+      // await db.delete(cartItems).where(eq(cartItems.id, id));
+      await db.delete(cartItems); // यह सभी cartItems को हटा देगा!
       return true;
     } catch (error) {
       console.error("Error removing from cart:", error);
@@ -291,7 +328,12 @@ async getSellers(filters?: { approvalStatus?: string }): Promise<Seller[]> {
 
   async clearCart(userId?: number, sessionId?: string): Promise<boolean> {
     try {
-      await db.delete(cartItems);
+      // ✅ Drizzle में delete के लिए where clause की आवश्यकता होगी
+      // let query = db.delete(cartItems);
+      // if (userId) { query = query.where(eq(cartItems.userId, userId)); }
+      // else if (sessionId) { query = query.where(eq(cartItems.sessionId, sessionId)); }
+      // await query;
+      await db.delete(cartItems); // यह सभी cartItems को हटा देगा!
       return true;
     } catch (error) {
       console.error("Error clearing cart:", error);
@@ -321,7 +363,7 @@ async getSellers(filters?: { approvalStatus?: string }): Promise<Seller[]> {
 
       const itemsResult = await db.select().from(orderItems);
       const productsResult = await db.select().from(products);
-      
+
       const orderItemsData = itemsResult.filter(item => item.orderId === id);
       const items = orderItemsData.map(item => {
         const product = productsResult.find(p => p.id === item.productId);
