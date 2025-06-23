@@ -127,7 +127,7 @@ export default function SellerOnboardingDialog({ isOpen, onClose }: SellerOnboar
     setShowSuccess(false);
   };
 
-  if (!isopen) {
+  if (!isOpen) {
     return null;
   }
 
