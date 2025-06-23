@@ -18,18 +18,20 @@ import { Textarea } from "@/components/ui/textarea";
 
 const sellerFormSchema = insertSellerSchema.omit({ userId: true });
 
-interface SellerRegistrationModalProps {
-  isPageMode?: boolean;
-}
+// interface SellerRegistrationModalProps {
+//   isPageMode?: boolean; // ✅ यह प्रॉप अब आवश्यक नहीं है
+// }
 
-export default function SellerRegistrationModal({ isPageMode = false }: SellerRegistrationModalProps) {
+// export default function SellerRegistrationModal({ isPageMode = false }: SellerRegistrationModalProps) {
+export default function SellerRegistrationModal() { // ✅ प्रॉप्स हटाए गए
   const { isOpen, close } = useSellerRegistrationStore();
   const { user, isAuthenticated } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
 
-  const dialogOpen = isPageMode ? isAuthenticated : isOpen;
+  // अब dialogOpen हमेशा store द्वारा नियंत्रित होगा
+  const dialogOpen = isOpen; // ✅dialogOpen हमेशा store.isOpen के बराबर होगा
 
   const form = useForm<z.infer<typeof sellerFormSchema>>({
     resolver: zodResolver(sellerFormSchema),
@@ -58,10 +60,14 @@ export default function SellerRegistrationModal({ isPageMode = false }: SellerRe
       queryClient.invalidateQueries({ queryKey: ["/api/sellers/me"] });
       toast({
         title: "Registration Successful!",
-        description: "Your seller account has been created. Verification is pending.",
+        description: "Your seller account has been created. Admin verification is pending.", // ✅ स्पष्ट किया कि एडमिन वेरिफिकेशन पेंडिंग है
       });
       form.reset();
-      isPageMode ? setLocation("/seller-status") : close();
+      // ✅ सफलता पर admin-dashboard पर रीडायरेक्ट करें या seller-status पर
+      // यदि आप चाहते हैं कि एडमिन देखे, तो अनुरोध बैकएंड में संग्रहीत होता है।
+      // यदि आप UI को एडमिन डैशबोर्ड पर रीडायरेक्ट करना चाहते हैं, तो यह यहाँ होगा:
+      setLocation("/admin-dashboard"); // ✅ admin-dashboard पर रीडायरेक्ट करने के लिए
+      close(); // मॉडल बंद करें
     },
     onError: (error: any) => {
       toast({
@@ -76,9 +82,8 @@ export default function SellerRegistrationModal({ isPageMode = false }: SellerRe
     registerSellerMutation.mutate(data);
   };
 
-  if (!isAuthenticated && isPageMode) return null;
-
-  if (!isAuthenticated && !isPageMode) {
+  // ✅ यदि उपयोगकर्ता प्रमाणित नहीं है, तो लॉगिन के लिए प्रॉम्प्ट दिखाएँ
+  if (!isAuthenticated) { // ✅ isPageMode लॉजिक हटा दिया गया
     return (
       <Dialog open={dialogOpen} onOpenChange={close}>
         <DialogContent className="max-w-md z-[100]">
@@ -101,8 +106,9 @@ export default function SellerRegistrationModal({ isPageMode = false }: SellerRe
     );
   }
 
+  // ✅ यदि उपयोगकर्ता प्रमाणित है, तो पंजीकरण फॉर्म दिखाएँ
   return (
-    <Dialog open={dialogOpen} onOpenChange={isPageMode ? () => setLocation("/") : close}>
+    <Dialog open={dialogOpen} onOpenChange={close}> {/* ✅ onOpenChange को केवल close पर सेट किया गया */}
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center text-2xl">
@@ -130,8 +136,12 @@ export default function SellerRegistrationModal({ isPageMode = false }: SellerRe
                 <FormMessage />
               </FormItem>
             )} />
+            {/* ✅ अन्य फॉर्म फ़ील्ड्स (businessType, description, city, pincode, etc.) यहाँ जोड़ें */}
+            {/* मैंने केवल उदाहरण के लिए businessName और businessAddress रखे हैं। */}
+            {/* सुनिश्चित करें कि आपके सभी फॉर्म फ़ील्ड्स यहाँ हैं। */}
+
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={isPageMode ? () => setLocation("/") : close}>Cancel</Button>
+              <Button type="button" variant="outline" onClick={close}>Cancel</Button> {/* ✅ onOpenChange को केवल close पर सेट किया गया */}
               <Button type="submit" disabled={registerSellerMutation.isPending}>
                 {registerSellerMutation.isPending ? "Registering..." : "Register as Seller"}
               </Button>
