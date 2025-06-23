@@ -23,7 +23,7 @@ export default function AuthPage() {
       /* 2️⃣  Firebase ID-Token */
       const token   = await fbUser.getIdToken();
 
-      /* 3️⃣  🔒  Backend /api/auth/login (या जो भी path है) */
+      /* 3️⃣  🔒  Backend /api/auth/login */
       const res = await fetch("/api/auth/login", {
         method : "POST",
         headers: {
@@ -43,11 +43,23 @@ export default function AuthPage() {
       }
 
       /* 4️⃣  Server response → user object + role */
-      const { user } = await res.json();          // { id, role, approvalStatus, ... }
-      if (!user || !user.role) throw new Error("User role missing from backend!");
+      // ✅ यहाँ बदलाव: रिस्पॉन्स को सीधे userObject के रूप में प्राप्त करें
+      const userObject = await res.json();          // { uuid, email, name, role, approvalStatus, ... }
+      
+      // ✅ सुनिश्चित करें कि 'uuid' मौजूद है
+      if (!userObject || !userObject.uuid) {
+        throw new Error("User UUID missing from backend response!");
+      }
+
+      // ✅ userObject.role का उपयोग करें
+      if (!userObject.role) {
+          throw new Error("User role missing from backend!");
+      }
+
+      console.log("AuthPage: Backend user object received:", userObject); // डीबगिंग के लिए लॉग करें
 
       /* 5️⃣  Final redirect logic */
-      switch (user.role) {
+      switch (userObject.role) { // ✅ userObject.role का उपयोग करें
         case "seller":            // ✅ Approved seller
           navigate("/seller-dashboard");
           break;
@@ -62,7 +74,7 @@ export default function AuthPage() {
 
     } catch (err) {
       console.error("Auth error:", err);
-      alert("Login failed, please try again.");
+      alert(`Login failed: ${err.message || "Please try again."}`); // एरर मैसेज दिखाएं
     } finally {
       setIsLoading(false);
     }
