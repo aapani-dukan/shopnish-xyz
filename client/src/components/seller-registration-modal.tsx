@@ -7,31 +7,25 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useSellerRegistrationStore } from "@/lib/store";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth } from "@/hooks/useAuth"; // useAuth अभी भी user.uid के लिए चाहिए
 import { useLocation } from "wouter";
 import { Store } from "lucide-react";
 import { z } from "zod";
-import { initiateGoogleSignInRedirect } from "@/lib/firebase";
+// import { initiateGoogleSignInRedirect } from "@/lib/firebase"; // ✅ अब इसकी जरूरत नहीं
+
 import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+// import { useEffect } from "react"; // ✅ इसकी भी अब जरूरत नहीं
 
 const sellerFormSchema = insertSellerSchema.omit({ userId: true });
 
-// interface SellerRegistrationModalProps {
-//   isPageMode?: boolean; // ✅ यह प्रॉप अब आवश्यक नहीं है
-// }
-
-// export default function SellerRegistrationModal({ isPageMode = false }: SellerRegistrationModalProps) {
-export default function SellerRegistrationModal() { // ✅ प्रॉप्स हटाए गए
-  const { isOpen, close } = useSellerRegistrationStore();
-  const { user, isAuthenticated } = useAuth();
+export default function SellerRegistrationModal() {
+  const { isOpen, close } = useSellerRegistrationStore(); // `open` की यहाँ सीधे जरूरत नहीं
+  const { user, isAuthenticated } = useAuth(); // isAuthenticated अभी भी चेक करना बेहतर है
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
-
-  // अब dialogOpen हमेशा store द्वारा नियंत्रित होगा
-  const dialogOpen = isOpen; // ✅dialogOpen हमेशा store.isOpen के बराबर होगा
 
   const form = useForm<z.infer<typeof sellerFormSchema>>({
     resolver: zodResolver(sellerFormSchema),
@@ -52,7 +46,11 @@ export default function SellerRegistrationModal() { // ✅ प्रॉप्स
 
   const registerSellerMutation = useMutation({
     mutationFn: async (data: z.infer<typeof sellerFormSchema>) => {
-      if (!user?.uid) throw new Error("User not authenticated");
+      // ✅ यहाँ एक महत्वपूर्ण चेक: यदि उपयोगकर्ता प्रमाणित नहीं है, तो त्रुटि दें।
+      // यह सुनिश्चित करता है कि फॉर्म केवल लॉग-इन उपयोगकर्ता ही भर सकें।
+      if (!user?.uid || !isAuthenticated) {
+        throw new Error("User is not authenticated. Please log in first.");
+      }
       const payload = { ...data, userId: user.uid };
       return await apiRequest("POST", "/api/sellers", payload);
     },
@@ -60,13 +58,10 @@ export default function SellerRegistrationModal() { // ✅ प्रॉप्स
       queryClient.invalidateQueries({ queryKey: ["/api/sellers/me"] });
       toast({
         title: "Registration Successful!",
-        description: "Your seller account has been created. Admin verification is pending.", // ✅ स्पष्ट किया कि एडमिन वेरिफिकेशन पेंडिंग है
+        description: "Your seller account has been created. Admin verification is pending.",
       });
       form.reset();
-      // ✅ सफलता पर admin-dashboard पर रीडायरेक्ट करें या seller-status पर
-      // यदि आप चाहते हैं कि एडमिन देखे, तो अनुरोध बैकएंड में संग्रहीत होता है।
-      // यदि आप UI को एडमिन डैशबोर्ड पर रीडायरेक्ट करना चाहते हैं, तो यह यहाँ होगा:
-      setLocation("/admin-dashboard"); // ✅ admin-dashboard पर रीडायरेक्ट करने के लिए
+      setLocation("/admin-dashboard"); // एडमिन डैशबोर्ड पर रीडायरेक्ट
       close(); // मॉडल बंद करें
     },
     onError: (error: any) => {
@@ -82,33 +77,14 @@ export default function SellerRegistrationModal() { // ✅ प्रॉप्स
     registerSellerMutation.mutate(data);
   };
 
-  // ✅ यदि उपयोगकर्ता प्रमाणित नहीं है, तो लॉगिन के लिए प्रॉम्प्ट दिखाएँ
-  if (!isAuthenticated) { // ✅ isPageMode लॉजिक हटा दिया गया
-    return (
-      <Dialog open={dialogOpen} onOpenChange={close}>
-        <DialogContent className="max-w-md z-[100]">
-          <DialogHeader>
-            <DialogTitle className="flex items-center">
-              <Store className="h-5 w-5 mr-2" />
-              Join as a Seller
-            </DialogTitle>
-          </DialogHeader>
-          <div className="text-center py-6">
-            <div className="text-4xl mb-4">🔐</div>
-            <h3 className="text-lg font-semibold mb-2">Login Required</h3>
-            <p className="text-muted-foreground mb-4">Please log in to register as a seller.</p>
-            <Button onClick={initiateGoogleSignInRedirect} className="w-full">
-              Continue with Google
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-    );
+  // ✅ मॉडल तभी रेंडर होगा जब `isOpen` true होगा।
+  // और अगर यूजर लॉग इन नहीं है, तो उसे फॉर्म सबमिट करते समय error मिलेगी (mutationFn में)।
+  if (!isOpen) {
+    return null; // यदि मॉडल बंद है तो कुछ भी रेंडर न करें
   }
 
-  // ✅ यदि उपयोगकर्ता प्रमाणित है, तो पंजीकरण फॉर्म दिखाएँ
   return (
-    <Dialog open={dialogOpen} onOpenChange={close}> {/* ✅ onOpenChange को केवल close पर सेट किया गया */}
+    <Dialog open={isOpen} onOpenChange={close}> {/* `isOpen` से मॉडल की स्थिति नियंत्रित करें */}
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center text-2xl">
@@ -136,12 +112,74 @@ export default function SellerRegistrationModal() { // ✅ प्रॉप्स
                 <FormMessage />
               </FormItem>
             )} />
-            {/* ✅ अन्य फॉर्म फ़ील्ड्स (businessType, description, city, pincode, etc.) यहाँ जोड़ें */}
-            {/* मैंने केवल उदाहरण के लिए businessName और businessAddress रखे हैं। */}
-            {/* सुनिश्चित करें कि आपके सभी फॉर्म फ़ील्ड्स यहाँ हैं। */}
+            {/* ✅ आपके अन्य फॉर्म फ़ील्ड्स यहाँ जाएँगे */}
+            {/* सुनिश्चित करें कि आपने `sellerFormSchema` के सभी फ़ील्ड्स को यहाँ जोड़ा है */}
+            <FormField name="businessType" control={form.control} render={({ field }) => (
+              <FormItem>
+                <FormLabel>Business Type</FormLabel>
+                <FormControl><Input {...field} placeholder="e.g., grocery, electronics" /></FormControl>
+                <FormMessage />
+              </FormItem>
+            )} />
+            <FormField name="description" control={form.control} render={({ field }) => (
+              <FormItem>
+                <FormLabel>Description</FormLabel>
+                <FormControl><Textarea {...field} /></FormControl>
+                <FormMessage />
+              </FormItem>
+            )} />
+            <FormField name="city" control={form.control} render={({ field }) => (
+              <FormItem>
+                <FormLabel>City</FormLabel>
+                <FormControl><Input {...field} /></FormControl>
+                <FormMessage />
+              </FormItem>
+            )} />
+            <FormField name="pincode" control={form.control} render={({ field }) => (
+              <FormItem>
+                <FormLabel>Pincode</FormLabel>
+                <FormControl><Input {...field} type="text" inputMode="numeric" pattern="[0-9]*" /></FormControl>
+                <FormMessage />
+              </FormItem>
+            )} />
+            <FormField name="businessPhone" control={form.control} render={({ field }) => (
+              <FormItem>
+                <FormLabel>Business Phone</FormLabel>
+                <FormControl><Input {...field} type="tel" /></FormControl>
+                <FormMessage />
+              </FormItem>
+            )} />
+            <FormField name="gstNumber" control={form.control} render={({ field }) => (
+              <FormItem>
+                <FormLabel>GST Number</FormLabel>
+                <FormControl><Input {...field} /></FormControl>
+                <FormMessage />
+              </FormItem>
+            )} />
+            <FormField name="bankAccountNumber" control={form.control} render={({ field }) => (
+              <FormItem>
+                <FormLabel>Bank Account Number</FormLabel>
+                <FormControl><Input {...field} type="text" inputMode="numeric" pattern="[0-9]*" /></FormControl>
+                <FormMessage />
+              </FormItem>
+            )} />
+            <FormField name="ifscCode" control={form.control} render={({ field }) => (
+              <FormItem>
+                <FormLabel>IFSC Code</FormLabel>
+                <FormControl><Input {...field} /></FormControl>
+                <FormMessage />
+              </FormItem>
+            )} />
+            <FormField name="deliveryRadius" control={form.control} render={({ field }) => (
+              <FormItem>
+                <FormLabel>Delivery Radius (in km)</FormLabel>
+                <FormControl><Input {...field} type="number" /></FormControl>
+                <FormMessage />
+              </FormItem>
+            )} />
 
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={close}>Cancel</Button> {/* ✅ onOpenChange को केवल close पर सेट किया गया */}
+              <Button type="button" variant="outline" onClick={close}>Cancel</Button>
               <Button type="submit" disabled={registerSellerMutation.isPending}>
                 {registerSellerMutation.isPending ? "Registering..." : "Register as Seller"}
               </Button>
@@ -151,4 +189,4 @@ export default function SellerRegistrationModal() { // ✅ प्रॉप्स
       </DialogContent>
     </Dialog>
   );
-}
+                                     }
