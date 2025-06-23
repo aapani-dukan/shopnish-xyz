@@ -4,7 +4,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Store, ArrowLeft, Rocket, Percent, Zap, Headphones, Globe } from "lucide-react";
 import { Link } from "wouter";
-import SellerRegistrationModal from "@/components/seller-registration-modal"; // ✅ आपके मॉडल का सही पाथ और नाम
+import SellerOnboardingDialog from "@/components/seller/SellerOnboardingDialog";
+
 
 export default function SellerApplyPage() {
   const { signOut } = useAuth();
