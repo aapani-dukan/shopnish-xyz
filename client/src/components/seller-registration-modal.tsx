@@ -1,26 +1,24 @@
 // client/src/components/seller-registration-modal.tsx
-
+"use client"; // This is the crucial line!
 
 import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input"; // यह आपका सही input.tsx से है
-import { Textarea } from "@/components/ui/textarea"; // Textarea भी इम्पोर्टेड होना चाहिए
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { insertSellerSchema } from "@shared/backend/schema"; // आपका सही schema पाथ
+import { insertSellerSchema } from "@shared/backend/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
 import { Store, Check, X } from "lucide-react";
 import { z } from "zod";
 
-// ✅ इन कंपोनेंट्स को `@/components/ui/form` से इम्पोर्ट करें
 import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
 
-// Schema for the seller form, omitting userId as it's added at runtime
 const sellerFormSchema = insertSellerSchema.omit({ userId: true });
 
 type FormData = z.infer<typeof sellerFormSchema>;
@@ -31,18 +29,17 @@ interface SellerRegistrationModalProps {
 }
 
 export default function SellerRegistrationModal({ isOpen, onClose }: SellerRegistrationModalProps) {
-  const { user, isAuthenticated } = useAuth(); // useAuth hook to get user and auth status
-  const { toast } = useToast(); // For displaying toasts
-  const queryClient = useQueryClient(); // For invalidating queries on success
-  const [, setLocation] = useLocation(); // For Wouter navigation
-  const [showSuccess, setShowSuccess] = useState(false); // State to control success message display
+  const { user, isAuthenticated } = useAuth();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [, setLocation] = useLocation();
+  const [showSuccess, setShowSuccess] = useState(false);
 
-  // Initialize react-hook-form
   const form = useForm<FormData>({
-    resolver: zodResolver(sellerFormSchema), // Zod for schema validation
+    resolver: zodResolver(sellerFormSchema),
     defaultValues: {
       businessName: "",
-      businessType: "grocery", // Default to grocery, or adjust as needed
+      businessType: "grocery",
       description: "",
       businessAddress: "",
       city: "",
@@ -51,37 +48,31 @@ export default function SellerRegistrationModal({ isOpen, onClose }: SellerRegis
       gstNumber: "",
       bankAccountNumber: "",
       ifscCode: "",
-      deliveryRadius: 5, // Default delivery radius
+      deliveryRadius: 5,
     },
   });
 
-  // TanStack Query mutation for seller registration
   const registerSellerMutation = useMutation({
     mutationFn: async (data: FormData) => {
-      // Critical check: Ensure user is authenticated before attempting to submit
       if (!user?.uid || !isAuthenticated) {
         throw new Error("User is not authenticated. Please log in first to submit the form.");
       }
-      // Combine form data with the authenticated user's ID
       const payload = { ...data, userId: user.uid };
-      // Make the API request
       const response = await apiRequest("POST", "/api/sellers", payload);
       return response;
     },
     onSuccess: () => {
-      setShowSuccess(true); // Show success message
-      form.reset(); // Reset the form fields
-      queryClient.invalidateQueries({ queryKey: ["/api/sellers/me"] }); // Invalidate relevant queries
+      setShowSuccess(true);
+      form.reset();
+      queryClient.invalidateQueries({ queryKey: ["/api/sellers/me"] });
       
-      // Close the modal and redirect after a short delay
       setTimeout(() => {
         setShowSuccess(false);
         onClose();
-        setLocation("/admin-dashboard"); // Redirect to admin dashboard
-      }, 2000); // 2-second delay
+        setLocation("/admin-dashboard");
+      }, 2000);
     },
     onError: (error: any) => {
-      // Display error toast if mutation fails
       toast({
         title: "Registration Failed",
         description: error.message || "Something went wrong. Try again.",
@@ -90,21 +81,18 @@ export default function SellerRegistrationModal({ isOpen, onClose }: SellerRegis
     },
   });
 
-  // Form submission handler
   const onSubmit = (data: FormData) => {
-    console.log("Form submitted!"); // ✅ This should now appear in the console!
-    console.log("Form data:", data); // ✅ And your form data should be logged!
-    registerSellerMutation.mutate(data); // Trigger the mutation
+    console.log("Form submitted!");
+    console.log("Form data:", data);
+    registerSellerMutation.mutate(data);
   };
 
-  // Handler for closing the modal
   const handleClose = () => {
-    form.reset(); // Reset form when modal is closed
-    onClose(); // Call parent's onClose handler
-    setShowSuccess(false); // Reset success state
+    form.reset();
+    onClose();
+    setShowSuccess(false);
   };
 
-  // Render success message dialog if showSuccess is true
   if (showSuccess) {
     return (
       <Dialog open={isOpen} onOpenChange={handleClose}>
@@ -121,7 +109,6 @@ export default function SellerRegistrationModal({ isOpen, onClose }: SellerRegis
     );
   }
 
-  // Do not render anything if the modal is not open
   if (!isOpen) {
     return null;
   }
@@ -146,35 +133,30 @@ export default function SellerRegistrationModal({ isOpen, onClose }: SellerRegis
           </p>
         </DialogHeader>
 
-        {/* ✅ Wrap your form with <Form {...form}> */}
         <Form {...form}>
-          {/* ✅ Use form.handleSubmit(onSubmit) on the <form> element */}
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            {/* Business Name Field */}
             <FormField
-              control={form.control} // Pass form.control to FormField
+              control={form.control}
               name="businessName"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Business Name</FormLabel>
-                  <FormControl><Input {...field} /></FormControl> {/* ✅ Pass {...field} to Input */}
+                  <FormControl><Input {...field} /></FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
-            {/* Business Address Field */}
             <FormField
               control={form.control}
               name="businessAddress"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Business Address</FormLabel>
-                  <FormControl><Textarea {...field} /></FormControl> {/* ✅ Pass {...field} to Textarea */}
+                  <FormControl><Textarea {...field} /></FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
-            {/* Business Type Field */}
             <FormField
               control={form.control}
               name="businessType"
@@ -186,7 +168,6 @@ export default function SellerRegistrationModal({ isOpen, onClose }: SellerRegis
                 </FormItem>
               )}
             />
-            {/* Description Field */}
             <FormField
               control={form.control}
               name="description"
@@ -198,7 +179,6 @@ export default function SellerRegistrationModal({ isOpen, onClose }: SellerRegis
                 </FormItem>
               )}
             />
-            {/* City Field */}
             <FormField
               control={form.control}
               name="city"
@@ -210,20 +190,17 @@ export default function SellerRegistrationModal({ isOpen, onClose }: SellerRegis
                 </FormItem>
               )}
             />
-            {/* Pincode Field */}
             <FormField
               control={form.control}
               name="pincode"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Pincode</FormLabel>
-                  {/* Ensure type="text" with inputMode="numeric" and pattern for pincode */}
                   <FormControl><Input {...field} type="text" inputMode="numeric" pattern="[0-9]*" /></FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
-            {/* Business Phone Field */}
             <FormField
               control={form.control}
               name="businessPhone"
@@ -235,7 +212,6 @@ export default function SellerRegistrationModal({ isOpen, onClose }: SellerRegis
                 </FormItem>
               )}
             />
-            {/* GST Number Field */}
             <FormField
               control={form.control}
               name="gstNumber"
@@ -247,7 +223,6 @@ export default function SellerRegistrationModal({ isOpen, onClose }: SellerRegis
                 </FormItem>
               )}
             />
-            {/* Bank Account Number Field */}
             <FormField
               control={form.control}
               name="bankAccountNumber"
@@ -259,7 +234,6 @@ export default function SellerRegistrationModal({ isOpen, onClose }: SellerRegis
                 </FormItem>
               )}
             />
-            {/* IFSC Code Field */}
             <FormField
               control={form.control}
               name="ifscCode"
@@ -271,14 +245,12 @@ export default function SellerRegistrationModal({ isOpen, onClose }: SellerRegis
                 </FormItem>
               )}
             />
-            {/* Delivery Radius Field */}
             <FormField
               control={form.control}
               name="deliveryRadius"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Delivery Radius (in km)</FormLabel>
-                  {/* Ensure type="number" for numeric input */}
                   <FormControl><Input {...field} type="number" /></FormControl>
                   <FormMessage />
                 </FormItem>
