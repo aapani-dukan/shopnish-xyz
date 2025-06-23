@@ -42,7 +42,7 @@ interface SellerOnboardingDialogProps {
   onClose: () => void;
 }
 
-export default function SellerOnboardingDialog({ open, onClose }: SellerOnboardingDialogProps) {
+export default function SellerOnboardingDialog({ isopen, onClose }: SellerOnboardingDialogProps) {
   const { user, isAuthenticated, isLoadingAuth } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -127,14 +127,14 @@ export default function SellerOnboardingDialog({ open, onClose }: SellerOnboardi
     setShowSuccess(false);
   };
 
-  if (!open) {
+  if (!isopen) {
     return null;
   }
 
   // --- लोडिंग और ऑथेंटिकेशन स्टेट हैंडलिंग ---
   if (isLoadingAuth) {
     return (
-      <Dialog open={open} onOpenChange={handleClose}>
+      <Dialog open={isopen} onOpenChange={handleClose}>
         <DialogContent className="max-w-md">
           <div className="flex flex-col items-center justify-center p-6 text-center">
             <Loader2 className="h-10 w-10 animate-spin text-primary mb-4" />
@@ -148,7 +148,7 @@ export default function SellerOnboardingDialog({ open, onClose }: SellerOnboardi
 
   if (!isAuthenticated) {
     return (
-      <Dialog open={open} onOpenChange={handleClose}>
+      <Dialog open={isopen} onOpenChange={handleClose}>
         <DialogContent className="max-w-md">
           <div className="text-center p-6">
             <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -168,7 +168,7 @@ export default function SellerOnboardingDialog({ open, onClose }: SellerOnboardi
   // विक्रेता प्रोफ़ाइल लोडिंग
   if (isSellerProfileLoading) {
     return (
-      <Dialog open={open} onOpenChange={handleClose}>
+      <Dialog open={isopen} onOpenChange={handleClose}>
         <DialogContent className="max-w-md">
           <div className="flex flex-col items-center justify-center p-6 text-center">
             <Loader2 className="h-10 w-10 animate-spin text-primary mb-4" />
@@ -194,7 +194,7 @@ export default function SellerOnboardingDialog({ open, onClose }: SellerOnboardi
         : <X className="text-red-600" />;
 
     return (
-      <Dialog open={open} onOpenChange={handleClose}>
+      <Dialog open={isopen} onOpenChange={handleClose}>
         <DialogContent className="max-w-md">
           <div className="text-center p-6">
             <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -219,7 +219,7 @@ export default function SellerOnboardingDialog({ open, onClose }: SellerOnboardi
   // यदि सफलता मैसेज दिखाना है तो यह रेंडर होगा
   if (showSuccess) {
     return (
-      <Dialog open={open} onOpenChange={handleClose}>
+      <Dialog open={isopen} onOpenChange={handleClose}>
         <DialogContent className="max-w-md">
           <div className="text-center p-6">
             <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -236,7 +236,7 @@ export default function SellerOnboardingDialog({ open, onClose }: SellerOnboardi
 
   // --- मुख्य डायलॉग सामग्री: केवल पंजीकरण फॉर्म ---
   return (
-    <Dialog open={open} onOpenChange={handleClose}>
+    <Dialog open={isopen} onOpenChange={handleClose}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <div className="flex items-center justify-between">
