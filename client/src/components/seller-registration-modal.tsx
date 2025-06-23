@@ -1,50 +1,40 @@
 // client/src/components/seller-registration-modal.tsx
-import { useState } from "react"; // ✅ useState इम्पोर्ट करें
+import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input"; // ✅ Input इम्पोर्ट करें
-import { Label } from "@/components/ui/label"; // ✅ Label इम्पोर्ट करें
-import { Textarea } from "@/components/ui/textarea"; // Textarea भी रखें
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { insertSellerSchema } from "@shared/backend/schema"; // ✅ अपने schema का सही पाथ
+import { insertSellerSchema } from "@shared/backend/schema"; // आपका schema पाथ
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
-import { Check, X, Store } from "lucide-react"; // ✅ Check और X इम्पोर्ट करें
+import { Check, X, Store } from "lucide-react";
 
 // आपकी मौजूदा sellerFormSchema
-const sellerFormSchema = insertSellerSchema.omit({ userId: true }).extend({
-  // उदाहरण से name और mobile फ़ील्ड्स जोड़े गए हैं
-  // सुनिश्चित करें कि ये फ़ील्ड्स आपके Drizzle schema में मौजूद हैं या आप उन्हें हटा सकते हैं
-  // यदि आप अपने मूल sellerFormSchema (businessName, businessType, etc.) का उपयोग करना चाहते हैं,
-  // तो बस इन name और mobile फ़ील्ड्स को हटा दें और अपने पुराने FormField कंपोनेंट्स को वापस लाएँ।
-  // मैं अभी के लिए उन्हें उदाहरण के रूप में रख रहा हूँ ताकि फॉर्म सबमिशन काम करे।
-  // यदि आपका Drizzle schema `name` या `mobile` नहीं रखता है, तो यह बाद में समस्या पैदा करेगा।
-  // कृपया अपने schema को ध्यान में रखें।
-  // **महत्वपूर्ण:** मैं आपके मूल `sellerFormSchema` के सभी फ़ील्ड्स को `Input` और `Textarea` के साथ
-  // `register` का उपयोग करके शामिल कर रहा हूँ, जैसा कि उदाहरण में था।
-});
+const sellerFormSchema = insertSellerSchema.omit({ userId: true });
 
 type FormData = z.infer<typeof sellerFormSchema>;
 
-interface SellerRegistrationModalProps { // ✅ Props को isOpen और onClose के लिए अपडेट करें
+interface SellerRegistrationModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
 export default function SellerRegistrationModal({ isOpen, onClose }: SellerRegistrationModalProps) {
-  const { user, isAuthenticated } = useAuth(); // isAuthenticated अभी भी चेक करना बेहतर है
+  const { user, isAuthenticated } = useAuth(); // isAuthenticated अभी भी यहां ठीक है
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [showSuccess, setShowSuccess] = useState(false); // ✅ सक्सेस स्टेट
+  const [showSuccess, setShowSuccess] = useState(false);
 
   const {
-    register, // ✅ useForm से register को इम्पोर्ट करें
-    handleSubmit, // ✅ useForm से handleSubmit को इम्पोर्ट करें
-    formState: { errors, isSubmitting }, // ✅ errors और isSubmitting को भी इम्पोर्ट करें
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
     reset,
   } = useForm<FormData>({
     resolver: zodResolver(sellerFormSchema),
@@ -60,30 +50,28 @@ export default function SellerRegistrationModal({ isOpen, onClose }: SellerRegis
       bankAccountNumber: "",
       ifscCode: "",
       deliveryRadius: 5,
-      // userId: user?.id || undefined, // userId को omit किया गया है, इसलिए इसे यहाँ न रखें
     },
   });
 
   const registerSellerMutation = useMutation({
     mutationFn: async (data: FormData) => {
+      // ✅ यह चेक अभी भी यहीं रहेगा ताकि सबमिशन केवल लॉग-इन यूजर से हो।
       if (!user?.uid || !isAuthenticated) {
-        throw new Error("User is not authenticated. Please log in first.");
+        throw new Error("User is not authenticated. Please log in first to submit the form.");
       }
-      const payload = { ...data, userId: user.uid }; // userId को यहां जोड़ें
-      const response = await apiRequest("POST", "/api/sellers", payload); // ✅ API पाथ सही रखें
-      // Drizzle API आम तौर पर JSON रिस्पांस देती है
-      return response; // response.json() यदि आपका apiRequest पहले से ही JSON को पार्स नहीं कर रहा है
+      const payload = { ...data, userId: user.uid };
+      const response = await apiRequest("POST", "/api/sellers", payload);
+      return response;
     },
     onSuccess: () => {
-      setShowSuccess(true); // ✅ सक्सेस स्टेट सेट करें
-      reset(); // ✅ फॉर्म रीसेट करें
-      queryClient.invalidateQueries({ queryKey: ["/api/sellers/me"] }); // ✅ Query invalidate करें
+      setShowSuccess(true);
+      reset();
+      queryClient.invalidateQueries({ queryKey: ["/api/sellers/me"] });
       
-      setTimeout(() => { // ✅ 2 सेकंड बाद मॉडल बंद करें
+      setTimeout(() => {
         setShowSuccess(false);
         onClose();
-        // यदि आप सफलता के बाद किसी विशेष पेज पर रीडायरेक्ट करना चाहते हैं, तो यहाँ setLocation("/your-success-page"); जोड़ें
-        // setLocation("/admin-dashboard"); // यदि आप सीधे admin-dashboard पर जाना चाहते हैं
+        // setLocation("/admin-dashboard"); // यदि आप सफलता के बाद रीडायरेक्ट करना चाहते हैं
       }, 2000);
     },
     onError: (error: any) => {
@@ -92,22 +80,20 @@ export default function SellerRegistrationModal({ isOpen, onClose }: SellerRegis
         description: error.message || "Something went wrong. Try again.",
         variant: "destructive",
       });
-      // यदि आप एरर पर भी मॉडल बंद करना चाहते हैं, तो onClose() यहाँ जोड़ें।
-      // onClose();
+      // आप यहां onClose() भी कॉल कर सकते हैं यदि आप एरर पर भी मॉडल बंद करना चाहते हैं।
     },
   });
 
-  // ✅ onSubmit फ़ंक्शन को handleSubmit से जोड़ें
   const onSubmit = (data: FormData) => {
     console.log("Form submitted!");
     console.log("Form data:", data);
     registerSellerMutation.mutate(data);
   };
 
-  const handleClose = () => { // ✅ क्लोज हैंडलर
+  const handleClose = () => {
     reset();
     onClose();
-    setShowSuccess(false); // सुनिश्चित करें कि बंद होने पर सक्सेस स्टेट रीसेट हो
+    setShowSuccess(false);
   };
 
   // ✅ सक्सेस स्टेट के आधार पर रेंडरिंग
@@ -127,37 +113,17 @@ export default function SellerRegistrationModal({ isOpen, onClose }: SellerRegis
     );
   }
 
-  // यदि isAuthenticated नहीं है, तो तुरंत लॉग इन करने के लिए प्रॉम्प्ट दिखाएं
-  // यह सुनिश्चित करने के लिए कि फॉर्म तभी खुले जब यूजर लॉग इन हो।
-  if (!isAuthenticated && isOpen) {
-    return (
-      <Dialog open={isOpen} onOpenChange={handleClose}>
-        <DialogContent className="max-w-md z-[100]">
-          <DialogHeader>
-            <DialogTitle className="flex items-center">
-              <Store className="h-5 w-5 mr-2" />
-              Join as a Seller
-            </DialogTitle>
-          </DialogHeader>
-          <div className="text-center py-6">
-            <div className="text-4xl mb-4">🔐</div>
-            <h3 className="text-lg font-semibold mb-2">Login Required</h3>
-            <p className="text-muted-foreground mb-4">Please log in to register as a seller.</p>
-            {/* यदि आप Firebase का उपयोग कर रहे हैं और login page पर redirect करना चाहते हैं */}
-            <Button onClick={() => setLocation("/login")} className="w-full">
-              Continue to Login
-            </Button>
-            {/* या initiateGoogleSignInRedirect यदि यह Firebase का पॉपअप/रीडायरेक्ट है */}
-            {/* <Button onClick={initiateGoogleSignInRedirect} className="w-full">
-              Continue with Google
-            </Button> */}
-          </div>
-        </DialogContent>
-      </Dialog>
-    );
+  // ✅ यह लॉगिन प्रॉम्प्ट ब्लॉक अब हटा दिया गया है।
+  // यदि आप पूरी तरह से सुनिश्चित हैं कि यह मॉडल तभी खुलेगा जब यूजर लॉग इन होगा,
+  // तो यह ठीक है। अन्यथा, आपको यह सुनिश्चित करना होगा कि यूजर को लॉग इन करने का
+  // कोई और तरीका प्रदान किया जाए, या इस मॉडल को तभी खोला जाए जब user object मौजूद हो।
+
+  // यदि मॉडल बंद है तो कुछ भी रेंडर न करें
+  if (!isOpen) {
+    return null;
   }
 
-  // ✅ मुख्य फॉर्म रेंडर करें
+  // ✅ मुख्य फॉर्म रेंडर करें (हमेशा जब isOpen true हो और success न हो)
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -178,7 +144,6 @@ export default function SellerRegistrationModal({ isOpen, onClose }: SellerRegis
           </p>
         </DialogHeader>
         
-        {/* ✅ form टैग को सीधे handleSubmit से जोड़ें */}
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div>
             <Label htmlFor="businessName" className="block text-sm font-medium text-gray-700 mb-2">
@@ -186,7 +151,7 @@ export default function SellerRegistrationModal({ isOpen, onClose }: SellerRegis
             </Label>
             <Input
               id="businessName"
-              {...register("businessName")} // ✅ register का उपयोग करें
+              {...register("businessName")}
               placeholder="Enter your business name"
               className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent transition-all duration-200 outline-none"
             />
@@ -201,7 +166,7 @@ export default function SellerRegistrationModal({ isOpen, onClose }: SellerRegis
             </Label>
             <Textarea
               id="businessAddress"
-              {...register("businessAddress")} // ✅ register का उपयोग करें
+              {...register("businessAddress")}
               placeholder="Enter your business address"
               className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent transition-all duration-200 outline-none"
             />
@@ -343,7 +308,7 @@ export default function SellerRegistrationModal({ isOpen, onClose }: SellerRegis
             </Label>
             <Input
               id="deliveryRadius"
-              {...register("deliveryRadius", { valueAsNumber: true })} // संख्या के रूप में वैल्यू प्राप्त करें
+              {...register("deliveryRadius", { valueAsNumber: true })}
               placeholder="e.g., 5"
               type="number"
               className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent transition-all duration-200 outline-none"
@@ -356,10 +321,10 @@ export default function SellerRegistrationModal({ isOpen, onClose }: SellerRegis
           <div className="pt-4">
             <Button
               type="submit"
-              disabled={registerSellerMutation.isPending} // ✅ isPending का उपयोग करें
+              disabled={registerSellerMutation.isPending}
               className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-lg transition-colors duration-200 flex items-center justify-center"
             >
-              {registerSellerMutation.isPending ? ( // ✅ isPending का उपयोग करें
+              {registerSellerMutation.isPending ? (
                 <>
                   <span>Submitting...</span>
                   <div className="ml-2 animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
