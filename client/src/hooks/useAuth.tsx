@@ -1,13 +1,15 @@
+// src/hooks/useAuth.ts
 import { createContext, useContext, useEffect, useState } from "react";
 import { User as FirebaseUser, onAuthStateChanged } from "firebase/auth";
-import { auth, handleRedirectResult } from "@/lib/firebase"; // 'handleRedirectResult' का उपयोग नहीं हो रहा है, लेकिन इसे रखा गया है
-import { apiRequest } from "@/lib/queryClient"; // 'apiRequest' अब 'queryClient' से आ रहा है
-import { User } from "@shared/backend/schema"; // Ensure this User type is correct and matches your backend
+import { auth, handleRedirectResult } from "@/lib/firebase"; 
+import { apiRequest } from "@/lib/queryClient"; 
+import { User } from "@shared/backend/schema"; // सुनिश्चित करें कि यह User टाइप सही है
 
 interface AuthContextType {
   firebaseUser: FirebaseUser | null;
   user: User | null;
-  loading: boolean;
+  isLoadingAuth: boolean; // ✅ 'loading' को 'isLoadingAuth' में बदला गया
+  isAuthenticated: boolean; // ✅ isAuthenticated प्रॉपर्टी जोड़ी गई
   signOut: () => Promise<void>;
 }
 
@@ -16,41 +18,40 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
   const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [isLoadingAuth, setIsLoadingAuth] = useState(true); // ✅ शुरुआत में true
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      setFirebaseUser(firebaseUser);
-      console.log("Auth State Changed. firebaseUser:", firebaseUser); // लॉगिंग जोड़ी गई
+    const unsubscribe = onAuthStateChanged(auth, async (fbUser) => { // 'firebaseUser' को 'fbUser' नाम दिया गया ताकि अंदर 'firebaseUser' वेरिएबल से भ्रम न हो
+      setFirebaseUser(fbUser);
+      console.log("Auth State Changed. Firebase User:", fbUser);
 
-      if (firebaseUser) {
-        console.log("Firebase user detected. Preparing data for backend API."); // लॉगिंग जोड़ी गई
+      if (fbUser) {
+        console.log("Firebase user detected. Preparing data for backend API.");
         try {
           const userData = {
-            firebaseUid: firebaseUser.uid,
-            email: firebaseUser.email!,
-            name: firebaseUser.displayName || firebaseUser.email!,
+            firebaseUid: fbUser.uid,
+            email: fbUser.email!,
+            name: fbUser.displayName || fbUser.email!,
           };
-          console.log("UserData prepared for /api/users:", userData); // लॉगिंग जोड़ी गई
-const response = await apiRequest("POST", "/api/auth/login", userData);
+          console.log("UserData prepared for /api/auth/login:", userData);
+
+          // ✅ यहाँ बदलाव: apiRequest का रिस्पॉन्स सीधे डेटा होता है, .json() नहीं
+          const backendUser = await apiRequest("POST", "/api/auth/login", userData); 
           
-          
-          console.log("API request to /api/users successful. Response received."); // लॉगिंग जोड़ी गई
-          const user = await response.json();
-          setUser(user);
-          console.log("User data set in context:", user); // लॉगिंग जोड़ी गई
+          console.log("API request to /api/auth/login successful. Backend User received:", backendUser); 
+          setUser(backendUser); // सीधे backendUser को सेट करें
+          console.log("User data set in context:", backendUser); 
         } catch (error) {
           console.error("Error creating/fetching user in our database:", error);
-          // एरर आने पर भी लोडिंग बंद होनी चाहिए ताकि UI स्टक न हो
           setUser(null); // यदि एरर है, तो यूजर को null सेट करें
         }
-      } else { // ✅ यह 'else' अब सही 'if' ब्लॉक से जुड़ा हुआ है
-        console.log("No Firebase user detected. Setting user to null."); // लॉगिंग जोड़ी गई
+      } else {
+        console.log("No Firebase user detected. Setting user to null.");
         setUser(null);
       }
 
-      setLoading(false);
-      console.log("Auth loading set to false."); // लॉगिंग जोड़ी गई
+      setIsLoadingAuth(false); // ✅ जब ऑथेंटिकेशन प्रोसेस पूरा हो जाए तो false करें
+      console.log("Auth loading set to false.");
     });
 
     return unsubscribe;
@@ -59,20 +60,24 @@ const response = await apiRequest("POST", "/api/auth/login", userData);
   const signOut = async () => {
     try {
       await auth.signOut();
-      setUser(null); // Sign out के बाद लोकल यूजर स्टेट भी रीसेट करें
-      setFirebaseUser(null); // Firebase यूजर स्टेट भी रीसेट करें
+      setUser(null); 
+      setFirebaseUser(null); 
       console.log("User signed out successfully.");
     } catch (error) {
       console.error("Error signing out:", error);
     }
   };
 
+  // isAuthenticated को user ऑब्जेक्ट की उपस्थिति से निर्धारित करें
+  const isAuthenticated = !!user;
+
   return (
     <AuthContext.Provider
       value={{
         firebaseUser,
         user,
-        loading,
+        isLoadingAuth,
+        isAuthenticated, // ✅ isAuthenticated प्रदान करें
         signOut,
       }}
     >
