@@ -3,7 +3,7 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { User as FirebaseUser, onAuthStateChanged } from "firebase/auth";
 import { auth, handleRedirectResult } from "@/lib/firebase";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest } from "@/lib/queryClient"; // आपका apiRequest
 import { User } from "@shared/backend/schema";
 
 interface AuthContextType {
@@ -29,8 +29,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (fbUser) {
         console.log("Firebase user detected. Preparing data for backend API.");
         try {
-          // Firebase ID टोकन प्राप्त करें (यह apiRequest द्वारा आंतरिक रूप से हैंडल किया जा सकता है)
-          const token = await fbUser.getIdToken();
           const userData = {
             firebaseUid: fbUser.uid,
             email: fbUser.email!,
@@ -38,9 +36,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           };
           console.log("UserData prepared for /api/auth/login:", userData);
 
-          // ✅ यहाँ मुख्य बदलाव: apiRequest से आए रिस्पॉन्स से 'user' प्रॉपर्टी को डीस्ट्रक्चर करें
-          const apiResponse = await apiRequest("POST", "/api/auth/login", userData);
-          const backendUser = apiResponse.user; // <-- यह वह बदलाव है!
+          // ✅ यहाँ मुख्य बदलाव: apiRequest से प्राप्त Response ऑब्जेक्ट पर .json() कॉल करें
+          const apiResponseObject = await apiRequest("POST", "/api/auth/login", userData);
+          const { user: backendUser } = await apiResponseObject.json(); // <-- यह बदलाव है!
 
           console.log("API request to /api/auth/login successful. Backend User received:", backendUser);
 
