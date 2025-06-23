@@ -8,17 +8,27 @@ import { z } from "zod";
 // यदि आप इसे डेटाबेस टेबल के रूप में उपयोग करना चाहते हैं, तो इसे `pgTable` में बदलना होगा।
 // फिलहाल, मैं इसे छोड़ रहा हूँ, लेकिन यह संभावित रूप से एक असंगति का स्रोत है।
 export const sellers = z.object({
-  id: z.string().uuid(),
-  userId: z.string(), // यह 'users' टेबल के 'id' से रेफरेंस होना चाहिए अगर यह DB से है
-  businessName: z.string(),
-  email: z.string().email(),
-  phone: z.string().optional(),
-  address: z.string().optional(),
-  approvalStatus: z.enum(["pending", "approved", "rejected"]),
+  id: z.string().uuid().optional(),
+  userId: z.string().uuid(), 
+  businessName: z.string().min(1, "Business Name is required"),
+  businessType: z.string().min(1, "Business Type is required"),
+  description: z.string().optional(), 
+  businessAddress: z.string().min(1, "Business Address is required"),
+  city: z.string().min(1, "City is required"),
+  pincode: z.string().regex(/^\d{6}$/, "Pincode must be 6 digits"), // भारतीय पिनकोड के लिए
+  businessPhone: z.string().regex(/^\d{10}$/, "Phone number must be 10 digits"), // भारतीय फ़ोन नंबर के लिए
+  gstNumber: z.string().optional(), // यदि यह वैकल्पिक है
+  bankAccountNumber: z.string().min(1, "Bank Account Number is required"),
+  ifscCode: z.string().min(1, "IFSC Code is required"),
+  deliveryRadius: z.number().min(1, "Delivery Radius must be at least 1 km"),
+  email: z.string().email().optional(), 
+  phone: z.string().optional(), // यह businessPhone से अलग हो सकता है (जैसे पर्सनल फ़ोन)
+  address: z.string().optional(), // यह businessAddress से अलग हो सकता है (जैसे पर्सनल एड्रेस)
+  approvalStatus: z.enum(["pending", "approved", "rejected"]).default("pending").optional(),
   approvedAt: z.date().optional(),
   rejectionReason: z.string().optional(),
-  createdAt: z.date(),
-  updatedAt: z.date(),
+  createdAt: z.date().optional(), // `.defaultNow()` डेटाबेस में होता है, फॉर्म में नहीं
+  updatedAt: z.date().optional(), // `.defaultNow()` डेटाबेस में होता है, फॉर्म में नहीं
 });
 
 
