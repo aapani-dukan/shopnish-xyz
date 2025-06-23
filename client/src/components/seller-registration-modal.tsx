@@ -41,36 +41,33 @@ interface SellerRegistrationModalProps {
 }
 
 export default function SellerRegistrationModal({ isOpen, onClose }: SellerRegistrationModalProps) {
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated,isLoadingAuth } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
   const [showSuccess, setShowSuccess] = useState(false);
-
-  // ✅ नई TanStack Query: यूजर के विक्रेता प्रोफ़ाइल को Fetch करना
-  const { data: existingSellerProfile, isLoading: isSellerProfileLoading, isError: isSellerProfileError } = useQuery({
-    queryKey: ["/api/sellers/me", user?.uid], // यूजर ID के साथ क्वेरी करें
+  const { data: existingSellerProfile, isLoading: isSellerProfileLoading } = useQuery({
+    queryKey: ["/api/sellers/me", user?.id], // ✅ user.id का उपयोग करें, न कि user.uid (आपका 'User' स्कीमा ID का उपयोग करता है)
     queryFn: async () => {
-      if (!user?.uid || !isAuthenticated) {
-        // अगर यूजर ऑथेंटिकेटेड नहीं है तो API कॉल न करें
+      // ✅ अब हम सुनिश्चित हैं कि user ऑब्जेक्ट मौजूद है क्योंकि !isAuthenticated चेक इससे पहले आता है
+      if (!user?.id) { 
         return null;
       }
       try {
         const response = await apiRequest("GET", `/api/sellers/me`);
-        return response.data; // सुनिश्चित करें कि आपका API `data` प्रॉपर्टी में प्रोफ़ाइल देता है
-      } catch (error) {
-        // यदि 404 (नहीं मिला) है तो इसे एरर न मानें, बस प्रोफ़ाइल नहीं है
+        return response.data; 
+      } catch (error: any) {
         if (error.response && error.response.status === 404) {
           return null; 
         }
-        throw error; // अन्य एरर्स को थ्रो करें
+        throw error; 
       }
     },
-    enabled: !!user?.uid && isAuthenticated, // केवल तभी Fetch करें जब यूजर और UID उपलब्ध हों
-    staleTime: Infinity, // एक बार Fetch होने के बाद इसे हमेशा फ्रेश मानें जब तक कि इनवैलिडेट न किया जाए
-    cacheTime: 10 * 60 * 1000, // 10 मिनट के लिए कैश में रखें
+    // ✅ Enabled तभी जब ऑथेंटिकेशन लोडिंग खत्म हो और यूजर ऑब्जेक्ट में ID हो
+    enabled: !isLoadingAuth && !!user?.id, 
+    staleTime: Infinity, 
+    cacheTime: 10 * 60 * 1000, 
   });
-
 
   const form = useForm<FormData>({
     resolver: zodResolver(sellerFormSchema),
@@ -92,14 +89,14 @@ export default function SellerRegistrationModal({ isOpen, onClose }: SellerRegis
   const registerSellerMutation = useMutation({
     mutationFn: async (data: FormData) => {
       // ✅ अब यहां सीधे एरर थ्रो नहीं करेंगे, बल्कि सुनिश्चित करेंगे कि userId उपलब्ध है
-      if (!user?.uid) {
+      if (!user?.id) {
         // यह स्थिति केवल तभी आनी चाहिए जब enabled: !!user?.uid काम न कर रहा हो
         // या ऑथेंटिकेशन स्टेट में बहुत गंभीर समस्या हो।
         // इसे एक अलग प्रकार की त्रुटि के रूप में मानें।
         console.error("Attempted to submit form without a valid user ID.");
         throw new Error("Authentication state is unstable. Please try logging out and logging back in.");
       }
-      const payload = { ...data, userId: user.uid };
+      const payload = { ...data, userId: user.id };
       const response = await apiRequest("POST", "/api/sellers", payload);
       return response;
     },
@@ -143,22 +140,54 @@ export default function SellerRegistrationModal({ isOpen, onClose }: SellerRegis
   }
 
   // ✅ लोडिंग स्टेटस को हैंडल करें
+  if (isLoadingAuth) {
+      return (
+        <Dialog open={isOpen} onOpenChange={handleClose}>
+          <DialogContent className="max-w-md">
+            <div className="flex flex-col items-center justify-center p-6 text-center">
+              <Loader2 className="h-10 w-10 animate-spin text-primary mb-4" />
+              <h2 className="text-xl font-semibold text-gray-900 mb-2">Verifying Login...</h2>
+              <p className="text-gray-600">Please wait while we confirm your login status.</p>
+            </div>
+          </DialogContent>
+        </Dialog>
+      );
+  }
+
+   if (!isAuthenticated) {
+     return (
+      <Dialog open={isOpen} onOpenChange={handleClose}>
+        <DialogContent className="max-w-md">
+          <div className="text-center p-6">
+            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <X className="text-red-600 text-2xl w-8 h-8" />
+            </div>
+            <h2 className="text-xl font-semibold text-gray-900 mb-2">Authentication Required</h2>
+            <p className="text-gray-600 mb-6">
+              It seems you're not logged in or your session has expired. Please log in to your account to register as a seller.
+            </p>
+            <Button onClick={handleClose}>Close</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+   }
+
   if (isSellerProfileLoading) {
     return (
       <Dialog open={isOpen} onOpenChange={handleClose}>
         <DialogContent className="max-w-md">
           <div className="flex flex-col items-center justify-center p-6 text-center">
             <Loader2 className="h-10 w-10 animate-spin text-primary mb-4" />
-            <h2 className="text-xl font-semibold text-gray-900 mb-2">Checking Seller Status...</h2>
-            <p className="text-gray-600">Please wait while we check your registration status.</p>
+            <h2 className="text-xl font-semibold text-gray-900 mb-2">Checking Registration Status...</h2>
+            <p className="text-gray-600">Please wait while we check if you've already registered.</p>
           </div>
         </DialogContent>
       </Dialog>
     );
   }
 
-  // ✅ यदि मौजूदा प्रोफ़ाइल मिल जाती है तो "पेंडिंग अप्रूवल" मैसेज दिखाएं
-  if (existingSellerProfile) {
+    if (existingSellerProfile) {
     return (
       <Dialog open={isOpen} onOpenChange={handleClose}>
         <DialogContent className="max-w-md">
@@ -176,8 +205,10 @@ export default function SellerRegistrationModal({ isOpen, onClose }: SellerRegis
         </DialogContent>
       </Dialog>
     );
-  }
+    }
 
+  
+  
   // यदि सफलता मैसेज दिखाना है तो यह रेंडर होगा
   if (showSuccess) {
     return (
@@ -196,27 +227,7 @@ export default function SellerRegistrationModal({ isOpen, onClose }: SellerRegis
     );
   }
 
-  // ✅ यदि यूजर ऑथेंटिकेटेड नहीं है (और लोडिंग नहीं है, और प्रोफ़ाइल नहीं मिली है)
-  // तो उसे फ़ॉर्म भरने की अनुमति न दें। यह एक फॉलबैक है।
-  if (!isAuthenticated) {
-     return (
-      <Dialog open={isOpen} onOpenChange={handleClose}>
-        <DialogContent className="max-w-md">
-          <div className="text-center p-6">
-            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <X className="text-red-600 text-2xl w-8 h-8" />
-            </div>
-            <h2 className="text-xl font-semibold text-gray-900 mb-2">Authentication Required</h2>
-            <p className="text-gray-600 mb-6">
-              Please log in to your account to register as a seller.
-            </p>
-            <Button onClick={handleClose}>Close</Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-    );
-  }
-
+  
   // ✅ मुख्य फ़ॉर्म रेंडर करें यदि कोई मौजूदा प्रोफ़ाइल नहीं है और ऑथेंटिकेटेड है
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
