@@ -38,7 +38,7 @@ const sellerFormSchema = z.object({
 type FormData = z.infer<typeof sellerFormSchema>;
 
 interface SellerOnboardingDialogProps {
-  open: boolean;
+  isopen: boolean;
   onClose: () => void;
 }
 
