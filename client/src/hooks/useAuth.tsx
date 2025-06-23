@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useState } from "react";
 import { User as FirebaseUser, onAuthStateChanged } from "firebase/auth";
-import { auth, handleRedirectResult } from "@/lib/firebase"; 
+import { auth, handleRedirectResult } from "@/lib/firebase"; // handleRedirectResult का उपयोग नहीं किया गया है, लेकिन इम्पोर्टेड है
 import { apiRequest } from "@/lib/queryClient"; 
 import { User } from "@shared/backend/schema"; // आपकी User Zod स्कीमा
 
@@ -24,33 +24,39 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
       setFirebaseUser(fbUser);
-      console.log("Auth State Changed. Firebase User:", fbUser);
+      console.log("Auth State Changed. Firebase User:", fbUser ? fbUser.uid : "None");
 
       if (fbUser) {
         console.log("Firebase user detected. Preparing data for backend API.");
         try {
+          const token = await fbUser.getIdToken(); // Firebase ID टोकन प्राप्त करें
           const userData = {
             firebaseUid: fbUser.uid,
             email: fbUser.email!,
             name: fbUser.displayName || fbUser.email!,
+            // फोन नंबर आदि जैसे अन्य डेटा भी यहां जोड़े जा सकते हैं यदि आवश्यक हो
           };
           console.log("UserData prepared for /api/auth/login:", userData);
 
-          // API कॉल, रिस्पॉन्स सीधा डेटा ऑब्जेक्ट है
-          const backendUser = await apiRequest("POST", "/api/auth/login", userData); 
+          // API कॉल। apiRequest फंक्शन Authorization हेडर को हैंडल करेगा।
+          const backendUser = await apiRequest("POST", "/api/auth/login", userData);
           
           console.log("API request to /api/auth/login successful. Backend User received:", backendUser); 
-          // ✅ यहाँ सुनिश्चित करें कि backendUser में 'uuid' है
-          // अगर backendUser.uuid undefined आता है, तो यहाँ console.error करें
-          if (!backendUser || typeof backendUser.uuid === 'undefined') {
-              console.error("Backend user received does not have a 'uuid' property:", backendUser);
-              throw new Error("Invalid user data from backend: Missing UUID.");
+
+          // ✅ यहाँ महत्वपूर्ण जांच: सुनिश्चित करें कि backendUser में 'uuid' है
+          // यह जांच 'User UUID missing from backend response!' एरर को फ्रंटएंड पर बढ़ने से रोकेगी
+          // और इसे यहाँ पकड़ने में मदद करेगी।
+          if (!backendUser || typeof backendUser.uuid === 'undefined' || backendUser.uuid === null) {
+              console.error("Backend user received does not have a 'uuid' property or it's null/undefined:", backendUser);
+              throw new Error("Invalid user data from backend: Missing or invalid UUID.");
           }
+          
           setUser(backendUser); 
           console.log("User data set in context:", backendUser); 
+
         } catch (error) {
           console.error("Error creating/fetching user in our database:", error);
-          setUser(null);
+          setUser(null); // यदि कोई एरर हो तो यूजर को नल सेट करें
         }
       } else {
         console.log("No Firebase user detected. Setting user to null.");
@@ -62,13 +68,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
 
     return unsubscribe;
-  }, []);
+  }, []); // कोई डिपेंडेंसी नहीं क्योंकि यह केवल माउंट पर एक बार चलता है और Firebase Auth स्टेट को लिसन करता है
 
   const signOut = async () => {
     try {
       await auth.signOut();
-      setUser(null); 
-      setFirebaseUser(null); 
+      setUser(null); // यूज़र स्टेट क्लियर करें
+      setFirebaseUser(null); // Firebase यूज़र स्टेट क्लियर करें
       console.log("User signed out successfully.");
     } catch (error) {
       console.error("Error signing out:", error);
@@ -76,7 +82,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   // isAuthenticated को 'user' ऑब्जेक्ट की उपस्थिति और उसमें 'uuid' होने से निर्धारित करें
-  const isAuthenticated = !!user && typeof user.uuid === 'string'; // ✅ यहाँ 'uuid' का उपयोग करें
+  const isAuthenticated = !!user && typeof user.uuid === 'string'; // ✅ 'uuid' प्रॉपर्टी की उपस्थिति और प्रकार जांचें
 
   return (
     <AuthContext.Provider
