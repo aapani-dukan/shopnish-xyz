@@ -93,7 +93,7 @@ export default function SellerApplyPage() {
       </main>
 
       {/* ✅ SellerRegistrationModal को props के साथ रेंडर करें */}
-      <SellerRegistrationModal 
+      <SellerOnboardDialog 
         isOpen={isModalOpen} 
         onClose={() => setIsModalOpen(false)} 
       />
