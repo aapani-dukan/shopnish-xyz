@@ -1,4 +1,9 @@
-// client/src/pages/seller-apply.tsx import { useAuth } from "@/hooks/useAuth"; import { Button } from "@/components/ui/button"; import { Store, ArrowLeft, Rocket, Percent, Zap, Headphones, Globe } from "lucide-react"; import { Link } from "wouter"; import SellerRegistrationModal from "@/components/seller-registration-modal";
+// client/src/pages/seller-apply.tsx 
+import { useAuth } from "@/hooks/useAuth"; 
+import { Button } from "@/components/ui/button"; 
+import { Store, ArrowLeft, Rocket, Percent, Zap, Headphones, Globe } from "lucide-react"; 
+import { Link } from "wouter"; 
+import SellerRegistrationModal from "@/components/seller-registration-modal";
 
 export default function SellerApplyPage() { const { signOut } = useAuth();
 
