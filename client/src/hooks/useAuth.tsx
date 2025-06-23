@@ -1,15 +1,16 @@
 // src/hooks/useAuth.ts
+
 import { createContext, useContext, useEffect, useState } from "react";
 import { User as FirebaseUser, onAuthStateChanged } from "firebase/auth";
 import { auth, handleRedirectResult } from "@/lib/firebase"; 
 import { apiRequest } from "@/lib/queryClient"; 
-import { User } from "@shared/backend/schema"; // सुनिश्चित करें कि यह User टाइप सही है
+import { User } from "@shared/backend/schema"; // आपकी User Zod स्कीमा
 
 interface AuthContextType {
   firebaseUser: FirebaseUser | null;
-  user: User | null;
-  isLoadingAuth: boolean; // ✅ 'loading' को 'isLoadingAuth' में बदला गया
-  isAuthenticated: boolean; // ✅ isAuthenticated प्रॉपर्टी जोड़ी गई
+  user: User | null; // यह अब backendUser को स्टोर करेगा, जिसमें 'uuid' होगी
+  isLoadingAuth: boolean;
+  isAuthenticated: boolean;
   signOut: () => Promise<void>;
 }
 
@@ -17,11 +18,11 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
-  const [user, setUser] = useState<User | null>(null);
-  const [isLoadingAuth, setIsLoadingAuth] = useState(true); // ✅ शुरुआत में true
+  const [user, setUser] = useState<User | null>(null); // यह 'user' स्टेट अब 'User' स्कीमा टाइप की होगी
+  const [isLoadingAuth, setIsLoadingAuth] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (fbUser) => { // 'firebaseUser' को 'fbUser' नाम दिया गया ताकि अंदर 'firebaseUser' वेरिएबल से भ्रम न हो
+    const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
       setFirebaseUser(fbUser);
       console.log("Auth State Changed. Firebase User:", fbUser);
 
@@ -35,22 +36,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           };
           console.log("UserData prepared for /api/auth/login:", userData);
 
-          // ✅ यहाँ बदलाव: apiRequest का रिस्पॉन्स सीधे डेटा होता है, .json() नहीं
+          // API कॉल, रिस्पॉन्स सीधा डेटा ऑब्जेक्ट है
           const backendUser = await apiRequest("POST", "/api/auth/login", userData); 
           
           console.log("API request to /api/auth/login successful. Backend User received:", backendUser); 
-          setUser(backendUser); // सीधे backendUser को सेट करें
+          // ✅ यहाँ सुनिश्चित करें कि backendUser में 'uuid' है
+          // अगर backendUser.uuid undefined आता है, तो यहाँ console.error करें
+          if (!backendUser || typeof backendUser.uuid === 'undefined') {
+              console.error("Backend user received does not have a 'uuid' property:", backendUser);
+              throw new Error("Invalid user data from backend: Missing UUID.");
+          }
+          setUser(backendUser); 
           console.log("User data set in context:", backendUser); 
         } catch (error) {
           console.error("Error creating/fetching user in our database:", error);
-          setUser(null); // यदि एरर है, तो यूजर को null सेट करें
+          setUser(null);
         }
       } else {
         console.log("No Firebase user detected. Setting user to null.");
         setUser(null);
       }
 
-      setIsLoadingAuth(false); // ✅ जब ऑथेंटिकेशन प्रोसेस पूरा हो जाए तो false करें
+      setIsLoadingAuth(false); 
       console.log("Auth loading set to false.");
     });
 
@@ -68,8 +75,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // isAuthenticated को user ऑब्जेक्ट की उपस्थिति से निर्धारित करें
-  const isAuthenticated = !!user;
+  // isAuthenticated को 'user' ऑब्जेक्ट की उपस्थिति और उसमें 'uuid' होने से निर्धारित करें
+  const isAuthenticated = !!user && typeof user.uuid === 'string'; // ✅ यहाँ 'uuid' का उपयोग करें
 
   return (
     <AuthContext.Provider
@@ -77,7 +84,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         firebaseUser,
         user,
         isLoadingAuth,
-        isAuthenticated, // ✅ isAuthenticated प्रदान करें
+        isAuthenticated, 
         signOut,
       }}
     >
