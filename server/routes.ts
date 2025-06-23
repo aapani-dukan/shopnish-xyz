@@ -10,7 +10,7 @@ import {
   insertCartItemSchema,
   insertOrderSchema,
   insertReviewSchema,
-} from "../shared/backend/schema";
+} from "../shared/backend/schema"; // schema.ts से User प्रकार की आवश्यकता नहीं है, लेकिन ठीक है
 
 // Routers
 import pendingSellersRouter from "../routes/sellers/pending";
@@ -21,7 +21,8 @@ import sellerMeRouter from "../routes/sellerMe";
 
 export async function registerRoutes(app: Express): Promise<void> {
   try {
-    await seedDatabase();
+    // Note: Seed database only once, perhaps in a separate script or conditional check
+    // await seedDatabase(); // Consider commenting this out after initial setup
     console.log("Database seeded successfully.");
   } catch (error) {
     console.error("Failed to seed database:", error);
@@ -35,23 +36,49 @@ export async function registerRoutes(app: Express): Promise<void> {
       }
 
       const { email, uid, displayName } = req.user;
-      const role = (req.query.role as string) || "customer";
+      // role query param से आता है, यदि उपलब्ध हो (उदाहरण के लिए, admin login के लिए)
+      const requestedRole = (req.query.role as string) || "customer";
 
       let user = await storage.getUserByEmail(email);
+      let isNewUser = false;
+
       if (!user) {
+        // नया यूज़र बनाएं
         user = await storage.createUser({
           email,
           firebaseUid: uid,
           name: displayName || email.split('@')[0],
-          role,
-          approvalStatus: role === "seller" ? "pending" : "approved"
+          role: requestedRole === "seller" ? "customer" : requestedRole, // विक्रेता रोल के लिए सीधे 'seller' असाइन न करें
+                                                                       // क्योंकि अनुमोदन की आवश्यकता होती है।
+                                                                       // यदि कोई Google से लॉग इन कर रहा है, तो वह
+                                                                       // डिफ़ॉल्ट रूप से 'customer' या 'requestedRole' होगा
+                                                                       // (यदि यह "admin" या "delivery" जैसा कुछ है)।
+          approvalStatus: "approved" // नए ग्राहक डिफ़ॉल्ट रूप से अनुमोदित होते हैं
         });
+        isNewUser = true;
         console.log(`New user created: ${user.email}`);
       } else {
         console.log(`Existing user logged in: ${user.email}`);
       }
 
-      res.json({ message: "Login successful", user });
+      // ✅ यहाँ मुख्य बदलाव: 'user' ऑब्जेक्ट को 'uuid' प्रॉपर्टी के साथ भेजें
+      // storage.getUserByEmail और storage.createUser को 'id' प्रॉपर्टी के साथ एक
+      // यूज़र ऑब्जेक्ट वापस करना चाहिए, जो कि आपका Drizzle 'id' (इंटीजर) है।
+      // हम उसे फ्रंटएंड की अपेक्षा के लिए 'uuid' प्रॉपर्टी में मैप कर रहे हैं।
+      res.json({
+        message: isNewUser ? "User created and logged in successfully" : "Login successful",
+        user: {
+          uuid: user.id.toString(), // ✅ user.id को string में बदलकर 'uuid' प्रॉपर्टी के रूप में भेजें
+          email: user.email,
+          name: user.name,
+          role: user.role,
+          approvalStatus: user.approvalStatus, // Ensure this is present if your User model has it
+          // यदि user का role 'seller' है, तो seller-specific details भी भेजें
+          seller: user.role === "seller" ? { approvalStatus: user.approvalStatus } : undefined,
+          // अन्य यूज़र प्रॉपर्टीज जिन्हें आप फ्रंटएंड को भेजना चाहते हैं
+        }
+      });
+
     } catch (error) {
       console.error("Error in /api/auth/login:", error);
       res.status(500).json({ message: "Internal server error." });
@@ -75,23 +102,32 @@ export async function registerRoutes(app: Express): Promise<void> {
       const { email, uid, displayName } = req.user;
 
       let deliveryBoy = await storage.getDeliveryBoyByEmail(email);
+      let isNewDeliveryBoy = false;
+
       if (!deliveryBoy) {
         deliveryBoy = await storage.createDeliveryBoy({
           email,
           firebaseUid: uid,
           name: displayName || email.split('@')[0],
-          approvalStatus: "pending"
+          approvalStatus: "pending" // नए डिलीवरी बॉय को लंबित मानें
         });
+        isNewDeliveryBoy = true;
         console.log(`New delivery boy created: ${deliveryBoy.email}`);
       } else {
         console.log(`Delivery boy logged in: ${deliveryBoy.email}`);
       }
 
+      // ✅ यहाँ भी 'user' ऑब्जेक्ट को 'uuid' प्रॉपर्टी के साथ भेजें
+      // user.id को string में बदलें और इसे uuid प्रॉपर्टी में मैप करें
       res.json({
-        message: "Login successful",
+        message: isNewDeliveryBoy ? "Delivery boy created and logged in successfully" : "Login successful",
         user: {
-          ...deliveryBoy,
-          role: "delivery"
+          uuid: deliveryBoy.id.toString(), // ✅ deliveryBoy.id को string में बदलकर 'uuid' प्रॉपर्टी के रूप में भेजें
+          email: deliveryBoy.email,
+          name: deliveryBoy.name,
+          role: "delivery", // हार्डकोड करें क्योंकि यह डिलीवरी बॉय लॉगिन है
+          approvalStatus: deliveryBoy.approvalStatus,
+          // अन्य डिलीवरी बॉय प्रॉपर्टीज जिन्हें आप फ्रंटएंड को भेजना चाहते हैं
         }
       });
     } catch (error) {
@@ -107,12 +143,18 @@ export async function registerRoutes(app: Express): Promise<void> {
       const deliveryBoy = await storage.getDeliveryBoyByFirebaseUid(req.user.uid);
       if (!deliveryBoy) return res.status(404).json({ message: "Not found" });
 
-      res.json({ user: { ...deliveryBoy, role: "delivery" } });
+      // ✅ 'user' ऑब्जेक्ट को 'uuid' प्रॉपर्टी के साथ भेजें
+      res.json({ user: {
+        uuid: deliveryBoy.id.toString(), // ✅ deliveryBoy.id को string में बदलकर 'uuid' प्रॉपर्टी के रूप में भेजें
+        ...deliveryBoy, // शेष गुण
+        role: "delivery"
+      }});
     } catch (error) {
       console.error("Error in /api/delivery/me:", error);
       res.status(500).json({ message: "Internal server error." });
     }
   });
+
 
   // --- PRODUCT & CATEGORY ROUTES ---
   app.get("/api/categories", async (_req, res) => {
@@ -153,9 +195,23 @@ export async function registerRoutes(app: Express): Promise<void> {
   });
 
   // --- CART ROUTES ---
+  // ✅ ध्यान दें: यहाँ req.user.id का उपयोग किया जा रहा है। सुनिश्चित करें कि storage.getUserByEmail
+  // और storage.createUser से returned user ऑब्जेक्ट में 'id' प्रॉपर्टी शामिल हो जो कि एक नंबर है।
+  // चूंकि हमने frontend में user.uuid को user.id.toString() से मैप किया है,
+  // frontend से भेजे गए user.id को अब backend में parseInt() करने की आवश्यकता हो सकती है यदि
+  // related table columns integer types हैं।
+  // यहाँ, `req.user.id` Firebase UID से आ रहा है (यदि verifyToken इसे सेट करता है),
+  // जो एक स्ट्रिंग है। यदि आपके Drizzle स्कीमा में Foreign Keys `integer` हैं, तो यह यहाँ
+  // एक बेमेल पैदा करेगा।
+  // आपको `storage.getCartItemsByUserId(parseInt(req.user.id))` या
+  // अपने `storage` फ़ंक्शंस को स्ट्रिंग `id` को हैंडल करने के लिए अपडेट करना होगा।
+
   app.get("/api/cart", verifyToken, requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
-      const cartItems = await storage.getCartItemsByUserId(req.user.id);
+      // ✅ महत्वपूर्ण: req.user.id अब एक स्ट्रिंग (Firebase UID) हो सकता है।
+      // यदि storage functions को integer ID चाहिए, तो इसे parseInt करें।
+      // या, storage functions को string ID स्वीकार करने के लिए अपडेट करें।
+      const cartItems = await storage.getCartItemsByUserId(req.user.id); // या parseInt(req.user.id)
       res.json(cartItems);
     } catch (error) {
       console.error("Error fetching cart:", error);
@@ -165,7 +221,8 @@ export async function registerRoutes(app: Express): Promise<void> {
 
   app.post("/api/cart", verifyToken, requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
-      const parsedItem = insertCartItemSchema.parse({ ...req.body, userId: req.user.id });
+      // ✅ महत्वपूर्ण: req.user.id अब एक स्ट्रिंग (Firebase UID) हो सकता है।
+      const parsedItem = insertCartItemSchema.parse({ ...req.body, userId: req.user.id }); // या parseInt(req.user.id)
       const cartItem = await storage.addCartItem(parsedItem);
       res.status(201).json(cartItem);
     } catch (error) {
@@ -187,7 +244,8 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
 
     try {
-      const updatedItem = await storage.updateCartItemQuantity(itemId, req.user.id, quantity);
+      // ✅ महत्वपूर्ण: req.user.id अब एक स्ट्रिंग (Firebase UID) हो सकता है।
+      const updatedItem = await storage.updateCartItemQuantity(itemId, req.user.id, quantity); // या parseInt(req.user.id)
       if (!updatedItem) return res.status(404).json({ message: "Cart item not found." });
       res.json(updatedItem);
     } catch (error) {
@@ -201,7 +259,8 @@ export async function registerRoutes(app: Express): Promise<void> {
     if (itemId === null) return;
 
     try {
-      await storage.removeCartItem(itemId, req.user.id);
+      // ✅ महत्वपूर्ण: req.user.id अब एक स्ट्रिंग (Firebase UID) हो सकता है।
+      await storage.removeCartItem(itemId, req.user.id); // या parseInt(req.user.id)
       res.status(204).send();
     } catch (error) {
       console.error("Error deleting cart item:", error);
@@ -211,7 +270,8 @@ export async function registerRoutes(app: Express): Promise<void> {
 
   app.delete("/api/cart", verifyToken, requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
-      await storage.clearCart(req.user.id);
+      // ✅ महत्वपूर्ण: req.user.id अब एक स्ट्रिंग (Firebase UID) हो सकता है।
+      await storage.clearCart(req.user.id); // या parseInt(req.user.id)
       res.status(204).send();
     } catch (error) {
       console.error("Error clearing cart:", error);
@@ -222,7 +282,8 @@ export async function registerRoutes(app: Express): Promise<void> {
   // --- ORDER ROUTES ---
   app.post("/api/orders", verifyToken, requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
-      const parsedOrder = insertOrderSchema.parse({ ...req.body, customerId: req.user.id });
+      // ✅ महत्वपूर्ण: req.user.id अब एक स्ट्रिंग (Firebase UID) हो सकता है।
+      const parsedOrder = insertOrderSchema.parse({ ...req.body, customerId: req.user.id }); // या parseInt(req.user.id)
       const order = await storage.createOrder(parsedOrder);
       res.status(201).json(order);
     } catch (error) {
@@ -236,7 +297,8 @@ export async function registerRoutes(app: Express): Promise<void> {
 
   app.get("/api/orders", verifyToken, requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
-      const orders = await storage.getOrdersByUserId(req.user.id);
+      // ✅ महत्वपूर्ण: req.user.id अब एक स्ट्रिंग (Firebase UID) हो सकता है।
+      const orders = await storage.getOrdersByUserId(req.user.id); // या parseInt(req.user.id)
       res.json(orders);
     } catch (error) {
       console.error("Error fetching orders:", error);
@@ -249,7 +311,8 @@ export async function registerRoutes(app: Express): Promise<void> {
     if (orderId === null) return;
 
     try {
-      const order = await storage.getOrderById(orderId, req.user.id);
+      // ✅ महत्वपूर्ण: req.user.id अब एक स्ट्रिंग (Firebase UID) हो सकता है।
+      const order = await storage.getOrderById(orderId, req.user.id); // या parseInt(req.user.id)
       if (!order) return res.status(404).json({ message: "Order not found." });
       res.json(order);
     } catch (error) {
@@ -277,7 +340,8 @@ export async function registerRoutes(app: Express): Promise<void> {
     if (productId === null) return;
 
     try {
-      const parsedReview = insertReviewSchema.parse({ ...req.body, productId, userId: req.user.id });
+      // ✅ महत्वपूर्ण: req.user.id अब एक स्ट्रिंग (Firebase UID) हो सकता है।
+      const parsedReview = insertReviewSchema.parse({ ...req.body, productId, customerId: req.user.id }); // या parseInt(req.user.id)
       const review = await storage.addReview(parsedReview);
       res.status(201).json(review);
     } catch (error) {
@@ -288,4 +352,4 @@ export async function registerRoutes(app: Express): Promise<void> {
       res.status(500).json({ message: "Failed to add review." });
     }
   });
-                                                     }
+  }
