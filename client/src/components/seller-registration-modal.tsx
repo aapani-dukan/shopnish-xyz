@@ -4,13 +4,14 @@
 import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { insertSellerSchema } from "@shared/backend/schema";
+
+import { sellers } from "@shared/backend/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
@@ -19,7 +20,19 @@ import { z } from "zod";
 
 import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
 
-const sellerFormSchema = insertSellerSchema.omit({ userId: true });
+const sellerFormSchema = sellers.omit({
+  
+id: true, 
+  userId: true, 
+  email: true, 
+  phone: true, 
+  address: true, // अगर यह businessAddress से अलग है और फॉर्म में नहीं है
+  approvalStatus: true, 
+  approvedAt: true, 
+  rejectionReason: true, 
+  createdAt: true, 
+  updatedAt: true 
+});
 
 type FormData = z.infer<typeof sellerFormSchema>;
 
