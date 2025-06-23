@@ -74,6 +74,8 @@ export default function SellerRegistrationModal() {
   });
 
   const onSubmit = (data: z.infer<typeof sellerFormSchema>) => {
+    console.log("Form submitted!");
+    console.log("Form data:", data);
     registerSellerMutation.mutate(data);
   };
 
