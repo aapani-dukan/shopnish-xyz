@@ -17,23 +17,23 @@ export default function AuthPage() {
 
       /* 1️⃣ Firebase popup/redirect */
       const result = await signInWithGoogle();
-      const fbUser  = result.user;
+      const fbUser = result.user;
       if (!fbUser) return;
 
-      /* 2️⃣  Firebase ID-Token */
-      const token   = await fbUser.getIdToken();
+      /* 2️⃣ Firebase ID-Token */
+      const token = await fbUser.getIdToken();
 
-      /* 3️⃣  🔒  Backend /api/auth/login */
+      /* 3️⃣ 🔒 Backend /api/auth/login */
       const res = await fetch("/api/auth/login", {
-        method : "POST",
+        method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization : `Bearer ${token}`,
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           firebaseUid: fbUser.uid,
-          email      : fbUser.email!,
-          name       : fbUser.displayName || fbUser.email!,
+          email: fbUser.email!,
+          name: fbUser.displayName || fbUser.email!,
         }),
       });
 
@@ -42,8 +42,8 @@ export default function AuthPage() {
         throw new Error(err.message || res.statusText);
       }
 
-      /* 4️⃣  Server response → user object + role */
-      const userObject = await res.json();          // { uuid, email, name, role, approvalStatus, ... }
+      /* 4️⃣ Server response → user object + role */
+      const { user: userObject } = await res.json(); // ✅ सुनिश्चित करें कि बैकएंड 'user' कुंजी के तहत डेटा भेजता है
 
       // ✅ सुनिश्चित करें कि 'uuid' मौजूद है
       if (!userObject || !userObject.uuid) {
@@ -52,27 +52,44 @@ export default function AuthPage() {
 
       // ✅ userObject.role का उपयोग करें
       if (!userObject.role) {
-          throw new Error("User role missing from backend!");
+        throw new Error("User role missing from backend!");
       }
 
       console.log("AuthPage: Backend user object received:", userObject); // डीबगिंग के लिए लॉग करें
 
-      /* 5️⃣  Final redirect logic */
-      switch (userObject.role) { // ✅ userObject.role का उपयोग करें
-        case "seller":            // ✅ Approved seller
-          navigate("/seller-dashboard");
+      /* 5️⃣ Final redirect logic */
+      // userObject.role और userObject.approvalStatus (यदि विक्रेता है) के आधार पर रीडायरेक्ट करें
+      switch (userObject.role) {
+        case "seller":
+          // यदि विक्रेता स्वीकृत है, डैशबोर्ड पर जाएं
+          if (userObject.approvalStatus === "approved") {
+            navigate("/seller-dashboard");
+          }
+          // यदि विक्रेता लंबित है, स्थिति पृष्ठ पर जाएं
+          else if (userObject.approvalStatus === "pending") {
+            navigate("/seller-status");
+          }
+          // यदि विक्रेता किसी अन्य स्थिति में है (जैसे 'rejected' या 'none'), आवेदन पृष्ठ पर जाएं
+          else {
+            navigate("/seller-apply");
+          }
           break;
 
-        case "pending_seller":    // 🕗 Awaiting approval
-          // ✅ यहाँ बदलाव: 'seller-pending' से 'seller-status' पर रीडायरेक्ट करें
-          navigate("/seller-status");
+        case "admin":
+          navigate("/admin-dashboard");
           break;
 
-        default:                  // "user" या कुछ भी
-          navigate("/seller-apply");
+        case "delivery":
+          navigate("/delivery-dashboard");
+          break;
+
+        case "customer":
+        default:
+          // ग्राहक या अन्य अप्रत्याशित भूमिकाओं के लिए डिफ़ॉल्ट होमपेज या विक्रेता आवेदन पर जाएं
+          navigate("/seller-apply"); // या "/" यदि आप उन्हें होमपेज पर भेजना चाहते हैं
+          break;
       }
-
-    } catch (err) {
+    } catch (err: any) { // 'any' टाइप किया गया ताकि 'err.message' को एक्सेस किया जा सके
       console.error("Auth error:", err);
       alert(`Login failed: ${err.message || "Please try again."}`); // एरर मैसेज दिखाएं
     } finally {
@@ -92,9 +109,7 @@ export default function AuthPage() {
               <h1 className="text-2xl font-semibold text-gray-900 mb-2">
                 Welcome Back
               </h1>
-              <p className="text-gray-600">
-                Sign in to continue
-              </p>
+              <p className="text-gray-600">Sign in to continue</p>
             </div>
 
             <Button
