@@ -1,14 +1,14 @@
 // client/src/pages/seller-apply.tsx
+import { useState } from "react"; // ✅ useState इम्पोर्ट करें
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Store, ArrowLeft, Rocket, Percent, Zap, Headphones, Globe } from "lucide-react";
 import { Link } from "wouter";
-import SellerRegistrationModal from "@/components/seller-registration-modal";
-import { useSellerRegistrationStore } from "@/lib/store"; // ✅ useSellerRegistrationStore इम्पोर्ट करें
+import SellerRegistrationModal from "@/components/seller-registration-modal"; // ✅ आपके मॉडल का सही पाथ और नाम
 
 export default function SellerApplyPage() {
   const { signOut } = useAuth();
-  const { open } = useSellerRegistrationStore(); // ✅ open फंक्शन को गेट करें
+  const [isModalOpen, setIsModalOpen] = useState(false); // ✅ isModalOpen स्टेट
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -44,14 +44,15 @@ export default function SellerApplyPage() {
           </div>
           <h1 className="text-3xl font-bold text-gray-900 mb-4">The way is here</h1>
           <p className="text-lg text-gray-600 mb-8">Start your selling journey with us. Complete your application to get approved as a seller.</p>
-
-          {/* ✅ नया बटन जोड़ा गया जो मॉडल को खोलेगा */}
-          <Button onClick={open} className="px-8 py-3 text-lg">
-            Click Here to Become a Seller
+          
+          {/* ✅ बटन जो मॉडल खोलेगा */}
+          <Button 
+            onClick={() => setIsModalOpen(true)}
+            className="inline-flex items-center px-8 py-4 bg-amber-600 hover:bg-amber-700 text-white font-medium rounded-xl transition-colors duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 text-lg"
+          >
+            <Store className="mr-3 w-5 h-5" />
+            Click here
           </Button>
-
-          {/* SellerRegistrationModal अब isPageMode के बिना आएगा */}
-          <SellerRegistrationModal /> {/* ✅ isPageMode प्रॉप हटाया गया */}
         </div>
 
         {/* Benefits Section */}
@@ -63,6 +64,7 @@ export default function SellerApplyPage() {
             <h3 className="font-semibold text-gray-900 mb-2">Low Commission</h3>
             <p className="text-gray-600 text-sm">Competitive rates to maximize your profits</p>
           </div>
+          
           <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
             <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mb-4">
               <Zap className="text-blue-600 w-6 h-6" />
@@ -70,6 +72,7 @@ export default function SellerApplyPage() {
             <h3 className="font-semibold text-gray-900 mb-2">Fast Setup</h3>
             <p className="text-gray-600 text-sm">Get your store up and running quickly</p>
           </div>
+          
           <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
             <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center mb-4">
               <Headphones className="text-purple-600 w-6 h-6" />
@@ -77,6 +80,7 @@ export default function SellerApplyPage() {
             <h3 className="font-semibold text-gray-900 mb-2">24/7 Support</h3>
             <p className="text-gray-600 text-sm">Dedicated support team to help you succeed</p>
           </div>
+          
           <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
             <div className="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center mb-4">
               <Globe className="text-red-600 w-6 h-6" />
@@ -86,6 +90,12 @@ export default function SellerApplyPage() {
           </div>
         </div>
       </main>
+
+      {/* ✅ SellerRegistrationModal को props के साथ रेंडर करें */}
+      <SellerRegistrationModal 
+        isOpen={isModalOpen} 
+        onClose={() => setIsModalOpen(false)} 
+      />
     </div>
   );
 }
