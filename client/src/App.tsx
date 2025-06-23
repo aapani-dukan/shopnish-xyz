@@ -22,13 +22,14 @@ import DeliveryDashboard from "@/pages/delivery-dashboard";
 import DeliveryApplyPage from "@/pages/delivery-apply";
 import LoginPage from "@/pages/login";
 // ✅ Centralized auth-based routing
-import { AuthRedirectGuard } from "@/components/auth-redirect-guard"; // यह शायद src/guards/AuthRedirectGuard.tsx है
-import PendingPage from "@/pages/seller-pending";
+import { AuthRedirectGuard } from "@/components/auth-redirect-guard";
+
+// ✅ 'PendingPage' का इम्पोर्ट हटा दिया गया है
+// import PendingPage from "@/pages/seller-pending"; 
+
 function AppRouter() {
   return (
     <>
-    
-
       <Switch>
         {/* Public and Customer Routes */}
         <Route path="/" component={HomePage} />
@@ -41,11 +42,14 @@ function AppRouter() {
         <Route path="/seller-dashboard" component={SellerDashboard} />
         <Route path="/seller-apply" component={SellerApplyPage} />
         <Route path="/seller-status" component={SellerStatusPage} />
-         <Route path="/login" component={LoginPage} />
+        <Route path="/login" component={LoginPage} />
+
         {/* Delivery Routes */}
         <Route path="/delivery-dashboard" component={DeliveryDashboard} />
         <Route path="/delivery-apply" component={DeliveryApplyPage} />
-         <Route path="/seller-pending" component={PendingPage} />
+        {/* ✅ '/seller-pending' राउट हटा दिया गया है */}
+        {/* <Route path="/seller-pending" component={PendingPage} /> */}
+
         {/* Admin Route */}
         <Route path="/admin-dashboard" component={AdminDashboard} />
 
