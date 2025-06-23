@@ -43,9 +43,8 @@ export default function AuthPage() {
       }
 
       /* 4️⃣  Server response → user object + role */
-      // ✅ यहाँ बदलाव: रिस्पॉन्स को सीधे userObject के रूप में प्राप्त करें
       const userObject = await res.json();          // { uuid, email, name, role, approvalStatus, ... }
-      
+
       // ✅ सुनिश्चित करें कि 'uuid' मौजूद है
       if (!userObject || !userObject.uuid) {
         throw new Error("User UUID missing from backend response!");
@@ -65,7 +64,8 @@ export default function AuthPage() {
           break;
 
         case "pending_seller":    // 🕗 Awaiting approval
-          navigate("/seller-pending");            // ← अपना पेज/Toast जो चाहें
+          // ✅ यहाँ बदलाव: 'seller-pending' से 'seller-status' पर रीडायरेक्ट करें
+          navigate("/seller-status");
           break;
 
         default:                  // "user" या कुछ भी
