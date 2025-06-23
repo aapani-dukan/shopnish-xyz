@@ -1,32 +1,31 @@
 // client/src/components/seller-registration-modal.tsx
-"use client"; // This is the crucial line!
+"use client";
 
 import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,DialogDescription } from "@/components/ui/dialog";
+// ✅ useQuery को भी इम्पोर्ट करें
+import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query"; 
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-
-import { sellers } from "@shared/backend/schema";
+import { sellers } from "@shared/backend/schema"; // आपका अपडेटेड sellers Zod स्कीमा
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
-import { Store, Check, X } from "lucide-react";
+import { Check, X, Store, Loader2 } from "lucide-react"; // Loader2 आइकन लोडिंग स्टेट के लिए
 import { z } from "zod";
 
 import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
 
-const sellerFormSchema = sellers.omit({
-  
-id: true, 
+const sellerFormSchema = sellers.omit({ 
+  id: true, 
   userId: true, 
   email: true, 
   phone: true, 
-  address: true, // अगर यह businessAddress से अलग है और फॉर्म में नहीं है
+  address: true, 
   approvalStatus: true, 
   approvedAt: true, 
   rejectionReason: true, 
@@ -48,6 +47,31 @@ export default function SellerRegistrationModal({ isOpen, onClose }: SellerRegis
   const [, setLocation] = useLocation();
   const [showSuccess, setShowSuccess] = useState(false);
 
+  // ✅ नई TanStack Query: यूजर के विक्रेता प्रोफ़ाइल को Fetch करना
+  const { data: existingSellerProfile, isLoading: isSellerProfileLoading, isError: isSellerProfileError } = useQuery({
+    queryKey: ["/api/sellers/me", user?.uid], // यूजर ID के साथ क्वेरी करें
+    queryFn: async () => {
+      if (!user?.uid || !isAuthenticated) {
+        // अगर यूजर ऑथेंटिकेटेड नहीं है तो API कॉल न करें
+        return null;
+      }
+      try {
+        const response = await apiRequest("GET", `/api/sellers/me`);
+        return response.data; // सुनिश्चित करें कि आपका API `data` प्रॉपर्टी में प्रोफ़ाइल देता है
+      } catch (error) {
+        // यदि 404 (नहीं मिला) है तो इसे एरर न मानें, बस प्रोफ़ाइल नहीं है
+        if (error.response && error.response.status === 404) {
+          return null; 
+        }
+        throw error; // अन्य एरर्स को थ्रो करें
+      }
+    },
+    enabled: !!user?.uid && isAuthenticated, // केवल तभी Fetch करें जब यूजर और UID उपलब्ध हों
+    staleTime: Infinity, // एक बार Fetch होने के बाद इसे हमेशा फ्रेश मानें जब तक कि इनवैलिडेट न किया जाए
+    cacheTime: 10 * 60 * 1000, // 10 मिनट के लिए कैश में रखें
+  });
+
+
   const form = useForm<FormData>({
     resolver: zodResolver(sellerFormSchema),
     defaultValues: {
@@ -67,8 +91,13 @@ export default function SellerRegistrationModal({ isOpen, onClose }: SellerRegis
 
   const registerSellerMutation = useMutation({
     mutationFn: async (data: FormData) => {
-      if (!user?.uid || !isAuthenticated) {
-        throw new Error("User is not authenticated. Please log in first to submit the form.");
+      // ✅ अब यहां सीधे एरर थ्रो नहीं करेंगे, बल्कि सुनिश्चित करेंगे कि userId उपलब्ध है
+      if (!user?.uid) {
+        // यह स्थिति केवल तभी आनी चाहिए जब enabled: !!user?.uid काम न कर रहा हो
+        // या ऑथेंटिकेशन स्टेट में बहुत गंभीर समस्या हो।
+        // इसे एक अलग प्रकार की त्रुटि के रूप में मानें।
+        console.error("Attempted to submit form without a valid user ID.");
+        throw new Error("Authentication state is unstable. Please try logging out and logging back in.");
       }
       const payload = { ...data, userId: user.uid };
       const response = await apiRequest("POST", "/api/sellers", payload);
@@ -77,7 +106,9 @@ export default function SellerRegistrationModal({ isOpen, onClose }: SellerRegis
     onSuccess: () => {
       setShowSuccess(true);
       form.reset();
-      queryClient.invalidateQueries({ queryKey: ["/api/sellers/me"] });
+      // ✅ यह सुनिश्चित करने के लिए कि मौजूदा प्रोफ़ाइल की स्थिति अपडेट हो जाए,
+      // इसे इनवैलिडेट करें ताकि useQuery फिर से Fetch करे।
+      queryClient.invalidateQueries({ queryKey: ["/api/sellers/me"] }); 
       
       setTimeout(() => {
         setShowSuccess(false);
@@ -106,6 +137,48 @@ export default function SellerRegistrationModal({ isOpen, onClose }: SellerRegis
     setShowSuccess(false);
   };
 
+  // यदि मॉडल खुला नहीं है तो कुछ भी रेंडर न करें
+  if (!isOpen) {
+    return null;
+  }
+
+  // ✅ लोडिंग स्टेटस को हैंडल करें
+  if (isSellerProfileLoading) {
+    return (
+      <Dialog open={isOpen} onOpenChange={handleClose}>
+        <DialogContent className="max-w-md">
+          <div className="flex flex-col items-center justify-center p-6 text-center">
+            <Loader2 className="h-10 w-10 animate-spin text-primary mb-4" />
+            <h2 className="text-xl font-semibold text-gray-900 mb-2">Checking Seller Status...</h2>
+            <p className="text-gray-600">Please wait while we check your registration status.</p>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  // ✅ यदि मौजूदा प्रोफ़ाइल मिल जाती है तो "पेंडिंग अप्रूवल" मैसेज दिखाएं
+  if (existingSellerProfile) {
+    return (
+      <Dialog open={isOpen} onOpenChange={handleClose}>
+        <DialogContent className="max-w-md">
+          <div className="text-center p-6">
+            <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Store className="text-blue-600 text-2xl w-8 h-8" />
+            </div>
+            <h2 className="text-xl font-semibold text-gray-900 mb-2">Registration Submitted!</h2>
+            <p className="text-gray-600 mb-6">
+              You have already submitted your seller application. Current status: <span className="font-semibold text-blue-700">{existingSellerProfile.approvalStatus || 'pending'}</span>.
+              Please wait for approval. We'll notify you once it's reviewed.
+            </p>
+            <Button onClick={handleClose}>Close</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  // यदि सफलता मैसेज दिखाना है तो यह रेंडर होगा
   if (showSuccess) {
     return (
       <Dialog open={isOpen} onOpenChange={handleClose}>
@@ -116,16 +189,35 @@ export default function SellerRegistrationModal({ isOpen, onClose }: SellerRegis
             </div>
             <h2 className="text-xl font-semibold text-gray-900 mb-2">Registration Submitted!</h2>
             <p className="text-gray-600 mb-6">Your seller application has been submitted successfully. We'll review it and get back to you soon.</p>
+            <Button onClick={handleClose}>Close</Button> {/* Add close button for success state */}
           </div>
         </DialogContent>
       </Dialog>
     );
   }
 
-  if (!isOpen) {
-    return null;
+  // ✅ यदि यूजर ऑथेंटिकेटेड नहीं है (और लोडिंग नहीं है, और प्रोफ़ाइल नहीं मिली है)
+  // तो उसे फ़ॉर्म भरने की अनुमति न दें। यह एक फॉलबैक है।
+  if (!isAuthenticated) {
+     return (
+      <Dialog open={isOpen} onOpenChange={handleClose}>
+        <DialogContent className="max-w-md">
+          <div className="text-center p-6">
+            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <X className="text-red-600 text-2xl w-8 h-8" />
+            </div>
+            <h2 className="text-xl font-semibold text-gray-900 mb-2">Authentication Required</h2>
+            <p className="text-gray-600 mb-6">
+              Please log in to your account to register as a seller.
+            </p>
+            <Button onClick={handleClose}>Close</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
   }
 
+  // ✅ मुख्य फ़ॉर्म रेंडर करें यदि कोई मौजूदा प्रोफ़ाइल नहीं है और ऑथेंटिकेटेड है
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -141,13 +233,14 @@ export default function SellerRegistrationModal({ isOpen, onClose }: SellerRegis
               <X className="w-4 h-4" />
             </Button>
           </div>
-          <p className="text-muted-foreground">
-            Register your local grocery store or kirana shop for same-city delivery within 1 hour
-          </p>
+          <DialogDescription>
+            Register your local grocery store or kirana shop for same-city delivery within 1 hour.
+          </DialogDescription>
         </DialogHeader>
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            {/* Business Name Field */}
             <FormField
               control={form.control}
               name="businessName"
@@ -159,6 +252,7 @@ export default function SellerRegistrationModal({ isOpen, onClose }: SellerRegis
                 </FormItem>
               )}
             />
+            {/* Business Address Field */}
             <FormField
               control={form.control}
               name="businessAddress"
@@ -170,6 +264,7 @@ export default function SellerRegistrationModal({ isOpen, onClose }: SellerRegis
                 </FormItem>
               )}
             />
+            {/* Business Type Field */}
             <FormField
               control={form.control}
               name="businessType"
@@ -181,6 +276,7 @@ export default function SellerRegistrationModal({ isOpen, onClose }: SellerRegis
                 </FormItem>
               )}
             />
+            {/* Description Field */}
             <FormField
               control={form.control}
               name="description"
@@ -192,6 +288,7 @@ export default function SellerRegistrationModal({ isOpen, onClose }: SellerRegis
                 </FormItem>
               )}
             />
+            {/* City Field */}
             <FormField
               control={form.control}
               name="city"
@@ -203,6 +300,7 @@ export default function SellerRegistrationModal({ isOpen, onClose }: SellerRegis
                 </FormItem>
               )}
             />
+            {/* Pincode Field */}
             <FormField
               control={form.control}
               name="pincode"
@@ -214,6 +312,7 @@ export default function SellerRegistrationModal({ isOpen, onClose }: SellerRegis
                 </FormItem>
               )}
             />
+            {/* Business Phone Field */}
             <FormField
               control={form.control}
               name="businessPhone"
@@ -225,6 +324,7 @@ export default function SellerRegistrationModal({ isOpen, onClose }: SellerRegis
                 </FormItem>
               )}
             />
+            {/* GST Number Field */}
             <FormField
               control={form.control}
               name="gstNumber"
@@ -236,6 +336,7 @@ export default function SellerRegistrationModal({ isOpen, onClose }: SellerRegis
                 </FormItem>
               )}
             />
+            {/* Bank Account Number Field */}
             <FormField
               control={form.control}
               name="bankAccountNumber"
@@ -247,6 +348,7 @@ export default function SellerRegistrationModal({ isOpen, onClose }: SellerRegis
                 </FormItem>
               )}
             />
+            {/* IFSC Code Field */}
             <FormField
               control={form.control}
               name="ifscCode"
@@ -258,6 +360,7 @@ export default function SellerRegistrationModal({ isOpen, onClose }: SellerRegis
                 </FormItem>
               )}
             />
+            {/* Delivery Radius Field */}
             <FormField
               control={form.control}
               name="deliveryRadius"
