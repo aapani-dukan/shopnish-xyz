@@ -47,10 +47,10 @@ export default function SellerRegistrationModal({ isOpen, onClose }: SellerRegis
   const [, setLocation] = useLocation();
   const [showSuccess, setShowSuccess] = useState(false);
   const { data: existingSellerProfile, isLoading: isSellerProfileLoading } = useQuery({
-    queryKey: ["/api/sellers/me", user?.id], // ✅ user.id का उपयोग करें, न कि user.uid (आपका 'User' स्कीमा ID का उपयोग करता है)
+    queryKey: ["/api/sellers/me", user?.uuid], // ✅ user.id का उपयोग करें, न कि user.uid (आपका 'User' स्कीमा ID का उपयोग करता है)
     queryFn: async () => {
       // ✅ अब हम सुनिश्चित हैं कि user ऑब्जेक्ट मौजूद है क्योंकि !isAuthenticated चेक इससे पहले आता है
-      if (!user?.id) { 
+      if (!user?.uuid) { 
         return null;
       }
       try {
@@ -64,7 +64,7 @@ export default function SellerRegistrationModal({ isOpen, onClose }: SellerRegis
       }
     },
     // ✅ Enabled तभी जब ऑथेंटिकेशन लोडिंग खत्म हो और यूजर ऑब्जेक्ट में ID हो
-    enabled: !isLoadingAuth && !!user?.id, 
+    enabled: !isLoadingAuth && !!user?.uuid, 
     staleTime: Infinity, 
     cacheTime: 10 * 60 * 1000, 
   });
@@ -89,14 +89,14 @@ export default function SellerRegistrationModal({ isOpen, onClose }: SellerRegis
   const registerSellerMutation = useMutation({
     mutationFn: async (data: FormData) => {
       // ✅ अब यहां सीधे एरर थ्रो नहीं करेंगे, बल्कि सुनिश्चित करेंगे कि userId उपलब्ध है
-      if (!user?.id) {
+      if (!user?.uuid) {
         // यह स्थिति केवल तभी आनी चाहिए जब enabled: !!user?.uid काम न कर रहा हो
         // या ऑथेंटिकेशन स्टेट में बहुत गंभीर समस्या हो।
         // इसे एक अलग प्रकार की त्रुटि के रूप में मानें।
         console.error("Attempted to submit form without a valid user ID.");
         throw new Error("Authentication state is unstable. Please try logging out and logging back in.");
       }
-      const payload = { ...data, userId: user.id };
+      const payload = { ...data, userId: user.uuid };
       const response = await apiRequest("POST", "/api/sellers", payload);
       return response;
     },
