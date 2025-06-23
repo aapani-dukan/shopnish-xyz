@@ -1,21 +1,26 @@
 // client/src/components/seller-registration-modal.tsx
+
+
 import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input"; // यह आपका सही input.tsx से है
+import { Textarea } from "@/components/ui/textarea"; // Textarea भी इम्पोर्टेड होना चाहिए
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { insertSellerSchema } from "@shared/backend/schema"; // आपका schema पाथ
+import { insertSellerSchema } from "@shared/backend/schema"; // आपका सही schema पाथ
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useLocation } from "wouter";
+import { Store, Check, X } from "lucide-react";
 import { z } from "zod";
-import { Check, X, Store } from "lucide-react";
 
-// आपकी मौजूदा sellerFormSchema
+// ✅ इन कंपोनेंट्स को `@/components/ui/form` से इम्पोर्ट करें
+import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
+
+// Schema for the seller form, omitting userId as it's added at runtime
 const sellerFormSchema = insertSellerSchema.omit({ userId: true });
 
 type FormData = z.infer<typeof sellerFormSchema>;
@@ -26,21 +31,18 @@ interface SellerRegistrationModalProps {
 }
 
 export default function SellerRegistrationModal({ isOpen, onClose }: SellerRegistrationModalProps) {
-  const { user, isAuthenticated } = useAuth(); // isAuthenticated अभी भी यहां ठीक है
-  const { toast } = useToast();
-  const queryClient = useQueryClient();
-  const [showSuccess, setShowSuccess] = useState(false);
+  const { user, isAuthenticated } = useAuth(); // useAuth hook to get user and auth status
+  const { toast } = useToast(); // For displaying toasts
+  const queryClient = useQueryClient(); // For invalidating queries on success
+  const [, setLocation] = useLocation(); // For Wouter navigation
+  const [showSuccess, setShowSuccess] = useState(false); // State to control success message display
 
-  const {
-    register,
-    handleSubmit,
-    formState: { errors, isSubmitting },
-    reset,
-  } = useForm<FormData>({
-    resolver: zodResolver(sellerFormSchema),
+  // Initialize react-hook-form
+  const form = useForm<FormData>({
+    resolver: zodResolver(sellerFormSchema), // Zod for schema validation
     defaultValues: {
       businessName: "",
-      businessType: "grocery",
+      businessType: "grocery", // Default to grocery, or adjust as needed
       description: "",
       businessAddress: "",
       city: "",
@@ -49,54 +51,60 @@ export default function SellerRegistrationModal({ isOpen, onClose }: SellerRegis
       gstNumber: "",
       bankAccountNumber: "",
       ifscCode: "",
-      deliveryRadius: 5,
+      deliveryRadius: 5, // Default delivery radius
     },
   });
 
+  // TanStack Query mutation for seller registration
   const registerSellerMutation = useMutation({
     mutationFn: async (data: FormData) => {
-      // ✅ यह चेक अभी भी यहीं रहेगा ताकि सबमिशन केवल लॉग-इन यूजर से हो।
+      // Critical check: Ensure user is authenticated before attempting to submit
       if (!user?.uid || !isAuthenticated) {
         throw new Error("User is not authenticated. Please log in first to submit the form.");
       }
+      // Combine form data with the authenticated user's ID
       const payload = { ...data, userId: user.uid };
+      // Make the API request
       const response = await apiRequest("POST", "/api/sellers", payload);
       return response;
     },
     onSuccess: () => {
-      setShowSuccess(true);
-      reset();
-      queryClient.invalidateQueries({ queryKey: ["/api/sellers/me"] });
+      setShowSuccess(true); // Show success message
+      form.reset(); // Reset the form fields
+      queryClient.invalidateQueries({ queryKey: ["/api/sellers/me"] }); // Invalidate relevant queries
       
+      // Close the modal and redirect after a short delay
       setTimeout(() => {
         setShowSuccess(false);
         onClose();
-        // setLocation("/admin-dashboard"); // यदि आप सफलता के बाद रीडायरेक्ट करना चाहते हैं
-      }, 2000);
+        setLocation("/admin-dashboard"); // Redirect to admin dashboard
+      }, 2000); // 2-second delay
     },
     onError: (error: any) => {
+      // Display error toast if mutation fails
       toast({
         title: "Registration Failed",
         description: error.message || "Something went wrong. Try again.",
         variant: "destructive",
       });
-      // आप यहां onClose() भी कॉल कर सकते हैं यदि आप एरर पर भी मॉडल बंद करना चाहते हैं।
     },
   });
 
+  // Form submission handler
   const onSubmit = (data: FormData) => {
-    console.log("Form submitted!");
-    console.log("Form data:", data);
-    registerSellerMutation.mutate(data);
+    console.log("Form submitted!"); // ✅ This should now appear in the console!
+    console.log("Form data:", data); // ✅ And your form data should be logged!
+    registerSellerMutation.mutate(data); // Trigger the mutation
   };
 
+  // Handler for closing the modal
   const handleClose = () => {
-    reset();
-    onClose();
-    setShowSuccess(false);
+    form.reset(); // Reset form when modal is closed
+    onClose(); // Call parent's onClose handler
+    setShowSuccess(false); // Reset success state
   };
 
-  // ✅ सक्सेस स्टेट के आधार पर रेंडरिंग
+  // Render success message dialog if showSuccess is true
   if (showSuccess) {
     return (
       <Dialog open={isOpen} onOpenChange={handleClose}>
@@ -113,17 +121,11 @@ export default function SellerRegistrationModal({ isOpen, onClose }: SellerRegis
     );
   }
 
-  // ✅ यह लॉगिन प्रॉम्प्ट ब्लॉक अब हटा दिया गया है।
-  // यदि आप पूरी तरह से सुनिश्चित हैं कि यह मॉडल तभी खुलेगा जब यूजर लॉग इन होगा,
-  // तो यह ठीक है। अन्यथा, आपको यह सुनिश्चित करना होगा कि यूजर को लॉग इन करने का
-  // कोई और तरीका प्रदान किया जाए, या इस मॉडल को तभी खोला जाए जब user object मौजूद हो।
-
-  // यदि मॉडल बंद है तो कुछ भी रेंडर न करें
+  // Do not render anything if the modal is not open
   if (!isOpen) {
     return null;
   }
 
-  // ✅ मुख्य फॉर्म रेंडर करें (हमेशा जब isOpen true हो और success न हो)
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -143,198 +145,154 @@ export default function SellerRegistrationModal({ isOpen, onClose }: SellerRegis
             Register your local grocery store or kirana shop for same-city delivery within 1 hour
           </p>
         </DialogHeader>
-        
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          <div>
-            <Label htmlFor="businessName" className="block text-sm font-medium text-gray-700 mb-2">
-              Business Name
-            </Label>
-            <Input
-              id="businessName"
-              {...register("businessName")}
-              placeholder="Enter your business name"
-              className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent transition-all duration-200 outline-none"
-            />
-            {errors.businessName && (
-              <p className="text-red-500 text-sm mt-1">{errors.businessName.message}</p>
-            )}
-          </div>
-          
-          <div>
-            <Label htmlFor="businessAddress" className="block text-sm font-medium text-gray-700 mb-2">
-              Business Address
-            </Label>
-            <Textarea
-              id="businessAddress"
-              {...register("businessAddress")}
-              placeholder="Enter your business address"
-              className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent transition-all duration-200 outline-none"
-            />
-            {errors.businessAddress && (
-              <p className="text-red-500 text-sm mt-1">{errors.businessAddress.message}</p>
-            )}
-          </div>
 
-          <div>
-            <Label htmlFor="businessType" className="block text-sm font-medium text-gray-700 mb-2">
-              Business Type
-            </Label>
-            <Input
-              id="businessType"
-              {...register("businessType")}
-              placeholder="e.g., grocery, electronics"
-              className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent transition-all duration-200 outline-none"
-            />
-            {errors.businessType && (
-              <p className="text-red-500 text-sm mt-1">{errors.businessType.message}</p>
-            )}
-          </div>
-
-          <div>
-            <Label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-2">
-              Description
-            </Label>
-            <Textarea
-              id="description"
-              {...register("description")}
-              placeholder="Describe your business"
-              className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent transition-all duration-200 outline-none"
-            />
-            {errors.description && (
-              <p className="text-red-500 text-sm mt-1">{errors.description.message}</p>
-            )}
-          </div>
-
-          <div>
-            <Label htmlFor="city" className="block text-sm font-medium text-gray-700 mb-2">
-              City
-            </Label>
-            <Input
-              id="city"
-              {...register("city")}
-              placeholder="Your city"
-              className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent transition-all duration-200 outline-none"
-            />
-            {errors.city && (
-              <p className="text-red-500 text-sm mt-1">{errors.city.message}</p>
-            )}
-          </div>
-
-          <div>
-            <Label htmlFor="pincode" className="block text-sm font-medium text-gray-700 mb-2">
-              Pincode
-            </Label>
-            <Input
-              id="pincode"
-              {...register("pincode")}
-              placeholder="e.g., 305001"
-              type="text"
-              inputMode="numeric"
-              pattern="[0-9]*"
-              className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent transition-all duration-200 outline-none"
-            />
-            {errors.pincode && (
-              <p className="text-red-500 text-sm mt-1">{errors.pincode.message}</p>
-            )}
-          </div>
-
-          <div>
-            <Label htmlFor="businessPhone" className="block text-sm font-medium text-gray-700 mb-2">
-              Business Phone
-            </Label>
-            <Input
-              id="businessPhone"
-              {...register("businessPhone")}
-              placeholder="Enter business contact number"
-              type="tel"
-              className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent transition-all duration-200 outline-none"
-            />
-            {errors.businessPhone && (
-              <p className="text-red-500 text-sm mt-1">{errors.businessPhone.message}</p>
-            )}
-          </div>
-
-          <div>
-            <Label htmlFor="gstNumber" className="block text-sm font-medium text-gray-700 mb-2">
-              GST Number
-            </Label>
-            <Input
-              id="gstNumber"
-              {...register("gstNumber")}
-              placeholder="Enter GST number"
-              className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent transition-all duration-200 outline-none"
-            />
-            {errors.gstNumber && (
-              <p className="text-red-500 text-sm mt-1">{errors.gstNumber.message}</p>
-            )}
-          </div>
-
-          <div>
-            <Label htmlFor="bankAccountNumber" className="block text-sm font-medium text-gray-700 mb-2">
-              Bank Account Number
-            </Label>
-            <Input
-              id="bankAccountNumber"
-              {...register("bankAccountNumber")}
-              placeholder="Enter bank account number"
-              type="text"
-              inputMode="numeric"
-              pattern="[0-9]*"
-              className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent transition-all duration-200 outline-none"
-            />
-            {errors.bankAccountNumber && (
-              <p className="text-red-500 text-sm mt-1">{errors.bankAccountNumber.message}</p>
-            )}
-          </div>
-
-          <div>
-            <Label htmlFor="ifscCode" className="block text-sm font-medium text-gray-700 mb-2">
-              IFSC Code
-            </Label>
-            <Input
-              id="ifscCode"
-              {...register("ifscCode")}
-              placeholder="Enter IFSC code"
-              className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent transition-all duration-200 outline-none"
-            />
-            {errors.ifscCode && (
-              <p className="text-red-500 text-sm mt-1">{errors.ifscCode.message}</p>
-            )}
-          </div>
-
-          <div>
-            <Label htmlFor="deliveryRadius" className="block text-sm font-medium text-gray-700 mb-2">
-              Delivery Radius (in km)
-            </Label>
-            <Input
-              id="deliveryRadius"
-              {...register("deliveryRadius", { valueAsNumber: true })}
-              placeholder="e.g., 5"
-              type="number"
-              className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent transition-all duration-200 outline-none"
-            />
-            {errors.deliveryRadius && (
-              <p className="text-red-500 text-sm mt-1">{errors.deliveryRadius.message}</p>
-            )}
-          </div>
-          
-          <div className="pt-4">
-            <Button
-              type="submit"
-              disabled={registerSellerMutation.isPending}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-lg transition-colors duration-200 flex items-center justify-center"
-            >
-              {registerSellerMutation.isPending ? (
-                <>
-                  <span>Submitting...</span>
-                  <div className="ml-2 animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                </>
-              ) : (
-                "Submit Application"
+        {/* ✅ Wrap your form with <Form {...form}> */}
+        <Form {...form}>
+          {/* ✅ Use form.handleSubmit(onSubmit) on the <form> element */}
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            {/* Business Name Field */}
+            <FormField
+              control={form.control} // Pass form.control to FormField
+              name="businessName"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Business Name</FormLabel>
+                  <FormControl><Input {...field} /></FormControl> {/* ✅ Pass {...field} to Input */}
+                  <FormMessage />
+                </FormItem>
               )}
-            </Button>
-          </div>
-        </form>
+            />
+            {/* Business Address Field */}
+            <FormField
+              control={form.control}
+              name="businessAddress"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Business Address</FormLabel>
+                  <FormControl><Textarea {...field} /></FormControl> {/* ✅ Pass {...field} to Textarea */}
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            {/* Business Type Field */}
+            <FormField
+              control={form.control}
+              name="businessType"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Business Type</FormLabel>
+                  <FormControl><Input {...field} placeholder="e.g., grocery, electronics" /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            {/* Description Field */}
+            <FormField
+              control={form.control}
+              name="description"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Description</FormLabel>
+                  <FormControl><Textarea {...field} /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            {/* City Field */}
+            <FormField
+              control={form.control}
+              name="city"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>City</FormLabel>
+                  <FormControl><Input {...field} /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            {/* Pincode Field */}
+            <FormField
+              control={form.control}
+              name="pincode"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Pincode</FormLabel>
+                  {/* Ensure type="text" with inputMode="numeric" and pattern for pincode */}
+                  <FormControl><Input {...field} type="text" inputMode="numeric" pattern="[0-9]*" /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            {/* Business Phone Field */}
+            <FormField
+              control={form.control}
+              name="businessPhone"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Business Phone</FormLabel>
+                  <FormControl><Input {...field} type="tel" /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            {/* GST Number Field */}
+            <FormField
+              control={form.control}
+              name="gstNumber"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>GST Number</FormLabel>
+                  <FormControl><Input {...field} /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            {/* Bank Account Number Field */}
+            <FormField
+              control={form.control}
+              name="bankAccountNumber"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Bank Account Number</FormLabel>
+                  <FormControl><Input {...field} type="text" inputMode="numeric" pattern="[0-9]*" /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            {/* IFSC Code Field */}
+            <FormField
+              control={form.control}
+              name="ifscCode"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>IFSC Code</FormLabel>
+                  <FormControl><Input {...field} /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            {/* Delivery Radius Field */}
+            <FormField
+              control={form.control}
+              name="deliveryRadius"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Delivery Radius (in km)</FormLabel>
+                  {/* Ensure type="number" for numeric input */}
+                  <FormControl><Input {...field} type="number" /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={handleClose}>Cancel</Button>
+              <Button type="submit" disabled={registerSellerMutation.isPending}>
+                {registerSellerMutation.isPending ? "Registering..." : "Register as Seller"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </Form>
       </DialogContent>
     </Dialog>
   );
