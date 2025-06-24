@@ -10,7 +10,7 @@ import {
 } from "@shared/backend/schema";
 
 // ✅ Drizzle-orm से आवश्यक फ़ंक्शन इम्पोर्ट करें
-import { eq, and, desc } from "drizzle-orm"; // 'eq' (equality), 'and' (multiple conditions), 'desc' (descending order)
+import { eq, and, desc,or,sql } from "drizzle-orm"; // 'eq' (equality), 'and' (multiple conditions), 'desc' (descending order)
 
 export interface IStorage {
   // Authentication & Users
