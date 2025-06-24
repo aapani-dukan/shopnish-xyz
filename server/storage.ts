@@ -10,7 +10,7 @@ import {
 } from "@shared/backend/schema";
 
 // ✅ Drizzle-orm से आवश्यक फ़ंक्शन इम्पोर्ट करें
-import { eq, and, desc,or,sql } from "drizzle-orm"; // 'eq' (equality), 'and' (multiple conditions), 'desc' (descending order)
+import { eq, and, desc, or, sql } from "drizzle-orm"; // 'sql' को भी इम्पोर्ट करना सुनिश्चित करें
 
 export interface IStorage {
   // Authentication & Users
@@ -51,22 +51,10 @@ export interface IStorage {
   createDeliveryBoy(data: InsertDeliveryBoy): Promise<DeliveryBoy>;
 }
 
-// यह `sellers` एरे अब उपयोगी नहीं है यदि आप डेटाबेस से डेटा प्राप्त कर रहे हैं।
-// इसे हटा दें या समझें कि यह केवल एक डमी है और इसका उपयोग नहीं किया जाएगा।
-// export const sellers = [
-//   {
-//     id: "1",
-//     name: "Test Seller",
-//     approvalStatus: "pending",
-//     appliedAt: new Date().toISOString(),
-//   },
-// ];
-
 export class DatabaseStorage implements IStorage {
   // Authentication & Users
   async getUserByEmail(email: string): Promise<User | undefined> {
     try {
-      // ✅ Drizzle ORM का उपयोग करें
       const result = await db.select().from(users).where(eq(users.email, email)).limit(1);
       return result.length > 0 ? result[0] : undefined;
     } catch (error) {
@@ -77,7 +65,6 @@ export class DatabaseStorage implements IStorage {
 
   async getUserById(id: number): Promise<User | undefined> {
     try {
-      // ✅ Drizzle ORM का उपयोग करें
       const result = await db.select().from(users).where(eq(users.id, id)).limit(1);
       return result.length > 0 ? result[0] : undefined;
     } catch (error) {
@@ -88,7 +75,6 @@ export class DatabaseStorage implements IStorage {
 
   async getUserByFirebaseUid(firebaseUid: string): Promise<User | undefined> {
     try {
-      // ✅ Drizzle ORM का उपयोग करें
       const result = await db.select().from(users).where(eq(users.firebaseUid, firebaseUid)).limit(1);
       return result.length > 0 ? result[0] : undefined;
     } catch (error) {
@@ -103,7 +89,7 @@ export class DatabaseStorage implements IStorage {
       if (filters?.approvalStatus) {
         query = query.where(eq(sellers.approvalStatus, filters.approvalStatus));
       }
-      const sellersList = await query; // क्वेरी को एक्सिक्यूट करें
+      const sellersList = await query;
       return sellersList;
     } catch (error) {
       console.error("Error getting sellers:", error);
@@ -119,7 +105,7 @@ export class DatabaseStorage implements IStorage {
   // Categories
   async getCategories(): Promise<Category[]> {
     try {
-      const result = await db.select().from(categories).where(eq(categories.isActive, true)); // isActive के लिए where clause
+      const result = await db.select().from(categories).where(eq(categories.isActive, true));
       return result;
     } catch (error) {
       console.error("Error getting categories:", error);
@@ -145,40 +131,20 @@ export class DatabaseStorage implements IStorage {
   // Products
   async getProducts(filters?: { categoryId?: number; search?: string }): Promise<Product[]> {
     try {
-      let query = db.select().from(products).where(eq(products.isActive, true)); // हमेशा एक्टिव प्रोडक्ट्स
-      
-      const conditions: any[] = [eq(products.isActive, true)]; // एक एरे में शर्तें जोड़ें
+      const conditions: any[] = [eq(products.isActive, true)];
 
       if (filters?.categoryId) {
         conditions.push(eq(products.categoryId, filters.categoryId));
       }
 
       if (filters?.search) {
-        // Drizzle में `ilike` केस-इनसेंसिटिव सर्च के लिए
+        const searchLower = filters.search.toLowerCase();
+        // ✅ यहाँ ILIKE और SQL टैग का उपयोग किया गया है
         conditions.push(
-          and(
-            // Drizzle में लाइक ऑपरेटर का उपयोग करें
-            // आपको `@shared/backend/schema` में 'name', 'nameHindi', 'description' के प्रकारों को जांचना होगा।
-            // यदि वे nullable हैं, तो आपको null हैंडलिंग की आवश्यकता हो सकती है।
-            // Drizzle में `ilike` का उपयोग करें यदि आपका डेटाबेस इसका समर्थन करता है
-            // या `like` और `lower()` फ़ंक्शन का उपयोग करें।
-            // उदाहरण: like(sql`lower(${products.name})`, `%${filters.search.toLowerCase()}%`),
-            //       or(like(products.name, `%${filters.search}%`), like(products.nameHindi, `%${filters.search}%`), like(products.description, `%${filters.search}%`))
-            // यहाँ केवल एक उदाहरण है, आपको अपनी स्कीमा और आवश्यकताओं के अनुसार इसे समायोजित करना होगा
-            // Drizzle में सीधे `includes` नहीं होता, `like` या `ilike` का उपयोग करें।
-            // यह मानते हुए कि आप `@shared/backend/schema` में `sql` और `or` को भी इम्पोर्ट कर सकते हैं।
-            // यदि नहीं, तो आपको इन शर्तों को अलग से बनाना होगा।
-            // यदि आप केवल एक कॉलम पर सर्च कर रहे हैं, तो यह आसान है।
-            // जैसे: like(products.name, `%${filters.search}%`)
-            // मल्टी-कॉलम सर्च के लिए `or` का उपयोग करें।
-            // `or` के लिए `drizzle-orm` से इम्पोर्ट करना होगा।
-            // यहाँ एक सरल `like` उदाहरण है (केस-सेंसिटिव):
-            // यदि केस-इनसेंसिटिव चाहिए तो `sql` टैग और `lower()` का उपयोग करें।
-            // Drizzle में `ilike` सीधे नहीं होता है, लेकिन PostgreSQL में होता है जिसे `sql` टैग के साथ उपयोग कर सकते हैं
-            // जैसे: sql`${products.name} ILIKE ${'%' + filters.search + '%'}`
-            // या यदि स्कीमा में `sql` नहीं है तो `like` और `.toLowerCase()` का उपयोग करें।
-            // यहाँ एक सरल उदाहरण है, आपको अपने उपयोग के आधार पर इसे अनुकूलित करना होगा।
-            like(products.name, `%${filters.search}%`) // सरल 'like' उदाहरण
+          or(
+            sql`${products.name} ILIKE ${'%' + searchLower + '%'}`,
+            sql`${products.nameHindi} ILIKE ${'%' + searchLower + '%'}`,
+            sql`${products.description} ILIKE ${'%' + searchLower + '%'}`
           )
         );
       }
@@ -207,22 +173,20 @@ export class DatabaseStorage implements IStorage {
   }
 
   // -------------------- CART WRAPPERS --------------------
-  // ये सीधे IStorage इंटरफ़ेस के मेथड को कॉल कर रहे हैं।
-  // सुनिश्चित करें कि वे मेथड खुद Drizzle का सही उपयोग करते हैं।
   async getCartItemsByUserId(userId: number) {
-    return this.getCartItems(userId); // यह ठीक है, अगर getCartItems सही है
+    return this.getCartItems(userId);
   }
 
   async addCartItem(item: InsertCartItem) {
-    return this.addToCart(item); // यह ठीक है, अगर addToCart सही है
+    return this.addToCart(item);
   }
 
   async updateCartItemQuantity(id: number, _userId: number, quantity: number) {
-    return this.updateCartItem(id, quantity); // यह ठीक है, अगर updateCartItem सही है
+    return this.updateCartItem(id, quantity);
   }
 
   async removeCartItem(id: number, _userId: number) {
-    return this.removeFromCart(id); // यह ठीक है, अगर removeFromCart सही है
+    return this.removeFromCart(id);
   }
 
   // ------------------ DELIVERY BOY METHODS ------------------
@@ -248,7 +212,6 @@ export class DatabaseStorage implements IStorage {
     const orderResult = await db.insert(orders).values(order).returning();
     const newOrder = orderResult[0];
 
-    // यदि `items` हैं, तो उन्हें `orderItems` टेबल में डालें
     if (items.length > 0) {
       await db.insert(orderItems).values(items.map(item => ({ ...item, orderId: newOrder.id })));
     }
@@ -260,7 +223,7 @@ export class DatabaseStorage implements IStorage {
   // Shopping Cart
   async getCartItems(userId?: number, sessionId?: string): Promise<(CartItem & { product: Product })[]> {
     try {
-      let queryConditions: any[] = []; // एक एरे में शर्तें जोड़ें
+      let queryConditions: any[] = [];
 
       if (userId) {
         queryConditions.push(eq(cartItems.userId, userId));
@@ -268,27 +231,23 @@ export class DatabaseStorage implements IStorage {
         queryConditions.push(eq(cartItems.sessionId, sessionId));
       }
 
-      // यदि कोई शर्त नहीं है, तो सभी कार्ट आइटम फ़ेच न करें, यह एक संभावित लॉजिक एरर हो सकती है।
-      // आपको यह सुनिश्चित करना चाहिए कि या तो userId या sessionId हमेशा प्रदान किया जाता है।
       if (queryConditions.length === 0) {
         console.warn("getCartItems called without userId or sessionId. Returning empty array.");
         return [];
       }
 
-      // Drizzle में joins का उपयोग करें यदि आप संबंधित प्रोडक्ट डेटा लाना चाहते हैं
       const cartResult = await db.select({
         cartItem: cartItems,
-        product: products // प्रोडक्ट को भी सिलेक्ट करें
+        product: products
       })
       .from(cartItems)
-      .leftJoin(products, eq(cartItems.productId, products.id)) // प्रोडक्ट टेबल के साथ जॉइन करें
-      .where(and(...queryConditions)); // सभी शर्तों को 'and' के साथ जोड़ें
+      .leftJoin(products, eq(cartItems.productId, products.id))
+      .where(and(...queryConditions));
 
-      // जॉइन के परिणामों को मैप करें
       return cartResult.map(row => ({
         ...row.cartItem,
-        product: row.product! // product अब सीधे row.product में उपलब्ध होगा
-      })).filter(item => item.product); // उन आइटम्स को फ़िल्टर करें जिनके लिए प्रोडक्ट नहीं मिला
+        product: row.product!
+      })).filter(item => item.product);
     } catch (error) {
       console.error("Error getting cart items:", error);
       return [];
@@ -308,16 +267,14 @@ export class DatabaseStorage implements IStorage {
       const existingItem = existingItemResult.length > 0 ? existingItemResult[0] : undefined;
 
       if (existingItem) {
-        // Update quantity
         const result = await db
           .update(cartItems)
-          .set({ quantity: existingItem.quantity + (item.quantity || 1), updatedAt: new Date() }) // updatedAt जोड़ें
-          .where(eq(cartItems.id, existingItem.id)) // अपडेट करने के लिए where clause आवश्यक है
+          .set({ quantity: existingItem.quantity + (item.quantity || 1), updatedAt: new Date() })
+          .where(eq(cartItems.id, existingItem.id))
           .returning();
-        return result[0]; // यह पहला अपडेटेड आइटम लौटाएगा
+        return result[0];
       }
 
-      // New item
       const result = await db.insert(cartItems).values({ ...item, createdAt: new Date(), updatedAt: new Date() }).returning();
       return result[0];
     } catch (error) {
@@ -329,16 +286,14 @@ export class DatabaseStorage implements IStorage {
   async updateCartItem(id: number, quantity: number): Promise<CartItem | undefined> {
     try {
       if (quantity <= 0) {
-        // ✅ Drizzle में delete के लिए where clause की आवश्यकता होगी
         const deletedResult = await db.delete(cartItems).where(eq(cartItems.id, id)).returning();
-        return deletedResult.length > 0 ? deletedResult[0] : undefined; // हटाए गए आइटम को लौटाएँ (यदि कोई है)
+        return deletedResult.length > 0 ? deletedResult[0] : undefined;
       }
 
-      // ✅ Drizzle में update के लिए where clause की आवश्यकता होगी
       const result = await db
         .update(cartItems)
-        .set({ quantity, updatedAt: new Date() }) // updatedAt जोड़ें
-        .where(eq(cartItems.id, id)) // अपडेट करने के लिए where clause आवश्यक है
+        .set({ quantity, updatedAt: new Date() })
+        .where(eq(cartItems.id, id))
         .returning();
       return result.length > 0 ? result[0] : undefined;
     } catch (error) {
@@ -349,9 +304,8 @@ export class DatabaseStorage implements IStorage {
 
   async removeFromCart(id: number): Promise<boolean> {
     try {
-      // ✅ Drizzle में delete के लिए where clause की आवश्यकता होगी
       const result = await db.delete(cartItems).where(eq(cartItems.id, id)).returning();
-      return result.length > 0; // यदि कोई रिकॉर्ड डिलीट हुआ तो true लौटाएँ
+      return result.length > 0;
     } catch (error) {
       console.error("Error removing from cart:", error);
       return false;
@@ -366,11 +320,10 @@ export class DatabaseStorage implements IStorage {
       } else if (sessionId) {
         deleteQuery = deleteQuery.where(eq(cartItems.sessionId, sessionId));
       } else {
-        // यदि userId या sessionId दोनों में से कोई भी नहीं है, तो कुछ भी डिलीट न करें
         console.warn("clearCart called without userId or sessionId. No items cleared.");
         return false;
       }
-      await deleteQuery; // क्वेरी को एक्सिक्यूट करें
+      await deleteQuery;
       return true;
     } catch (error) {
       console.error("Error clearing cart:", error);
@@ -399,7 +352,6 @@ export class DatabaseStorage implements IStorage {
       const order = orderResult.length > 0 ? orderResult[0] : undefined;
       if (!order) return undefined;
 
-      // OrderItems और Products को एक साथ जॉइन करें
       const itemsAndProductsResult = await db.select({
         orderItem: orderItems,
         product: products
@@ -411,7 +363,7 @@ export class DatabaseStorage implements IStorage {
       const items = itemsAndProductsResult.map(row => ({
         ...row.orderItem,
         product: row.product!
-      })).filter(item => item.product); // उन आइटम्स को फ़िल्टर करें जिनके लिए प्रोडक्ट नहीं मिला
+      })).filter(item => item.product);
 
       return { ...order, items };
     } catch (error) {
@@ -439,4 +391,3 @@ export class DatabaseStorage implements IStorage {
 }
 
 export const storage = new DatabaseStorage();
-          
