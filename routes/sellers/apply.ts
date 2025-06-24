@@ -1,9 +1,9 @@
 // routes/sellers/apply.ts
 import { Router, Response, NextFunction } from "express";
-import { db } from "../../server/db"; // ✅ db ऑब्जेक्ट का इम्पोर्ट सही है
-import { sellers, users } from "../../shared/backend/schema"; // ✅ स्कीमा टेबल्स का इम्पोर्ट सही है
+import { db } from "../../server/db";
+import { sellers, users } from "../../shared/backend/schema";
 import { verifyToken, AuthenticatedRequest } from "../../server/middleware/verifyToken";
-import { eq } from "drizzle-orm"; // ✅ 'eq' का इम्पोर्ट सही है
+import { eq } from "drizzle-orm";
 
 const router = Router();
 
@@ -37,25 +37,23 @@ router.post("/", verifyToken, async (req: AuthenticatedRequest, res: Response, n
       return res.status(400).json({ message: "Missing required seller details." });
     }
 
-    /* ─────────── 4. पहले से आवेदन या approve तो नहीं? ─────────── */
-    // ❌ OLD: const existingSeller = await db.query.sellers.findFirst({ where: eq(sellers.userId, firebaseUid), });
-    // ✅ NEW: Drizzle ORM में सही सिंटैक्स
-    const existingSeller = await db.select() // db.select() का उपयोग करें
-                                   .from(sellers) // किस टेबल से सिलेक्ट करना है
-                                   .where(eq(sellers.userId, firebaseUid)) // eq() का उपयोग करके कंडीशन
-                                   .limit(1); // केवल एक रिकॉर्ड प्राप्त करने के लिए
+    /* ─────────── 4. Check for existing or approved application ─────────── */
+    const existingSellerResult = await db.select()
+                                   .from(sellers)
+                                   .where(eq(sellers.userId, firebaseUid))
+                                   .limit(1);
 
-    // Drizzle select() हमेशा एक एरे लौटाता है, भले ही limit(1) हो।
-    if (existingSeller.length > 0) { // इसलिए .length > 0 से चेक करें
+    const existingSeller = existingSellerResult.length > 0 ? existingSellerResult[0] : undefined;
+
+    if (existingSeller) {
       return res.status(400).json({
         message: "Seller application already exists or approved.",
-        status: existingSeller[0].approvalStatus, // पहले एलिमेंट से status प्राप्त करें
+        status: existingSeller.approvalStatus,
       });
     }
 
-    /* ─────────── 5. नया आवेदन create करें (status: pending) ─────────── */
-    // ❌ OLD: const [newSeller] = await db.insert(sellers).values({ ... }).returning();
-    // ✅ NEW: Drizzle insert()
+    /* ─────────── 5. Create new application (status: pending) ─────────── */
+    // ✅ यहाँ Date ऑब्जेक्ट्स को ISO स्ट्रिंग में बदला गया है
     const newSellerResult = await db
       .insert(sellers)
       .values({
@@ -72,31 +70,30 @@ router.post("/", verifyToken, async (req: AuthenticatedRequest, res: Response, n
         ifscCode,
         deliveryRadius,
         approvalStatus: "pending",
-        appliedAt: new Date(),
-        createdAt: new Date(),
-        updatedAt: new Date(),
+        appliedAt: new Date().toISOString(), // ⚠️ ISO स्ट्रिंग में बदलें
+        createdAt: new Date().toISOString(),   // ⚠️ ISO स्ट्रिंग में बदलें
+        updatedAt: new Date().toISOString(),   // ⚠️ ISO स्ट्रिंग में बदलें
       })
-      .returning(); // यह एक एरे लौटाता है
+      .returning();
 
-    const newSeller = newSellerResult[0]; // पहला एलिमेंट प्राप्त करें
+    const newSeller = newSellerResult[0];
 
-    /* ─────────── 6. उसी user की role = pending_seller कर दें ─────────── */
-    // ❌ OLD: const [updatedUser] = await db.update(users).set({ ... }).where(eq(users.firebaseUid, firebaseUid)).returning();
-    // ✅ NEW: Drizzle update()
+    /* ─────────── 6. Update user role to pending_seller ─────────── */
+    // ✅ यहाँ भी Date ऑब्जेक्ट को ISO स्ट्रिंग में बदला गया है
     const updatedUserResult = await db
       .update(users)
-      .set({ role: "pending_seller", updatedAt: new Date() })
+      .set({ role: "pending_seller", updatedAt: new Date().toISOString() }) // ⚠️ ISO स्ट्रिंग में बदलें
       .where(eq(users.firebaseUid, firebaseUid))
-      .returning(); // यह भी एक एरे लौटाता है
+      .returning();
 
-    const updatedUser = updatedUserResult[0]; // पहला एलिमेंट प्राप्त करें
+    const updatedUser = updatedUserResult[0];
 
     if (!updatedUser) {
         console.error("Seller apply: Could not find user to update role for firebaseUid:", firebaseUid);
         return res.status(500).json({ message: "Failed to update user role." });
     }
 
-    /* ─────────── 7. सक्सेस रिस्पॉन्स भेजें ─────────── */
+    /* ─────────── 7. Send success response ─────────── */
     res.status(201).json({
       message: "Seller application submitted",
       seller: newSeller,
@@ -109,8 +106,8 @@ router.post("/", verifyToken, async (req: AuthenticatedRequest, res: Response, n
     });
   } catch (error) {
     console.error("Error in seller apply route:", error);
-    // ✅ सुनिश्चित करें कि एरर को ठीक से हैंडल किया गया है
-    res.status(500).json({ message: "Internal Server Error", error: (error as Error).message });
+    // ✅ एरर को NextFunction को पास करें ताकि ग्लोबल एरर हैंडलर इसे पकड़ सके
+    next(error); 
   }
 });
 
