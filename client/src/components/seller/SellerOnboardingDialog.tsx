@@ -16,7 +16,7 @@ import { z } from "zod";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
-import { Check, X, Store, Loader2, AlertCircle, Clock } from "lucide-react"; // Clock आइकन जोड़ा
+import { Check, X, Store, Loader2, AlertCircle, Clock } from "lucide-react";
 
 import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
 
@@ -32,7 +32,8 @@ const sellerFormSchema = z.object({
   bankAccountNumber: z.string().regex(/^\d{9,18}$/, "Account number must be 9-18 digits."),
   ifscCode: z.string().regex(/^[A-Z]{4}0[A-Z0-9]{6}$/, "Invalid IFSC Code."),
   deliveryRadius: z.number().min(1).max(100).default(5),
-  businessType: z.string().min(2).max(50).default('grocery'),
+  // ✅ businessType को अनिवार्य किया गया है जैसा कि बैकएंड स्कीमा में है
+  businessType: z.string().min(2, "Business Type is required.").max(50),
 });
 
 type FormData = z.infer<typeof sellerFormSchema>;
@@ -50,9 +51,9 @@ export default function SellerOnboardingDialog({ isOpen, onClose }: SellerOnboar
   const [showSuccess, setShowSuccess] = useState(false);
 
   const { data: existingSellerProfile, isLoading: isSellerProfileLoading } = useQuery({
-    queryKey: ["/api/sellers/me", user?.uuid],
+    queryKey: ["/api/sellers/me", user?.uid], // ✅ queryKey में user.uuid के बजाय user.uid का उपयोग करें
     queryFn: async () => {
-      if (!user?.uuid) {
+      if (!user?.uid) { // ✅ user.uuid के बजाय user.uid का उपयोग करें
         return null;
       }
       try {
@@ -65,7 +66,7 @@ export default function SellerOnboardingDialog({ isOpen, onClose }: SellerOnboar
         throw error;
       }
     },
-    enabled: !isLoadingAuth && isAuthenticated && !!user?.uuid,
+    enabled: !isLoadingAuth && isAuthenticated && !!user?.uid, // ✅ user.uuid के बजाय user.uid का उपयोग करें
     staleTime: Infinity,
     cacheTime: 10 * 60 * 1000,
   });
@@ -74,7 +75,7 @@ export default function SellerOnboardingDialog({ isOpen, onClose }: SellerOnboar
     resolver: zodResolver(sellerFormSchema),
     defaultValues: {
       businessName: "",
-      businessType: "grocery",
+      businessType: "grocery", // आप चाहें तो यहाँ एक डिफ़ॉल्ट वैल्यू रख सकते हैं
       description: "",
       businessAddress: "",
       city: "",
@@ -89,18 +90,23 @@ export default function SellerOnboardingDialog({ isOpen, onClose }: SellerOnboar
 
   const registerSellerMutation = useMutation({
     mutationFn: async (data: FormData) => {
-      if (!user?.uuid) {
-        throw new Error("User ID not available for registration.");
-      }
-      const payload = { ...data, userId: user.uuid };
+      // ✅ `userId: user.uuid` को पेलोड से हटा दिया गया है।
+      // बैकएंड `req.user?.uid` का उपयोग करके इसे स्वयं प्राप्त करेगा।
+      const payload = { ...data }; 
       const response = await apiRequest("POST", "/api/sellers/apply", payload);
       return response;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       setShowSuccess(true);
       form.reset();
       queryClient.invalidateQueries({ queryKey: ["/api/sellers/me"] });
-      queryClient.invalidateQueries({ queryKey: ["user"] });
+      queryClient.invalidateQueries({ queryKey: ["user"] }); // यह यूजर के रोल को अपडेट करने में मदद करेगा
+
+      toast({
+        title: "Application Submitted!",
+        description: data.message || "Your seller application has been submitted successfully.",
+        variant: "default",
+      });
 
       setTimeout(() => {
         setShowSuccess(false);
@@ -111,7 +117,7 @@ export default function SellerOnboardingDialog({ isOpen, onClose }: SellerOnboar
     onError: (error: any) => {
       toast({
         title: "Registration Failed",
-        description: error.message || "Something went wrong. Please try again.",
+        description: error.response?.data?.message || error.message || "Something went wrong. Please try again.",
         variant: "destructive",
       });
     },
@@ -255,165 +261,156 @@ export default function SellerOnboardingDialog({ isOpen, onClose }: SellerOnboar
           </DialogDescription>
         </DialogHeader>
 
-        {/* ✅ Tabs कंपोनेंट हटा दिया गया है */}
-        {/* <Tabs value={currentTab} onValueChange={setCurrentTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="register">Register</TabsTrigger>
-            <TabsTrigger value="login" onClick={() => setLocation("/auth")}>Login</TabsTrigger>
-          </TabsList>
-          <TabsContent value="register"> */}
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
-                {/* Business Name Field */}
-                <FormField
-                  control={form.control}
-                  name="businessName"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Business Name</FormLabel>
-                      <FormControl><Input {...field} /></FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                {/* Business Address Field */}
-                <FormField
-                  control={form.control}
-                  name="businessAddress"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Business Address</FormLabel>
-                      <FormControl><Textarea {...field} /></FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                {/* Business Type Field */}
-                <FormField
-                  control={form.control}
-                  name="businessType"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Business Type</FormLabel>
-                      <FormControl><Input {...field} placeholder="e.g., grocery, electronics" /></FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                {/* Description Field */}
-                <FormField
-                  control={form.control}
-                  name="description"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Description</FormLabel>
-                      <FormControl><Textarea {...field} /></FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                {/* City Field */}
-                <FormField
-                  control={form.control}
-                  name="city"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>City</FormLabel>
-                      <FormControl><Input {...field} /></FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                {/* Pincode Field */}
-                <FormField
-                  control={form.control}
-                  name="pincode"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Pincode</FormLabel>
-                      <FormControl><Input {...field} type="text" inputMode="numeric" pattern="[0-9]*" /></FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                {/* Business Phone Field */}
-                <FormField
-                  control={form.control}
-                  name="businessPhone"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Business Phone</FormLabel>
-                      <FormControl><Input {...field} type="tel" /></FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                {/* GST Number Field */}
-                <FormField
-                  control={form.control}
-                  name="gstNumber"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>GST Number (Optional)</FormLabel>
-                      <FormControl><Input {...field} /></FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                {/* Bank Account Number Field */}
-                <FormField
-                  control={form.control}
-                  name="bankAccountNumber"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Bank Account Number</FormLabel>
-                      <FormControl><Input {...field} type="text" inputMode="numeric" pattern="[0-9]*" /></FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                {/* IFSC Code Field */}
-                <FormField
-                  control={form.control}
-                  name="ifscCode"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>IFSC Code</FormLabel>
-                      <FormControl><Input {...field} /></FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                {/* Delivery Radius Field */}
-                <FormField
-                  control={form.control}
-                  name="deliveryRadius"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Delivery Radius (in km)</FormLabel>
-                      <FormControl><Input {...field} type="number" /></FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
+            {/* Business Name Field */}
+            <FormField
+              control={form.control}
+              name="businessName"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Business Name</FormLabel>
+                  <FormControl><Input {...field} /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            {/* Business Address Field */}
+            <FormField
+              control={form.control}
+              name="businessAddress"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Business Address</FormLabel>
+                  <FormControl><Textarea {...field} /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            {/* Business Type Field */}
+            <FormField
+              control={form.control}
+              name="businessType"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Business Type</FormLabel>
+                  <FormControl><Input {...field} placeholder="e.g., grocery, electronics" /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            {/* Description Field */}
+            <FormField
+              control={form.control}
+              name="description"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Description</FormLabel>
+                  <FormControl><Textarea {...field} /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            {/* City Field */}
+            <FormField
+              control={form.control}
+              name="city"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>City</FormLabel>
+                  <FormControl><Input {...field} /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            {/* Pincode Field */}
+            <FormField
+              control={form.control}
+              name="pincode"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Pincode</FormLabel>
+                  <FormControl><Input {...field} type="text" inputMode="numeric" pattern="[0-9]*" /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            {/* Business Phone Field */}
+            <FormField
+              control={form.control}
+              name="businessPhone"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Business Phone</FormLabel>
+                  <FormControl><Input {...field} type="tel" /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            {/* GST Number Field */}
+            <FormField
+              control={form.control}
+              name="gstNumber"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>GST Number (Optional)</FormLabel>
+                  <FormControl><Input {...field} /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            {/* Bank Account Number Field */}
+            <FormField
+              control={form.control}
+              name="bankAccountNumber"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Bank Account Number</FormLabel>
+                  <FormControl><Input {...field} type="text" inputMode="numeric" pattern="[0-9]*" /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            {/* IFSC Code Field */}
+            <FormField
+              control={form.control}
+              name="ifscCode"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>IFSC Code</FormLabel>
+                  <FormControl><Input {...field} /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            {/* Delivery Radius Field */}
+            <FormField
+              control={form.control}
+              name="deliveryRadius"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Delivery Radius (in km)</FormLabel>
+                  <FormControl><Input {...field} type="number" /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-                <DialogFooter>
-                  <Button type="button" variant="outline" onClick={handleClose}>Cancel</Button>
-                  <Button type="submit" disabled={registerSellerMutation.isPending}>
-                    {registerSellerMutation.isPending ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Submitting...
-                      </>
-                    ) : (
-                      "Register as Seller"
-                    )}
-                  </Button>
-                </DialogFooter>
-              </form>
-            </Form>
-          {/* </TabsContent>
-        </Tabs> */}
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={handleClose}>Cancel</Button>
+              <Button type="submit" disabled={registerSellerMutation.isPending}>
+                {registerSellerMutation.isPending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Submitting...
+                  </>
+                ) : (
+                  "Register as Seller"
+                )}
+              </Button>
+            </DialogFooter>
+          </form>
+        </Form>
       </DialogContent>
     </Dialog>
   );
-}
+      }
