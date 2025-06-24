@@ -13,7 +13,7 @@ router.get("/me", verifyToken, async (req: AuthenticatedRequest, res) => { // �
   }
 
   try {
-    //❌ OLD: const seller = await db.query.sellers.findFirst({ where: eq(sellers.userId, req.user.uid), });
+    
     // ✅ NEW: Drizzle ORM में सही सिंटैक्स का उपयोग करें
     const sellerResult = await db.select()
                                  .from(sellers)
