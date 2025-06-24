@@ -1,102 +1,132 @@
-// client/src/pages/seller-apply.tsx
-import { useState } from "react"; // ✅ useState इम्पोर्ट करें
-import { useAuth } from "@/hooks/useAuth";
-import { Button } from "@/components/ui/button";
-import { Store, ArrowLeft, Rocket, Percent, Zap, Headphones, Globe } from "lucide-react";
-import { Link } from "wouter";
-import SellerOnboardingDialog from "@/components/seller/SellerOnboardingDialog";
+// routes/sellers/apply.ts
+import { Router, Response, NextFunction } from "express";
+import { db } from "../../server/db";
+import { sellers, users } from "../../shared/backend/schema";
+import { verifyToken, AuthenticatedRequest } from "../../server/middleware/verifyToken";
+import { eq } from "drizzle-orm";
 
+const router = Router();
 
-export default function SellerApplyPage() {
-  const { signOut } = useAuth();
-  const [isModalOpen, setIsModalOpen] = useState(false); // ✅ isModalOpen स्टेट
+/**
+ * Endpoint for a user to apply as a seller.
+ * Requires authentication via verifyToken middleware.
+ */
+router.post("/", verifyToken, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const firebaseUid = req.user?.uid;
 
-  return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Navigation */}
-      <nav className="bg-white shadow-sm border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center space-x-3">
-              <Link href="/">
-                <Button variant="ghost" size="sm" className="text-gray-500 hover:text-gray-700">
-                  <ArrowLeft className="w-4 h-4" />
-                </Button>
-              </Link>
-              <div className="w-8 h-8 bg-amber-600 rounded-lg flex items-center justify-center">
-                <Store className="text-white text-sm w-4 h-4" />
-              </div>
-              <span className="font-semibold text-gray-900">Seller Application</span>
-            </div>
-            <button
-              onClick={signOut}
-              className="text-sm text-gray-500 hover:text-gray-700 transition-colors"
-            >
-              Sign Out
-            </button>
-          </div>
-        </div>
-      </nav>
+    if (!firebaseUid) {
+      // यदि उपयोगकर्ता प्रमाणित नहीं है, तो अनधिकृत त्रुटि लौटाएँ
+      return res.status(401).json({ message: "Unauthorized: User not authenticated." });
+    }
 
-      <main className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="text-center mb-12">
-          <div className="w-20 h-20 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-6">
-            <Rocket className="text-amber-600 text-2xl w-8 h-8" />
-          </div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-4">The way is here</h1>
-          <p className="text-lg text-gray-600 mb-8">Start your selling journey with us. Complete your application to get approved as a seller.</p>
-          
-          {/* ✅ बटन जो मॉडल खोलेगा */}
-          <Button 
-            onClick={() => setIsModalOpen(true)}
-            className="inline-flex items-center px-8 py-4 bg-amber-600 hover:bg-amber-700 text-white font-medium rounded-xl transition-colors duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 text-lg"
-          >
-            <Store className="mr-3 w-5 h-5" />
-            Click here
-          </Button>
-        </div>
+    // ✅ यहाँ इनकमिंग रिक्वेस्ट बॉडी को लॉग करें - यह सबसे महत्वपूर्ण डीबग लॉग है!
+    console.log("Incoming request body for seller apply:", req.body);
 
-        {/* Benefits Section */}
-        <div className="grid md:grid-cols-2 gap-8">
-          <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-            <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mb-4">
-              <Percent className="text-green-600 w-6 h-6" />
-            </div>
-            <h3 className="font-semibold text-gray-900 mb-2">Low Commission</h3>
-            <p className="text-gray-600 text-sm">Competitive rates to maximize your profits</p>
-          </div>
-          
-          <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-            <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mb-4">
-              <Zap className="text-blue-600 w-6 h-6" />
-            </div>
-            <h3 className="font-semibold text-gray-900 mb-2">Fast Setup</h3>
-            <p className="text-gray-600 text-sm">Get your store up and running quickly</p>
-          </div>
-          
-          <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-            <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center mb-4">
-              <Headphones className="text-purple-600 w-6 h-6" />
-            </div>
-            <h3 className="font-semibold text-gray-900 mb-2">24/7 Support</h3>
-            <p className="text-gray-600 text-sm">Dedicated support team to help you succeed</p>
-          </div>
-          
-          <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-            <div className="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center mb-4">
-              <Globe className="text-red-600 w-6 h-6" />
-            </div>
-            <h3 className="font-semibold text-gray-900 mb-2">Global Reach</h3>
-            <p className="text-gray-600 text-sm">Access customers from around the world</p>
-          </div>
-        </div>
-      </main>
+    const { 
+      businessName, 
+      businessAddress, 
+      businessPhone, 
+      description, 
+      city, 
+      pincode, 
+      gstNumber, 
+      bankAccountNumber, 
+      ifscCode, 
+      deliveryRadius, 
+      businessType 
+    } = req.body;
 
-      {/* ✅ SellerRegistrationModal को props के साथ रेंडर करें */}
-      <SellerOnboardingDialog 
-        isOpen={isModalOpen} 
-        onClose={() => setIsModalOpen(false)} 
-      />
-    </div>
-  );
-}
+    // अनिवार्य फ़ील्ड्स की जाँच करें
+    if (!businessName || !businessPhone || !city || !pincode || !businessAddress) {
+      return res.status(400).json({ message: "Missing required seller details." });
+    }
+
+    /* ─────────── 4. पहले से आवेदन या approve तो नहीं? ─────────── */
+    const existingSellerResult = await db.select()
+                                   .from(sellers)
+                                   .where(eq(sellers.userId, firebaseUid))
+                                   .limit(1);
+
+    const existingSeller = existingSellerResult.length > 0 ? existingSellerResult[0] : undefined;
+
+    if (existingSeller) {
+      return res.status(400).json({
+        message: "Seller application already exists or approved.",
+        status: existingSeller.approvalStatus,
+      });
+    }
+
+    /* ─────────── 5. नया आवेदन create करें (status: pending) ─────────── */
+    // ✅ यहाँ हम डेटा प्रकारों को ठीक करने का प्रयास कर रहे हैं
+    const insertData = {
+      userId: firebaseUid,
+      businessName: businessName,
+      businessAddress: businessAddress,
+      businessPhone: businessPhone,
+      businessType: businessType || null, // यदि businessType खाली है तो null पर सेट करें
+      description: description || null,   // यदि description खाली है तो null पर सेट करें
+      city: city,
+      pincode: pincode, // ✅ अपनी स्कीमा में pincode के डेटाटाइप की जांच करें (text/varchar या integer)
+      gstNumber: gstNumber || null,
+      bankAccountNumber: bankAccountNumber || null, // ✅ bankAccountNumber के डेटाटाइप की जांच करें
+      ifscCode: ifscCode || null,
+      // deliveryRadius को संख्या में बदलें। यदि यह NaN (Not a Number) है तो null करें।
+      // यह महत्वपूर्ण है यदि स्कीमा में deliveryRadius एक INTEGER है।
+      deliveryRadius: deliveryRadius ? parseInt(deliveryRadius) : null, 
+      approvalStatus: "pending",
+      // यदि आपकी स्कीमा में createdAt, updatedAt, appliedAt पर defaultNow() है,
+      // तो आप इन लाइनों को हटा सकते हैं। यदि एरर जारी रहती है, तो इन्हें
+      // new Date().toISOString() के साथ वापस ला सकते हैं।
+      // createdAt: new Date().toISOString(), 
+      // updatedAt: new Date().toISOString(), 
+      // appliedAt: new Date().toISOString(), 
+    };
+
+    // ✅ यह लॉग हमें दिखाएगा कि डेटाबेस में क्या इन्सर्ट किया जा रहा है
+    console.log("Seller data prepared for insertion:", insertData);
+
+    const newSellerResult = await db
+      .insert(sellers)
+      .values(insertData) // तैयार डेटा ऑब्जेक्ट का उपयोग करें
+      .returning(); // यह इन्सर्टेड रिकॉर्ड को लौटाता है
+
+    const newSeller = newSellerResult[0]; // पहला एलिमेंट प्राप्त करें
+
+    /* ─────────── 6. उसी user की role = pending_seller कर दें ─────────── */
+    const updatedUserResult = await db
+      .update(users)
+      .set({ 
+        role: "pending_seller", 
+        // updatedAt: new Date().toISOString() // यदि स्कीमा में defaultNow() है, तो इसे भी छोड़ा जा सकता है
+      })
+      .where(eq(users.firebaseUid, firebaseUid)) // firebaseUid के आधार पर उपयोगकर्ता को अपडेट करें
+      .returning(); // यह अपडेटेड रिकॉर्ड को लौटाता है
+
+    const updatedUser = updatedUserResult[0]; // पहला एलिमेंट प्राप्त करें
+
+    if (!updatedUser) {
+        // यदि किसी कारण से उपयोगकर्ता नहीं मिल पाता है या अपडेट नहीं हो पाता है
+        console.error("Seller apply: Could not find user to update role for firebaseUid:", firebaseUid);
+        return res.status(500).json({ message: "Failed to update user role." });
+    }
+
+    /* ─────────── 7. सक्सेस रिस्पॉन्स भेजें ─────────── */
+    res.status(201).json({
+      message: "Seller application submitted",
+      seller: newSeller, // नए विक्रेता का डेटा भेजें
+      user: {
+          uuid: updatedUser.uuid, // अपडेटेड उपयोगकर्ता का मुख्य डेटा भेजें
+          role: updatedUser.role,
+          email: updatedUser.email,
+          name: updatedUser.name,
+      },
+    });
+  } catch (error) {
+    console.error("Error in seller apply route:", error);
+    // ✅ एरर को एक्सप्रेस के एरर हैंडलिंग मिडलवेयर को पास करें
+    next(error); 
+  }
+});
+
+export default router;
