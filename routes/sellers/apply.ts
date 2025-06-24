@@ -7,16 +7,12 @@ import { eq } from "drizzle-orm";
 
 const router = Router();
 
-/**
- * Endpoint for a user to apply as a seller.
- * Requires authentication via verifyToken middleware.
- */
 router.post("/", verifyToken, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const firebaseUid = req.user?.uid;
 
     if (!firebaseUid) {
-      return res.status(401).json({ message: "Unauthorized: User not authenticated." });
+      return res.status(401).json({ message: "Unauthorized: Missing user info." });
     }
 
     const { 
@@ -29,7 +25,7 @@ router.post("/", verifyToken, async (req: AuthenticatedRequest, res: Response, n
       gstNumber, 
       bankAccountNumber, 
       ifscCode, 
-      deliveryRadius, 
+      deliveryRadius, // यह integer होना चाहिए अगर स्कीमा में ऐसा है
       businessType 
     } = req.body;
 
@@ -37,7 +33,6 @@ router.post("/", verifyToken, async (req: AuthenticatedRequest, res: Response, n
       return res.status(400).json({ message: "Missing required seller details." });
     }
 
-    /* ─────────── 4. Check for existing or approved application ─────────── */
     const existingSellerResult = await db.select()
                                    .from(sellers)
                                    .where(eq(sellers.userId, firebaseUid))
@@ -52,37 +47,48 @@ router.post("/", verifyToken, async (req: AuthenticatedRequest, res: Response, n
       });
     }
 
-    /* ─────────── 5. Create new application (status: pending) ─────────── */
-    // ✅ यहाँ Date ऑब्जेक्ट्स को ISO स्ट्रिंग में बदला गया है
+    // ✅ यहाँ संभावित समस्या का समाधान!
+    // सुनिश्चित करें कि संख्यात्मक फ़ील्ड्स संख्याएँ ही हों या null.
+    // अन्य वैकल्पिक फ़ील्ड्स को स्पष्ट रूप से null या undefined करें यदि वे खाली स्ट्रिंग हों।
+    const insertData = {
+      userId: firebaseUid,
+      businessName: businessName,
+      businessAddress: businessAddress,
+      businessPhone: businessPhone,
+      businessType: businessType || null, // यदि खाली है तो null
+      description: description || null,   // यदि खाली है तो null
+      city: city,
+      pincode: pincode,
+      gstNumber: gstNumber || null,
+      bankAccountNumber: bankAccountNumber || null,
+      ifscCode: ifscCode || null,
+      // deliveryRadius को संख्या में बदलें, या null करें यदि अमान्य है
+      deliveryRadius: deliveryRadius ? parseInt(deliveryRadius) : null, // ⚠️ इसे जांचें!
+      approvalStatus: "pending",
+      // स्कीमा में defaultNow() है, तो आप इन्हें छोड़ सकते हैं।
+      // यदि फिर भी एरर आती है, तो new Date().toISOString() को वापस ला सकते हैं।
+      // createdAt: new Date().toISOString(),
+      // updatedAt: new Date().toISOString(),
+      // appliedAt: new Date().toISOString(),
+    };
+
+    // लॉग करें कि आप क्या इन्सर्ट कर रहे हैं
+    console.log("Attempting to insert seller with data:", insertData);
+
     const newSellerResult = await db
       .insert(sellers)
-      .values({
-        userId: firebaseUid,
-        businessName,
-        businessAddress,
-        businessPhone,
-        businessType,
-        description,
-        city,
-        pincode,
-        gstNumber,
-        bankAccountNumber,
-        ifscCode,
-        deliveryRadius,
-        approvalStatus: "pending",
-        appliedAt: new Date().toISOString(), // ⚠️ ISO स्ट्रिंग में बदलें
-        createdAt: new Date().toISOString(),   // ⚠️ ISO स्ट्रिंग में बदलें
-        updatedAt: new Date().toISOString(),   // ⚠️ ISO स्ट्रिंग में बदलें
-      })
+      .values(insertData)
       .returning();
 
     const newSeller = newSellerResult[0];
 
-    /* ─────────── 6. Update user role to pending_seller ─────────── */
-    // ✅ यहाँ भी Date ऑब्जेक्ट को ISO स्ट्रिंग में बदला गया है
+    // User अपडेट के लिए भी यही सावधानी बरतें
     const updatedUserResult = await db
       .update(users)
-      .set({ role: "pending_seller", updatedAt: new Date().toISOString() }) // ⚠️ ISO स्ट्रिंग में बदलें
+      .set({ 
+        role: "pending_seller", 
+        // updatedAt: new Date().toISOString() // यदि स्कीमा में defaultNow() है तो इसे भी छोड़ा जा सकता है
+      }) 
       .where(eq(users.firebaseUid, firebaseUid))
       .returning();
 
@@ -93,7 +99,6 @@ router.post("/", verifyToken, async (req: AuthenticatedRequest, res: Response, n
         return res.status(500).json({ message: "Failed to update user role." });
     }
 
-    /* ─────────── 7. Send success response ─────────── */
     res.status(201).json({
       message: "Seller application submitted",
       seller: newSeller,
@@ -106,8 +111,7 @@ router.post("/", verifyToken, async (req: AuthenticatedRequest, res: Response, n
     });
   } catch (error) {
     console.error("Error in seller apply route:", error);
-    // ✅ एरर को NextFunction को पास करें ताकि ग्लोबल एरर हैंडलर इसे पकड़ सके
-    next(error); 
+    next(error); // Express के एरर हैंडलिंग को पास करें
   }
 });
 
