@@ -1,9 +1,10 @@
 // routes/sellers/reject.ts
 import { Router, Response, NextFunction } from "express";
 import { db } from "../../server/db";
-import { sellers, users } from "../../shared/backend/schema"; // स्कीमा टेबल्स इम्पोर्ट करें
+// ✅ 'sellers' को 'sellersPgTable' से बदलें ताकि सही Drizzle टेबल का उपयोग हो
+import { sellersPgTable, users } from "../../shared/backend/schema"; 
 import { verifyToken, AuthenticatedRequest } from "../../server/middleware/verifyToken";
-import { eq } from "drizzle-orm"; // 'eq' को Drizzle के लिए इम्पोर्ट करें
+import { eq } from "drizzle-orm"; 
 
 const router = Router();
 
@@ -14,19 +15,17 @@ const isAdmin = async (req: AuthenticatedRequest, res: Response, next: NextFunct
   }
 
   try {
-    // ❌ OLD: const user = await db.query.users.findFirst({ where: eq(users.firebaseUid, req.user.uid) });
-    // ✅ NEW: Drizzle ORM में सही सिंटैक्स का उपयोग करें
     const userResult = await db.select()
                                .from(users)
                                .where(eq(users.firebaseUid, req.user.uid))
-                               .limit(1); // केवल एक रिकॉर्ड प्राप्त करने के लिए
+                               .limit(1); 
 
-    const user = userResult.length > 0 ? userResult[0] : null; // एरे से पहला यूजर निकालें, यदि कोई है
+    const user = userResult.length > 0 ? userResult[0] : null; 
 
     if (user?.role === 'admin') {
-      next(); // एडमिन है, तो अगले मिडलवेयर/राउट पर जाएँ
+      next(); 
     } else {
-      return res.status(403).json({ message: "Forbidden: Not an admin." }); // एडमिन नहीं है
+      return res.status(403).json({ message: "Forbidden: Not an admin." }); 
     }
   } catch (error) {
     console.error("Error checking admin role:", error);
@@ -45,54 +44,55 @@ router.post("/", verifyToken, isAdmin, async (req: AuthenticatedRequest, res: Re
   try {
     const { sellerId, reason } = req.body;
 
-    if (!sellerId || !reason) {
-      return res.status(400).json({ message: "sellerId and reason are required" });
+    if (typeof sellerId !== 'number' || sellerId <= 0 || !reason || typeof reason !== 'string' || reason.trim() === '') {
+      return res.status(400).json({ message: "A valid sellerId (number) and a non-empty reason (string) are required." });
     }
 
     // 1. Find the seller
-    // ❌ OLD: const existingSeller = await db.query.sellers.findFirst({ where: eq(sellers.id, sellerId) });
-    // ✅ NEW: Drizzle ORM में सही सिंटैक्स
     const existingSellerResult = await db.select()
-                                         .from(sellers)
-                                         .where(eq(sellers.id, sellerId))
+                                         .from(sellersPgTable) // ✅ sellersPgTable का उपयोग करें
+                                         .where(eq(sellersPgTable.id, sellerId)) // ✅ sellersPgTable.id का उपयोग करें
                                          .limit(1);
 
     const existingSeller = existingSellerResult.length > 0 ? existingSellerResult[0] : null;
 
     if (!existingSeller) {
-      return res.status(404).json({ message: "Seller not found" });
+      return res.status(404).json({ message: "Seller not found." });
     }
 
     if (existingSeller.approvalStatus === 'approved') {
         return res.status(400).json({ message: "Seller is already approved and cannot be rejected." });
     }
+    // यदि पहले से ही रिजेक्टेड है, तो दोबारा रिजेक्ट करने की अनुमति दें या एक अलग मैसेज दें
+    if (existingSeller.approvalStatus === 'rejected') {
+        // आप यहाँ एक अलग मैसेज दे सकते हैं या ऑपरेशन को जारी रख सकते हैं
+        // जैसे कि कारण को अपडेट करना। अभी के लिए, हम इसे जारी रखने देंगे।
+        console.log(`Seller with ID ${sellerId} is already rejected. Updating rejection reason.`);
+    }
+
 
     // 2. Reject the seller
-    // ❌ OLD: const [updatedSeller] = await db.update(sellers)...
-    // ✅ NEW: Drizzle update()
     const updatedSellerResult = await db
-      .update(sellers)
+      .update(sellersPgTable) // ✅ sellersPgTable का उपयोग करें
       .set({
         approvalStatus: "rejected",
         rejectionReason: reason,
-        approvedAt: null,
+        approvedAt: null, // यदि रिजेक्ट किया जा रहा है तो approvedAt को null करें
         updatedAt: new Date(),
       })
-      .where(eq(sellers.id, sellerId))
-      .returning(); // यह एक एरे लौटाता है
+      .where(eq(sellersPgTable.id, sellerId)) // ✅ sellersPgTable.id का उपयोग करें
+      .returning(); 
 
-    const updatedSeller = updatedSellerResult[0]; // पहला एलिमेंट प्राप्त करें
+    const updatedSeller = updatedSellerResult[0]; 
 
-    // 3. Update user role back to "user" (from "pending_seller")
-    // ❌ OLD: const [updatedUser] = await db.update(users)...
-    // ✅ NEW: Drizzle update()
+    // 3. Update user role back to "customer" (from "pending_seller" or "seller" if somehow approved and then rejected)
     const updatedUserResult = await db
       .update(users)
-      .set({ role: "user", updatedAt: new Date() })
-      .where(eq(users.firebaseUid, existingSeller.userId))
-      .returning(); // यह एक एरे लौटाता है
+      .set({ role: "customer", updatedAt: new Date() }) // ✅ role को "customer" में बदलें
+      .where(eq(users.firebaseUid, existingSeller.userId)) 
+      .returning(); 
 
-    const updatedUser = updatedUserResult.length > 0 ? updatedUserResult[0] : undefined; // पहला एलिमेंट प्राप्त करें, या undefined यदि कोई नहीं
+    const updatedUser = updatedUserResult.length > 0 ? updatedUserResult[0] : undefined; 
 
     if (!updatedUser) {
         console.error("Seller reject: Could not find user to update role for firebaseUid:", existingSeller.userId);
@@ -104,15 +104,14 @@ router.post("/", verifyToken, isAdmin, async (req: AuthenticatedRequest, res: Re
       message: "Seller application rejected.",
       seller: updatedSeller,
       user: updatedUser ? {
-          uuid: updatedUser.uuid,
+          firebaseUid: updatedUser.firebaseUid, // ✅ user.uuid के बजाय firebaseUid
           role: updatedUser.role,
           email: updatedUser.email,
           name: updatedUser.name,
-      } : undefined, // यदि यूजर अपडेट नहीं हुआ तो undefined भेजें
+      } : undefined, 
     });
   } catch (error) {
     console.error("Error in seller reject route:", error);
-    // ✅ सुनिश्चित करें कि एरर को ठीक से हैंडल किया गया है
     res.status(500).json({ message: "Internal Server Error", error: (error as Error).message });
   }
 });
