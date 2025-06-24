@@ -1,153 +1,199 @@
 import { db } from "./db";
-import { categories, users, stores, products } from "@shared/backend/schema";
+import { faker } from "@faker-js/faker";
+import {
+  users,
+  sellersPgTable as sellers,
+  categories,
+  stores,
+  products,
+  deliveryBoys,
+  orders,
+  orderItems,
+  cartItems,
+  reviews,
+} from "@shared/backend/schema";
+import { eq } from "drizzle-orm";
 
-export async function seedDatabase() {
+async function seedDatabase() {
   try {
-    console.log("🌱 Seeding database...");
+    // 1️⃣ Clean existing data (order matters)
+    // Pehle reviews delete karo taaki foreign key error na aaye
+await db.delete(reviews);   
 
-    // Optional table creation for dev/testing
-    await db.execute(`
-      CREATE TABLE IF NOT EXISTS categories (
-        id SERIAL PRIMARY KEY,
-        name TEXT NOT NULL,
-        name_hindi TEXT,
-        slug TEXT UNIQUE,
-        description TEXT,
-        image TEXT,
-        is_active BOOLEAN DEFAULT true,
-        sort_order INTEGER
-      );
-    `);
+// Baaki tables delete karo
+await db.delete(orderItems);
+await db.delete(orders);
+await db.delete(cartItems);
+await db.delete(products);
+await db.delete(stores);
+await db.delete(sellers);
+await db.delete(deliveryBoys);
+await db.delete(users);
+await db.delete(categories);
 
-    // Check if already seeded
-    const existingCategories = await db.select().from(categories);
-    if (existingCategories.length > 0) {
-      console.log("✅ Database already seeded.");
-      return;
-    }
 
-    // ✅ Cleaned category data (with consistent keys and no duplicates)
-    const categoryData = [
-      {
-        name: "Cooking Oils & Ghee",
-        name_hindi: "खाना पकाने का तेल और घी",
-        slug: "cooking-oils",
-        description: "Essential cooking oils, ghee, and butter",
-        image: "https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5",
-        is_active: true,
-        sort_order: 1,
-      },
-      {
-        name: "Rice & Grains",
-        name_hindi: "चावल और अनाज",
-        slug: "rice-grains",
-        description: "All types of rice, wheat, and grains",
-        image: "https://images.unsplash.com/photo-1586201375761-83865001e31c",
-        is_active: true,
-        sort_order: 2,
-      },
-      {
-        name: "Snacks & Namkeen",
-        name_hindi: "नमकीन और स्नैक्स",
-        slug: "snacks-namkeen",
-        description: "Delicious snacks and namkeen items",
-        image: "https://images.unsplash.com/photo-1601315379701-1564147c58b4",
-        is_active: true,
-        sort_order: 3,
-      },
-      {
-        name: "Personal Care",
-        name_hindi: "व्यक्तिगत देखभाल",
-        slug: "personal-care",
-        description: "Shampoos, soaps, creams, etc.",
-        image: "https://images.unsplash.com/photo-1611080626919-7e2c3a6baf4b",
-        is_active: true,
-        sort_order: 4,
-      },
-      {
-        name: "Pulses & Lentils",
-        name_hindi: "दाल और दलहन",
-        slug: "pulses-lentils",
-        description: "Various types of dal and pulses",
-        image: "https://images.unsplash.com/photo-1559181567-c3190ca9959b",
-        is_active: true,
-        sort_order: 5,
-      },
-      {
-        name: "Spices & Masala",
-        name_hindi: "मसाले",
-        slug: "spices-masala",
-        description: "Essential Indian spices and masalas",
-        image: "https://images.unsplash.com/photo-1506905925346-21bda4d32df4",
-        is_active: true,
-        sort_order: 6,
-      },
-      {
-        name: "Tea, Coffee & Beverages",
-        name_hindi: "चाय, कॉफी और पेय",
-        slug: "tea-coffee",
-        description: "Tea, coffee, and other beverages",
-        image: "https://images.unsplash.com/photo-1544787219-7f47ccb76574",
-        is_active: true,
-        sort_order: 7,
-      },
-      {
-        name: "Sugar & Salt",
-        name_hindi: "चीनी और नमक",
-        slug: "sugar-salt",
-        description: "Sugar, salt, and sweeteners",
-        image: "https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b",
-        is_active: true,
-        sort_order: 8,
-      },
-      {
-        name: "Soap & Hygiene",
-        name_hindi: "साबुन और स्वच्छता",
-        slug: "soap-hygiene",
-        description: "Bath soaps, personal hygiene products",
-        image: "https://images.unsplash.com/photo-1556228720-195a672e8a03",
-        is_active: true,
-        sort_order: 9,
-      },
-      {
-        name: "Cleaning & Household",
-        name_hindi: "सफाई और घरेलू सामान",
-        slug: "cleaning-household",
-        description: "Cleaning products and household items",
-        image: "https://images.unsplash.com/photo-1563453392212-326f5e854473",
-        is_active: true,
-        sort_order: 10,
-      },
-      {
-        name: "Fresh Vegetables",
-        name_hindi: "ताज़ी सब्जियां",
-        slug: "fresh-vegetables",
-        description: "Daily fresh vegetables",
-        image: "https://images.unsplash.com/photo-1590779033100-9f60a05a013d",
-        is_active: true,
-        sort_order: 11,
-      },
-      {
-        name: "Fresh Fruits",
-        name_hindi: "ताज़े फल",
-        slug: "fresh-fruits",
-        description: "Seasonal fresh fruits",
-        image: "https://images.unsplash.com/photo-1610832958506-aa56368176cf",
-        is_active: true,
-        sort_order: 12,
-      },
+
+
+
+    // 2️⃣ Insert Categories
+    const insertedCategories = await db.insert(categories).values([
+      { name: "Fruits", slug: "fruits", description: "Fresh fruits", image: faker.image.url(), isActive: true, sortOrder: 1 },
+      { name: "Vegetables", slug: "vegetables", description: "Fresh veggies", image: faker.image.url(), isActive: true, sortOrder: 2 },
+    ]).returning();
+
+    // 3️⃣ Insert Users
+    const userInputs = [
+      { firebaseUid: faker.string.uuid(), email: "admin@example.com", name: "Admin", role: "admin", approvalStatus: "approved" },
+      { firebaseUid: faker.string.uuid(), email: "customer@example.com", name: "Customer", role: "customer", approvalStatus: "approved" },
+      { firebaseUid: faker.string.uuid(), email: "seller@example.com", name: "Seller", role: "seller", approvalStatus: "approved" },
+      { firebaseUid: faker.string.uuid(), email: "delivery@example.com", name: "Delivery", role: "delivery_boy", approvalStatus: "approved" },
     ];
+    const insertedUsers = await db.insert(users).values(userInputs).returning();
+    const sellerUser = insertedUsers.find(u => u.role === "seller")!;
+    const customerUser = insertedUsers.find(u => u.role === "customer")!;
+    const deliveryUser = insertedUsers.find(u => u.role === "delivery_boy")!;
 
-    const insertedCategories = await db.insert(categories).values(categoryData).returning();
-    console.log(`✅ Inserted ${insertedCategories.length} categories`);
+    // 4️⃣ Insert Seller
+    const [insertedSeller] = await db.insert(sellers).values({
+      userId: sellerUser.firebaseUid,
+      businessName: faker.company.name(),
+      businessType: "grocery",
+      businessAddress: faker.location.streetAddress(),
+      city: "Indore",
+      pincode: "452001",
+      businessPhone: "9876543210",
+      approvalStatus: "approved",
+      gstNumber: "22AAAAA0000A1Z5",
+      bankAccountNumber: "1234567890",
+      ifscCode: "SBIN0000001",
+    }).returning();
+// 5️⃣ Insert Store for that Seller
+const storeResult = await db.insert(stores).values({
+  sellerId: insertedSeller.id,
+  storeName: "My Grocery Store",
+  storeType: "grocery",
+  address: "123 Main Road",
+  city: "Indore",
+  pincode: "452001",
+  phone: "9999999999",
+  isActive: true,
+  licenseNumber: "LIC123",
+  gstNumber: "22BBBBB0000B1Z6",
+}).returning();
 
-    // अब आप यहां से sellers, stores और products को insert कर सकते हैं जैसे आप पहले कर रहे थे
-    // लेकिन कृपया ensure करें कि:
-    // - `users` और `stores` table exist करते हों
-    // - उनके स्कीमा के अनुसार आप values दे रहे हों
-    // - सभी inserts `await` के साथ await करें, और errors को try-catch में handle करें
+const insertedStore = storeResult[0];
 
-  } catch (error) {
-    console.error("❌ Failed to seed database:", error);
+if (!insertedStore?.id) {
+  throw new Error("❌ Store insert failed! No store ID returned.");
+}
+
+
+    // 6️⃣ Insert Delivery Boy
+    await db.insert(deliveryBoys).values({
+      firebaseUid: deliveryUser.firebaseUid,
+      email: deliveryUser.email!,
+      name: deliveryUser.name!,
+      vehicleType: "bike",
+      approvalStatus: "approved",
+    });
+
+
+if (!insertedStore?.id) {
+  throw new Error("❌ Store not inserted properly. Store ID is missing.");
+}
+if (!insertedCategories.length) {
+  throw new Error("❌ Categories not inserted. Cannot proceed with product insertion.");
+}
+
+// 7️⃣ Insert Products
+const insertedProducts = await db.insert(products).values(
+  insertedCategories.map(cat => {
+    const price = +faker.commerce.price({ min: 10, max: 200 });
+
+    return {
+      sellerId: insertedSeller.id,
+      storeId: insertedStore.id, // ✅ now guaranteed
+      categoryId: cat.id,
+      name: faker.commerce.productName(),
+      nameHindi: "हिंदी नाम",
+      description: faker.commerce.productDescription(),
+      descriptionHindi: "हिंदी विवरण",
+      price,
+      originalPrice: price * 1.2,
+      image: faker.image.url(),
+      images: [faker.image.url()],
+      unit: "kg",
+      stock: 50,
+      minOrderQty: 1,
+      maxOrderQty: 5,
+      isActive: true,
+    };
+  })
+).returning();
+
+console.log(`✅ Inserted ${insertedProducts.length} products.`);
+
+
+
+    // 8️⃣ Insert Order
+    const [order] = await db.insert(orders).values({
+      customerId: customerUser.id,
+      deliveryBoyId: null,
+      orderNumber: "ORD-" + Date.now(),
+      subtotal: 0,
+      deliveryCharge: "0",
+      discount: "0",
+      total: 0,
+      paymentMethod: "cod",
+      paymentStatus: "paid",
+      status: "placed",
+      deliveryAddress: {
+        address: "Customer Street",
+        city: "Indore",
+        pincode: "452001",
+      },
+    }).returning();
+
+    // 9️⃣ Order Items
+    let total = 0;
+    const items = insertedProducts.map(p => {
+      const qty = 2;
+      const unitPrice = +p.price;
+      const totalPrice = unitPrice * qty;
+      total += totalPrice;
+      return {
+        orderId: order.id,
+        productId: p.id,
+        sellerId: insertedSeller.id,
+        quantity: qty,
+        unitPrice,
+        totalPrice,
+      };
+    });
+    await db.insert(orderItems).values(items);
+    await db.update(orders).set({ subtotal: total, total }).where(eq(orders.id, order.id));
+
+    // 🔟 Reviews
+    await db.insert(reviews).values(insertedProducts.map(p => ({
+      customerId: customerUser.id,
+      productId: p.id,
+      orderId: order.id,
+      rating: 4,
+      comment: "Nice product!",
+    })));
+
+    // 🔁 Cart Items
+    await db.insert(cartItems).values(insertedProducts.map(p => ({
+      userId: customerUser.id,
+      productId: p.id,
+      quantity: 1,
+    })));
+
+    console.log("✅ Seed complete!");
+  } catch (err) {
+    console.error("❌ Seeding failed:", err);
   }
 }
+
+seedDatabase();
+
