@@ -1,33 +1,24 @@
 // routes/sellers/apply.ts
-import { Router, Response, NextFunction } from "express"; // Request को हटाया, AuthenticatedRequest का उपयोग होगा
-import { db } from "../../server/db";
-import { sellers, users } from "../../shared/backend/schema";
-// ✅ verifyToken और AuthenticatedRequest को इम्पोर्ट करें
+import { Router, Response, NextFunction } from "express";
+import { db } from "../../server/db"; // ✅ db ऑब्जेक्ट का इम्पोर्ट सही है
+import { sellers, users } from "../../shared/backend/schema"; // ✅ स्कीमा टेबल्स का इम्पोर्ट सही है
 import { verifyToken, AuthenticatedRequest } from "../../server/middleware/verifyToken";
-// ✅ eq को Drizzle के लिए इम्पोर्ट करें
-import { eq } from "drizzle-orm";
+import { eq } from "drizzle-orm"; // ✅ 'eq' का इम्पोर्ट सही है
 
 const router = Router();
 
 /**
  * Endpoint for a user to apply as a seller.
  * Requires authentication via verifyToken middleware.
- *
- * Body ⇒ { businessName, businessAddress?, phoneNumber, description, ...other seller fields }
- * (userId will be taken from req.user.uid, NOT from body)
  */
 router.post("/", verifyToken, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
-    // ✅ 1. Authenticated User ID (Firebase UID) को req.user से प्राप्त करें
-    // यह ID Firebase द्वारा सत्यापित है और सबसे विश्वसनीय है।
     const firebaseUid = req.user?.uid;
 
-    // ✅ सुनिश्चित करें कि authenticated user मौजूद है
     if (!firebaseUid) {
       return res.status(401).json({ message: "Unauthorized: User not authenticated." });
     }
 
-    // ✅ 2. बाकी seller डेटा को request body से प्राप्त करें
     const { 
       businessName, 
       businessAddress, 
@@ -42,30 +33,33 @@ router.post("/", verifyToken, async (req: AuthenticatedRequest, res: Response, n
       businessType 
     } = req.body;
 
-    // ✅ 3. सभी आवश्यक फ़ील्ड्स की जाँच करें
     if (!businessName || !businessPhone || !city || !pincode || !businessAddress) {
       return res.status(400).json({ message: "Missing required seller details." });
     }
 
     /* ─────────── 4. पहले से आवेदन या approve तो नहीं? ─────────── */
-    // ✅ sellers टेबल में user_id कॉलम (जो Firebase UID स्टोर करता है) का उपयोग करें
-    const existingSeller = await db.query.sellers.findFirst({
-      where: eq(sellers.userId, firebaseUid),
-    });
+    // ❌ OLD: const existingSeller = await db.query.sellers.findFirst({ where: eq(sellers.userId, firebaseUid), });
+    // ✅ NEW: Drizzle ORM में सही सिंटैक्स
+    const existingSeller = await db.select() // db.select() का उपयोग करें
+                                   .from(sellers) // किस टेबल से सिलेक्ट करना है
+                                   .where(eq(sellers.userId, firebaseUid)) // eq() का उपयोग करके कंडीशन
+                                   .limit(1); // केवल एक रिकॉर्ड प्राप्त करने के लिए
 
-    if (existingSeller) {
+    // Drizzle select() हमेशा एक एरे लौटाता है, भले ही limit(1) हो।
+    if (existingSeller.length > 0) { // इसलिए .length > 0 से चेक करें
       return res.status(400).json({
         message: "Seller application already exists or approved.",
-        status: existingSeller.approvalStatus, // मौजूदा स्थिति दिखाएं
+        status: existingSeller[0].approvalStatus, // पहले एलिमेंट से status प्राप्त करें
       });
     }
 
     /* ─────────── 5. नया आवेदन create करें (status: pending) ─────────── */
-    const [newSeller] = await db
+    // ❌ OLD: const [newSeller] = await db.insert(sellers).values({ ... }).returning();
+    // ✅ NEW: Drizzle insert()
+    const newSellerResult = await db
       .insert(sellers)
       .values({
-        // ✅ userId के लिए authenticated Firebase UID का उपयोग करें
-        userId: firebaseUid, 
+        userId: firebaseUid,
         businessName,
         businessAddress,
         businessPhone,
@@ -79,20 +73,24 @@ router.post("/", verifyToken, async (req: AuthenticatedRequest, res: Response, n
         deliveryRadius,
         approvalStatus: "pending",
         appliedAt: new Date(),
-        createdAt: new Date(), 
-        updatedAt: new Date(), 
+        createdAt: new Date(),
+        updatedAt: new Date(),
       })
-      .returning();
+      .returning(); // यह एक एरे लौटाता है
+
+    const newSeller = newSellerResult[0]; // पहला एलिमेंट प्राप्त करें
 
     /* ─────────── 6. उसी user की role = pending_seller कर दें ─────────── */
-    // ✅ users टेबल में user का role अपडेट करने के लिए firebase_uid कॉलम का उपयोग करें
-    const [updatedUser] = await db
+    // ❌ OLD: const [updatedUser] = await db.update(users).set({ ... }).where(eq(users.firebaseUid, firebaseUid)).returning();
+    // ✅ NEW: Drizzle update()
+    const updatedUserResult = await db
       .update(users)
-      .set({ role: "pending_seller", updatedAt: new Date() }) 
-      .where(eq(users.firebaseUid, firebaseUid)) // ✅ users.firebaseUid का उपयोग करें
-      .returning();
+      .set({ role: "pending_seller", updatedAt: new Date() })
+      .where(eq(users.firebaseUid, firebaseUid))
+      .returning(); // यह भी एक एरे लौटाता है
 
-    // ✅ सुनिश्चित करें कि यूजर अपडेट हुआ
+    const updatedUser = updatedUserResult[0]; // पहला एलिमेंट प्राप्त करें
+
     if (!updatedUser) {
         console.error("Seller apply: Could not find user to update role for firebaseUid:", firebaseUid);
         return res.status(500).json({ message: "Failed to update user role." });
@@ -102,17 +100,17 @@ router.post("/", verifyToken, async (req: AuthenticatedRequest, res: Response, n
     res.status(201).json({
       message: "Seller application submitted",
       seller: newSeller,
-      // ✅ यूजर ऑब्जेक्ट में uuid और अन्य आवश्यक जानकारी भेजें
       user: {
-          uuid: updatedUser.uuid, 
+          uuid: updatedUser.uuid,
           role: updatedUser.role,
           email: updatedUser.email,
-          name: updatedUser.name, // यदि उपलब्ध हो तो
+          name: updatedUser.name,
       },
     });
   } catch (error) {
-    console.error("Error in seller apply route:", error); 
-    next(error);
+    console.error("Error in seller apply route:", error);
+    // ✅ सुनिश्चित करें कि एरर को ठीक से हैंडल किया गया है
+    res.status(500).json({ message: "Internal Server Error", error: (error as Error).message });
   }
 });
 
