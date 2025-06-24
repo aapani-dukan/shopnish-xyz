@@ -1,49 +1,21 @@
 // @shared/backend/schema.ts
-import { pgTable, text, serial, integer, decimal, boolean, timestamp, json, varchar } from "drizzle-orm/pg-core"; // varchar को इम्पोर्ट करें
+import { pgTable, text, serial, integer, decimal, boolean, timestamp, json, varchar } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
-
-// ✅ ध्यान दें: `sellers` Zod ऑब्जेक्ट है, Drizzle स्कीमा नहीं।
-// यदि आप इसे डेटाबेस टेबल के रूप में उपयोग करना चाहते हैं, तो इसे `pgTable` में बदलना होगा।
-// फिलहाल, मैं इसे छोड़ रहा हूँ, लेकिन यह संभावित रूप से एक असंगति का स्रोत है।
-export const sellers = z.object({
-  id: z.string().uuid().optional(),
-  userId: z.string().uuid(), 
-  businessName: z.string().min(1, "Business Name is required"),
-  businessType: z.string().min(1, "Business Type is required"),
-  description: z.string().optional(), 
-  businessAddress: z.string().min(1, "Business Address is required"),
-  city: z.string().min(1, "City is required"),
-  pincode: z.string().regex(/^\d{6}$/, "Pincode must be 6 digits"), // भारतीय पिनकोड के लिए
-  businessPhone: z.string().regex(/^\d{10}$/, "Phone number must be 10 digits"), // भारतीय फ़ोन नंबर के लिए
-  gstNumber: z.string().optional(), // यदि यह वैकल्पिक है
-  bankAccountNumber: z.string().min(1, "Bank Account Number is required"),
-  ifscCode: z.string().min(1, "IFSC Code is required"),
-  deliveryRadius: z.number().min(1, "Delivery Radius must be at least 1 km"),
-  email: z.string().email().optional(), 
-  phone: z.string().optional(), // यह businessPhone से अलग हो सकता है (जैसे पर्सनल फ़ोन)
-  address: z.string().optional(), // यह businessAddress से अलग हो सकता है (जैसे पर्सनल एड्रेस)
-  approvalStatus: z.enum(["pending", "approved", "rejected"]).default("pending").optional(),
-  approvedAt: z.date().optional(),
-  rejectionReason: z.string().optional(),
-  createdAt: z.date().optional(), // `.defaultNow()` डेटाबेस में होता है, फॉर्म में नहीं
-  updatedAt: z.date().optional(), // `.defaultNow()` डेटाबेस में होता है, फॉर्म में नहीं
-});
-
+// --- Drizzle ORM Table Definitions ---
 
 // User roles: customer, seller, admin, delivery_boy
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
-  firebaseUid: text("firebase_uid").unique(), // ✅ Firebase UID यहाँ जोड़ें
+  firebaseUid: text("firebase_uid").unique(), // Firebase UID यहाँ जोड़ें
   email: text("email").notNull().unique(),
-  // password: text("password").notNull(), // ✅ यदि आप Firebase Auth का उपयोग कर रहे हैं तो इसकी आवश्यकता नहीं है
-  name: text("name"), // ✅ यूज़र का नाम यहाँ जोड़ें
-  firstName: text("first_name"), // इसे optional या हटा सकते हैं यदि 'name' ही काफी है
-  lastName: text("last_name"),   // इसे optional या हटा सकते हैं
-  phone: text("phone"),          // इसे optional या हटा सकते हैं
-  role: varchar("role", { enum: ["customer", "seller", "admin", "delivery_boy"] }).notNull().default("customer"), // ✅ varchar और enum का उपयोग करें
-  approvalStatus: varchar("approval_status", { enum: ["pending", "approved", "rejected"] }).notNull().default("approved"), // ✅ अप्रूवल स्टेटस जोड़ें
+  name: text("name"),
+  firstName: text("first_name"),
+  lastName: text("last_name"),
+  phone: text("phone"),
+  role: varchar("role", { enum: ["customer", "seller", "admin", "delivery_boy"] }).notNull().default("customer"),
+  approvalStatus: varchar("approval_status", { enum: ["pending", "approved", "rejected"] }).notNull().default("approved"),
   address: text("address"),
   city: text("city"),
   pincode: text("pincode"),
@@ -52,10 +24,35 @@ export const users = pgTable("users", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// ✅ Sellers Table - यह अब एक Drizzle pgTable है!
+export const sellersPgTable = pgTable("sellers", {
+  id: serial("id").primaryKey(), // ऑटो-इंक्रीमेंटिंग प्राइमरी की
+  userId: text("user_id").unique().notNull(), // ✅ Firebase UID स्टोर करने के लिए TEXT
+  businessName: text("business_name").notNull(),
+  businessType: text("business_type").notNull(), // grocery, restaurant, etc.
+  description: text("description"),
+  businessAddress: text("business_address").notNull(),
+  city: text("city").notNull(),
+  pincode: text("pincode").notNull(),
+  businessPhone: text("business_phone").notNull(),
+  gstNumber: text("gst_number"),
+  bankAccountNumber: text("bank_account_number"),
+  ifscCode: text("ifsc_code"),
+  deliveryRadius: integer("delivery_radius"), // INTEGER, क्योंकि आप parseInt() का उपयोग कर रहे हैं
+  email: text("email"), // Optional email (can be same as user's primary email)
+  phone: text("phone"), // Optional phone (can be same as businessPhone)
+  address: text("address"), // Optional address (can be same as businessAddress)
+  approvalStatus: varchar("approval_status", { enum: ["pending", "approved", "rejected"] }).notNull().default("pending"),
+  approvedAt: timestamp("approved_at"),
+  rejectionReason: text("rejection_reason"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Seller store information
 export const stores = pgTable("stores", {
   id: serial("id").primaryKey(),
-  sellerId: integer("seller_id").references(() => users.id),
+  sellerId: integer("seller_id").references(() => sellersPgTable.id), // ✅ sellersPgTable.id को रेफ़रेंस करें
   storeName: text("store_name").notNull(),
   storeType: text("store_type").notNull(), // grocery, pharmacy, general, etc.
   address: text("address").notNull(),
@@ -67,19 +64,6 @@ export const stores = pgTable("stores", {
   gstNumber: text("gst_number"),
   createdAt: timestamp("created_at").defaultNow(),
 });
-
-
-// ✅ insertSellerSchema की आवश्यकता नहीं होगी यदि आप `users` टेबल में `role` का उपयोग कर रहे हैं।
-// यदि आप इसे एक अलग 'sellers' टेबल के रूप में उपयोग कर रहे हैं, तो इसे `createInsertSchema` से बनाना बेहतर है।
-// फिलहाल, मैंने इसे हटा दिया है क्योंकि यह `users` टेबल के लिए ऑथेंटिकेशन लॉजिक को ओवरलैप कर रहा है।
- export const insertSellerSchema = z.object({
-   email: z.string().email(),
-   password: z.string().min(6),
-   firstName: z.string().min(1),
-   lastName: z.string().min(1),
-   phone: z.string().min(10),
-   role: z.literal("seller").default("seller"),
- });
 
 
 // Product categories for essentials
@@ -97,7 +81,7 @@ export const categories = pgTable("categories", {
 // Products from different sellers
 export const products = pgTable("products", {
   id: serial("id").primaryKey(),
-  sellerId: integer("seller_id").references(() => users.id),
+  sellerId: integer("seller_id").references(() => sellersPgTable.id), // ✅ sellersPgTable.id को रेफ़रेंस करें
   storeId: integer("store_id").references(() => stores.id),
   categoryId: integer("category_id").references(() => categories.id),
   name: text("name").notNull(),
@@ -132,11 +116,11 @@ export const deliveryAreas = pgTable("delivery_areas", {
 // Delivery boys
 export const deliveryBoys = pgTable("delivery_boys", {
   id: serial("id").primaryKey(),
-  firebaseUid: text("firebase_uid").unique().notNull(), // ✅ Firebase UID यहाँ जोड़ें
-  email: text("email").unique().notNull(), // ✅ ईमेल यहाँ जोड़ें
-  name: text("name"), // ✅ नाम यहाँ जोड़ें
-  approvalStatus: varchar("approval_status", { enum: ["pending", "approved", "rejected"] }).notNull().default("pending"), // ✅ अप्रूवल स्टेटस यहाँ जोड़ें
-  // userId: integer("user_id").references(() => users.id), // ✅ इसे हटा दें या optional करें यदि आप Firebase UID से सीधे लिंक कर रहे हैं
+  firebaseUid: text("firebase_uid").unique().notNull(), // Firebase UID यहाँ जोड़ें
+  email: text("email").unique().notNull(),
+  name: text("name"),
+  approvalStatus: varchar("approval_status", { enum: ["pending", "approved", "rejected"] }).notNull().default("pending"),
+  // userId: integer("user_id").references(() => users.id), // यदि आप Firebase UID से सीधे लिंक कर रहे हैं तो इसे optional करें या हटा दें
   vehicleType: text("vehicle_type").notNull(), // bike, cycle, auto
   vehicleNumber: text("vehicle_number"),
   licenseNumber: text("license_number"),
@@ -185,7 +169,7 @@ export const orderItems = pgTable("order_items", {
   id: serial("id").primaryKey(),
   orderId: integer("order_id").references(() => orders.id),
   productId: integer("product_id").references(() => products.id),
-  sellerId: integer("seller_id").references(() => users.id),
+  sellerId: integer("seller_id").references(() => sellersPgTable.id), // ✅ sellersPgTable.id को रेफ़रेंस करें
   quantity: integer("quantity").notNull(),
   unitPrice: decimal("unit_price", { precision: 10, scale: 2 }).notNull(),
   totalPrice: decimal("total_price", { precision: 10, scale: 2 }).notNull(),
@@ -280,15 +264,43 @@ export const reviews = pgTable("reviews", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-// --- Insert schemas ---
-// ✅ `users` के लिए updated insert schema
+// --- Zod Schemas for Validation ---
+// ✅ `sellers` Zod ऑब्जेक्ट - अब Drizzle `sellersPgTable` से मेल खाता है
+export const sellers = z.object({
+  id: z.number().int().optional(), // serial() के लिए
+  userId: z.string(), // ✅ Firebase UID के लिए string
+  businessName: z.string().min(1, "Business Name is required"),
+  businessType: z.string().min(1, "Business Type is required"),
+  description: z.string().optional(),
+  businessAddress: z.string().min(1, "Business Address is required"),
+  city: z.string().min(1, "City is required"),
+  pincode: z.string().regex(/^\d{6}$/, "Pincode must be 6 digits"),
+  businessPhone: z.string().regex(/^\d{10}$/, "Phone number must be 10 digits"),
+  gstNumber: z.string().optional(),
+  bankAccountNumber: z.string().min(1, "Bank Account Number is required"),
+  ifscCode: z.string().min(1, "IFSC Code is required"),
+  deliveryRadius: z.number().min(1, "Delivery Radius must be at least 1 km"),
+  email: z.string().email().optional(),
+  phone: z.string().optional(),
+  address: z.string().optional(),
+  approvalStatus: z.enum(["pending", "approved", "rejected"]).default("pending").optional(),
+  approvedAt: z.date().optional(),
+  rejectionReason: z.string().optional(),
+  createdAt: z.date().optional(),
+  updatedAt: z.date().optional(),
+});
+
+// --- Insert Schemas (Drizzle-Zod) ---
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
-  // यदि `firstName`, `lastName`, `phone` optional हैं या `name` से आ रहे हैं
-  // तो उन्हें भी omit या optional करें
-  // password: true, // Firebase Auth के साथ password की आवश्यकता नहीं
+});
+
+export const insertSellerSchema = createInsertSchema(sellersPgTable).omit({ // ✅ sellersPgTable से क्रिएट करें
+  id: true,
+  createdAt: true,
+  updatedAt: true,
 });
 
 export const insertStoreSchema = createInsertSchema(stores).omit({
@@ -310,11 +322,9 @@ export const insertDeliveryAreaSchema = createInsertSchema(deliveryAreas).omit({
   id: true,
 });
 
-// ✅ `deliveryBoys` के लिए updated insert schema
 export const insertDeliveryBoySchema = createInsertSchema(deliveryBoys).omit({
   id: true,
   createdAt: true,
-  // userId: true, // यदि आप इसे हटा रहे हैं तो यहाँ भी omit करें
 });
 
 export const insertCartItemSchema = createInsertSchema(cartItems).omit({
@@ -367,7 +377,10 @@ export const insertReviewSchema = createInsertSchema(reviews).omit({
 
 // --- Types ---
 export type User = typeof users.$inferSelect;
-export type InsertUser = z.infer<typeof insertUserSchema>; // ✅ यह अब updated schema से infer होगा
+export type InsertUser = z.infer<typeof insertUserSchema>;
+
+export type Seller = typeof sellersPgTable.$inferSelect; // ✅ sellersPgTable से टाइप इन्फर करें
+export type InsertSeller = z.infer<typeof insertSellerSchema>; // ✅ insertSellerSchema से टाइप इन्फर करें
 
 export type Store = typeof stores.$inferSelect;
 export type InsertStore = z.infer<typeof insertStoreSchema>;
@@ -382,7 +395,7 @@ export type DeliveryArea = typeof deliveryAreas.$inferSelect;
 export type InsertDeliveryArea = z.infer<typeof insertDeliveryAreaSchema>;
 
 export type DeliveryBoy = typeof deliveryBoys.$inferSelect;
-export type InsertDeliveryBoy = z.infer<typeof insertDeliveryBoySchema>; // ✅ यह अब updated schema से infer होगा
+export type InsertDeliveryBoy = z.infer<typeof insertDeliveryBoySchema>;
 
 export type CartItem = typeof cartItems.$inferSelect;
 export type InsertCartItem = z.infer<typeof insertCartItemSchema>;
@@ -414,28 +427,4 @@ export type InsertServiceBooking = z.infer<typeof insertServiceBookingSchema>;
 export type Review = typeof reviews.$inferSelect;
 export type InsertReview = z.infer<typeof insertReviewSchema>;
 
-// ✅ Seller type को Drizzle स्कीमा से Infer करें यदि आप इसे डेटाबेस से उपयोग कर रहे हैं।
-// यदि यह केवल एक Zod ऑब्जेक्ट है, तो इसे ऐसा ही छोड़ दें, लेकिन यह डेटाबेस से सीधे काम नहीं करेगा।
-// मैं मान रहा हूँ कि आप इसे डेटाबेस टेबल के रूप में उपयोग करना चाहेंगे।
-// तो आपको पहले `sellers` को `pgTable` में बदलना होगा अगर वह नहीं है।
-// यदि आप seller के लिए अलग टेबल बनाते हैं तो यह कुछ ऐसा होगा:
-/*
-export const sellersPgTable = pgTable("sellers", {
-  id: serial("id").primaryKey(),
-  userId: integer("user_id").references(() => users.id).unique().notNull(), // One-to-one with users table
-  businessName: text("business_name").notNull(),
-  // Add other seller specific fields as needed
-  approvalStatus: varchar("approval_status", { enum: ["pending", "approved", "rejected"] }).notNull().default("pending"),
-  approvedAt: timestamp("approved_at"),
-  rejectionReason: text("rejection_reason"),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
-export type Seller = typeof sellersPgTable.$inferSelect;
-export type InsertSeller = typeof sellersPgTable.$inferInsert;
-*/
-
-// यदि `sellers` केवल एक Zod object है और आप उसे database table की तरह use नहीं कर रहे, तो उसे वैसे ही छोड़ दें
-// और `getSellers` function `storage.ts` में उसे in-memory handle करेगा।
-// यहाँ आपके मौजूदा Zod object पर आधारित `Seller` type है:
-export type Seller = z.infer<typeof sellers>;
+                      
