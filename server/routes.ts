@@ -10,14 +10,15 @@ import {
   insertCartItemSchema,
   insertOrderSchema,
   insertReviewSchema,
-} from "../shared/backend/schema"; // schema.ts से User प्रकार की आवश्यकता नहीं है, लेकिन ठीक है
+  // User type की यहाँ सीधी आवश्यकता नहीं है, लेकिन अगर आप इसे उपयोग करते हैं तो सुनिश्चित करें कि यह सही है
+} from "../shared/backend/schema"; 
 
 // Routers
 import pendingSellersRouter from "../routes/sellers/pending";
 import sellersApplyRouter from "../routes/sellers/apply";
 import sellersApproveRouter from "../routes/sellers/approve";
 import sellersRejectRouter from "../routes/sellers/reject";
-import sellerMeRouter from "../routes/sellerMe";
+import sellerMeRouter from "../routes/sellerMe"; // ✅ यहाँ यह सुनिश्चित करें कि यह sellerMeRouter है न कि sellers/me, यदि आपका फ़ाइल नाम यही है
 
 export async function registerRoutes(app: Express): Promise<void> {
   try {
@@ -35,24 +36,20 @@ export async function registerRoutes(app: Express): Promise<void> {
         return res.status(401).json({ message: "Authentication failed." });
       }
 
-      const { email, uid, displayName } = req.user;
+      const { email, uid, name } = req.user; // ✅ req.user से 'name' का उपयोग करें
       // role query param से आता है, यदि उपलब्ध हो (उदाहरण के लिए, admin login के लिए)
       const requestedRole = (req.query.role as string) || "customer";
 
-      let user = await storage.getUserByEmail(email);
+      let user = await storage.getUserByFirebaseUid(uid); // ✅ email के बजाय Firebase UID से खोजें
       let isNewUser = false;
 
       if (!user) {
         // नया यूज़र बनाएं
         user = await storage.createUser({
-          email,
+          email: email!, // email के मौजूद होने की अपेक्षा करें
           firebaseUid: uid,
-          name: displayName || email.split('@')[0],
+          name: name || email!.split('@')[0], // नाम अगर उपलब्ध नहीं है तो ईमेल से लें
           role: requestedRole === "seller" ? "customer" : requestedRole, // विक्रेता रोल के लिए सीधे 'seller' असाइन न करें
-                                                                       // क्योंकि अनुमोदन की आवश्यकता होती है।
-                                                                       // यदि कोई Google से लॉग इन कर रहा है, तो वह
-                                                                       // डिफ़ॉल्ट रूप से 'customer' या 'requestedRole' होगा
-                                                                       // (यदि यह "admin" या "delivery" जैसा कुछ है)।
           approvalStatus: "approved" // नए ग्राहक डिफ़ॉल्ट रूप से अनुमोदित होते हैं
         });
         isNewUser = true;
@@ -61,20 +58,17 @@ export async function registerRoutes(app: Express): Promise<void> {
         console.log(`Existing user logged in: ${user.email}`);
       }
 
-      // ✅ यहाँ मुख्य बदलाव: 'user' ऑब्जेक्ट को 'uuid' प्रॉपर्टी के साथ भेजें
-      // storage.getUserByEmail और storage.createUser को 'id' प्रॉपर्टी के साथ एक
-      // यूज़र ऑब्जेक्ट वापस करना चाहिए, जो कि आपका Drizzle 'id' (इंटीजर) है।
-      // हम उसे फ्रंटएंड की अपेक्षा के लिए 'uuid' प्रॉपर्टी में मैप कर रहे हैं।
       res.json({
         message: isNewUser ? "User created and logged in successfully" : "Login successful",
         user: {
-          uuid: user.id.toString(), // ✅ user.id को string में बदलकर 'uuid' प्रॉपर्टी के रूप में भेजें
+          uuid: user.id.toString(), // ✅ Drizzle की इंटीजर ID को string में बदलकर 'uuid' प्रॉपर्टी के रूप में भेजें
           email: user.email,
           name: user.name,
           role: user.role,
-          approvalStatus: user.approvalStatus, // Ensure this is present if your User model has it
           // यदि user का role 'seller' है, तो seller-specific details भी भेजें
-          seller: user.role === "seller" ? { approvalStatus: user.approvalStatus } : undefined,
+          // नोट: आपको यहां seller डिटेल्स fetching के लिए एक और storage कॉल की आवश्यकता हो सकती है
+          // यदि `user` ऑब्जेक्ट में सीधे seller की approvalStatus नहीं है
+          seller: user.role === "seller" ? (await storage.getSellerByUserId(user.id)) : undefined, // ✅ यहां Seller की डिटेल्स fetch करें
           // अन्य यूज़र प्रॉपर्टीज जिन्हें आप फ्रंटएंड को भेजना चाहते हैं
         }
       });
@@ -90,7 +84,7 @@ export async function registerRoutes(app: Express): Promise<void> {
   app.use("/api/sellers/apply", sellersApplyRouter);
   app.use("/api/sellers/approve", sellersApproveRouter);
   app.use("/api/sellers/reject", sellersRejectRouter);
-  app.use("/api/seller/me", sellerMeRouter);
+  app.use("/api/sellers/me", sellerMeRouter); // ✅ सुनिश्चित करें कि यह /api/sellers/me है, आपके `sellerMeRouter` के अंदर `/me` है
 
   // --- DELIVERY LOGIN ---
   app.post("/api/delivery/login", verifyToken, async (req: AuthenticatedRequest, res: Response) => {
@@ -99,16 +93,16 @@ export async function registerRoutes(app: Express): Promise<void> {
         return res.status(401).json({ message: "Authentication failed." });
       }
 
-      const { email, uid, displayName } = req.user;
+      const { email, uid, name } = req.user; // ✅ req.user से 'name' का उपयोग करें
 
-      let deliveryBoy = await storage.getDeliveryBoyByEmail(email);
+      let deliveryBoy = await storage.getDeliveryBoyByFirebaseUid(uid); // ✅ Firebase UID से खोजें
       let isNewDeliveryBoy = false;
 
       if (!deliveryBoy) {
         deliveryBoy = await storage.createDeliveryBoy({
-          email,
+          email: email!,
           firebaseUid: uid,
-          name: displayName || email.split('@')[0],
+          name: name || email!.split('@')[0],
           approvalStatus: "pending" // नए डिलीवरी बॉय को लंबित मानें
         });
         isNewDeliveryBoy = true;
@@ -117,8 +111,6 @@ export async function registerRoutes(app: Express): Promise<void> {
         console.log(`Delivery boy logged in: ${deliveryBoy.email}`);
       }
 
-      // ✅ यहाँ भी 'user' ऑब्जेक्ट को 'uuid' प्रॉपर्टी के साथ भेजें
-      // user.id को string में बदलें और इसे uuid प्रॉपर्टी में मैप करें
       res.json({
         message: isNewDeliveryBoy ? "Delivery boy created and logged in successfully" : "Login successful",
         user: {
@@ -138,12 +130,11 @@ export async function registerRoutes(app: Express): Promise<void> {
 
   app.get("/api/delivery/me", verifyToken, async (req: AuthenticatedRequest, res: Response) => {
     try {
-      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+      if (!req.user || !req.user.uid) return res.status(401).json({ message: "Unauthorized" }); // ✅ uid चेक करें
 
       const deliveryBoy = await storage.getDeliveryBoyByFirebaseUid(req.user.uid);
-      if (!deliveryBoy) return res.status(404).json({ message: "Not found" });
+      if (!deliveryBoy) return res.status(404).json({ message: "Delivery profile not found." }); // ✅ मैसेज स्पष्ट करें
 
-      // ✅ 'user' ऑब्जेक्ट को 'uuid' प्रॉपर्टी के साथ भेजें
       res.json({ user: {
         uuid: deliveryBoy.id.toString(), // ✅ deliveryBoy.id को string में बदलकर 'uuid' प्रॉपर्टी के रूप में भेजें
         ...deliveryBoy, // शेष गुण
@@ -195,23 +186,12 @@ export async function registerRoutes(app: Express): Promise<void> {
   });
 
   // --- CART ROUTES ---
-  // ✅ ध्यान दें: यहाँ req.user.id का उपयोग किया जा रहा है। सुनिश्चित करें कि storage.getUserByEmail
-  // और storage.createUser से returned user ऑब्जेक्ट में 'id' प्रॉपर्टी शामिल हो जो कि एक नंबर है।
-  // चूंकि हमने frontend में user.uuid को user.id.toString() से मैप किया है,
-  // frontend से भेजे गए user.id को अब backend में parseInt() करने की आवश्यकता हो सकती है यदि
-  // related table columns integer types हैं।
-  // यहाँ, `req.user.id` Firebase UID से आ रहा है (यदि verifyToken इसे सेट करता है),
-  // जो एक स्ट्रिंग है। यदि आपके Drizzle स्कीमा में Foreign Keys `integer` हैं, तो यह यहाँ
-  // एक बेमेल पैदा करेगा।
-  // आपको `storage.getCartItemsByUserId(parseInt(req.user.id))` या
-  // अपने `storage` फ़ंक्शंस को स्ट्रिंग `id` को हैंडल करने के लिए अपडेट करना होगा।
-
   app.get("/api/cart", verifyToken, requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
-      // ✅ महत्वपूर्ण: req.user.id अब एक स्ट्रिंग (Firebase UID) हो सकता है।
-      // यदि storage functions को integer ID चाहिए, तो इसे parseInt करें।
-      // या, storage functions को string ID स्वीकार करने के लिए अपडेट करें।
-      const cartItems = await storage.getCartItemsByUserId(req.user.id); // या parseInt(req.user.id)
+      if (req.user?.id === undefined) { // ✅ सुनिश्चित करें कि डेटाबेस ID मौजूद है
+        return res.status(401).json({ message: "Unauthorized: User database ID not found." });
+      }
+      const cartItems = await storage.getCartItemsByUserId(req.user.id); 
       res.json(cartItems);
     } catch (error) {
       console.error("Error fetching cart:", error);
@@ -221,8 +201,10 @@ export async function registerRoutes(app: Express): Promise<void> {
 
   app.post("/api/cart", verifyToken, requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
-      // ✅ महत्वपूर्ण: req.user.id अब एक स्ट्रिंग (Firebase UID) हो सकता है।
-      const parsedItem = insertCartItemSchema.parse({ ...req.body, userId: req.user.id }); // या parseInt(req.user.id)
+      if (req.user?.id === undefined) { // ✅ सुनिश्चित करें कि डेटाबेस ID मौजूद है
+        return res.status(401).json({ message: "Unauthorized: User database ID not found." });
+      }
+      const parsedItem = insertCartItemSchema.parse({ ...req.body, userId: req.user.id }); 
       const cartItem = await storage.addCartItem(parsedItem);
       res.status(201).json(cartItem);
     } catch (error) {
@@ -244,8 +226,10 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
 
     try {
-      // ✅ महत्वपूर्ण: req.user.id अब एक स्ट्रिंग (Firebase UID) हो सकता है।
-      const updatedItem = await storage.updateCartItemQuantity(itemId, req.user.id, quantity); // या parseInt(req.user.id)
+      if (req.user?.id === undefined) { // ✅ सुनिश्चित करें कि डेटाबेस ID मौजूद है
+        return res.status(401).json({ message: "Unauthorized: User database ID not found." });
+      }
+      const updatedItem = await storage.updateCartItemQuantity(itemId, req.user.id, quantity); 
       if (!updatedItem) return res.status(404).json({ message: "Cart item not found." });
       res.json(updatedItem);
     } catch (error) {
@@ -259,8 +243,10 @@ export async function registerRoutes(app: Express): Promise<void> {
     if (itemId === null) return;
 
     try {
-      // ✅ महत्वपूर्ण: req.user.id अब एक स्ट्रिंग (Firebase UID) हो सकता है।
-      await storage.removeCartItem(itemId, req.user.id); // या parseInt(req.user.id)
+      if (req.user?.id === undefined) { // ✅ सुनिश्चित करें कि डेटाबेस ID मौजूद है
+        return res.status(401).json({ message: "Unauthorized: User database ID not found." });
+      }
+      await storage.removeCartItem(itemId, req.user.id); 
       res.status(204).send();
     } catch (error) {
       console.error("Error deleting cart item:", error);
@@ -270,8 +256,10 @@ export async function registerRoutes(app: Express): Promise<void> {
 
   app.delete("/api/cart", verifyToken, requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
-      // ✅ महत्वपूर्ण: req.user.id अब एक स्ट्रिंग (Firebase UID) हो सकता है।
-      await storage.clearCart(req.user.id); // या parseInt(req.user.id)
+      if (req.user?.id === undefined) { // ✅ सुनिश्चित करें कि डेटाबेस ID मौजूद है
+        return res.status(401).json({ message: "Unauthorized: User database ID not found." });
+      }
+      await storage.clearCart(req.user.id); 
       res.status(204).send();
     } catch (error) {
       console.error("Error clearing cart:", error);
@@ -282,8 +270,10 @@ export async function registerRoutes(app: Express): Promise<void> {
   // --- ORDER ROUTES ---
   app.post("/api/orders", verifyToken, requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
-      // ✅ महत्वपूर्ण: req.user.id अब एक स्ट्रिंग (Firebase UID) हो सकता है।
-      const parsedOrder = insertOrderSchema.parse({ ...req.body, customerId: req.user.id }); // या parseInt(req.user.id)
+      if (req.user?.id === undefined) { // ✅ सुनिश्चित करें कि डेटाबेस ID मौजूद है
+        return res.status(401).json({ message: "Unauthorized: User database ID not found." });
+      }
+      const parsedOrder = insertOrderSchema.parse({ ...req.body, customerId: req.user.id }); 
       const order = await storage.createOrder(parsedOrder);
       res.status(201).json(order);
     } catch (error) {
@@ -297,8 +287,10 @@ export async function registerRoutes(app: Express): Promise<void> {
 
   app.get("/api/orders", verifyToken, requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
-      // ✅ महत्वपूर्ण: req.user.id अब एक स्ट्रिंग (Firebase UID) हो सकता है।
-      const orders = await storage.getOrdersByUserId(req.user.id); // या parseInt(req.user.id)
+      if (req.user?.id === undefined) { // ✅ सुनिश्चित करें कि डेटाबेस ID मौजूद है
+        return res.status(401).json({ message: "Unauthorized: User database ID not found." });
+      }
+      const orders = await storage.getOrdersByUserId(req.user.id); 
       res.json(orders);
     } catch (error) {
       console.error("Error fetching orders:", error);
@@ -311,8 +303,10 @@ export async function registerRoutes(app: Express): Promise<void> {
     if (orderId === null) return;
 
     try {
-      // ✅ महत्वपूर्ण: req.user.id अब एक स्ट्रिंग (Firebase UID) हो सकता है।
-      const order = await storage.getOrderById(orderId, req.user.id); // या parseInt(req.user.id)
+      if (req.user?.id === undefined) { // ✅ सुनिश्चित करें कि डेटाबेस ID मौजूद है
+        return res.status(401).json({ message: "Unauthorized: User database ID not found." });
+      }
+      const order = await storage.getOrderById(orderId, req.user.id); 
       if (!order) return res.status(404).json({ message: "Order not found." });
       res.json(order);
     } catch (error) {
@@ -340,8 +334,10 @@ export async function registerRoutes(app: Express): Promise<void> {
     if (productId === null) return;
 
     try {
-      // ✅ महत्वपूर्ण: req.user.id अब एक स्ट्रिंग (Firebase UID) हो सकता है।
-      const parsedReview = insertReviewSchema.parse({ ...req.body, productId, customerId: req.user.id }); // या parseInt(req.user.id)
+      if (req.user?.id === undefined) { // ✅ सुनिश्चित करें कि डेटाबेस ID मौजूद है
+        return res.status(401).json({ message: "Unauthorized: User database ID not found." });
+      }
+      const parsedReview = insertReviewSchema.parse({ ...req.body, productId, customerId: req.user.id }); 
       const review = await storage.addReview(parsedReview);
       res.status(201).json(review);
     } catch (error) {
@@ -352,4 +348,4 @@ export async function registerRoutes(app: Express): Promise<void> {
       res.status(500).json({ message: "Failed to add review." });
     }
   });
-  }
+        }
