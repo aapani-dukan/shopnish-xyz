@@ -144,7 +144,7 @@ export class DatabaseStorage implements IStorage {
           or(
             sql`${products.name} ILIKE ${'%' + searchLower + '%'}`,
             sql`${products.nameHindi} ILIKE ${'%' + searchLower + '%'}`,
-            sql`${products.description} ILIKE ${'%' + searchLower + '%'}`
+            sql`${products.description} ILIKE ${'%' + searchLower + '%'}`,
           )
         );
       }
