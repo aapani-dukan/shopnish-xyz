@@ -2,7 +2,7 @@
 
 import { db } from "./db";
 import {
-  users, categories, products, cartItems, orders, orderItems, reviews, sellers, deliveryBoys,
+  users, categories, products, cartItems, orders, orderItems, reviews, sellersPgtable, deliveryBoys,
   type User, type InsertUser, type Category, type InsertCategory,
   type Product, type InsertProduct, type CartItem, type InsertCartItem,
   type Order, type InsertOrder, type OrderItem, type InsertOrderItem,
@@ -85,14 +85,14 @@ export class DatabaseStorage implements IStorage {
 
   async getSellers(filters?: { approvalStatus?: string }): Promise<Seller[]> {
     try {
-      let query = db.select().from(sellers);
+      let query = db.select().from(sellersPgTable);
       if (filters?.approvalStatus) {
-        query = query.where(eq(sellers.approvalStatus, filters.approvalStatus));
+        query = query.where(eq(sellersPgTable.approvalStatus, filters.approvalStatus));
       }
       const sellersList = await query;
       return sellersList;
     } catch (error) {
-      console.error("Error getting sellers:", error);
+      console.error("Error getting sellersPgTable:", error);
       return [];
     }
   }
