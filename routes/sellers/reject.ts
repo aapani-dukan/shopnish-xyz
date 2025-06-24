@@ -1,24 +1,27 @@
 // routes/sellers/reject.ts
 import { Router, Response, NextFunction } from "express";
 import { db } from "../../server/db";
-import { sellers, users } from "../../shared/backend/schema"; // users स्कीमा को इम्पोर्ट करें
-// ✅ verifyToken और AuthenticatedRequest को इम्पोर्ट करें
+import { sellers, users } from "../../shared/backend/schema"; // स्कीमा टेबल्स इम्पोर्ट करें
 import { verifyToken, AuthenticatedRequest } from "../../server/middleware/verifyToken";
-// ✅ eq को Drizzle के लिए इम्पोर्ट करें
-import { eq } from "drizzle-orm";
+import { eq } from "drizzle-orm"; // 'eq' को Drizzle के लिए इम्पोर्ट करें
 
 const router = Router();
 
-// isAdmin मिडलवेयर (सुनिश्चित करें कि यह आपके सिस्टम में सही ढंग से परिभाषित है)
+// isAdmin मिडलवेयर (पिछले वाले के समान, सुनिश्चित करें कि यह आपके सिस्टम में सही ढंग से परिभाषित है)
 const isAdmin = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   if (!req.user?.uid) {
     return res.status(401).json({ message: "Unauthorized: User not authenticated." });
   }
 
   try {
-    const user = await db.query.users.findFirst({
-      where: eq(users.firebaseUid, req.user.uid),
-    });
+    // ❌ OLD: const user = await db.query.users.findFirst({ where: eq(users.firebaseUid, req.user.uid) });
+    // ✅ NEW: Drizzle ORM में सही सिंटैक्स का उपयोग करें
+    const userResult = await db.select()
+                               .from(users)
+                               .where(eq(users.firebaseUid, req.user.uid))
+                               .limit(1); // केवल एक रिकॉर्ड प्राप्त करने के लिए
+
+    const user = userResult.length > 0 ? userResult[0] : null; // एरे से पहला यूजर निकालें, यदि कोई है
 
     if (user?.role === 'admin') {
       next(); // एडमिन है, तो अगले मिडलवेयर/राउट पर जाएँ
@@ -38,10 +41,8 @@ const isAdmin = async (req: AuthenticatedRequest, res: Response, next: NextFunct
  *
  * Body ⇒ { sellerId: number, reason: string } (sellerId is the Drizzle 'id' of the seller record)
  */
-// ✅ verifyToken और isAdmin मिडलवेयर का उपयोग करें
 router.post("/", verifyToken, isAdmin, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
-    // ✅ sellerId और reason को body से प्राप्त करें
     const { sellerId, reason } = req.body;
 
     if (!sellerId || !reason) {
@@ -49,42 +50,50 @@ router.post("/", verifyToken, isAdmin, async (req: AuthenticatedRequest, res: Re
     }
 
     // 1. Find the seller
-    const existingSeller = await db.query.sellers.findFirst({
-      // ✅ sellers.id का उपयोग करें क्योंकि sellerId यहाँ Drizzle 'id' को रेफर करता है
-      where: eq(sellers.id, sellerId), 
-    });
+    // ❌ OLD: const existingSeller = await db.query.sellers.findFirst({ where: eq(sellers.id, sellerId) });
+    // ✅ NEW: Drizzle ORM में सही सिंटैक्स
+    const existingSellerResult = await db.select()
+                                         .from(sellers)
+                                         .where(eq(sellers.id, sellerId))
+                                         .limit(1);
+
+    const existingSeller = existingSellerResult.length > 0 ? existingSellerResult[0] : null;
 
     if (!existingSeller) {
       return res.status(404).json({ message: "Seller not found" });
     }
 
-    // ✅ सुरक्षा जाँच: यदि विक्रेता पहले से स्वीकृत है तो अस्वीकार न करें (वैकल्पिक)
     if (existingSeller.approvalStatus === 'approved') {
         return res.status(400).json({ message: "Seller is already approved and cannot be rejected." });
     }
 
     // 2. Reject the seller
-    const [updatedSeller] = await db
+    // ❌ OLD: const [updatedSeller] = await db.update(sellers)...
+    // ✅ NEW: Drizzle update()
+    const updatedSellerResult = await db
       .update(sellers)
       .set({
         approvalStatus: "rejected",
         rejectionReason: reason,
-        approvedAt: null, // यदि गलती से स्वीकृत हो गया था तो null करें
-        updatedAt: new Date(), // updatedAt भी अपडेट करें
+        approvedAt: null,
+        updatedAt: new Date(),
       })
-      // ✅ sellers.id का उपयोग करें
-      .where(eq(sellers.id, sellerId)) 
-      .returning();
+      .where(eq(sellers.id, sellerId))
+      .returning(); // यह एक एरे लौटाता है
+
+    const updatedSeller = updatedSellerResult[0]; // पहला एलिमेंट प्राप्त करें
 
     // 3. Update user role back to "user" (from "pending_seller")
-    // ✅ users.firebaseUid का उपयोग करें क्योंकि existingSeller.userId ही Firebase UID है
-    const [updatedUser] = await db
+    // ❌ OLD: const [updatedUser] = await db.update(users)...
+    // ✅ NEW: Drizzle update()
+    const updatedUserResult = await db
       .update(users)
-      .set({ role: "user", updatedAt: new Date() }) // रोल को वापस 'user' करें
-      .where(eq(users.firebaseUid, existingSeller.userId)) // ✅ existingSeller.userId ही Firebase UID है
-      .returning();
+      .set({ role: "user", updatedAt: new Date() })
+      .where(eq(users.firebaseUid, existingSeller.userId))
+      .returning(); // यह एक एरे लौटाता है
 
-    // ✅ सुनिश्चित करें कि यूजर अपडेट हुआ
+    const updatedUser = updatedUserResult.length > 0 ? updatedUserResult[0] : undefined; // पहला एलिमेंट प्राप्त करें, या undefined यदि कोई नहीं
+
     if (!updatedUser) {
         console.error("Seller reject: Could not find user to update role for firebaseUid:", existingSeller.userId);
         // यहाँ हम 500 एरर नहीं देंगे क्योंकि विक्रेता का स्टेटस अपडेट हो गया है,
@@ -94,17 +103,17 @@ router.post("/", verifyToken, isAdmin, async (req: AuthenticatedRequest, res: Re
     res.json({
       message: "Seller application rejected.",
       seller: updatedSeller,
-      // ✅ यूजर ऑब्जेक्ट में uuid और अन्य आवश्यक जानकारी भेजें
       user: updatedUser ? {
-          uuid: updatedUser.uuid, 
+          uuid: updatedUser.uuid,
           role: updatedUser.role,
           email: updatedUser.email,
-          name: updatedUser.name, // यदि उपलब्ध हो तो
+          name: updatedUser.name,
       } : undefined, // यदि यूजर अपडेट नहीं हुआ तो undefined भेजें
     });
   } catch (error) {
-    console.error("Error in seller reject route:", error); 
-    next(error);
+    console.error("Error in seller reject route:", error);
+    // ✅ सुनिश्चित करें कि एरर को ठीक से हैंडल किया गया है
+    res.status(500).json({ message: "Internal Server Error", error: (error as Error).message });
   }
 });
 
