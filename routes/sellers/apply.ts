@@ -1,7 +1,8 @@
-// routes/sellers/apply.ts (इसे अपनी फ़ाइल में पेस्ट करें)
+// routes/sellers/apply.ts
 import { Router, Response, NextFunction } from "express";
 import { db } from "../../server/db";
-import { sellers, users } from "../../shared/backend/schema";
+// ✅ sellersPgTable को इंपोर्ट करें, sellers Zod ऑब्जेक्ट को नहीं
+import { sellersPgTable, users } from "../../shared/backend/schema"; 
 import { verifyToken, AuthenticatedRequest } from "../../server/middleware/verifyToken";
 import { eq } from "drizzle-orm";
 
@@ -37,14 +38,15 @@ router.post("/", verifyToken, async (req: AuthenticatedRequest, res: Response, n
     } = req.body;
 
     // अनिवार्य फ़ील्ड्स की जाँच करें
-    if (!businessName || !businessPhone || !city || !pincode || !businessAddress) {
+    if (!businessName || !businessPhone || !city || !pincode || !businessAddress || !businessType) {
+      // businessType भी अनिवार्य है अगर Zod स्कीमा में min(1) है।
       return res.status(400).json({ message: "Missing required seller details." });
     }
 
     /* ─────────── 4. पहले से आवेदन या approve तो नहीं? ─────────── */
     const existingSellerResult = await db.select()
-                                   .from(sellers)
-                                   .where(eq(sellers.userId, firebaseUid))
+                                   .from(sellersPgTable) // ✅ sellersPgTable का उपयोग करें
+                                   .where(eq(sellersPgTable.userId, firebaseUid)) // ✅ sellersPgTable.userId का उपयोग करें
                                    .limit(1);
 
     const existingSeller = existingSellerResult.length > 0 ? existingSellerResult[0] : undefined;
@@ -57,32 +59,30 @@ router.post("/", verifyToken, async (req: AuthenticatedRequest, res: Response, n
     }
 
     /* ─────────── 5. नया आवेदन create करें (status: pending) ─────────── */
+    // सुनिश्चित करें कि deliveryRadius को parseInt किया जा रहा है यदि यह req.body में स्ट्रिंग के रूप में आता है।
     const insertData = {
       userId: firebaseUid,
       businessName: businessName,
       businessAddress: businessAddress,
       businessPhone: businessPhone,
-      businessType: businessType || null, 
+      businessType: businessType, // अब अनिवार्य, इसलिए null नहीं
       description: description || null,   
       city: city,
       pincode: pincode, 
       gstNumber: gstNumber || null,
       bankAccountNumber: bankAccountNumber || null, 
       ifscCode: ifscCode || null,
-      deliveryRadius: deliveryRadius ? parseInt(deliveryRadius) : null, 
+      deliveryRadius: deliveryRadius ? parseInt(String(deliveryRadius)) : null, // ✅ सुरक्षित parseInt
       approvalStatus: "pending",
-      // createdAt, updatedAt, appliedAt को छोड़ दें यदि स्कीमा में defaultNow() है।
-      // यदि एरर जारी रहती है, तो इन्हें new Date().toISOString() के साथ वापस ला सकते हैं।
-      // createdAt: new Date().toISOString(), 
-      // updatedAt: new Date().toISOString(), 
-      // appliedAt: new Date().toISOString(), 
+      // createdAt, updatedAt जैसे टाइमस्टैम्प स्कीमा में defaultNow() से हैंडल होंगे,
+      // इसलिए यहाँ मैन्युअल रूप से सेट करने की आवश्यकता नहीं है।
     };
 
     // ✅ यह लॉग हमें दिखाएगा कि डेटाबेस में क्या इन्सर्ट किया जा रहा है
     console.log("Seller data prepared for insertion:", insertData);
 
     const newSellerResult = await db
-      .insert(sellers)
+      .insert(sellersPgTable) // ✅ sellersPgTable का उपयोग करें
       .values(insertData) 
       .returning(); 
 
@@ -93,7 +93,6 @@ router.post("/", verifyToken, async (req: AuthenticatedRequest, res: Response, n
       .update(users)
       .set({ 
         role: "pending_seller", 
-        // updatedAt: new Date().toISOString() 
       })
       .where(eq(users.firebaseUid, firebaseUid)) 
       .returning(); 
@@ -110,7 +109,7 @@ router.post("/", verifyToken, async (req: AuthenticatedRequest, res: Response, n
       message: "Seller application submitted",
       seller: newSeller, 
       user: {
-          uuid: updatedUser.uuid, 
+          uuid: updatedUser.firebaseUid, // ✅ users.uuid के बजाय firebaseUid
           role: updatedUser.role,
           email: updatedUser.email,
           name: updatedUser.name,
