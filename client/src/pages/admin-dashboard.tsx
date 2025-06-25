@@ -23,6 +23,7 @@ interface Product {
   status: string; // Product स्टेटस के लिए 'status' सही हो सकता है
 }
 
+
 export default function AdminDashboard() {
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
@@ -30,25 +31,39 @@ export default function AdminDashboard() {
 
   const fetchVendors = async () => {
     try {
-      // यह API कॉल सभी वेंडर्स को फ़ेच करना चाहिए (पेंडिंग, अप्रूव्ड, रिजेक्टेड)
       const res = await apiRequest("GET", "/api/admin/vendors");
-      setVendors(res.data);
-      console.log("Fetched vendors for admin:", res.data); // Debugging के लिए
+      // ✅ यहाँ सुरक्षित रूप से डेटा हैंडल करें
+      if (res && Array.isArray(res.data)) {
+        setVendors(res.data);
+        console.log("Fetched vendors for admin:", res.data);
+      } else {
+        // अगर res.data एरे नहीं है, तो एक खाली एरे सेट करें या लॉग करें
+        setVendors([]); // या मौजूदा डेटा को बनाए रखें
+        console.warn("API response for vendors is not an array:", res.data);
+      }
     } catch (error) {
       console.error("Error fetching vendors:", error);
-      // यहां एरर हैंडलिंग UI दिखा सकते हैं
+      setVendors([]); // एरर होने पर भी लिस्ट को खाली करें ताकि UI क्रैश न हो
     }
   };
 
   const fetchProducts = async () => {
     try {
       const res = await apiRequest("GET", "/api/admin/products");
-      setProducts(res.data);
-      console.log("Fetched products for admin:", res.data); // Debugging के लिए
+      // ✅ यहाँ भी सुरक्षित रूप से डेटा हैंडल करें
+      if (res && Array.isArray(res.data)) {
+        setProducts(res.data);
+        console.log("Fetched products for admin:", res.data);
+      } else {
+        setProducts([]);
+        console.warn("API response for products is not an array:", res.data);
+      }
     } catch (error) {
       console.error("Error fetching products:", error);
+      setProducts([]);
     }
   };
+
 
   const approveVendor = async (vendorId: string) => {
     try {
