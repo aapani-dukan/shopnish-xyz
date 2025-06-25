@@ -73,7 +73,7 @@ export async function registerRoutes(app: Express): Promise<void> {
       let finalApprovalStatus = user.approvalStatus; // यूजर का मौजूदा अप्रूवल स्टेटस
 
       if (user.role === "seller") {
-          sellerDetails = await storage.getSellerByUserFirebaseUid(user.FirebaseUif);
+          sellerDetails = await storage.getSellerByUserFirebaseUid(user.FirebaseUid);
           if (sellerDetails) {
               finalApprovalStatus = sellerDetails.approvalStatus; // Seller की असली approvalStatus लें
           }
