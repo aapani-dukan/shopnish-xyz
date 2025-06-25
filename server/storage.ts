@@ -83,20 +83,35 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  async getSellers(filters?: { approvalStatus?: string }): Promise<Seller[]> {
-    try {
-      let query = db.select().from(sellersPgTable);
-      if (filters?.approvalStatus) {
-        query = query.where(eq(sellersPgTable.approvalStatus, filters.approvalStatus));
-      }
-      const sellersList = await query;
-      return sellersList;
-    } catch (error) {
-      console.error("Error getting sellersPgTable:", error);
-      return [];
+  
+async getSellers(filters?: { approvalStatus?: string }): Promise<Seller[]> {
+  try {
+    let query = db.select().from(sellersPgTable);
+    if (filters?.approvalStatus) {
+      query = query.where(eq(sellersPgTable.approvalStatus, filters.approvalStatus));
     }
+    const sellersList = await query;
+    return sellersList;
+  } catch (error) {
+    console.error("Error getting sellersPgTable:", error);
+    return [];
   }
+}
 
+async getSellerByUserFirebaseUid(firebaseUid: string): Promise<Seller | undefined> {
+  try {
+    const seller = await db
+      .select()
+      .from(sellersPgTable)
+      .where(eq(sellersPgTable.userId, firebaseUid)) // ✅ string match
+      .limit(1);
+
+    return seller[0];
+  } catch (error) {
+    console.error("Error fetching seller by Firebase UID:", error);
+    return undefined;
+  }
+}
   async createUser(user: InsertUser): Promise<User> {
     const result = await db.insert(users).values(user).returning();
     return result[0];
