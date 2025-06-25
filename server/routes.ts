@@ -1,4 +1,5 @@
 // server/routes.ts
+
 import express, { type Express, Request, Response } from "express";
 import { storage } from "./storage";
 import { seedDatabase } from "./seed";
@@ -10,15 +11,15 @@ import {
   insertCartItemSchema,
   insertOrderSchema,
   insertReviewSchema,
-} from "../shared/backend/schema"; 
+} from "../shared/backend/schema";
 // Routers
-import adminVendorsRouter from "./roots/admin/vendors"; 
+import adminVendorsRouter from "./roots/admin/vendors";
 
 import pendingSellersRouter from "../routes/sellers/pending";
 import sellersApplyRouter from "../routes/sellers/apply";
 import sellersApproveRouter from "../routes/sellers/approve";
 import sellersRejectRouter from "../routes/sellers/reject";
-import sellerMeRouter from "../routes/sellerMe"; // ✅ यहाँ यह सुनिश्चित करें कि यह sellerMeRouter है न कि sellers/me, यदि आपका फ़ाइल नाम यही है
+import sellerMeRouter from "../routes/sellerMe";
 
 
 export async function registerRoutes(app: Express): Promise<void> {
@@ -43,10 +44,11 @@ export async function registerRoutes(app: Express): Promise<void> {
 
       if (!user) {
         // नया यूज़र बनाएं
+        // ✅ यह वह हिस्सा है जिसे आपको बदलना है!
         let userRole: "customer" | "seller" = "customer"; // डिफ़ॉल्ट कस्टमर
         let userApprovalStatus: "approved" | "pending" | "rejected" = "approved"; // डिफ़ॉल्ट रूप से अनुमोदित
 
-        // अगर रिक्वेस्टेड रोल 'seller' या 'pending_seller' है
+        // अगर रिक्वेस्टेड रोल 'seller' या 'pending_seller' है, तो सही रोल और स्टेटस सेट करें
         if (requestedRole === "seller" || requestedRole === "pending_seller") {
             userRole = "seller"; // रोल को 'seller' पर सेट करें
             userApprovalStatus = "pending"; // और स्टेटस को 'pending' पर सेट करें
@@ -56,19 +58,19 @@ export async function registerRoutes(app: Express): Promise<void> {
           email: email!,
           firebaseUid: uid,
           name: name || email!.split('@')[0],
-          role: userRole, // ✅ अब यह 'seller' या 'customer' होगा
-          approvalStatus: userApprovalStatus // ✅ अब यह 'pending' या 'approved' होगा
+          role: userRole, // ✅ यह अब सही 'seller' या 'customer' होगा
+          approvalStatus: userApprovalStatus // ✅ यह अब सही 'pending' या 'approved' होगा
         });
         isNewUser = true;
         console.log(`New user created: ${user.email} with role: ${user.role} and status: ${user.approvalStatus}`);
       } else {
+        // ✅ मौजूदा यूजर के लिए भी सही लॉगिंग और स्टेटस अपडेट
         console.log(`Existing user logged in: ${user.email} with role: ${user.role} and status: ${user.approvalStatus}`);
       }
 
       // response में भेजने से पहले, अगर यूजर सेलर है, तो उसकी अपडेटेड डिटेल्स फ़ेच करें
       let sellerDetails = undefined;
-      // यूजर का फाइनल अप्रूवल स्टेटस जो फ्रंटएंड को भेजा जाएगा
-      let finalApprovalStatus = user.approvalStatus;
+      let finalApprovalStatus = user.approvalStatus; // यूजर का मौजूदा अप्रूवल स्टेटस
 
       if (user.role === "seller") {
           sellerDetails = await storage.getSellerByUserId(user.id);
@@ -83,9 +85,9 @@ export async function registerRoutes(app: Express): Promise<void> {
           uuid: user.id.toString(),
           email: user.email,
           name: user.name,
-          role: user.role, // ✅ 'seller' या 'customer' होगा
-          seller: sellerDetails, // सेलर डिटेल्स भेजें (अगर यूजर सेलर है)
-          approvalStatus: finalApprovalStatus, // ✅ यहां सही 'pending'/'approved'/'rejected' स्टेटस आएगा
+          role: user.role,
+          seller: sellerDetails,
+          approvalStatus: finalApprovalStatus,
         }
       });
 
@@ -94,15 +96,15 @@ export async function registerRoutes(app: Express): Promise<void> {
       res.status(500).json({ message: "Internal server error." });
     }
   });
- 
-        // ADMIN ROUTES
-  app.use("/api/admin/vendors", adminVendorsRouter); 
+
+  // ADMIN ROUTES
+  app.use("/api/admin/vendors", adminVendorsRouter);
   // --- SELLER ROUTES ---
   app.use("/api/sellers/pending", pendingSellersRouter);
   app.use("/api/sellers/apply", sellersApplyRouter);
   app.use("/api/sellers/approve", sellersApproveRouter);
   app.use("/api/sellers/reject", sellersRejectRouter);
-  app.use("/api/sellers/me", sellerMeRouter); // ✅ सुनिश्चित करें कि यह /api/sellers/me है, आपके `sellerMeRouter` के अंदर `/me` है
+  app.use("/api/sellers/me", sellerMeRouter);
 
   // --- DELIVERY LOGIN ---
   app.post("/api/delivery/login", verifyToken, async (req: AuthenticatedRequest, res: Response) => {
@@ -111,9 +113,9 @@ export async function registerRoutes(app: Express): Promise<void> {
         return res.status(401).json({ message: "Authentication failed." });
       }
 
-      const { email, uid, name } = req.user; // ✅ req.user से 'name' का उपयोग करें
+      const { email, uid, name } = req.user;
 
-      let deliveryBoy = await storage.getDeliveryBoyByFirebaseUid(uid); // ✅ Firebase UID से खोजें
+      let deliveryBoy = await storage.getDeliveryBoyByFirebaseUid(uid);
       let isNewDeliveryBoy = false;
 
       if (!deliveryBoy) {
@@ -121,7 +123,7 @@ export async function registerRoutes(app: Express): Promise<void> {
           email: email!,
           firebaseUid: uid,
           name: name || email!.split('@')[0],
-          approvalStatus: "pending" // नए डिलीवरी बॉय को लंबित मानें
+          approvalStatus: "pending"
         });
         isNewDeliveryBoy = true;
         console.log(`New delivery boy created: ${deliveryBoy.email}`);
@@ -132,12 +134,11 @@ export async function registerRoutes(app: Express): Promise<void> {
       res.json({
         message: isNewDeliveryBoy ? "Delivery boy created and logged in successfully" : "Login successful",
         user: {
-          uuid: deliveryBoy.id.toString(), // ✅ deliveryBoy.id को string में बदलकर 'uuid' प्रॉपर्टी के रूप में भेजें
+          uuid: deliveryBoy.id.toString(),
           email: deliveryBoy.email,
           name: deliveryBoy.name,
-          role: "delivery", // हार्डकोड करें क्योंकि यह डिलीवरी बॉय लॉगिन है
+          role: "delivery",
           approvalStatus: deliveryBoy.approvalStatus,
-          // अन्य डिलीवरी बॉय प्रॉपर्टीज जिन्हें आप फ्रंटएंड को भेजना चाहते हैं
         }
       });
     } catch (error) {
@@ -148,14 +149,14 @@ export async function registerRoutes(app: Express): Promise<void> {
 
   app.get("/api/delivery/me", verifyToken, async (req: AuthenticatedRequest, res: Response) => {
     try {
-      if (!req.user || !req.user.uid) return res.status(401).json({ message: "Unauthorized" }); // ✅ uid चेक करें
+      if (!req.user || !req.user.uid) return res.status(401).json({ message: "Unauthorized" });
 
       const deliveryBoy = await storage.getDeliveryBoyByFirebaseUid(req.user.uid);
-      if (!deliveryBoy) return res.status(404).json({ message: "Delivery profile not found." }); // ✅ मैसेज स्पष्ट करें
+      if (!deliveryBoy) return res.status(404).json({ message: "Delivery profile not found." });
 
       res.json({ user: {
-        uuid: deliveryBoy.id.toString(), // ✅ deliveryBoy.id को string में बदलकर 'uuid' प्रॉपर्टी के रूप में भेजें
-        ...deliveryBoy, // शेष गुण
+        uuid: deliveryBoy.id.toString(),
+        ...deliveryBoy,
         role: "delivery"
       }});
     } catch (error) {
@@ -206,10 +207,10 @@ export async function registerRoutes(app: Express): Promise<void> {
   // --- CART ROUTES ---
   app.get("/api/cart", verifyToken, requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
-      if (req.user?.id === undefined) { // ✅ सुनिश्चित करें कि डेटाबेस ID मौजूद है
+      if (req.user?.id === undefined) {
         return res.status(401).json({ message: "Unauthorized: User database ID not found." });
       }
-      const cartItems = await storage.getCartItemsByUserId(req.user.id); 
+      const cartItems = await storage.getCartItemsByUserId(req.user.id);
       res.json(cartItems);
     } catch (error) {
       console.error("Error fetching cart:", error);
@@ -219,10 +220,10 @@ export async function registerRoutes(app: Express): Promise<void> {
 
   app.post("/api/cart", verifyToken, requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
-      if (req.user?.id === undefined) { // ✅ सुनिश्चित करें कि डेटाबेस ID मौजूद है
+      if (req.user?.id === undefined) {
         return res.status(401).json({ message: "Unauthorized: User database ID not found." });
       }
-      const parsedItem = insertCartItemSchema.parse({ ...req.body, userId: req.user.id }); 
+      const parsedItem = insertCartItemSchema.parse({ ...req.body, userId: req.user.id });
       const cartItem = await storage.addCartItem(parsedItem);
       res.status(201).json(cartItem);
     } catch (error) {
@@ -244,10 +245,10 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
 
     try {
-      if (req.user?.id === undefined) { // ✅ सुनिश्चित करें कि डेटाबेस ID मौजूद है
+      if (req.user?.id === undefined) {
         return res.status(401).json({ message: "Unauthorized: User database ID not found." });
       }
-      const updatedItem = await storage.updateCartItemQuantity(itemId, req.user.id, quantity); 
+      const updatedItem = await storage.updateCartItemQuantity(itemId, req.user.id, quantity);
       if (!updatedItem) return res.status(404).json({ message: "Cart item not found." });
       res.json(updatedItem);
     } catch (error) {
@@ -261,10 +262,10 @@ export async function registerRoutes(app: Express): Promise<void> {
     if (itemId === null) return;
 
     try {
-      if (req.user?.id === undefined) { // ✅ सुनिश्चित करें कि डेटाबेस ID मौजूद है
+      if (req.user?.id === undefined) {
         return res.status(401).json({ message: "Unauthorized: User database ID not found." });
       }
-      await storage.removeCartItem(itemId, req.user.id); 
+      await storage.removeCartItem(itemId, req.user.id);
       res.status(204).send();
     } catch (error) {
       console.error("Error deleting cart item:", error);
@@ -274,10 +275,10 @@ export async function registerRoutes(app: Express): Promise<void> {
 
   app.delete("/api/cart", verifyToken, requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
-      if (req.user?.id === undefined) { // ✅ सुनिश्चित करें कि डेटाबेस ID मौजूद है
+      if (req.user?.id === undefined) {
         return res.status(401).json({ message: "Unauthorized: User database ID not found." });
       }
-      await storage.clearCart(req.user.id); 
+      await storage.clearCart(req.user.id);
       res.status(204).send();
     } catch (error) {
       console.error("Error clearing cart:", error);
@@ -288,10 +289,10 @@ export async function registerRoutes(app: Express): Promise<void> {
   // --- ORDER ROUTES ---
   app.post("/api/orders", verifyToken, requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
-      if (req.user?.id === undefined) { // ✅ सुनिश्चित करें कि डेटाबेस ID मौजूद है
+      if (req.user?.id === undefined) {
         return res.status(401).json({ message: "Unauthorized: User database ID not found." });
       }
-      const parsedOrder = insertOrderSchema.parse({ ...req.body, customerId: req.user.id }); 
+      const parsedOrder = insertOrderSchema.parse({ ...req.body, customerId: req.user.id });
       const order = await storage.createOrder(parsedOrder);
       res.status(201).json(order);
     } catch (error) {
@@ -305,10 +306,10 @@ export async function registerRoutes(app: Express): Promise<void> {
 
   app.get("/api/orders", verifyToken, requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
-      if (req.user?.id === undefined) { // ✅ सुनिश्चित करें कि डेटाबेस ID मौजूद है
+      if (req.user?.id === undefined) {
         return res.status(401).json({ message: "Unauthorized: User database ID not found." });
       }
-      const orders = await storage.getOrdersByUserId(req.user.id); 
+      const orders = await storage.getOrdersByUserId(req.user.id);
       res.json(orders);
     } catch (error) {
       console.error("Error fetching orders:", error);
@@ -321,15 +322,15 @@ export async function registerRoutes(app: Express): Promise<void> {
     if (orderId === null) return;
 
     try {
-      if (req.user?.id === undefined) { // ✅ सुनिश्चित करें कि डेटाबेस ID मौजूद है
+      if (req.user?.id === undefined) {
         return res.status(401).json({ message: "Unauthorized: User database ID not found." });
       }
-      const order = await storage.getOrderById(orderId, req.user.id); 
+      const order = await storage.getOrderById(orderId, req.user.id);
       if (!order) return res.status(404).json({ message: "Order not found." });
       res.json(order);
     } catch (error) {
       console.error("Error fetching order:", error);
-      res.status(500).json({ message: "Failed to fetch order." });
+      res.status(500).json({ message: "Internal server error." });
     }
   });
 
@@ -352,10 +353,10 @@ export async function registerRoutes(app: Express): Promise<void> {
     if (productId === null) return;
 
     try {
-      if (req.user?.id === undefined) { // ✅ सुनिश्चित करें कि डेटाबेस ID मौजूद है
+      if (req.user?.id === undefined) {
         return res.status(401).json({ message: "Unauthorized: User database ID not found." });
       }
-      const parsedReview = insertReviewSchema.parse({ ...req.body, productId, customerId: req.user.id }); 
+      const parsedReview = insertReviewSchema.parse({ ...req.body, productId, customerId: req.user.id });
       const review = await storage.addReview(parsedReview);
       res.status(201).json(review);
     } catch (error) {
@@ -366,4 +367,4 @@ export async function registerRoutes(app: Express): Promise<void> {
       res.status(500).json({ message: "Failed to add review." });
     }
   });
-        }
+}
