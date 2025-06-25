@@ -2,7 +2,7 @@
 
 import { db } from "./db";
 import {
-  users, categories, products, cartItems, orders, orderItems, reviews, sellersPgtable, deliveryBoys,
+  users, categories, products, cartItems, orders, orderItems, reviews, sellersPgTable, deliveryBoys,
   type User, type InsertUser, type Category, type InsertCategory,
   type Product, type InsertProduct, type CartItem, type InsertCartItem,
   type Order, type InsertOrder, type OrderItem, type InsertOrderItem,
