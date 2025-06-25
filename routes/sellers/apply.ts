@@ -92,7 +92,7 @@ router.post("/", verifyToken, async (req: AuthenticatedRequest, res: Response, n
     const updatedUserResult = await db
       .update(users)
       .set({ 
-        role: "pending_seller", 
+        role: "seller", 
       })
       .where(eq(users.firebaseUid, firebaseUid)) 
       .returning(); 
