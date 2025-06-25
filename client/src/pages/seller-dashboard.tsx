@@ -321,7 +321,7 @@ export default function SellerDashboard() {
             <Skeleton className="h-8 w-64 mb-6" /> {/* Title Skeleton */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
               {[...Array(4)].map((_, i) => (
-                <Skeleton key={i} className="h-32 rounded-xl" /> {/* Metric Cards Skeleton */}
+                <Skeleton key={i} className="h-32 rounded-xl" /> 
               ))}
             </div>
             <Skeleton className="h-10 w-full mb-4 rounded-md" /> {/* Tabs List Skeleton */}
