@@ -10,7 +10,6 @@ import {
   insertCartItemSchema,
   insertOrderSchema,
   insertReviewSchema,
-  // User type की यहाँ सीधी आवश्यकता नहीं है, लेकिन अगर आप इसे उपयोग करते हैं तो सुनिश्चित करें कि यह सही है
 } from "../shared/backend/schema"; 
 // Routers
 import adminVendorsRouter from "./roots/admin/vendors"; 
@@ -21,10 +20,9 @@ import sellersApproveRouter from "../routes/sellers/approve";
 import sellersRejectRouter from "../routes/sellers/reject";
 import sellerMeRouter from "../routes/sellerMe"; // ✅ यहाँ यह सुनिश्चित करें कि यह sellerMeRouter है न कि sellers/me, यदि आपका फ़ाइल नाम यही है
 
+
 export async function registerRoutes(app: Express): Promise<void> {
   try {
-    // Note: Seed database only once, perhaps in a separate script or conditional check
-    // await seedDatabase(); // Consider commenting this out after initial setup
     console.log("Database seeded successfully.");
   } catch (error) {
     console.error("Failed to seed database:", error);
@@ -37,40 +35,57 @@ export async function registerRoutes(app: Express): Promise<void> {
         return res.status(401).json({ message: "Authentication failed." });
       }
 
-      const { email, uid, name } = req.user; // ✅ req.user से 'name' का उपयोग करें
-      // role query param से आता है, यदि उपलब्ध हो (उदाहरण के लिए, admin login के लिए)
+      const { email, uid, name } = req.user;
       const requestedRole = (req.query.role as string) || "customer";
 
-      let user = await storage.getUserByFirebaseUid(uid); // ✅ email के बजाय Firebase UID से खोजें
+      let user = await storage.getUserByFirebaseUid(uid);
       let isNewUser = false;
 
       if (!user) {
         // नया यूज़र बनाएं
+        let userRole: "customer" | "seller" = "customer"; // डिफ़ॉल्ट कस्टमर
+        let userApprovalStatus: "approved" | "pending" | "rejected" = "approved"; // डिफ़ॉल्ट रूप से अनुमोदित
+
+        // अगर रिक्वेस्टेड रोल 'seller' या 'pending_seller' है
+        if (requestedRole === "seller" || requestedRole === "pending_seller") {
+            userRole = "seller"; // रोल को 'seller' पर सेट करें
+            userApprovalStatus = "pending"; // और स्टेटस को 'pending' पर सेट करें
+        }
+
         user = await storage.createUser({
-          email: email!, // email के मौजूद होने की अपेक्षा करें
+          email: email!,
           firebaseUid: uid,
-          name: name || email!.split('@')[0], // नाम अगर उपलब्ध नहीं है तो ईमेल से लें
-          role: requestedRole === "seller" ? "customer" : requestedRole, // विक्रेता रोल के लिए सीधे 'seller' असाइन न करें
-          approvalStatus: "approved" // नए ग्राहक डिफ़ॉल्ट रूप से अनुमोदित होते हैं
+          name: name || email!.split('@')[0],
+          role: userRole, // ✅ अब यह 'seller' या 'customer' होगा
+          approvalStatus: userApprovalStatus // ✅ अब यह 'pending' या 'approved' होगा
         });
         isNewUser = true;
-        console.log(`New user created: ${user.email}`);
+        console.log(`New user created: ${user.email} with role: ${user.role} and status: ${user.approvalStatus}`);
       } else {
-        console.log(`Existing user logged in: ${user.email}`);
+        console.log(`Existing user logged in: ${user.email} with role: ${user.role} and status: ${user.approvalStatus}`);
+      }
+
+      // response में भेजने से पहले, अगर यूजर सेलर है, तो उसकी अपडेटेड डिटेल्स फ़ेच करें
+      let sellerDetails = undefined;
+      // यूजर का फाइनल अप्रूवल स्टेटस जो फ्रंटएंड को भेजा जाएगा
+      let finalApprovalStatus = user.approvalStatus;
+
+      if (user.role === "seller") {
+          sellerDetails = await storage.getSellerByUserId(user.id);
+          if (sellerDetails) {
+              finalApprovalStatus = sellerDetails.approvalStatus; // Seller की असली approvalStatus लें
+          }
       }
 
       res.json({
         message: isNewUser ? "User created and logged in successfully" : "Login successful",
         user: {
-          uuid: user.id.toString(), // ✅ Drizzle की इंटीजर ID को string में बदलकर 'uuid' प्रॉपर्टी के रूप में भेजें
+          uuid: user.id.toString(),
           email: user.email,
           name: user.name,
-          role: user.role,
-          // यदि user का role 'seller' है, तो seller-specific details भी भेजें
-          // नोट: आपको यहां seller डिटेल्स fetching के लिए एक और storage कॉल की आवश्यकता हो सकती है
-          // यदि `user` ऑब्जेक्ट में सीधे seller की approvalStatus नहीं है
-          seller: user.role === "seller" ? (await storage.getSellerByUserId(user.id)) : undefined, // ✅ यहां Seller की डिटेल्स fetch करें
-          // अन्य यूज़र प्रॉपर्टीज जिन्हें आप फ्रंटएंड को भेजना चाहते हैं
+          role: user.role, // ✅ 'seller' या 'customer' होगा
+          seller: sellerDetails, // सेलर डिटेल्स भेजें (अगर यूजर सेलर है)
+          approvalStatus: finalApprovalStatus, // ✅ यहां सही 'pending'/'approved'/'rejected' स्टेटस आएगा
         }
       });
 
@@ -79,6 +94,7 @@ export async function registerRoutes(app: Express): Promise<void> {
       res.status(500).json({ message: "Internal server error." });
     }
   });
+ 
         // ADMIN ROUTES
   app.use("/api/admin/vendors", adminVendorsRouter); 
   // --- SELLER ROUTES ---
