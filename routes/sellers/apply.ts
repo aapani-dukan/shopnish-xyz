@@ -122,4 +122,4 @@ router.post("/", verifyToken, async (req: AuthenticatedRequest, res: Response, n
 });
 
 export default router;
-Isme role pending seller set kiya ja raha hai
+
