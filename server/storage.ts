@@ -167,6 +167,18 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
+  export async function updateSellerStatus(id: string, status: 'approved' | 'pending' | 'rejected') {
+  try {
+    await db.update(sellersPgTable)
+      .set({ approvalStatus: status })
+      .where(eq(sellersPgTable.id, parseInt(id))); // ID को parseInt करें क्योंकि req.params.id string होता है
+    console.log(`Seller ${id} status updated to ${status}`);
+  } catch (error) {
+    console.error(`Error updating seller ${id} status to ${status}:`, error);
+    throw error;
+  }
+  }
+  
   async createProduct(product: InsertProduct): Promise<Product> {
     const result = await db.insert(products).values(product).returning();
     return result[0];
