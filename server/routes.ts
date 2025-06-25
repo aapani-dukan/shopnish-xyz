@@ -12,8 +12,9 @@ import {
   insertReviewSchema,
   // User type की यहाँ सीधी आवश्यकता नहीं है, लेकिन अगर आप इसे उपयोग करते हैं तो सुनिश्चित करें कि यह सही है
 } from "../shared/backend/schema"; 
-
 // Routers
+import adminVendorsRouter from "../roots/admin/vendors"; 
+
 import pendingSellersRouter from "../routes/sellers/pending";
 import sellersApplyRouter from "../routes/sellers/apply";
 import sellersApproveRouter from "../routes/sellers/approve";
@@ -78,7 +79,8 @@ export async function registerRoutes(app: Express): Promise<void> {
       res.status(500).json({ message: "Internal server error." });
     }
   });
-
+        // ADMIN ROUTES
+  app.use("/api/admin/vendors", adminVendorsRouter); 
   // --- SELLER ROUTES ---
   app.use("/api/sellers/pending", pendingSellersRouter);
   app.use("/api/sellers/apply", sellersApplyRouter);
