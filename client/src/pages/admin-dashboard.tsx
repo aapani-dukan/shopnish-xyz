@@ -33,13 +33,13 @@ export default function AdminDashboard() {
     try {
       const res = await apiRequest("GET", "/api/admin/vendors");
       // ✅ यहाँ सुरक्षित रूप से डेटा हैंडल करें
-      if (res && Array.isArray(res.data)) {
+      if (res && Array.isArray(res.data)) { // यह चेक essential है
         setVendors(res.data);
         console.log("Fetched vendors for admin:", res.data);
       } else {
         // अगर res.data एरे नहीं है, तो एक खाली एरे सेट करें या लॉग करें
-        setVendors([]); // या मौजूदा डेटा को बनाए रखें
-        console.warn("API response for vendors is not an array:", res.data);
+        setVendors([]); // vendors को खाली एरे पर सेट करें ताकि .length एरर न दे
+        console.warn("API response for vendors is not an array:", res?.data); // console.warn में res?.data इस्तेमाल करें
       }
     } catch (error) {
       console.error("Error fetching vendors:", error);
@@ -51,18 +51,49 @@ export default function AdminDashboard() {
     try {
       const res = await apiRequest("GET", "/api/admin/products");
       // ✅ यहाँ भी सुरक्षित रूप से डेटा हैंडल करें
-      if (res && Array.isArray(res.data)) {
+      if (res && Array.isArray(res.data)) { // यह चेक essential है
         setProducts(res.data);
         console.log("Fetched products for admin:", res.data);
       } else {
         setProducts([]);
-        console.warn("API response for products is not an array:", res.data);
+        console.warn("API response for products is not an array:", res?.data);
       }
     } catch (error) {
       console.error("Error fetching products:", error);
       setProducts([]);
     }
   };
+
+  useEffect(() => {
+    fetchVendors();
+    fetchProducts();
+  }, []);
+
+  return (
+    <div className="p-4">
+      {/* ... आपका बाकी JSX कोड ... */}
+      {activeTab === "vendors" && (
+        <div>
+          {/* ... */}
+          <tbody>
+            {vendors.length > 0 ? ( // ✅ यह लाइन अब सुरक्षित है क्योंकि vendors हमेशा एक एरे होगा
+              vendors.map((vendor) => (
+                <tr key={vendor.id}>
+                  {/* ... */}
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan={4} className="border px-4 py-4 text-center text-gray-500">
+                  No vendors found.
+                </td>
+              </tr>
+            )}
+          </tbody>
+          {/* ... */}
+        </div>
+      )}
+      
 
 
   const approveVendor = async (vendorId: string) => {
