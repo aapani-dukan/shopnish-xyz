@@ -1,8 +1,10 @@
+// client/src/pages/admin-dashboard.tsx
+
 import { useEffect, useState } from "react";
 // apiRequest फंक्शन को इंपोर्ट करना सुनिश्चित करें।
 // यह आमतौर पर client/src/utils/api.ts या इसी तरह की फाइल में डिफाइन होता है।
 // उदाहरण के लिए: import { apiRequest } from '../utils/api';
-import { apiRequest } from '../lib/queryClient';
+import { apiRequest } from '../lib/queryClient'; // ✅ सुनिश्चित करें कि यह पाथ सही है
 
 // Vendor इंटरफ़ेस को आपके डेटाबेस स्कीमा के अनुसार अपडेट किया गया
 interface Vendor {
@@ -32,26 +34,23 @@ export default function AdminDashboard() {
   const fetchVendors = async () => {
     try {
       const res = await apiRequest("GET", "/api/admin/vendors");
-      // ✅ यहाँ सुरक्षित रूप से डेटा हैंडल करें
-      if (res && Array.isArray(res.data)) { // यह चेक essential है
+      if (res && Array.isArray(res.data)) {
         setVendors(res.data);
         console.log("Fetched vendors for admin:", res.data);
       } else {
-        // अगर res.data एरे नहीं है, तो एक खाली एरे सेट करें या लॉग करें
-        setVendors([]); // vendors को खाली एरे पर सेट करें ताकि .length एरर न दे
-        console.warn("API response for vendors is not an array:", res?.data); // console.warn में res?.data इस्तेमाल करें
+        setVendors([]);
+        console.warn("API response for vendors is not an array:", res?.data);
       }
     } catch (error) {
       console.error("Error fetching vendors:", error);
-      setVendors([]); // एरर होने पर भी लिस्ट को खाली करें ताकि UI क्रैश न हो
+      setVendors([]);
     }
   };
 
   const fetchProducts = async () => {
     try {
       const res = await apiRequest("GET", "/api/admin/products");
-      // ✅ यहाँ भी सुरक्षित रूप से डेटा हैंडल करें
-      if (res && Array.isArray(res.data)) { // यह चेक essential है
+      if (res && Array.isArray(res.data)) {
         setProducts(res.data);
         console.log("Fetched products for admin:", res.data);
       } else {
@@ -63,10 +62,6 @@ export default function AdminDashboard() {
       setProducts([]);
     }
   };
-
-  
-      
-
 
   const approveVendor = async (vendorId: string) => {
     try {
@@ -87,6 +82,31 @@ export default function AdminDashboard() {
     } catch (error) {
       console.error("Error rejecting vendor:", error);
       alert("Failed to reject vendor.");
+    }
+  };
+
+  // ✅ approveProduct और rejectProduct फंक्शन्स को यहां जोड़ें
+  const approveProduct = async (productId: string) => {
+    try {
+      // ध्यान दें: आपको /api/admin/approve-product/:id के लिए भी एक बैकएंड रूट बनाना होगा
+      await apiRequest("POST", `/api/admin/approve-product/${productId}`, {});
+      fetchProducts(); // प्रोडक्ट्स की लिस्ट को रिफ्रेश करें
+      alert("Product approved successfully!");
+    } catch (error) {
+      console.error("Error approving product:", error);
+      alert("Failed to approve product.");
+    }
+  };
+
+  const rejectProduct = async (productId: string) => {
+    try {
+      // ध्यान दें: आपको /api/admin/reject-product/:id के लिए भी एक बैकएंड रूट बनाना होगा
+      await apiRequest("POST", `/api/admin/reject-product/${productId}`, {});
+      fetchProducts(); // प्रोडक्ट्स की लिस्ट को रिफ्रेश करें
+      alert("Product rejected successfully!");
+    } catch (error) {
+      console.error("Error rejecting product:", error);
+      alert("Failed to reject product.");
     }
   };
 
@@ -128,10 +148,10 @@ export default function AdminDashboard() {
             <tbody>
               {vendors.length > 0 ? (
                 vendors.map((vendor) => (
-                  <tr key={vendor.id} className="hover:bg-gray-50"> {/* '_id' की जगह 'id' */}
+                  <tr key={vendor.id} className="hover:bg-gray-50">
                     <td className="border px-4 py-2">{vendor.businessName}</td>
-                    <td className="border px-4 py-2">{vendor.businessPhone}</td> {/* 'phoneNumber' की जगह 'businessPhone' */}
-                    <td className="border px-4 py-2">{vendor.approvalStatus}</td> {/* 'status' की जगह 'approvalStatus' */}
+                    <td className="border px-4 py-2">{vendor.businessPhone}</td>
+                    <td className="border px-4 py-2">{vendor.approvalStatus}</td>
                     <td className="border px-4 py-2 space-x-2">
                       {vendor.approvalStatus === 'pending' ? (
                         <>
@@ -184,7 +204,7 @@ export default function AdminDashboard() {
             <tbody>
               {products.length > 0 ? (
                 products.map((product) => (
-                  <tr key={product.id} className="hover:bg-gray-50"> {/* '_id' की जगह 'id' */}
+                  <tr key={product.id} className="hover:bg-gray-50">
                     <td className="border px-4 py-2">{product.name}</td>
                     <td className="border px-4 py-2">{product.price}</td>
                     <td className="border px-4 py-2">{product.category}</td>
@@ -192,13 +212,13 @@ export default function AdminDashboard() {
                     <td className="border px-4 py-2 space-x-2">
                       {/* यहां प्रोडक्ट स्टेटस के आधार पर बटन लॉजिक जोड़ सकते हैं */}
                       <button
-                        onClick={() => approveProduct(product.id)}
+                        onClick={() => approveProduct(product.id)} // ✅ यह अब डिफाइन किया गया है
                         className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-sm"
                       >
                         Approve
                       </button>
                       <button
-                        onClick={() => rejectProduct(product.id)}
+                        onClick={() => rejectProduct(product.id)} // ✅ यह अब डिफाइन किया गया है
                         className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-sm"
                       >
                         Reject
