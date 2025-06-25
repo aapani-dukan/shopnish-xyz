@@ -13,7 +13,7 @@ import {
   // User type की यहाँ सीधी आवश्यकता नहीं है, लेकिन अगर आप इसे उपयोग करते हैं तो सुनिश्चित करें कि यह सही है
 } from "../shared/backend/schema"; 
 // Routers
-import adminVendorsRouter from "../roots/admin/vendors"; 
+import adminVendorsRouter from "./roots/admin/vendors"; 
 
 import pendingSellersRouter from "../routes/sellers/pending";
 import sellersApplyRouter from "../routes/sellers/apply";
