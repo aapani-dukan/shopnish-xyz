@@ -64,35 +64,7 @@ export default function AdminDashboard() {
     }
   };
 
-  useEffect(() => {
-    fetchVendors();
-    fetchProducts();
-  }, []);
-
-  return (
-    <div className="p-4">
-      {/* ... आपका बाकी JSX कोड ... */}
-      {activeTab === "vendors" && (
-        <div>
-          {/* ... */}
-          <tbody>
-            {vendors.length > 0 ? ( // ✅ यह लाइन अब सुरक्षित है क्योंकि vendors हमेशा एक एरे होगा
-              vendors.map((vendor) => (
-                <tr key={vendor.id}>
-                  {/* ... */}
-                </tr>
-              ))
-            ) : (
-              <tr>
-                <td colSpan={4} className="border px-4 py-4 text-center text-gray-500">
-                  No vendors found.
-                </td>
-              </tr>
-            )}
-          </tbody>
-          {/* ... */}
-        </div>
-      )}
+  
       
 
 
@@ -118,27 +90,6 @@ export default function AdminDashboard() {
     }
   };
 
-  const approveProduct = async (productId: string) => {
-    try {
-      await apiRequest("POST", `/api/admin/approve-product/${productId}`, {});
-      fetchProducts();
-      alert("Product approved successfully!");
-    } catch (error) {
-      console.error("Error approving product:", error);
-      alert("Failed to approve product.");
-    }
-  };
-
-  const rejectProduct = async (productId: string) => {
-    try {
-      await apiRequest("POST", `/api/admin/reject-product/${productId}`, {});
-      fetchProducts();
-      alert("Product rejected successfully!");
-    } catch (error) {
-      console.error("Error rejecting product:", error);
-      alert("Failed to reject product.");
-    }
-  };
 
   useEffect(() => {
     fetchVendors();
