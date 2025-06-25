@@ -20,7 +20,7 @@ router.get('/', async (req, res) => { // रूट सिर्फ '/' है �
 // आपको यहां /api/admin/approve-vendor/:id और /api/admin/reject-vendor/:id भी जोड़ना होगा
 // अगर वे अलग राउटर्स में नहीं हैं और आप admin-dashboard से ही उन्हें मैनेज करना चाहते हैं।
 // उदाहरण के लिए:
-/*
+
 router.post('/approve-vendor/:id', async (req, res) => {
   try {
     const { id } = req.params;
@@ -42,6 +42,6 @@ router.post('/reject-vendor/:id', async (req, res) => {
     return res.status(500).json({ success: false, message: 'Failed to reject vendor.' });
   }
 });
-*/
+
 
 export default router;
