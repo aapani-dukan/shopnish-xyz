@@ -167,7 +167,7 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  export async function updateSellerStatus(id: string, status: 'approved' | 'pending' | 'rejected') {
+   async updateSellerStatus(id: string, status: 'approved' | 'pending' | 'rejected') {
   try {
     await db.update(sellersPgTable)
       .set({ approvalStatus: status })
