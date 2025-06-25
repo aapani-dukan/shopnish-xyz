@@ -1,13 +1,17 @@
 // routes/sellers/apply.ts
-
 import { Router, Response, NextFunction } from "express";
 import { db } from "../../server/db";
-import { sellersPgTable, users } from "../../shared/backend/schema"; // users को भी सही से इंपोर्ट करें
+// ✅ sellersPgTable को इंपोर्ट करें, sellers Zod ऑब्जेक्ट को नहीं
+import { sellersPgTable, users } from "../../shared/backend/schema"; 
 import { verifyToken, AuthenticatedRequest } from "../../server/middleware/verifyToken";
 import { eq } from "drizzle-orm";
 
 const router = Router();
 
+/**
+ * Endpoint for a user to apply as a seller.
+ * Requires authentication via verifyToken middleware.
+ */
 router.post("/", verifyToken, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const firebaseUid = req.user?.uid;
@@ -16,40 +20,33 @@ router.post("/", verifyToken, async (req: AuthenticatedRequest, res: Response, n
       return res.status(401).json({ message: "Unauthorized: User not authenticated." });
     }
 
-    // ✅ सबसे पहले, Firebase UID का उपयोग करके users टेबल से यूजर की संख्यात्मक ID प्राप्त करें
-    const userInDb = await db.select().from(users).where(eq(users.firebaseUid, firebaseUid)).limit(1);
-
-    if (!userInDb || userInDb.length === 0) {
-        return res.status(404).json({ message: "User not found in internal database." });
-    }
-
-    const userId = userInDb[0].id; // ✅ यह अब users टेबल की संख्यात्मक ID है!
-
+    // ✅ यहाँ इनकमिंग रिक्वेस्ट बॉडी को लॉग करें - यह सबसे महत्वपूर्ण डीबग लॉग है!
     console.log("Incoming request body for seller apply:", req.body);
 
-    const {
-      businessName,
-      businessAddress,
-      businessPhone,
-      description,
-      city,
-      pincode,
-      gstNumber,
-      bankAccountNumber,
-      ifscCode,
-      deliveryRadius,
-      businessType
+    const { 
+      businessName, 
+      businessAddress, 
+      businessPhone, 
+      description, 
+      city, 
+      pincode, 
+      gstNumber, 
+      bankAccountNumber, 
+      ifscCode, 
+      deliveryRadius, 
+      businessType 
     } = req.body;
 
     // अनिवार्य फ़ील्ड्स की जाँच करें
     if (!businessName || !businessPhone || !city || !pincode || !businessAddress || !businessType) {
+      // businessType भी अनिवार्य है अगर Zod स्कीमा में min(1) है।
       return res.status(400).json({ message: "Missing required seller details." });
     }
 
     /* ─────────── 4. पहले से आवेदन या approve तो नहीं? ─────────── */
     const existingSellerResult = await db.select()
-                                   .from(sellersPgTable)
-                                   .where(eq(sellersPgTable.userId, userId)) // ✅ यहाँ संख्यात्मक userId का उपयोग करें
+                                   .from(sellersPgTable) // ✅ sellersPgTable का उपयोग करें
+                                   .where(eq(sellersPgTable.userId, firebaseUid)) // ✅ sellersPgTable.userId का उपयोग करें
                                    .limit(1);
 
     const existingSeller = existingSellerResult.length > 0 ? existingSellerResult[0] : undefined;
@@ -62,66 +59,67 @@ router.post("/", verifyToken, async (req: AuthenticatedRequest, res: Response, n
     }
 
     /* ─────────── 5. नया आवेदन create करें (status: pending) ─────────── */
+    // सुनिश्चित करें कि deliveryRadius को parseInt किया जा रहा है यदि यह req.body में स्ट्रिंग के रूप में आता है।
     const insertData = {
-      userId: userId, // ✅ यहाँ संख्यात्मक userId का उपयोग करें
+      userId: firebaseUid,
       businessName: businessName,
       businessAddress: businessAddress,
       businessPhone: businessPhone,
-      businessType: businessType,
-      description: description || null,
+      businessType: businessType, // अब अनिवार्य, इसलिए null नहीं
+      description: description || null,   
       city: city,
-      pincode: pincode,
+      pincode: pincode, 
       gstNumber: gstNumber || null,
-      bankAccountNumber: bankAccountNumber || null,
+      bankAccountNumber: bankAccountNumber || null, 
       ifscCode: ifscCode || null,
-      deliveryRadius: deliveryRadius ? parseInt(String(deliveryRadius)) : null,
+      deliveryRadius: deliveryRadius ? parseInt(String(deliveryRadius)) : null, // ✅ सुरक्षित parseInt
       approvalStatus: "pending",
+      // createdAt, updatedAt जैसे टाइमस्टैम्प स्कीमा में defaultNow() से हैंडल होंगे,
+      // इसलिए यहाँ मैन्युअल रूप से सेट करने की आवश्यकता नहीं है।
     };
 
+    // ✅ यह लॉग हमें दिखाएगा कि डेटाबेस में क्या इन्सर्ट किया जा रहा है
     console.log("Seller data prepared for insertion:", insertData);
 
     const newSellerResult = await db
-      .insert(sellersPgTable)
-      .values(insertData)
-      .returning();
+      .insert(sellersPgTable) // ✅ sellersPgTable का उपयोग करें
+      .values(insertData) 
+      .returning(); 
 
-    const newSeller = newSellerResult[0];
+    const newSeller = newSellerResult[0]; 
 
-    /* ─────────── 6. उसी user की role = seller और approvalStatus = pending कर दें ─────────── */
-    // इसे 'seller' पर सेट करें, 'pending_seller' नहीं
-    // और approvalStatus को 'pending' पर सेट करें
+    /* ─────────── 6. उसी user की role = pending_seller कर दें ─────────── */
     const updatedUserResult = await db
       .update(users)
-      .set({
-        role: "seller", // ✅ रोल 'seller'
-        approvalStatus: "pending", // ✅ स्टेटस 'pending'
+      .set({ 
+        role: "pending_seller", 
       })
-      .where(eq(users.id, userId)) // ✅ यहाँ users.id का उपयोग करें (संख्यात्मक ID)
-      .returning();
+      .where(eq(users.firebaseUid, firebaseUid)) 
+      .returning(); 
 
-    const updatedUser = updatedUserResult[0];
+    const updatedUser = updatedUserResult[0]; 
 
     if (!updatedUser) {
-        console.error("Seller apply: Could not find user to update role for userId:", userId);
+        console.error("Seller apply: Could not find user to update role for firebaseUid:", firebaseUid);
         return res.status(500).json({ message: "Failed to update user role." });
     }
 
     /* ─────────── 7. सक्सेस रिस्पॉन्स भेजें ─────────── */
     res.status(201).json({
       message: "Seller application submitted",
-      seller: newSeller,
+      seller: newSeller, 
       user: {
-          uuid: updatedUser.id.toString(), // ✅ यहाँ संख्यात्मक ID को string में कन्वर्ट करके भेजें
+          uuid: updatedUser.firebaseUid, // ✅ users.uuid के बजाय firebaseUid
           role: updatedUser.role,
           email: updatedUser.email,
           name: updatedUser.name,
-          approvalStatus: updatedUser.approvalStatus, // ✅ अप्रूवल स्टेटस भी भेजें
       },
     });
   } catch (error) {
     console.error("Error in seller apply route:", error);
-    next(error);
+    next(error); 
   }
 });
 
 export default router;
+Isme role pending seller set kiya ja raha hai
