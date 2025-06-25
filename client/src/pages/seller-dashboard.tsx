@@ -484,5 +484,459 @@ export default function SellerDashboard() {
                                 <FormField
                                   control={categoryForm.control}
                                   name="name"
+                                render={({ field }) => (
+                                    <FormItem>
+                                      <FormLabel>Category Name</FormLabel>
+                                      <FormControl>
+                                        <Input {...field} />
+                                      </FormControl>
+                                      <FormMessage />
+                                    </FormItem>
+                                  )}
+                                />
+                                
+                                <FormField
+                                  control={categoryForm.control}
+                                  name="slug"
                                   render={({ field }) => (
+                                    <FormItem>
+                                      <FormLabel>Category Slug</FormLabel>
+                                      <FormControl>
+                                        <Input {...field} placeholder="e.g., electronics" />
+                                      </FormControl>
+                                      <FormMessage />
+                                    </FormItem>
+                                  )}
+                                />
+                                
+                                <FormField
+                                  control={categoryForm.control}
+                                  name="description"
+                                  render={({ field }) => (
+                                    <FormItem>
+                                      <FormLabel>Description (Optional)</FormLabel>
+                                      <FormControl>
+                                        <Textarea {...field} />
+                                      </FormControl>
+                                      <FormMessage />
+                                    </FormItem>
+                                  )}
+                                />
+                                
+                                <FormField
+                                  control={categoryForm.control}
+                                  name="imageUrl"
+                                  render={({ field }) => (
+                                    <FormItem>
+                                      <FormLabel>Image URL (Optional)</FormLabel>
+                                      <FormControl>
+                                        <Input {...field} type="url" />
+                                      </FormControl>
+                                      <FormMessage />
+                                    </FormItem>
+                                  )}
+                                />
+
+                                <div className="flex justify-end space-x-2">
+                                  <Button 
+                                    type="button" 
+                                    variant="outline" 
+                                    onClick={() => setIsCategoryDialogOpen(false)}
+                                  >
+                                    Cancel
+                                  </Button>
+                                  <Button type="submit" disabled={categoryMutation.isPending}>
+                                    {categoryMutation.isPending ? "Creating..." : "Create Category"}
+                                  </Button>
+                                </div>
+                              </form>
+                            </Form>
+                          </DialogContent>
+                        </Dialog>
+                        
+                        <Dialog open={isProductDialogOpen} onOpenChange={setIsProductDialogOpen}>
+                          <DialogTrigger asChild>
+                            <Button onClick={() => {
+                              setEditingProduct(null);
+                              productForm.reset();
+                            }}>
+                              <Plus className="h-4 w-4 mr-2" />
+                              Add Product
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent className="max-w-2xl">
+                          <DialogHeader>
+                            <DialogTitle>
+                              {editingProduct ? "Edit Product" : "Add New Product"}
+                            </DialogTitle>
+                            <DialogDescription>
+                              {editingProduct ? "Update details for your product." : "Add a new product to your inventory."}
+                            </DialogDescription>
+                          </DialogHeader>
+                          <Form {...productForm}>
+                            <form onSubmit={productForm.handleSubmit(onProductSubmit)} className="space-y-4">
+                              <FormField
+                                control={productForm.control}
+                                name="name"
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel>Product Name</FormLabel>
+                                    <FormControl>
+                                      <Input {...field} />
+                                    </FormControl>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+                              
+                              <FormField
+                                control={productForm.control}
+                                name="description"
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel>Description</FormLabel>
+                                    <FormControl>
+                                      <Textarea {...field} />
+                                    </FormControl>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4"> {/* ✅ ग्रिड को एडजस्ट किया */}
+                                <FormField
+                                  control={productForm.control}
+                                  name="price"
+                                  render={({ field }) => (
+                                    <FormItem>
+                                      <FormLabel>Price (₹)</FormLabel>
+                                      <FormControl>
+                                        <Input {...field} type="number" step="0.01" />
+                                      </FormControl>
+                                      <FormMessage />
+                                    </FormItem>
+                                  )}
+                                />
+
+                                <FormField
+                                  control={productForm.control}
+                                  name="originalPrice"
+                                  render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Original Price (₹) (Optional)</FormLabel> {/* ✅ लेबल को ठीक किया */}
+                                        <FormControl>
+                                            <Input {...field} type="number" step="0.01" />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                  )}
+                                />
+                              </div>
+
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <FormField
+                                  control={productForm.control}
+                                  name="categoryId"
+                                  render={({ field }) => (
+                                    <FormItem>
+                                      <FormLabel>Category</FormLabel>
+                                      <Select onValueChange={field.onChange} value={field.value?.toString()}> {/* ✅ वैल्यू को स्ट्रिंग में कन्वर्ट करें */}
+                                        <FormControl>
+                                          <SelectTrigger>
+                                            <SelectValue placeholder="Select a category" />
+                                          </SelectTrigger>
+                                        </FormControl>
+                                        <SelectContent>
+                                          {categories?.map((category) => (
+                                            <SelectItem key={category.id} value={category.id.toString()}> {/* ✅ वैल्यू को स्ट्रिंग में कन्वर्ट करें */}
+                                              {category.name}
+                                            </SelectItem>
+                                          ))}
+                                        </SelectContent>
+                                      </Select>
+                                      <FormMessage />
+                                    </FormItem>
+                                  )}
+                                />
+
+                                <FormField
+                                  control={productForm.control}
+                                  name="stock"
+                                  render={({ field }) => (
+                                    <FormItem>
+                                      <FormLabel>Stock</FormLabel>
+                                      <FormControl>
+                                        <Input {...field} type="number" />
+                                      </FormControl>
+                                      <FormMessage />
+                                    </FormItem>
+                                  )}
+                                />
+                              </div>
+
+                              {/* Images Field (Optional - you might need a proper image upload component) */}
+                              <FormField
+                                control={productForm.control}
+                                name="images"
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel>Image URLs (Comma Separated)</FormLabel>
+                                    <FormControl>
+                                      <Input 
+                                        value={field.value?.join(", ") || ""}
+                                        onChange={(e) => field.onChange(e.target.value.split(",").map(s => s.trim()).filter(Boolean))}
+                                        placeholder="https://example.com/image1.jpg, https://example.com/image2.png"
+                                      />
+                                    </FormControl>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+
+                              <div className="flex justify-end space-x-2">
+                                <Button 
+                                  type="button" 
+                                  variant="outline" 
+                                  onClick={() => {
+                                    setIsProductDialogOpen(false);
+                                    setEditingProduct(null);
+                                    productForm.reset();
+                                  }}
+                                >
+                                  Cancel
+                                </Button>
+                                <Button type="submit" disabled={productMutation.isPending}>
+                                  {productMutation.isPending ? (editingProduct ? "Updating..." : "Adding...") : (editingProduct ? "Update Product" : "Add Product")}
+                                </Button>
+                              </div>
+                            </form>
+                          </Form>
+                          </DialogContent>
+                        </Dialog>
+                      </>
+                    ) : (
+                      <Badge variant="outline" className="text-orange-500">
+                        <Info className="h-4 w-4 mr-2" />
+                        Verify account to add products
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {productsLoading ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {[...Array(3)].map((_, i) => (
+                      <Skeleton key={i} className="h-48 w-full rounded-lg" />
+                    ))}
+                  </div>
+                ) : productsError ? ( // ✅ Error display for products
+                  <p className="text-red-500">Error loading products: {productsError.message}</p>
+                ) : products && products.length === 0 ? (
+                  <p className="text-muted-foreground">You haven't added any products yet.</p>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {products?.map((product) => (
+                      <Card key={product.id} className="relative group overflow-hidden">
+                        {product.images && product.images.length > 0 && (
+                          <img 
+                            src={product.images[0]} 
+                            alt={product.name} 
+                            className="w-full h-40 object-cover rounded-t-lg"
+                          />
+                        )}
+                        <CardContent className="p-4">
+                          <h4 className="font-semibold text-lg line-clamp-1">{product.name}</h4>
+                          <p className="text-sm text-muted-foreground line-clamp-2">{product.description}</p>
+                          <div className="flex justify-between items-center mt-2">
+                            <p className="text-lg font-bold text-primary">₹{product.price}</p>
+                            <Badge variant="secondary">{product.stock} in stock</Badge>
+                          </div>
+                          <div className="absolute top-2 right-2 flex space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <Button variant="outline" size="icon" onClick={() => handleEditProduct(product)}>
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button variant="destructive" size="icon" onClick={() => handleDeleteProduct(product.id)}>
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Orders Tab */}
+          <TabsContent value="orders" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Your Orders</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {ordersLoading ? (
+                  <div className="space-y-4">
+                    {[...Array(3)].map((_, i) => (
+                      <Skeleton key={i} className="h-24 w-full rounded-lg" />
+                    ))}
+                  </div>
+                ) : ordersError ? ( // ✅ Error display for orders
+                  <p className="text-red-500">Error loading orders: {ordersError.message}</p>
+                ) : orders && orders.length === 0 ? (
+                  <p className="text-muted-foreground">No orders yet.</p>
+                ) : (
+                  <div className="space-y-4">
+                    {orders?.map((order) => (
+                      <Card key={order.id} className="p-4">
+                        <div className="flex justify-between items-center mb-2">
+                          <h4 className="font-semibold">Order ID: {order.id}</h4>
+                          <Badge 
+                            variant={
+                              order.status === "pending" 
+                                ? "secondary" 
+                                : order.status === "completed" 
+                                  ? "default" 
+                                  : "destructive"
+                            }
+                          >
+                            {order.status}
+                          </Badge>
+                        </div>
+                        <p className="text-sm text-muted-foreground">Total: ₹{parseFloat(order.total).toLocaleString()}</p>
+                        <p className="text-sm text-muted-foreground">Ordered On: {new Date(order.createdAt).toLocaleString()}</p>
+                        <div className="mt-2">
+                          <h5 className="font-medium text-sm mb-1">Items:</h5>
+                          <ul className="list-disc list-inside text-sm">
+                            {order.orderItems.map((item) => (
+                              <li key={item.id}>{item.productName} ({item.quantity} x ₹{item.price})</li>
+                            ))}
+                          </ul>
+                        </div>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Profile Tab */}
+          <TabsContent value="profile" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Your Profile</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Form {...sellerForm}>
+                  <form onSubmit={sellerForm.handleSubmit(onSellerSubmit)} className="space-y-4">
+                    <FormField
+                      control={sellerForm.control}
+                      name="businessName"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Business Name</FormLabel>
+                          <FormControl>
+                            <Input {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={sellerForm.control}
+                      name="description"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Business Description</FormLabel>
+                          <FormControl>
+                            <Textarea {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={sellerForm.control}
+                      name="businessAddress"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Business Address</FormLabel>
+                          <FormControl>
+                            <Input {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={sellerForm.control}
+                      name="businessPhone"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Business Phone</FormLabel>
+                          <FormControl>
+                            <Input {...field} type="tel" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={sellerForm.control}
+                      name="gstNumber"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>GST Number</FormLabel>
+                          <FormControl>
+                            <Input {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={sellerForm.control}
+                      name="bankAccountNumber"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Bank Account Number</FormLabel>
+                          <FormControl>
+                            <Input {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={sellerForm.control}
+                      name="ifscCode"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>IFSC Code</FormLabel>
+                          <FormControl>
+                            <Input {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <Button type="submit" disabled={sellerMutation.isPending}>
+                      {sellerMutation.isPending ? "Saving..." : "Save Profile"}
+                    </Button>
+                  </form>
+                </Form>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+      </div>
+    </div>
+  );
+}
+
+
+                    
+  
                           
