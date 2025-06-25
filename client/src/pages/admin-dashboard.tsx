@@ -1,19 +1,26 @@
 import { useEffect, useState } from "react";
+// apiRequest फंक्शन को इंपोर्ट करना सुनिश्चित करें।
+// यह आमतौर पर client/src/utils/api.ts या इसी तरह की फाइल में डिफाइन होता है।
+// उदाहरण के लिए: import { apiRequest } from '../utils/api';
 
 
+// Vendor इंटरफ़ेस को आपके डेटाबेस स्कीमा के अनुसार अपडेट किया गया
 interface Vendor {
-  _id: string;
+  id: string; // Drizzle/PostgreSQL आमतौर पर ID के लिए 'id' का उपयोग करता है
   businessName: string;
-  phoneNumber: string;
-  status: string;
+  businessPhone: string; // आपके बैकएंड स्कीमा के 'businessPhone' से मैच करने के लिए
+  approvalStatus: string; // आपके बैकएंड स्कीमा के 'approvalStatus' से मैच करने के लिए
+  // अगर आप Admin Dashboard पर और भी जानकारी दिखाना चाहते हैं तो यहां जोड़ें
+  // e.g., description?: string; city?: string; pincode?: string;
 }
 
+// Product इंटरफ़ेस को आपके डेटाबेस स्कीमा के अनुसार अपडेट किया गया
 interface Product {
-  _id: string;
+  id: string; // Drizzle/PostgreSQL आमतौर पर ID के लिए 'id' का उपयोग करता है
   name: string;
   price: number;
   category: string;
-  status: string;
+  status: string; // Product स्टेटस के लिए 'status' सही हो सकता है
 }
 
 export default function AdminDashboard() {
@@ -22,33 +29,69 @@ export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState("vendors");
 
   const fetchVendors = async () => {
-    const res = await apiRequest("GET", "/api/admin/vendors");
-    setVendors(res.data);
+    try {
+      // यह API कॉल सभी वेंडर्स को फ़ेच करना चाहिए (पेंडिंग, अप्रूव्ड, रिजेक्टेड)
+      const res = await apiRequest("GET", "/api/admin/vendors");
+      setVendors(res.data);
+      console.log("Fetched vendors for admin:", res.data); // Debugging के लिए
+    } catch (error) {
+      console.error("Error fetching vendors:", error);
+      // यहां एरर हैंडलिंग UI दिखा सकते हैं
+    }
   };
 
   const fetchProducts = async () => {
-    const res = await apiRequest("GET", "/api/admin/products");
-    setProducts(res.data);
+    try {
+      const res = await apiRequest("GET", "/api/admin/products");
+      setProducts(res.data);
+      console.log("Fetched products for admin:", res.data); // Debugging के लिए
+    } catch (error) {
+      console.error("Error fetching products:", error);
+    }
   };
 
   const approveVendor = async (vendorId: string) => {
-    await apiRequest("POST", `/api/admin/approve-vendor/${vendorId}`, {});
-    fetchVendors();
+    try {
+      await apiRequest("POST", `/api/admin/approve-vendor/${vendorId}`, {});
+      fetchVendors(); // वेंडर्स की लिस्ट को रिफ्रेश करें
+      alert("Vendor approved successfully!");
+    } catch (error) {
+      console.error("Error approving vendor:", error);
+      alert("Failed to approve vendor.");
+    }
   };
 
   const rejectVendor = async (vendorId: string) => {
-    await apiRequest("POST", `/api/admin/reject-vendor/${vendorId}`, {});
-    fetchVendors();
+    try {
+      await apiRequest("POST", `/api/admin/reject-vendor/${vendorId}`, {});
+      fetchVendors(); // वेंडर्स की लिस्ट को रिफ्रेश करें
+      alert("Vendor rejected successfully!");
+    } catch (error) {
+      console.error("Error rejecting vendor:", error);
+      alert("Failed to reject vendor.");
+    }
   };
 
   const approveProduct = async (productId: string) => {
-    await apiRequest("POST", `/api/admin/approve-product/${productId}`, {});
-    fetchProducts();
+    try {
+      await apiRequest("POST", `/api/admin/approve-product/${productId}`, {});
+      fetchProducts();
+      alert("Product approved successfully!");
+    } catch (error) {
+      console.error("Error approving product:", error);
+      alert("Failed to approve product.");
+    }
   };
 
   const rejectProduct = async (productId: string) => {
-    await apiRequest("POST", `/api/admin/reject-product/${productId}`, {});
-    fetchProducts();
+    try {
+      await apiRequest("POST", `/api/admin/reject-product/${productId}`, {});
+      fetchProducts();
+      alert("Product rejected successfully!");
+    } catch (error) {
+      console.error("Error rejecting product:", error);
+      alert("Failed to reject product.");
+    }
   };
 
   useEffect(() => {
@@ -76,37 +119,53 @@ export default function AdminDashboard() {
       {activeTab === "vendors" && (
         <div>
           <h2 className="text-xl font-semibold mb-2">Vendors</h2>
-          <table className="w-full table-auto">
+          <table className="w-full table-auto border-collapse border border-gray-300">
             <thead>
-              <tr>
-                <th className="px-4 py-2">Business Name</th>
-                <th className="px-4 py-2">Phone Number</th>
-                <th className="px-4 py-2">Status</th>
-                <th className="px-4 py-2">Actions</th>
+              <tr className="bg-gray-100">
+                <th className="border px-4 py-2 text-left">Business Name</th>
+                <th className="border px-4 py-2 text-left">Phone Number</th>
+                <th className="border px-4 py-2 text-left">Status</th>
+                <th className="border px-4 py-2 text-left">Actions</th>
               </tr>
             </thead>
             <tbody>
-              {vendors.map((vendor) => (
-                <tr key={vendor._id}>
-                  <td className="border px-4 py-2">{vendor.businessName}</td>
-                  <td className="border px-4 py-2">{vendor.phoneNumber}</td>
-                  <td className="border px-4 py-2">{vendor.status}</td>
-                  <td className="border px-4 py-2 space-x-2">
-                    <button
-                      onClick={() => approveVendor(vendor._id)}
-                      className="bg-green-500 text-white px-2 py-1 rounded"
-                    >
-                      Approve
-                    </button>
-                    <button
-                      onClick={() => rejectVendor(vendor._id)}
-                      className="bg-red-500 text-white px-2 py-1 rounded"
-                    >
-                      Reject
-                    </button>
+              {vendors.length > 0 ? (
+                vendors.map((vendor) => (
+                  <tr key={vendor.id} className="hover:bg-gray-50"> {/* '_id' की जगह 'id' */}
+                    <td className="border px-4 py-2">{vendor.businessName}</td>
+                    <td className="border px-4 py-2">{vendor.businessPhone}</td> {/* 'phoneNumber' की जगह 'businessPhone' */}
+                    <td className="border px-4 py-2">{vendor.approvalStatus}</td> {/* 'status' की जगह 'approvalStatus' */}
+                    <td className="border px-4 py-2 space-x-2">
+                      {vendor.approvalStatus === 'pending' ? (
+                        <>
+                          <button
+                            onClick={() => approveVendor(vendor.id)}
+                            className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-sm"
+                          >
+                            Approve
+                          </button>
+                          <button
+                            onClick={() => rejectVendor(vendor.id)}
+                            className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-sm"
+                          >
+                            Reject
+                          </button>
+                        </>
+                      ) : (
+                        <span className={`font-semibold ${vendor.approvalStatus === 'approved' ? 'text-green-700' : 'text-red-700'}`}>
+                          {vendor.approvalStatus.toUpperCase()}
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={4} className="border px-4 py-4 text-center text-gray-500">
+                    No vendors found.
                   </td>
                 </tr>
-              ))}
+              )}
             </tbody>
           </table>
         </div>
@@ -115,39 +174,48 @@ export default function AdminDashboard() {
       {activeTab === "products" && (
         <div>
           <h2 className="text-xl font-semibold mb-2">Products</h2>
-          <table className="w-full table-auto">
+          <table className="w-full table-auto border-collapse border border-gray-300">
             <thead>
-              <tr>
-                <th className="px-4 py-2">Name</th>
-                <th className="px-4 py-2">Price</th>
-                <th className="px-4 py-2">Category</th>
-                <th className="px-4 py-2">Status</th>
-                <th className="px-4 py-2">Actions</th>
+              <tr className="bg-gray-100">
+                <th className="border px-4 py-2 text-left">Name</th>
+                <th className="border px-4 py-2 text-left">Price</th>
+                <th className="border px-4 py-2 text-left">Category</th>
+                <th className="border px-4 py-2 text-left">Status</th>
+                <th className="border px-4 py-2 text-left">Actions</th>
               </tr>
             </thead>
             <tbody>
-              {products.map((product) => (
-                <tr key={product._id}>
-                  <td className="border px-4 py-2">{product.name}</td>
-                  <td className="border px-4 py-2">{product.price}</td>
-                  <td className="border px-4 py-2">{product.category}</td>
-                  <td className="border px-4 py-2">{product.status}</td>
-                  <td className="border px-4 py-2 space-x-2">
-                    <button
-                      onClick={() => approveProduct(product._id)}
-                      className="bg-green-500 text-white px-2 py-1 rounded"
-                    >
-                      Approve
-                    </button>
-                    <button
-                      onClick={() => rejectProduct(product._id)}
-                      className="bg-red-500 text-white px-2 py-1 rounded"
-                    >
-                      Reject
-                    </button>
+              {products.length > 0 ? (
+                products.map((product) => (
+                  <tr key={product.id} className="hover:bg-gray-50"> {/* '_id' की जगह 'id' */}
+                    <td className="border px-4 py-2">{product.name}</td>
+                    <td className="border px-4 py-2">{product.price}</td>
+                    <td className="border px-4 py-2">{product.category}</td>
+                    <td className="border px-4 py-2">{product.status}</td>
+                    <td className="border px-4 py-2 space-x-2">
+                      {/* यहां प्रोडक्ट स्टेटस के आधार पर बटन लॉजिक जोड़ सकते हैं */}
+                      <button
+                        onClick={() => approveProduct(product.id)}
+                        className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-sm"
+                      >
+                        Approve
+                      </button>
+                      <button
+                        onClick={() => rejectProduct(product.id)}
+                        className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-sm"
+                      >
+                        Reject
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={5} className="border px-4 py-4 text-center text-gray-500">
+                    No products found.
                   </td>
                 </tr>
-              ))}
+              )}
             </tbody>
           </table>
         </div>
