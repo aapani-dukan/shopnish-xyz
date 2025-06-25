@@ -46,7 +46,7 @@ router.post("/", verifyToken, async (req: AuthenticatedRequest, res: Response, n
     /* ─────────── 4. पहले से आवेदन या approve तो नहीं? ─────────── */
     const existingSellerResult = await db.select()
                                    .from(sellersPgTable) // ✅ sellersPgTable का उपयोग करें
-                                   .where(eq(sellersPgTable.userId, firebaseUid)) // ✅ sellersPgTable.userId का उपयोग करें
+                                   .where(eq(sellersPgTable.userId, user.firebaseUid)) // ✅ sellersPgTable.userId का उपयोग करें
                                    .limit(1);
 
     const existingSeller = existingSellerResult.length > 0 ? existingSellerResult[0] : undefined;
