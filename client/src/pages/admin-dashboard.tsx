@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 // यह आमतौर पर client/src/utils/api.ts या इसी तरह की फाइल में डिफाइन होता है।
 // उदाहरण के लिए: import { apiRequest } from '../utils/api';
 import { apiRequest } from '../lib/queryClient';
-client/src/lib/queryClient.ts
+
 // Vendor इंटरफ़ेस को आपके डेटाबेस स्कीमा के अनुसार अपडेट किया गया
 interface Vendor {
   id: string; // Drizzle/PostgreSQL आमतौर पर ID के लिए 'id' का उपयोग करता है
