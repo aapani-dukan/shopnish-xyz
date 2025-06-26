@@ -46,22 +46,23 @@ export async function registerRoutes(app: Express): Promise<void> {
         let userRole: "customer" | "seller" = "customer";
         let userApprovalStatus: "approved" | "pending" | "rejected" = "approved";
 
-        if (requestedRole === "seller") {
-          userRole = "seller";
-          userApprovalStatus = "pending";
-        
-         } else {
+       if (requestedRole === "seller") {
+  userRole = "seller";
+  userApprovalStatus = "pending";
+} else {
   userRole = "customer";
-  userApprovalStatus = "approved"; //
-        user = await storage.createUser({
-          email: email!,
-          firebaseUid: uid,
-          name: name || email!.split('@')[0],
-          role: userRole,
-          approvalStatus: userApprovalStatus
-        });
-        isNewUser = true;
-        console.log(`New user created: ${user.email} with role: ${user.role} and status: ${user.approvalStatus}`);
+  userApprovalStatus = "approved";
+}
+
+user = await storage.createUser({
+  email: email!,
+  firebaseUid: uid,
+  name: name || email!.split('@')[0],
+  role: userRole,
+  approvalStatus: userApprovalStatus
+});
+isNewUser = true;
+console.log(`New user created: ${user.email} with role: ${user.role} and status: ${user.approvalStatus}`);
       } else {
         console.log(`Existing user logged in: ${user.email} with role: ${user.role} and status: ${user.approvalStatus}`);
       }
