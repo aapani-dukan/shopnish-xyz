@@ -112,11 +112,42 @@ async getSellerByUserFirebaseUid(firebaseUid: string): Promise<Seller | undefine
     return undefined;
   }
 }
-  async createUser(user: InsertUser): Promise<User> {
-    const result = await db.insert(users).values(user).returning();
-    return result[0];
+  
+async createUser(data: {
+  email: string;
+  firebaseUid: string;
+  name: string;
+  role: "customer" | "seller";
+  approvalStatus: "approved" | "pending" | "rejected";
+}) {
+  // ✅ पहले चेक करो कि user पहले से है क्या?
+  const existing = await db
+    .select()
+    .from(users)
+    .where(eq(users.firebaseUid, data.firebaseUid))
+    .limit(1);
+
+  if (existing.length > 0) {
+    console.log("User already exists with Firebase UID:", data.firebaseUid);
+    return existing[0]; // ✅ पुराना user return कर दो
   }
 
+  // ✅ अगर नहीं है, तो insert करो
+  const inserted = await db
+    .insert(users)
+    .values({
+      firebaseUid: data.firebaseUid,
+      email: data.email,
+      name: data.name,
+      role: data.role,
+      approvalStatus: data.approvalStatus,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    })
+    .returning();
+
+  return inserted[0];
+}
   // Categories
   async getCategories(): Promise<Category[]> {
     try {
