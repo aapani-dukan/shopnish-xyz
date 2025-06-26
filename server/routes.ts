@@ -21,7 +21,7 @@ import sellersApproveRouter from "../routes/sellers/approve";
 import sellersRejectRouter from "../routes/sellers/reject";
 import sellerMeRouter from "../routes/sellerMe";
 import adminProductsRouter from "./roots/admin/products";
-import adminLoginRoutes from "./admin/login";
+import adminLoginRoutes from "./roots/admin/admin-password";
 
 export async function registerRoutes(app: Express): Promise<void> {
   try {
