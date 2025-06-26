@@ -100,18 +100,18 @@ const updatedUserResult = await db
         console.error("Seller approve: Could not find user to update role for firebaseUid:", existingSeller.userId);
         return res.status(500).json({ message: "Failed to update user role." });
     }
-
-    res.json({
-      message: "Seller approved and role updated to 'seller'",
-      seller: updatedSeller,
-      user: {
-          // ✅ user.uuid के बजाय user.firebaseUid का उपयोग करें (जैसा कि schema.ts में परिभाषित है)
-          firebaseUid: updatedUser.firebaseUid, 
-          role: updatedUser.role,
-          email: updatedUser.email,
-          name: updatedUser.name,
-      },
-    });
+res.json({
+  message: "Seller approved and role updated to 'seller'",
+  seller: updatedSeller,
+  user: {
+      firebaseUid: updatedUser.firebaseUid, 
+      role: updatedUser.role,
+      approvalStatus: updatedUser.approvalStatus, // ✅ जोड़ें
+      email: updatedUser.email,
+      name: updatedUser.name,
+  },
+});
+    
   } catch (error) {
     console.error("Error in seller approve route:", error);
     res.status(500).json({ message: "Internal Server Error", error: (error as Error).message });
