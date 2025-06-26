@@ -89,32 +89,34 @@ router.post("/", verifyToken, async (req: AuthenticatedRequest, res: Response, n
     const newSeller = newSellerResult[0]; 
 
     /* ─────────── 6. उसी user की role = pending_seller कर दें ─────────── */
-    const updatedUserResult = await db
-      .update(users)
-      .set({ 
-        role: "seller", 
-      })
-      .where(eq(users.firebaseUid, firebaseUid)) 
-      .returning(); 
+    /* ─────────── 6. उसी user की role = seller और status = pending कर दें ─────────── */
+const updatedUserResult = await db
+  .update(users)
+  .set({ 
+    role: "seller", 
+    approvalStatus: "pending",
+  })
+  .where(eq(users.firebaseUid, firebaseUid)) 
+  .returning();
 
-    const updatedUser = updatedUserResult[0]; 
+const updatedUser = updatedUserResult[0]; 
 
-    if (!updatedUser) {
-        console.error("Seller apply: Could not find user to update role for firebaseUid:", firebaseUid);
-        return res.status(500).json({ message: "Failed to update user role." });
-    }
-
+if (!updatedUser) {
+    console.error("Seller apply: Could not find user to update role/status for firebaseUid:", firebaseUid);
+    return res.status(500).json({ message: "Failed to update user role/status." });
+}
     /* ─────────── 7. सक्सेस रिस्पॉन्स भेजें ─────────── */
     res.status(201).json({
-      message: "Seller application submitted",
-      seller: newSeller, 
-      user: {
-          uuid: updatedUser.firebaseUid, // ✅ users.uuid के बजाय firebaseUid
-          role: updatedUser.role,
-          email: updatedUser.email,
-          name: updatedUser.name,
-      },
-    });
+  message: "Seller application submitted",
+  seller: newSeller, 
+  user: {
+      uuid: updatedUser.firebaseUid,
+      role: updatedUser.role,
+      approvalStatus: updatedUser.approvalStatus, // ✅ यह भी भेजो
+      email: updatedUser.email,
+      name: updatedUser.name,
+  },
+});
   } catch (error) {
     console.error("Error in seller apply route:", error);
     next(error); 
