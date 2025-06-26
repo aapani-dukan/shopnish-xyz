@@ -21,7 +21,7 @@ import sellersApproveRouter from "../routes/sellers/approve";
 import sellersRejectRouter from "../routes/sellers/reject";
 import sellerMeRouter from "../routes/sellerMe";
 import adminProductsRouter from "./roots/admin/products";
-import adminLoginRoutes from "./roots/admin/admin-password";
+import adminPasswordRoutes from "./roots/admin/admin-password";
 
 export async function registerRoutes(app: Express): Promise<void> {
   try {
@@ -99,7 +99,7 @@ console.log(`New user created: ${user.email} with role: ${user.role} and status:
   // --- ADMIN ROUTES ---
   app.use("/api/admin/vendors", adminVendorsRouter);
   app.use("/api/admin/products", adminProductsRouter);
-app.use("/api/admin-login", adminLoginRoutes);
+app.use("/api/admin-login", adminPasswordRoutes);
   // --- SELLER ROUTES ---
   app.use("/api/sellers/pending", pendingSellersRouter);
   app.use("/api/sellers/apply", sellersApplyRouter);
