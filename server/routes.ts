@@ -46,11 +46,13 @@ export async function registerRoutes(app: Express): Promise<void> {
         let userRole: "customer" | "seller" = "customer";
         let userApprovalStatus: "approved" | "pending" | "rejected" = "approved";
 
-        if (requestedRole === "seller" || requestedRole === "pending_seller") {
+        if (requestedRole === "seller" {
           userRole = "seller";
           userApprovalStatus = "pending";
-        }
-
+        
+         } else {
+  userRole = "customer";
+  userApprovalStatus = "approved"; //
         user = await storage.createUser({
           email: email!,
           firebaseUid: uid,
