@@ -20,7 +20,7 @@ import sellersApplyRouter from "../routes/sellers/apply";
 import sellersApproveRouter from "../routes/sellers/approve";
 import sellersRejectRouter from "../routes/sellers/reject";
 import sellerMeRouter from "../routes/sellerMe";
-import adminProductsRouter from "./client/src/pages/products";
+import adminProductsRouter from "./roots/admin/products";
 
 export async function registerRoutes(app: Express): Promise<void> {
   try {
