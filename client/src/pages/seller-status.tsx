@@ -67,8 +67,8 @@ export default function SellerStatusPage() {
     actionButtonText = "Go to Seller Dashboard";
     actionButtonLink = "/seller-dashboard";
     actionButtonVariant = "default";
-  } else if (user?.role === "pending_seller" || seller?.approvalStatus === "pending") {
-    // यूजर का रोल 'pending_seller' है या seller डेटा 'pending' दिखाता है
+  } else if (user?.role === "seller" || seller?.approvalStatus === "pending") {
+    // यूजर का रोल seller' है या seller डेटा 'pending' दिखाता है
     title = "Application Under Review";
     description = "Thank you for applying to become a seller on Shopnish. Our admin team is reviewing your application. You will be notified once your account is approved.";
     IconComponent = Clock;
