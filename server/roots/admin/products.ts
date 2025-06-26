@@ -5,7 +5,7 @@ const router = express.Router();
 
 router.get("/", async (_req, res) => {
   try {
-    const products = await storage.getAllProducts();
+    const products = await storage.getProducts();
     res.json(products);
   } catch (error) {
     console.error("Error fetching all products for admin:", error);
