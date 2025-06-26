@@ -1,4 +1,4 @@
-// routes/admin-password.ts
+// roots/admin-password.ts
 
 import { Router, Request, Response } from "express";
 
