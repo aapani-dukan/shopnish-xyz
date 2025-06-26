@@ -24,7 +24,7 @@ export default function AuthPage() {
       const token = await fbUser.getIdToken();
 
       /* 3️⃣ 🔒 Backend /api/auth/login */
-      const res = await fetch("/api/auth/login", {
+      const res = await fetch("/api/auth/login?role=seller", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
