@@ -12,15 +12,15 @@ import {
   insertOrderSchema,
   insertReviewSchema,
 } from "../shared/backend/schema";
+
 // Routers
 import adminVendorsRouter from "./roots/admin/vendors";
-
 import pendingSellersRouter from "../routes/sellers/pending";
 import sellersApplyRouter from "../routes/sellers/apply";
 import sellersApproveRouter from "../routes/sellers/approve";
 import sellersRejectRouter from "../routes/sellers/reject";
 import sellerMeRouter from "../routes/sellerMe";
-
+import adminProductsRouter from "./roots/admin/products";
 
 export async function registerRoutes(app: Express): Promise<void> {
   try {
@@ -43,40 +43,35 @@ export async function registerRoutes(app: Express): Promise<void> {
       let isNewUser = false;
 
       if (!user) {
-        // नया यूज़र बनाएं
-        // ✅ यह वह हिस्सा है जिसे आपको बदलना है!
-        let userRole: "customer" | "seller" = "customer"; // डिफ़ॉल्ट कस्टमर
-        let userApprovalStatus: "approved" | "pending" | "rejected" = "approved"; // डिफ़ॉल्ट रूप से अनुमोदित
+        let userRole: "customer" | "seller" = "customer";
+        let userApprovalStatus: "approved" | "pending" | "rejected" = "approved";
 
-        // अगर रिक्वेस्टेड रोल 'seller' या 'pending_seller' है, तो सही रोल और स्टेटस सेट करें
         if (requestedRole === "seller" || requestedRole === "pending_seller") {
-            userRole = "seller"; // रोल को 'seller' पर सेट करें
-            userApprovalStatus = "pending"; // और स्टेटस को 'pending' पर सेट करें
+          userRole = "seller";
+          userApprovalStatus = "pending";
         }
 
         user = await storage.createUser({
           email: email!,
           firebaseUid: uid,
           name: name || email!.split('@')[0],
-          role: userRole, // ✅ यह अब सही 'seller' या 'customer' होगा
-          approvalStatus: userApprovalStatus // ✅ यह अब सही 'pending' या 'approved' होगा
+          role: userRole,
+          approvalStatus: userApprovalStatus
         });
         isNewUser = true;
         console.log(`New user created: ${user.email} with role: ${user.role} and status: ${user.approvalStatus}`);
       } else {
-        // ✅ मौजूदा यूजर के लिए भी सही लॉगिंग और स्टेटस अपडेट
         console.log(`Existing user logged in: ${user.email} with role: ${user.role} and status: ${user.approvalStatus}`);
       }
 
-      // response में भेजने से पहले, अगर यूजर सेलर है, तो उसकी अपडेटेड डिटेल्स फ़ेच करें
       let sellerDetails = undefined;
-      let finalApprovalStatus = user.approvalStatus; // यूजर का मौजूदा अप्रूवल स्टेटस
+      let finalApprovalStatus = user.approvalStatus;
 
       if (user.role === "seller") {
-          sellerDetails = await storage.getSellerByUserFirebaseUid(user.FirebaseUid);
-          if (sellerDetails) {
-              finalApprovalStatus = sellerDetails.approvalStatus; // Seller की असली approvalStatus लें
-          }
+        sellerDetails = await storage.getSellerByUserFirebaseUid(user.firebaseUid);
+        if (sellerDetails) {
+          finalApprovalStatus = sellerDetails.approvalStatus;
+        }
       }
 
       res.json({
@@ -97,14 +92,17 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
 
-  // ADMIN ROUTES
+  // --- ADMIN ROUTES ---
   app.use("/api/admin/vendors", adminVendorsRouter);
+  app.use("/api/admin/products", adminProductsRouter);
+
   // --- SELLER ROUTES ---
   app.use("/api/sellers/pending", pendingSellersRouter);
   app.use("/api/sellers/apply", sellersApplyRouter);
   app.use("/api/sellers/approve", sellersApproveRouter);
   app.use("/api/sellers/reject", sellersRejectRouter);
   app.use("/api/sellers/me", sellerMeRouter);
+
 
   // --- DELIVERY LOGIN ---
   app.post("/api/delivery/login", verifyToken, async (req: AuthenticatedRequest, res: Response) => {
