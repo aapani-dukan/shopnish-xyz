@@ -46,7 +46,7 @@ export async function registerRoutes(app: Express): Promise<void> {
         let userRole: "customer" | "seller" = "customer";
         let userApprovalStatus: "approved" | "pending" | "rejected" = "approved";
 
-        if (requestedRole === "seller" {
+        if (requestedRole === "seller") {
           userRole = "seller";
           userApprovalStatus = "pending";
         
