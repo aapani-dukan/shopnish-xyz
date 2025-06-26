@@ -33,7 +33,7 @@ export default function AdminDashboard() {
 
   const fetchVendors = async () => {
     try {
-      const res = await apiRequest("GET", "/api/admin/vendors");
+     const res = await apiRequest("GET", "/api/sellers/pending");
       if (res && Array.isArray(res.data)) {
         setVendors(res.data);
         console.log("Fetched vendors for admin:", res.data);
