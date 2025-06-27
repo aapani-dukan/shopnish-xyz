@@ -1,190 +1,152 @@
-// server/routes.ts
-
-import express, { type Express, Request, Response } from "express";
-import { storage } from "./storage";
-
+import express, { type Express, type Request, type Response } from "express";
 import { z } from "zod";
 import { verifyToken, AuthenticatedRequest } from "./middleware/verifyToken"; 
 import { requireAuth } from "./middleware/requireAuth";
-import { parseIntParam } from "./util/parseIntParam";
+import { storage } from "./storage";
+import jwt from "jsonwebtoken";
+import * as admin from "firebase-admin";
+
+// Routers
+import adminVendorsRouter from "./roots/admin/vendors";
+import adminProductsRouter from "./roots/admin/products";
+import adminPasswordRoutes from "./roots/admin/admin-password";
+import sellersApplyRouter from "./sellers/apply";
+import sellersRejectRouter from "./sellers/reject";
+import sellerMeRouter from "./sellerMe";
+
+  import { parseIntParam } from "./util/parseIntParam";
 import {
   insertCartItemSchema,
   insertOrderSchema,
   insertReviewSchema,
 } from "../shared/backend/schema";
-import jwt from 'jsonwebtoken'; 
-// ✅ Firebase Admin SDK को डिफ़ॉल्ट एक्सपोर्ट के रूप में इम्पोर्ट करें
-import * as admin from 'firebase-admin'; 
-
-
-// Routers
-import adminVendorsRouter from "./roots/admin/vendors";
-import sellersApplyRouter from "../routes/sellers/apply";       
-import sellersRejectRouter from "../routes/sellers/reject";       
-import sellerMeRouter from "../routes/sellerMe";
-import adminProductsRouter from "./roots/admin/products";
-import adminPasswordRoutes from "./roots/admin/admin-password";
-
-
-// FirebaseAuthenticatedRequest इंटरफेस को जैसा था वैसा ही रहने दें
+// FirebaseAuthenticatedRequest इंटरफेस
 interface FirebaseAuthenticatedRequest extends Request {
-  user?: { 
+  user?: {
     uid: string;
     email?: string | null;
     name?: string | null;
   };
 }
 
-
 export async function registerRoutes(app: Express): Promise<void> {
-
-  // --- AUTH ROUTES ---
+  // -------------------------------
+  // 🔐 /api/auth/login
+  // -------------------------------
   app.post("/api/auth/login", async (req: FirebaseAuthenticatedRequest, res: Response) => {
     try {
-      const firebaseIdToken = req.headers.authorization?.split(' ')[1]; 
+      const firebaseIdToken = req.headers.authorization?.split(" ")[1];
+      if (!firebaseIdToken) return res.status(401).json({ message: "Authorization token missing." });
 
-      if (!firebaseIdToken) {
-        return res.status(401).json({ message: "Authorization token missing." });
-      }
-
-      let decodedToken: admin.auth.DecodedIdToken; // ✅ 'admin.auth' का उपयोग करें
+      let decodedToken: admin.auth.DecodedIdToken;
       try {
-        decodedToken = await admin.auth().verifyIdToken(firebaseIdToken); // ✅ 'admin.auth()' का उपयोग करें
-      } catch (decodeError) {
-        console.error("Firebase ID Token verification failed:", decodeError);
-        return res.status(401).json({ message: "Invalid or expired Firebase ID token." });
+        decodedToken = await admin.auth().verifyIdToken(firebaseIdToken);
+      } catch (err) {
+        console.error("Invalid Firebase ID token:", err);
+        return res.status(401).json({ message: "Invalid Firebase token." });
       }
 
-      const uid = decodedToken.uid;
-      const email = decodedToken.email;
-      const name = decodedToken.name || decodedToken.email?.split('@')[0]; 
-
-      if (!uid || !email) { 
-        return res.status(401).json({ message: "Authentication failed: Firebase user data missing." });
-      }
+      const { uid, email, name } = decodedToken;
+      if (!uid || !email) return res.status(401).json({ message: "Missing Firebase user data." });
 
       const requestedRole = (req.query.role as string) || "customer";
-
       let user = await storage.getUserByFirebaseUid(uid);
       let isNewUser = false;
 
       if (!user) {
-        let userRole: "customer" | "seller" = "customer";
-        let userApprovalStatus: "approved" | "pending" | "rejected" = "approved";
-
-        if (requestedRole === "seller") {
-          userRole = "seller";
-          userApprovalStatus = "pending";
-        } else {
-          userRole = "customer";
-          userApprovalStatus = "approved";
-        }
-
+        const role = requestedRole === "seller" ? "seller" : "customer";
+        const approvalStatus = role === "seller" ? "pending" : "approved";
         user = await storage.createUser({
-          email: email, 
-          firebaseUid: uid, 
-          name: name || email.split('@')[0], 
-          role: userRole,
-          approvalStatus: userApprovalStatus
+          firebaseUid: uid,
+          email,
+          name: name || email.split("@")[0],
+          role,
+          approvalStatus,
         });
         isNewUser = true;
-        console.log(`New user created: ${user.email} with role: ${user.role} and status: ${user.approvalStatus}`);
+        console.log(`🆕 New user created: ${email} (${role})`);
       } else {
-        console.log(`Existing user logged in: ${user.email} with role: ${user.role} and status: ${user.approvalStatus}`);
+        console.log(`🔁 Existing user: ${email} (${user.role})`);
       }
 
       const token = jwt.sign(
         {
-          id: user.id, 
+          id: user.id,
           firebaseUid: user.firebaseUid,
           email: user.email,
           role: user.role,
-          approvalStatus: user.approvalStatus 
+          approvalStatus: user.approvalStatus,
         },
-        process.env.JWT_SECRET as string, 
-        { expiresIn: '7d' } 
+        process.env.JWT_SECRET!,
+        { expiresIn: "7d" }
       );
-      console.log("Generated JWT Token for user:", user.id);
 
       let sellerDetails = undefined;
-      let finalApprovalStatus = user.approvalStatus;
-
       if (user.role === "seller") {
         sellerDetails = await storage.getSellerByUserFirebaseUid(user.firebaseUid);
-        if (sellerDetails) {
-          finalApprovalStatus = sellerDetails.approvalStatus;
-        } else {
-          console.warn(`User ${user.email} has role 'seller' but no matching seller profile found.`);
-          finalApprovalStatus = user.approvalStatus;
-        }
       }
 
       res.json({
-        message: isNewUser ? "User created and logged in successfully" : "Login successful",
-        token: token, 
+        message: isNewUser ? "User created and logged in" : "Login successful",
+        token,
         user: {
-          uuid: user.id.toString(), 
+          uuid: user.id.toString(),
           email: user.email,
           name: user.name,
           role: user.role,
-          seller: sellerDetails, 
-          approvalStatus: finalApprovalStatus, 
-        }
+          approvalStatus: sellerDetails?.approvalStatus || user.approvalStatus,
+          seller: sellerDetails,
+        },
       });
-
-    } catch (error) {
-      console.error("Error in /api/auth/login:", error);
+    } catch (err) {
+      console.error("Error in /api/auth/login:", err);
       res.status(500).json({ message: "Internal server error." });
     }
   });
 
-  // --- ADMIN ROUTES ---
+  // -------------------------------
+  // 📦 Admin + Seller Routes
+  // -------------------------------
   app.use("/api/admin/vendors", adminVendorsRouter);
   app.use("/api/admin/products", adminProductsRouter);
-  app.use("/api/admin-login", adminPasswordRoutes); 
+  app.use("/api/admin-login", adminPasswordRoutes);
+  app.use("/api/sellers/apply", sellersApplyRouter);
+  app.use("/api/sellers/reject", sellersRejectRouter);
+  app.use("/api/seller-me", sellerMeRouter);
 
-   app.use("/api/sellers/apply", sellersApplyRouter); 
-  
-  app.use("/api/seller-me", sellerMeRouter); 
-
+  // -------------------------------
+  // 🚚 /api/delivery/login
+  // -------------------------------
   app.post("/api/delivery/login", async (req: FirebaseAuthenticatedRequest, res: Response) => {
     try {
-      const firebaseIdToken = req.headers.authorization?.split(' ')[1];
+      const firebaseIdToken = req.headers.authorization?.split(" ")[1];
+      if (!firebaseIdToken) return res.status(401).json({ message: "Authorization token missing." });
 
-      if (!firebaseIdToken) {
-        return res.status(401).json({ message: "Authorization token missing." });
-      }
-
-      let decodedToken: admin.auth.DecodedIdToken; // ✅ 'admin.auth' का उपयोग करें
+      let decodedToken: admin.auth.DecodedIdToken;
       try {
-        decodedToken = await admin.auth().verifyIdToken(firebaseIdToken); // ✅ 'admin.auth()' का उपयोग करें
-      } catch (decodeError) {
-        console.error("Firebase ID Token verification failed:", decodeError);
-        return res.status(401).json({ message: "Invalid or expired Firebase ID token." });
+        decodedToken = await admin.auth().verifyIdToken(firebaseIdToken);
+      } catch (err) {
+        console.error("Invalid Firebase ID token:", err);
+        return res.status(401).json({ message: "Invalid Firebase token." });
       }
 
-      const uid = decodedToken.uid;
-      const email = decodedToken.email;
-      const name = decodedToken.name || decodedToken.email?.split('@')[0];
-
-      if (!uid) {
-        return res.status(401).json({ message: "Authentication failed: Firebase user data missing." });
-      }
+      const { uid, email, name } = decodedToken;
+      if (!uid || !email) return res.status(401).json({ message: "Missing Firebase user data." });
 
       let deliveryBoy = await storage.getDeliveryBoyByFirebaseUid(uid);
-      let isNewDeliveryBoy = false;
+      let isNew = false;
 
       if (!deliveryBoy) {
         deliveryBoy = await storage.createDeliveryBoy({
-          email: email!,
           firebaseUid: uid,
-          name: name || email!.split('@')[0],
-          approvalStatus: "pending"
+          email,
+          name: name || email.split("@")[0],
+          approvalStatus: "pending",
         });
-        isNewDeliveryBoy = true;
-        console.log(`New delivery boy created: ${deliveryBoy.email}`);
+        isNew = true;
+        console.log(`🆕 Delivery boy created: ${email}`);
       } else {
-        console.log(`Delivery boy logged in: ${deliveryBoy.email}`);
+        console.log(`🔁 Delivery boy logged in: ${email}`);
       }
 
       const token = jwt.sign(
@@ -192,251 +154,234 @@ export async function registerRoutes(app: Express): Promise<void> {
           id: deliveryBoy.id,
           firebaseUid: deliveryBoy.firebaseUid,
           email: deliveryBoy.email,
-          role: "delivery", 
-          approvalStatus: deliveryBoy.approvalStatus
+          role: "delivery",
+          approvalStatus: deliveryBoy.approvalStatus,
         },
-        process.env.JWT_SECRET as string,
-        { expiresIn: '7d' }
+        process.env.JWT_SECRET!,
+        { expiresIn: "7d" }
       );
-      console.log("Generated JWT Token for delivery boy:", deliveryBoy.id);
-
 
       res.json({
-        message: isNewDeliveryBoy ? "Delivery boy created and logged in successfully" : "Login successful",
-        token: token, 
+        message: isNew ? "Delivery boy created and logged in" : "Login successful",
+        token,
         user: {
           uuid: deliveryBoy.id.toString(),
           email: deliveryBoy.email,
           name: deliveryBoy.name,
-          role: "delivery", 
+          role: "delivery",
           approvalStatus: deliveryBoy.approvalStatus,
-        }
+        },
       });
-    } catch (error) {
-      console.error("Error in /api/delivery/login:", error);
+    } catch (err) {
+      console.error("Error in /api/delivery/login:", err);
       res.status(500).json({ message: "Internal server error." });
     }
   });
 
-  // बाकी सभी रूट्स verifyToken मिडलवेयर का उपयोग करते हैं
+  // -------------------------------
+  // 🧾 /api/delivery/me
+  // -------------------------------
   app.get("/api/delivery/me", verifyToken, async (req: AuthenticatedRequest, res: Response) => {
     try {
-      if (!req.user || !req.user.uid) return res.status(401).json({ message: "Unauthorized" });
-
+      if (!req.user?.uid) return res.status(401).json({ message: "Unauthorized" });
       const deliveryBoy = await storage.getDeliveryBoyByFirebaseUid(req.user.uid);
       if (!deliveryBoy) return res.status(404).json({ message: "Delivery profile not found." });
 
-      res.json({ user: {
-        uuid: deliveryBoy.id.toString(),
-        ...deliveryBoy,
-        role: "delivery" 
-      }});
-    } catch (error) {
-      console.error("Error in /api/delivery/me:", error);
+      res.json({
+        user: {
+          uuid: deliveryBoy.id.toString(),
+          ...deliveryBoy,
+          role: "delivery",
+        },
+      });
+    } catch (err) {
+      console.error("Error in /api/delivery/me:", err);
       res.status(500).json({ message: "Internal server error." });
     }
   });
 
 
-  // --- PRODUCT & CATEGORY ROUTES ---
-  app.get("/api/categories", async (_req, res) => {
-    try {
-      const categories = await storage.getCategories();
-      res.json(categories);
-    } catch (error) {
-      console.error("Error fetching categories:", error);
-      res.status(500).json({ message: "Failed to fetch categories." });
+// --- CATEGORY ROUTE ---
+app.get("/api/categories", async (_req, res) => {
+  try {
+    const categories = await storage.getCategories();
+    res.json(categories);
+  } catch (error) {
+    console.error("Error fetching categories:", error);
+    res.status(500).json({ message: "Failed to fetch categories." });
+  }
+});
+
+// --- PRODUCT ROUTES ---
+app.get("/api/products", async (req, res) => {
+  try {
+    const featured = req.query.featured === "true";
+    const categoryId = req.query.categoryId ? parseInt(req.query.categoryId as string) : undefined;
+    const search = req.query.search as string | undefined;
+    const products = await storage.getProducts({ featured, categoryId, search });
+    res.json(products);
+  } catch (error) {
+    console.error("Error fetching products:", error);
+    res.status(500).json({ message: "Failed to fetch products." });
+  }
+});
+
+app.get("/api/products/:id", async (req, res) => {
+  const id = parseIntParam(req.params.id, "product ID", res);
+  if (id === null) return;
+
+  try {
+    const product = await storage.getProductById(id);
+    if (!product) return res.status(404).json({ message: "Product not found." });
+    res.json(product);
+  } catch (error) {
+    console.error("Error fetching product:", error);
+    res.status(500).json({ message: "Failed to fetch product." });
+  }
+});
+
+// --- CART ROUTES ---
+app.get("/api/cart", verifyToken, requireAuth, async (req: AuthenticatedRequest, res) => {
+  try {
+    if (!req.user?.id) return res.status(401).json({ message: "Unauthorized" });
+    const cartItems = await storage.getCartItemsByUserId(req.user.id);
+    res.json(cartItems);
+  } catch (error) {
+    console.error("Error fetching cart:", error);
+    res.status(500).json({ message: "Failed to fetch cart." });
+  }
+});
+
+app.post("/api/cart", verifyToken, requireAuth, async (req: AuthenticatedRequest, res) => {
+  try {
+    if (!req.user?.id) return res.status(401).json({ message: "Unauthorized" });
+    const parsedItem = insertCartItemSchema.parse({ ...req.body, userId: req.user.id });
+    const cartItem = await storage.addCartItem(parsedItem);
+    res.status(201).json(cartItem);
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ message: "Invalid cart item", errors: error.errors });
     }
-  });
+    console.error("Error adding cart item:", error);
+    res.status(500).json({ message: "Failed to add cart item." });
+  }
+});
 
-  app.get("/api/products", async (req, res) => {
-    try {
-      const featured = req.query.featured === "true";
-      const categoryId = req.query.categoryId ? parseInt(req.query.categoryId as string) : undefined;
-      const search = req.query.search as string | undefined;
-      const products = await storage.getProducts({ featured, categoryId, search });
-      res.json(products);
-    } catch (error) {
-      console.error("Error fetching products:", error);
-      res.status(500).json({ message: "Failed to fetch products." });
+app.put("/api/cart/:id", verifyToken, requireAuth, async (req: AuthenticatedRequest, res) => {
+  const itemId = parseIntParam(req.params.id, "cart item ID", res);
+  if (itemId === null) return;
+
+  const { quantity } = req.body;
+  if (typeof quantity !== "number" || quantity <= 0) {
+    return res.status(400).json({ message: "Quantity must be a positive number." });
+  }
+
+  try {
+    if (!req.user?.id) return res.status(401).json({ message: "Unauthorized" });
+    const updated = await storage.updateCartItemQuantity(itemId, req.user.id, quantity);
+    if (!updated) return res.status(404).json({ message: "Cart item not found." });
+    res.json(updated);
+  } catch (error) {
+    console.error("Error updating cart item:", error);
+    res.status(500).json({ message: "Failed to update cart item." });
+  }
+});
+
+app.delete("/api/cart/:id", verifyToken, requireAuth, async (req: AuthenticatedRequest, res) => {
+  const itemId = parseIntParam(req.params.id, "cart item ID", res);
+  if (itemId === null) return;
+
+  try {
+    if (!req.user?.id) return res.status(401).json({ message: "Unauthorized" });
+    await storage.removeCartItem(itemId, req.user.id);
+    res.status(204).send();
+  } catch (error) {
+    console.error("Error deleting cart item:", error);
+    res.status(500).json({ message: "Failed to delete cart item." });
+  }
+});
+
+app.delete("/api/cart", verifyToken, requireAuth, async (req: AuthenticatedRequest, res) => {
+  try {
+    if (!req.user?.id) return res.status(401).json({ message: "Unauthorized" });
+    await storage.clearCart(req.user.id);
+    res.status(204).send();
+  } catch (error) {
+    console.error("Error clearing cart:", error);
+    res.status(500).json({ message: "Failed to clear cart." });
+  }
+});
+
+// --- ORDER ROUTES ---
+app.post("/api/orders", verifyToken, requireAuth, async (req: AuthenticatedRequest, res) => {
+  try {
+    if (!req.user?.id) return res.status(401).json({ message: "Unauthorized" });
+    const parsedOrder = insertOrderSchema.parse({ ...req.body, customerId: req.user.id });
+    const order = await storage.createOrder(parsedOrder);
+    res.status(201).json(order);
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ message: "Invalid order data", errors: error.errors });
     }
-  });
+    console.error("Error creating order:", error);
+    res.status(500).json({ message: "Failed to create order." });
+  }
+});
 
-  app.get("/api/products/:id", async (req, res) => {
-    const id = parseIntParam(req.params.id, "productId", res);
-    if (id === null) return;
+app.get("/api/orders", verifyToken, requireAuth, async (req: AuthenticatedRequest, res) => {
+  try {
+    if (!req.user?.id) return res.status(401).json({ message: "Unauthorized" });
+    const orders = await storage.getOrdersByUserId(req.user.id);
+    res.json(orders);
+  } catch (error) {
+    console.error("Error fetching orders:", error);
+    res.status(500).json({ message: "Failed to fetch orders." });
+  }
+});
 
-    try {
-      const product = await storage.getProductById(id);
-      if (!product) return res.status(404).json({ message: "Product not found." });
-      res.json(product);
-    } catch (error) {
-      console.error("Error fetching product:", error);
-      res.status(500).json({ message: "Failed to fetch product." });
+app.get("/api/orders/:id", verifyToken, requireAuth, async (req: AuthenticatedRequest, res) => {
+  const orderId = parseIntParam(req.params.id, "order ID", res);
+  if (orderId === null) return;
+
+  try {
+    if (!req.user?.id) return res.status(401).json({ message: "Unauthorized" });
+    const order = await storage.getOrderById(orderId, req.user.id);
+    if (!order) return res.status(404).json({ message: "Order not found." });
+    res.json(order);
+  } catch (error) {
+    console.error("Error fetching order:", error);
+    res.status(500).json({ message: "Failed to fetch order." });
+  }
+});
+
+// --- REVIEW ROUTES ---
+app.get("/api/products/:id/reviews", async (req, res) => {
+  const productId = parseIntParam(req.params.id, "product ID", res);
+  if (productId === null) return;
+
+  try {
+    const reviews = await storage.getReviewsByProductId(productId);
+    res.json(reviews);
+  } catch (error) {
+    console.error("Error fetching reviews:", error);
+    res.status(500).json({ message: "Failed to fetch reviews." });
+  }
+});
+
+app.post("/api/products/:id/reviews", verifyToken, requireAuth, async (req: AuthenticatedRequest, res) => {
+  const productId = parseIntParam(req.params.id, "product ID", res);
+  if (productId === null) return;
+
+  try {
+    if (!req.user?.id) return res.status(401).json({ message: "Unauthorized" });
+    const parsedReview = insertReviewSchema.parse({ ...req.body, productId, customerId: req.user.id });
+    const review = await storage.addReview(parsedReview);
+    res.status(201).json(review);
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ message: "Invalid review", errors: error.errors });
     }
-  });
-
-  // --- CART ROUTES ---
-  app.get("/api/cart", verifyToken, requireAuth, async (req: AuthenticatedRequest, res) => {
-    try {
-      if (req.user?.id === undefined) {
-        return res.status(401).json({ message: "Unauthorized: User database ID not found." });
-      }
-      const cartItems = await storage.getCartItemsByUserId(req.user.id);
-      res.json(cartItems);
-    } catch (error) {
-      console.error("Error fetching cart:", error);
-      res.status(500).json({ message: "Failed to fetch cart." });
-    }
-  });
-
-  app.post("/api/cart", verifyToken, requireAuth, async (req: AuthenticatedRequest, res) => {
-    try {
-      if (req.user?.id === undefined) {
-        return res.status(401).json({ message: "Unauthorized: User database ID not found." });
-      }
-      const parsedItem = insertCartItemSchema.parse({ ...req.body, userId: req.user.id });
-      const cartItem = await storage.addCartItem(parsedItem);
-      res.status(201).json(cartItem);
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Invalid cart item data", errors: error.errors });
-      }
-      console.error("Error adding to cart:", error);
-      res.status(500).json({ message: "Failed to add to cart." });
-    }
-  });
-
-  app.put("/api/cart/:id", verifyToken, requireAuth, async (req: AuthenticatedRequest, res) => {
-    const itemId = parseIntParam(req.params.id, "cart item ID", res);
-    if (itemId === null) return;
-
-    const { quantity } = req.body;
-    if (typeof quantity !== "number" || quantity <= 0) {
-      return res.status(400).json({ message: "Quantity must be a positive number." });
-    }
-
-    try {
-      if (req.user?.id === undefined) {
-        return res.status(401).json({ message: "Unauthorized: User database ID not found." });
-      }
-      const updatedItem = await storage.updateCartItemQuantity(itemId, req.user.id, quantity);
-      if (!updatedItem) return res.status(404).json({ message: "Cart item not found." });
-      res.json(updatedItem);
-    } catch (error) {
-      console.error("Error updating cart item:", error);
-      res.status(500).json({ message: "Failed to update cart item." });
-    }
-  });
-
-  app.delete("/api/cart/:id", verifyToken, requireAuth, async (req: AuthenticatedRequest, res) => {
-    const itemId = parseIntParam(req.params.id, "cart item ID", res);
-    if (itemId === null) return;
-
-    try {
-      if (req.user?.id === undefined) {
-        return res.status(401).json({ message: "Unauthorized: User database ID not found." });
-      }
-      await storage.removeCartItem(itemId, req.user.id);
-      res.status(204).send();
-    } catch (error) {
-      console.error("Error deleting cart item:", error);
-      res.status(500).json({ message: "Failed to delete cart item." });
-    }
-  });
-
-  app.delete("/api/cart", verifyToken, requireAuth, async (req: AuthenticatedRequest, res) => {
-    try {
-      if (req.user?.id === undefined) {
-        return res.status(401).json({ message: "Unauthorized: User database ID not found." });
-      }
-      await storage.clearCart(req.user.id);
-      res.status(204).send();
-    } catch (error) {
-      console.error("Error clearing cart:", error);
-      res.status(500).json({ message: "Failed to clear cart." });
-    }
-    });
-
-  // --- ORDER ROUTES ---
-  app.post("/api/orders", verifyToken, requireAuth, async (req: AuthenticatedRequest, res) => {
-    try {
-      if (req.user?.id === undefined) {
-        return res.status(401).json({ message: "Unauthorized: User database ID not found." });
-      }
-      const parsedOrder = insertOrderSchema.parse({ ...req.body, customerId: req.user.id });
-      const order = await storage.createOrder(parsedOrder);
-      res.status(201).json(order);
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Invalid order data", errors: error.errors });
-      }
-      console.error("Error creating order:", error);
-      res.status(500).json({ message: "Failed to create order." });
-    }
-  });
-
-  app.get("/api/orders", verifyToken, requireAuth, async (req: AuthenticatedRequest, res) => {
-    try {
-      if (req.user?.id === undefined) {
-        return res.status(401).json({ message: "Unauthorized: User database ID not found." });
-      }
-      const orders = await storage.getOrdersByUserId(req.user.id);
-      res.json(orders);
-    } catch (error) {
-      console.error("Error fetching orders:", error);
-      res.status(500).json({ message: "Failed to fetch orders." });
-    }
-  });
-
-  app.get("/api/orders/:id", verifyToken, requireAuth, async (req: AuthenticatedRequest, res) => {
-    const orderId = parseIntParam(req.params.id, "order ID", res);
-    if (orderId === null) return;
-
-    try {
-      if (req.user?.id === undefined) {
-        return res.status(401).json({ message: "Unauthorized: User database ID not found." });
-      }
-      const order = await storage.getOrderById(orderId, req.user.id);
-      if (!order) return res.status(404).json({ message: "Order not found." });
-      res.json(order);
-    } catch (error) {
-      console.error("Error fetching order:", error);
-      res.status(500).json({ message: "Internal server error." });
-    }
-  });
-
-  // --- REVIEWS ---
-  app.get("/api/products/:id/reviews", async (req, res) => {
-    const productId = parseIntParam(req.params.id, "product ID", res);
-    if (productId === null) return;
-
-    try {
-      const reviews = await storage.getReviewsByProductId(productId);
-      res.json(reviews);
-    } catch (error) {
-      console.error("Error fetching reviews:", error);
-      res.status(500).json({ message: "Failed to fetch reviews." });
-    }
-  });
-
-  app.post("/api/products/:id/reviews", verifyToken, requireAuth, async (req: AuthenticatedRequest, res) => {
-    const productId = parseIntParam(req.params.id, "product ID", res);
-    if (productId === null) return;
-
-    try {
-      if (req.user?.id === undefined) {
-        return res.status(401).json({ message: "Unauthorized: User database ID not found." });
-      }
-      const parsedReview = insertReviewSchema.parse({ ...req.body, productId, customerId: req.user.id });
-      const review = await storage.addReview(parsedReview);
-      res.status(201).json(review);
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Invalid review data", errors: error.errors });
-      }
-      console.error("Error adding review:", error);
-      res.status(500).json({ message: "Failed to add review." });
-    }
-  });
-}
+    console.error("Error adding review:", error);
+    res.status(500).json({ message: "Failed to add review." });
+  }
+});
