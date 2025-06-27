@@ -26,6 +26,9 @@ export const auth = getAuth(app);
 const provider = new GoogleAuthProvider();
 provider.addScope("email");
 provider.addScope("profile");
+provider.setCustomParameters({ prompt: "select_account" }); // ✅ Always show account chooser
+
+export const googleProvider = provider; // ✅ Export with correct name
 
 // ✅ Popup-based login
 export function signInWithGoogle() {
