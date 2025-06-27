@@ -57,7 +57,7 @@ export default function SellerStatusPage() {
 
 
   // user.role या seller.approvalStatus के आधार पर लॉजिक
-  if (user?.role === "seller" && seller?.approvalStatus === "approved") {
+  if (user?.role === "seller" || seller?.approvalStatus === "approved") {
     // यूजर का रोल 'seller' है या seller डेटा 'approved' दिखाता है
     title = "Welcome, Approved Seller!";
     description = "Your seller account has been approved. You can now access your dashboard and start managing your business.";
@@ -128,3 +128,4 @@ export default function SellerStatusPage() {
     </div>
   );
 }
+
