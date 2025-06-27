@@ -10,6 +10,8 @@ router.get('/', async (req, res) => { // रूट सिर्फ '/' है �
   try {
     // getSellers को बिना किसी फिल्टर के कॉल करें ताकि सभी वेंडर्स मिलें (pending, approved, rejected)
     const vendors = await storage.getSellers(); // storage से getSellers फंक्शन कॉल करें
+    
+console.log("Fetched Vendors:", vendors); // ✅ log to confirm
     return res.status(200).json({ success: true, data: vendors });
   } catch (error) {
     console.error('Error fetching admin vendors:', error);
