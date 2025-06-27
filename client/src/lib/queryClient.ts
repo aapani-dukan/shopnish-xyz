@@ -1,3 +1,5 @@
+// client/src/lib/queryClient.ts
+
 import { QueryClient } from "@tanstack/react-query";
 import { auth } from "@/lib/firebase";
 
@@ -10,14 +12,14 @@ export const queryClient = new QueryClient({
   },
 });
 
-const API_BASE_URL = ""; // अगर आपके पास कोई बेस URL हो तो यहाँ भरें
+const API_BASE_URL = ""; // यह सुनिश्चित करें कि यह खाली स्ट्रिंग हो
 
-// ✅ टाइप सेफ API कॉल फ़ंक्शन
+// यह वह apiRequest है जिसे हम उपयोग करेंगे!
 export async function apiRequest<T>(
   method: string,
-  path: string,
-  data?: unknown
-): Promise<T> {
+  path: string, // URL की जगह 'path' का उपयोग करें
+  data?: unknown, // 'any' की जगह 'unknown' अधिक सुरक्षित है
+): Promise<Response> {
   const url = `${API_BASE_URL}${path}`;
 
   const headers: HeadersInit = {
@@ -31,7 +33,7 @@ export async function apiRequest<T>(
   try {
     if (auth.currentUser) {
       token = await auth.currentUser.getIdToken();
-      console.log(`[apiRequest] Firebase ID Token obtained: ${token ? "Yes" : "No"}`);
+      console.log(`[apiRequest] Firebase ID Token obtained: ${token ? 'Yes' : 'No'}`);
     } else {
       console.warn("[apiRequest] No Firebase currentUser available to get ID token. Request might be unauthorized.");
     }
@@ -46,31 +48,31 @@ export async function apiRequest<T>(
     console.log("[apiRequest] No Authorization header added (token was null or error occurred).");
   }
 
-  console.log("[apiRequest] Request headers:", headers);
-  console.log("[apiRequest] Request body (JSON.stringify):", data ? JSON.stringify(data) : "No body");
+  console.log(`[apiRequest] Request headers:`, headers);
+  console.log(`[apiRequest] Request body (JSON.stringify):`, data ? JSON.stringify(data) : 'No body');
 
   try {
-    const res = await fetch(url, {
-      method,
-      headers,
-      body: data ? JSON.stringify(data) : undefined,
-      credentials: "include",
-    });
+  const res = await fetch(url, {
+    method,
+    headers,
+    body: data ? JSON.stringify(data) : undefined,
+    credentials: "include",
+  });
 
-    console.log(`[apiRequest] Received response for ${url}. Status: ${res.status}`);
+  console.log(`[apiRequest] Received response for ${url}. Status: ${res.status}`);
 
-    if (!res.ok) {
-      const text = (await res.text()) || res.statusText;
-      console.error(`[apiRequest] API Error Response: ${res.status}: ${text}`);
-      throw new Error(`${res.status}: ${text}`);
-    }
-
-    console.log(`[apiRequest] Request ${url} successful.`);
-    const json = await res.json(); // ✅ Properly returning typed JSON response
-    return json as T;
-  } catch (fetchError) {
-    console.error(`[apiRequest] Fetch operation failed for ${url}:`, fetchError);
-    throw fetchError;
+  if (!res.ok) {
+    const text = (await res.text()) || res.statusText;
+    console.error(`[apiRequest] API Error Response: ${res.status}: ${text}`);
+    throw new Error(`${res.status}: ${text}`);
   }
-}
+
+  console.log(`[apiRequest] Request ${url} successful.`);
+
+  const json = await res.json(); // ✅ यही असली JSON data है
+  return json;
+} catch (fetchError) {
+  console.error(`[apiRequest] Fetch operation failed for ${url}:`, fetchError);
+  throw fetchError;
+  }
 
