@@ -25,8 +25,8 @@ export default function AdminDashboard() {
     const res = await apiRequest("GET", "/api/admin/vendors");
     console.log("Fetched from API:", res);
 
-    if (Array.isArray(res.data?.data)) {
-      setVendors(res.data.data); // ✅ ये सही जगह है जहाँ array है
+    if (Array.isArray(res.data)) {
+      setVendors(res.data); // ✅ ये सही जगह है जहाँ array है
     } else {
       setVendors([]);
     }
