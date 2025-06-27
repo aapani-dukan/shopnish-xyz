@@ -32,7 +32,7 @@ let token: string | null = null;
 try {
 if (auth.currentUser) {
 token = await auth.currentUser.getIdToken();
-console.log([apiRequest] Firebase ID Token obtained: ${token ? 'Yes' : 'No'});
+console.log('[apiRequest] Firebase ID Token obtained: ${token ? 'Yes' : 'No'}');
 } else {
 console.warn("[apiRequest] No Firebase currentUser available to get ID token. Request might be unauthorized.");
 }
