@@ -1,7 +1,7 @@
 // client/src/pages/auth.tsx
 "use client";
 import React, { useState } from "react";
-import { signInWithGoogle } from "@/lib/firebase";
+import { signInWithGoogle } from "@/lib/firebase"; // Firebase signInWithGoogle फ़ंक्शन
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Store } from "lucide-react";
@@ -11,70 +11,76 @@ import { useAuth } from "@/hooks/useAuth"; // ✅ useAuth हुक को इ�
 export default function AuthPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [, navigate] = useLocation();
-  const { login } = useAuth(); // ✅ useAuth हुक से लॉगिन फंक्शन प्राप्त करें
+  const { user, isAuthenticated, isLoadingAuth } = useAuth(); // ✅ useAuth से user, isAuthenticated, isLoadingAuth प्राप्त करें
+
+  // यदि उपयोगकर्ता पहले से प्रमाणित है और डेटा लोड हो गया है, तो रीडायरेक्ट करें
+  // यह सुनिश्चित करता है कि पृष्ठ रिफ्रेश होने पर भी उपयोगकर्ता को सही डैशबोर्ड पर भेजा जाए
+  React.useEffect(() => {
+    if (!isLoadingAuth && isAuthenticated && user) {
+      console.log("AuthPage: User already authenticated, redirecting...");
+      switch (user.role) {
+        case "seller":
+          if (user.approvalStatus === "approved") {
+            navigate("/seller-dashboard");
+          } else if (user.approvalStatus === "pending") {
+            navigate("/seller-status");
+          } else {
+            navigate("/seller-apply");
+          }
+          break;
+        case "admin":
+          navigate("/admin-dashboard");
+          break;
+        case "delivery":
+          navigate("/delivery-dashboard");
+          break;
+        case "customer":
+        default:
+          navigate("/");
+          break;
+      }
+    }
+  }, [isAuthenticated, isLoadingAuth, user, navigate]);
+
 
   const handleGoogleSignIn = async () => {
     try {
       setIsLoading(true);
 
       /* 1️⃣ Firebase popup/redirect */
-      const result = await signInWithGoogle();
-      const fbUser = result.user;
-      if (!fbUser) {
-        // यदि यूजर पॉपअप बंद कर दे या कोई समस्या हो
-        setIsLoading(false);
-        return;
-      }
+      // यह Firebase के साथ प्रमाणीकरण प्रक्रिया शुरू करता है।
+      // एक बार Firebase सफल हो जाने पर, `onAuthStateChanged` लिसनर (जो useAuth में है) ट्रिगर होगा।
+      // `onAuthStateChanged` ही बैकएंड API कॉल और JWT टोकन हैंडलिंग का ध्यान रखेगा।
+      await signInWithGoogle();
+      // यहां हमें `result` या `fbUser` को सीधे हैंडल करने की आवश्यकता नहीं है
+      // क्योंकि `useAuth` हुक में `onAuthStateChanged` लिसनर इसका ध्यान रखेगा।
 
-      /* 2️⃣ Firebase ID-Token */
-      const token = await fbUser.getIdToken();
+      // यदि यहां कोई त्रुटि नहीं होती है, तो `onAuthStateChanged` कॉल हो जाएगा
+      // और `useAuth` में `isAuthenticated` स्थिति अपडेट हो जाएगी,
+      // जिसके बाद ऊपर का `useEffect` रीडायरेक्ट करेगा।
 
-      /* 3️⃣ 🔒 Backend /api/auth/login - अब useAuth के login फंक्शन का उपयोग करें */
-      // ✅ useAuth के login फंक्शन को कॉल करें
-      const userObject = await login(token, false); // `false` क्योंकि यह केवल लॉगिन पेज है, सेलर आवेदन नहीं
-
-      if (!userObject) {
-        throw new Error("Login failed: Could not get user data from backend.");
-      }
-
-      // ✅ userObject.role और userObject.approvalStatus (यदि विक्रेता है) के आधार पर रीडायरेक्ट करें
-      switch (userObject.role) {
-        case "seller":
-          // यदि विक्रेता स्वीकृत है, डैशबोर्ड पर जाएं
-          if (userObject.approvalStatus === "approved") {
-            navigate("/seller-dashboard");
-          }
-          // यदि विक्रेता लंबित है, स्थिति पृष्ठ पर जाएं
-          else if (userObject.approvalStatus === "pending") {
-            navigate("/seller-status");
-          }
-          // यदि विक्रेता किसी अन्य स्थिति में है (जैसे 'rejected'), आवेदन पृष्ठ पर जाएं
-          else {
-            navigate("/seller-apply");
-          }
-          break;
-
-        case "admin":
-          navigate("/admin-dashboard");
-          break;
-
-        case "delivery":
-          navigate("/delivery-dashboard");
-          break;
-
-        case "customer":
-        default:
-          // ग्राहक या अन्य अप्रत्याशित भूमिकाओं के लिए डिफ़ॉल्ट होमपेज या विक्रेता आवेदन पर जाएं
-          navigate("/"); // होमपेज पर रीडायरेक्ट करें
-          break;
-      }
     } catch (err: any) {
       console.error("Auth error:", err);
-      alert(`Login failed: ${err.message || "Please try again."}`);
+      // यदि पॉपअप बंद कर दिया गया हो या नेटवर्क समस्या हो
+      // Firebase साइन-इन प्रक्रिया में कोई भी त्रुटि यहाँ पकड़ी जाएगी
+      alert(`Sign in failed: ${err.message || "Please try again."}`);
     } finally {
-      setIsLoading(false);
+      setIsLoading(false); // साइन-इन प्रक्रिया समाप्त होने पर लोडिंग बंद करें
     }
   };
+
+  // यदि प्रमाणीकरण अभी भी लोड हो रहा है, तो लोडिंग इंडिकेटर दिखाएं
+  if (isLoadingAuth) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4 bg-gray-50">
+        <p>Loading authentication status...</p>
+      </div>
+    );
+  }
+
+  // यदि उपयोगकर्ता पहले से प्रमाणित है, तो यह पृष्ठ वैसे भी रीडायरेक्ट हो जाएगा,
+  // इसलिए यहां अतिरिक्त UI दिखाने की कोई आवश्यकता नहीं है यदि आप हमेशा रीडायरेक्ट करना चाहते हैं।
+  // अन्यथा, आप एक "आप पहले से लॉग इन हैं" संदेश दिखा सकते हैं।
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-gray-50">
