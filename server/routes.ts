@@ -12,7 +12,7 @@ import adminProductsRouter from "./roots/admin/products";
 import adminPasswordRoutes from "./roots/admin/admin-password";
 import sellersApplyRouter from "../routes/sellers/apply";
 import sellersRejectRouter from "../routes/sellers/reject";
-import sellerMeRouter from "./sellerMe";
+import sellerMeRouter from "../routes/sellerMe";
 
   import { parseIntParam } from "./util/parseIntParam";
 import {
