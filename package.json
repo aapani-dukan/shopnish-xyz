@@ -3,16 +3,20 @@
   "version": "1.0.0",
   "description": "",
   "main": "dist/index.js",
-  "type": "module",
+  
   "scripts": {
     "start": "NODE_ENV=production node dist/index.js",
-     "build": "cd client && vite build && cd .. && esbuild server/index.ts --bundle --platform=node --format=esm --outdir=dist --external:pg --external:firebase-admin && cp -R server/migrations dist/migrations",
- 
+    
+  
+    "build": "cd client && vite build && cd .. && esbuild server/index.ts --bundle --platform=node --format=cjs --outdir=dist && cp -R server/migrations dist/migrations",
     "dev": "concurrently \"npm run server:dev\" \"npm run client:dev\"",
     "server:dev": "nodemon --exec ts-node-esm server/index.ts",
     "client:dev": "cd client && vite",
     "db:push": "drizzle-kit push:pg --accept-data-loss"
   },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
   "dependencies": {
     "20": "^3.1.9",
     "@google-cloud/functions-framework": "^3.4.0",
