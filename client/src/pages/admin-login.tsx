@@ -1,4 +1,3 @@
-// client/src/pages/admin-login.tsx
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
@@ -6,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Shield } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { auth } from "@/lib/firebase"; // ✅ Firebase auth import
 import axios from "axios";
 
 export default function AdminLogin() {
@@ -24,16 +24,32 @@ export default function AdminLogin() {
       return;
     }
 
+    const user = auth.currentUser;
+    if (!user) {
+      toast({
+        title: "Not Logged In",
+        description: "Please login with Google first.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const firebaseUid = user.uid;
+
     setLoading(true);
     try {
-      const res = await axios.post("/api/admin-login", { password });
+      const res = await axios.post("/api/admin-login", {
+        firebaseUid,
+        password,
+      });
+
       // ✅ Success → Save token or flag
       localStorage.setItem("isAdmin", "true");
       setLocation("/admin-dashboard");
     } catch (err: any) {
       toast({
         title: "Login Failed",
-        description: err.response?.data?.message || "Invalid password.",
+        description: err.response?.data?.message || "Invalid login credentials.",
         variant: "destructive",
       });
     } finally {
