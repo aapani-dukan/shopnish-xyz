@@ -2,7 +2,7 @@
 
 import express, { type Express, Request, Response } from "express";
 import { storage } from "./storage";
-import { seedDatabase } from "./seed";
+// import { seedDatabase } from "./seed"; // ✅ यदि आप सीडिंग को अलग से हैंडल कर रहे हैं, तो इसे हटा दें
 import { z } from "zod";
 import { verifyToken, AuthenticatedRequest } from "./middleware/verifyToken";
 import { requireAuth } from "./middleware/requireAuth";
@@ -12,29 +12,32 @@ import {
   insertOrderSchema,
   insertReviewSchema,
 } from "../shared/backend/schema";
+import jwt from 'jsonwebtoken'; // ✅ JWT को इम्पोर्ट करें
 
 // Routers
 import adminVendorsRouter from "./roots/admin/vendors";
-import pendingSellersRouter from "../routes/sellers/pending";
-import sellersApplyRouter from "../routes/sellers/apply";
-import sellersApproveRouter from "../routes/sellers/approve";
-import sellersRejectRouter from "../routes/sellers/reject";
-import sellerMeRouter from "../routes/sellerMe";
+// import pendingSellersRouter from "../routes/sellers/pending"; // ✅ इन्हें हटाएं या उनके उपयोग की पुष्टि करें
+// import sellersApplyRouter from "../routes/sellers/apply";       // ✅ यदि वे adminVendorsRouter में कवर नहीं हैं
+// import sellersApproveRouter from "../routes/sellers/approve";     // ✅ तो उनके राउटिंग पथों को फिर से विचार करें
+// import sellersRejectRouter from "../routes/sellers/reject";       // ✅ यदि वे adminVendorsRouter में कवर नहीं हैं
+import sellerMeRouter from "./roots/sellerMe"; // ✅ सुनिश्चित करें कि यह 'roots' के भीतर है
 import adminProductsRouter from "./roots/admin/products";
 import adminPasswordRoutes from "./roots/admin/admin-password";
 
+
 export async function registerRoutes(app: Express): Promise<void> {
-  try {
-    console.log("Database seeded successfully.");
-  } catch (error) {
-    console.error("Failed to seed database:", error);
-  }
+  // ✅ यदि आप सीडिंग को एप्लिकेशन स्टार्ट अप पर कहीं और हैंडल कर रहे हैं, तो इसे हटा दें
+  // try {
+  //   console.log("Database seeded successfully.");
+  // } catch (error) {
+  //   console.error("Failed to seed database:", error);
+  // }
 
   // --- AUTH ROUTES ---
   app.post("/api/auth/login", verifyToken, async (req: AuthenticatedRequest, res: Response) => {
     try {
-      if (!req.user) {
-        return res.status(401).json({ message: "Authentication failed." });
+      if (!req.user || !req.user.uid) { // ✅ uid की भी जांच करें
+        return res.status(401).json({ message: "Authentication failed: Firebase user data missing." });
       }
 
       const { email, uid, name } = req.user;
@@ -47,46 +50,73 @@ export async function registerRoutes(app: Express): Promise<void> {
         let userRole: "customer" | "seller" = "customer";
         let userApprovalStatus: "approved" | "pending" | "rejected" = "approved";
 
-       if (requestedRole === "seller") {
-  userRole = "seller";
-  userApprovalStatus = "pending";
-} else {
-  userRole = "customer";
-  userApprovalStatus = "approved";
-}
+        if (requestedRole === "seller") {
+          userRole = "seller";
+          userApprovalStatus = "pending";
+        } else {
+          userRole = "customer";
+          userApprovalStatus = "approved";
+        }
 
-user = await storage.createUser({
-  email: email!,
-  firebaseUid: uid,
-  name: name || email!.split('@')[0],
-  role: userRole,
-  approvalStatus: userApprovalStatus
-});
-isNewUser = true;
-console.log(`New user created: ${user.email} with role: ${user.role} and status: ${user.approvalStatus}`);
+        user = await storage.createUser({
+          email: email!,
+          firebaseUid: uid,
+          name: name || email!.split('@')[0],
+          role: userRole,
+          approvalStatus: userApprovalStatus
+        });
+        isNewUser = true;
+        console.log(`New user created: ${user.email} with role: ${user.role} and status: ${user.approvalStatus}`);
       } else {
         console.log(`Existing user logged in: ${user.email} with role: ${user.role} and status: ${user.approvalStatus}`);
       }
 
+      // ✅ JWT टोकन बनाएं
+      // इसमें user.id, user.firebaseUid, user.role जैसे आवश्यक दावे शामिल करें
+      // यह टोकन आपके कस्टम बैकएंड API कॉल को अधिकृत करने के लिए उपयोग किया जाएगा।
+      const token = jwt.sign(
+        {
+          id: user.id,
+          firebaseUid: user.firebaseUid,
+          email: user.email, // ईमेल भी उपयोगी हो सकता है
+          role: user.role,
+          approvalStatus: user.approvalStatus // यदि आवश्यक हो
+        },
+        process.env.JWT_SECRET as string, // ✅ सुनिश्चित करें कि JWT_SECRET ENV में है
+        { expiresIn: '7d' } // टोकन की समय सीमा समाप्त होने की तिथि
+      );
+      console.log("Generated JWT Token for user:", user.id);
+
       let sellerDetails = undefined;
       let finalApprovalStatus = user.approvalStatus;
 
+      // यदि उपयोगकर्ता एक विक्रेता है, तो विक्रेता के विवरण प्राप्त करें
       if (user.role === "seller") {
         sellerDetails = await storage.getSellerByUserFirebaseUid(user.firebaseUid);
         if (sellerDetails) {
           finalApprovalStatus = sellerDetails.approvalStatus;
+        } else {
+          // यदि user.role 'seller' है लेकिन कोई sellerDetails नहीं है, तो एक बनाएं
+          // यह तभी होना चाहिए जब कोई उपयोगकर्ता सीधे डेटाबेस में 'seller' के रूप में जोड़ा गया हो
+          // लेकिन seller_profiles टेबल में उनकी प्रविष्टि न हो।
+          // या तो यहां बनाएं, या सुनिश्चित करें कि वे seller-apply फ्लो से गुजरे हैं।
+          // अभी के लिए, हम मान लेंगे कि वे seller-apply से गुजरेंगे।
+          console.warn(`User ${user.email} has role 'seller' but no matching seller profile found.`);
+          // यदि seller profile नहीं मिलती, तो approvalStatus को user के approvalStatus से लें
+          finalApprovalStatus = user.approvalStatus;
         }
       }
 
       res.json({
         message: isNewUser ? "User created and logged in successfully" : "Login successful",
+        token: token, // ✅ यहां JWT टोकन भेजें!
         user: {
-          uuid: user.id.toString(),
+          uuid: user.id.toString(), // client-side में user.id को uuid के रूप में उपयोग करें
           email: user.email,
           name: user.name,
           role: user.role,
-          seller: sellerDetails,
-          approvalStatus: finalApprovalStatus,
+          seller: sellerDetails, // विक्रेता के विवरण यदि लागू हो
+          approvalStatus: finalApprovalStatus, // विक्रेता के लिए वास्तविक अनुमोदन स्थिति
         }
       });
 
@@ -99,20 +129,23 @@ console.log(`New user created: ${user.email} with role: ${user.role} and status:
   // --- ADMIN ROUTES ---
   app.use("/api/admin/vendors", adminVendorsRouter);
   app.use("/api/admin/products", adminProductsRouter);
-app.use("/api/admin-login", adminPasswordRoutes);
-  // --- SELLER ROUTES ---
-  app.use("/api/sellers/pending", pendingSellersRouter);
-  app.use("/api/sellers/apply", sellersApplyRouter);
-  app.use("/api/sellers/approve", sellersApproveRouter);
-  app.use("/api/sellers/reject", sellersRejectRouter);
-  app.use("/api/sellers/me", sellerMeRouter);
+  app.use("/api/admin-login", adminPasswordRoutes); // यह admin-password को हैंडल करता है
 
+  // --- SELLER ROUTES ---
+  // ✅ सुनिश्चित करें कि ये राउटर्स 'roots' डायरेक्टरी से आ रहे हैं और सही से ऑथेंटिकेटेड हैं।
+  // यदि ये विक्रेता प्रबंधन के लिए एडमिन रूट्स हैं, तो उन्हें adminVendorsRouter में मर्ज करने पर विचार करें।
+  // यदि वे विक्रेता-विशिष्ट रूट्स हैं (जैसे विक्रेता डैशबोर्ड), तो उन्हें उचित रूप से हैंडल करें।
+  // app.use("/api/sellers/pending", pendingSellersRouter);
+  // app.use("/api/sellers/apply", sellersApplyRouter); // यह सार्वजनिक या ग्राहक द्वारा उपयोग किया जाता है
+  // app.use("/api/sellers/approve", sellersApproveRouter);
+  // app.use("/api/sellers/reject", sellersRejectRouter);
+  app.use("/api/seller-me", sellerMeRouter); // ✅ सुनिश्चित करें कि यह /api/seller-me है और सही फ़ाइल से आता है।
 
   // --- DELIVERY LOGIN ---
   app.post("/api/delivery/login", verifyToken, async (req: AuthenticatedRequest, res: Response) => {
     try {
-      if (!req.user) {
-        return res.status(401).json({ message: "Authentication failed." });
+      if (!req.user || !req.user.uid) {
+        return res.status(401).json({ message: "Authentication failed: Firebase user data missing." });
       }
 
       const { email, uid, name } = req.user;
@@ -133,13 +166,29 @@ app.use("/api/admin-login", adminPasswordRoutes);
         console.log(`Delivery boy logged in: ${deliveryBoy.email}`);
       }
 
+      // ✅ JWT टोकन बनाएं
+      const token = jwt.sign(
+        {
+          id: deliveryBoy.id,
+          firebaseUid: deliveryBoy.firebaseUid,
+          email: deliveryBoy.email,
+          role: "delivery", // डिलीवरी बॉय के लिए भूमिका 'delivery' है
+          approvalStatus: deliveryBoy.approvalStatus
+        },
+        process.env.JWT_SECRET as string,
+        { expiresIn: '7d' }
+      );
+      console.log("Generated JWT Token for delivery boy:", deliveryBoy.id);
+
+
       res.json({
         message: isNewDeliveryBoy ? "Delivery boy created and logged in successfully" : "Login successful",
+        token: token, // ✅ यहां JWT टोकन भेजें!
         user: {
           uuid: deliveryBoy.id.toString(),
           email: deliveryBoy.email,
           name: deliveryBoy.name,
-          role: "delivery",
+          role: "delivery", // हार्डकोड करें क्योंकि यह डिलीवरी-विशिष्ट लॉगिन है
           approvalStatus: deliveryBoy.approvalStatus,
         }
       });
@@ -151,15 +200,19 @@ app.use("/api/admin-login", adminPasswordRoutes);
 
   app.get("/api/delivery/me", verifyToken, async (req: AuthenticatedRequest, res: Response) => {
     try {
+      // ✅ सुनिश्चित करें कि यह रूट केवल डिलीवरी भूमिका वाले उपयोगकर्ताओं के लिए ही एक्सेस किया जा सके।
+      // आपको यहां requireDeliveryAuth जैसा एक मिडलवेयर जोड़ना चाहिए।
+      // अभी के लिए, हम सिर्फ user.uid की जांच करेंगे।
       if (!req.user || !req.user.uid) return res.status(401).json({ message: "Unauthorized" });
 
       const deliveryBoy = await storage.getDeliveryBoyByFirebaseUid(req.user.uid);
       if (!deliveryBoy) return res.status(404).json({ message: "Delivery profile not found." });
 
+      // ✅ यहां भूमिका 'delivery' के रूप में सेट करें क्योंकि यह एक डिलीवरी-विशिष्ट एंडपॉइंट है।
       res.json({ user: {
         uuid: deliveryBoy.id.toString(),
         ...deliveryBoy,
-        role: "delivery"
+        role: "delivery" // सुनिश्चित करें कि यह हमेशा 'delivery' के रूप में वापस आता है
       }});
     } catch (error) {
       console.error("Error in /api/delivery/me:", error);
