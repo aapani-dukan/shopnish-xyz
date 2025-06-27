@@ -1,25 +1,47 @@
-// roots/admin/admin-password.ts
+import express from "express";
+import { storage } from "../../storage";
 
-import { Router, Request, Response } from "express";
+const router = express.Router();
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "admin123";
 
-const router = Router();
+router.post("/", async (req, res) => {
+  const { firebaseUid, password } = req.body;
 
-// 🛡️ Hardcoded admin password (बाद में .env में डाल सकते हैं)
-const ADMIN_PASSWORD = "shivraj@5240";
-
-router.post("/", async (req: Request, res: Response) => {
-  const { password } = req.body;
-
-  if (!password) {
-    return res.status(400).json({ message: "Password is required." });
+  if (!firebaseUid || !password) {
+    return res.status(400).json({ message: "Missing UID or password." });
   }
 
-  if (password !== ADMIN_PASSWORD) {
-    return res.status(401).json({ message: "Invalid admin password." });
-  }
+  try {
+    // ✅ Firebase UID से user खोजें
+    let user = await storage.getUserByFirebaseUid(firebaseUid);
 
-  // ✅ Password correct है
-  return res.status(200).json({ message: "Admin login successful." });
+    // ✅ अगर user नहीं मिला, तो बनाओ admin के रूप में
+    if (!user) {
+      user = await storage.createUser({
+        firebaseUid,
+        email: `admin@auto.com`, // या client से भेजी गई email हो तो बेहतर
+        name: "Admin",
+        role: "admin",
+        approvalStatus: "approved"
+      });
+      console.log("✅ Admin user created.");
+    }
+
+    // ✅ role check
+    if (user.role !== "admin") {
+      return res.status(403).json({ message: "Not an admin user." });
+    }
+
+    // ✅ password check
+    if (password !== ADMIN_PASSWORD) {
+      return res.status(401).json({ message: "Invalid admin password." });
+    }
+
+    res.json({ message: "Admin login success." });
+  } catch (err) {
+    console.error("Error in admin login:", err);
+    res.status(500).json({ message: "Internal server error." });
+  }
 });
 
 export default router;
