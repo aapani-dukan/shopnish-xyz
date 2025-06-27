@@ -385,3 +385,4 @@ app.post("/api/products/:id/reviews", verifyToken, requireAuth, async (req: Auth
     res.status(500).json({ message: "Failed to add review." });
   }
 });
+}
