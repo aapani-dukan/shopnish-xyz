@@ -5,32 +5,34 @@ import { signInWithGoogle } from "@/lib/firebase";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Store } from "lucide-react";
-import { useLocation } from "wouter";
-// import { useAuth } from "@/hooks/useAuth"; // अब सीधे उपयोग करने की आवश्यकता नहीं है यदि आप केवल signInWithGoogle का उपयोग कर रहे हैं
+import { useLocation } from "wouter"; // useLocation इम्पोर्ट करें
 
 export default function AuthPage() {
   const [isLoading, setIsLoading] = useState(false);
-  const [, navigate] = useLocation();
-  // const { user, isAuthenticated, isLoadingAuth } = useAuth(); // ✅ इन लाइनों को हटा दें
-
-  // ✅ यह useEffect हटा दें। AuthPage का काम केवल लॉग इन करना है, न कि रीडायरेक्ट करना।
-  // React.useEffect(() => {
-  //   if (!isLoadingAuth && isAuthenticated && user) {
-  //     console.log("AuthPage: User already authenticated, redirecting...");
-  //     switch (user.role) {
-  //       // ... भूमिका-आधारित रीडायरेक्ट
-  //     }
-  //   }
-  // }, [isAuthenticated, isLoadingAuth, user, navigate]);
+  const [location, navigate] = useLocation(); // ✅ location भी प्राप्त करें
 
   const handleGoogleSignIn = async () => {
     try {
       setIsLoading(true);
       await signInWithGoogle();
-      // ✅ प्रमाणीकरण सफल होने पर, उन्हें होमपेज या पिछले पेज पर भेजें।
-      // useAuth में onAuthStateChanged अब बैकएंड से टोकन और यूजर डेटा को सिंक्रनाइज़ करेगा।
-      // एक बार जब useAuth में isAuthenticated true हो जाता है, तो उपयोगकर्ता लॉग इन हो जाएगा।
-      navigate("/"); // या किसी डिफ़ॉल्ट पोस्ट-लॉगिन पेज पर रीडायरेक्ट करें
+
+      // ✅ पिछले URL को चेक करें (यदि उपलब्ध हो)
+      // Wouter के साथ, यदि आप सीधे किसी URL पर नहीं गए हैं,
+      // तो 'location.search' में रीडायरेक्ट पैरामीटर हो सकता है।
+      // एक अधिक मजबूत समाधान एक 'redirect_to' क्वेरी पैरामीटर होगा
+      // जिसे आप लॉगिन पेज पर जाने से पहले जोड़ सकते हैं।
+      
+      // एक सरल समाधान के रूप में, लॉगिन के बाद डिफ़ॉल्ट रूप से होम पर जाएं
+      // और उम्मीद करें कि seller-apply पेज यदि आवश्यक हो तो रीडायरेक्ट करेगा।
+      // लेकिन यदि आप चाहते हैं कि वे वापस seller-apply पर जाएं, तो आपको URL में इसे भेजना होगा।
+
+      // एक अधिक उन्नत तरीका:
+      // यदि आप `seller-apply` से `/auth?redirect_to=/seller-apply` पर रीडायरेक्ट करते हैं,
+      // तो आप इसे `location.search` से पार्स कर सकते हैं।
+      const params = new URLSearchParams(location.search);
+      const redirectTo = params.get("redirect_to") || "/"; // डिफ़ॉल्ट रूप से होम
+
+      navigate(redirectTo); // ✅ उपयोगकर्ता को पिछले पेज या होम पर रीडायरेक्ट करें
       
     } catch (err: any) {
       console.error("Auth error:", err);
@@ -39,17 +41,6 @@ export default function AuthPage() {
       setIsLoading(false);
     }
   };
-
-  // ✅ यदि प्रमाणीकरण अभी भी लोड हो रहा है, तो लोडिंग इंडिकेटर दिखाएं (यह useAuth हुक में `isLoadingAuth` से आ सकता है)
-  // यदि आप `useAuth` को यहाँ इम्पोर्ट नहीं कर रहे हैं, तो आप इसे इस तरह नहीं जांच सकते।
-  // मान लें कि `auth.tsx` केवल अनाधिकृत उपयोगकर्ताओं के लिए है।
-  // if (isLoadingAuth) { // यदि आप useAuth को वापस इम्पोर्ट करते हैं और इसे यहाँ जांचते हैं।
-  //   return (
-  //     <div className="min-h-screen flex items-center justify-center p-4 bg-gray-50">
-  //       <p>Loading authentication status...</p>
-  //     </div>
-  //   );
-  // }
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-gray-50">
