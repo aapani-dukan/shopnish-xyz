@@ -1,4 +1,5 @@
-  // src/hooks/useAuth.ts
+
+// src/hooks/useAuth.ts
 
 import { createContext, useContext, useEffect, useState } from "react";
 import { User as FirebaseUser, onAuthStateChanged } from "firebase/auth";
@@ -36,10 +37,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           };
           console.log("UserData prepared for /api/auth/login:", userData);
 
-          // ✅ यहाँ बदलाव: apiRequest अब सीधे पार्स किया गया JSON लौटाता है।
-          // इसलिए, apiResponseObject पर .json() कॉल करने की आवश्यकता नहीं है।
-          const apiResponse: { user: User, token: string } = await apiRequest("POST", "/api/auth/login", userData);
-          const { user: backendUser, token } = apiResponse; // ✅ सीधे apiResponse से user और token प्राप्त करें
+          const apiResponseObject = await apiRequest("POST", "/api/auth/login", userData);
+          // ✅ Backend से पूरी प्रतिक्रिया (जिसमें token और user दोनों हों) प्राप्त करें
+          const { user: backendUser, token } = await apiResponseObject.json();
 
           console.log("API request to /api/auth/login successful. Backend User received:", backendUser);
 
@@ -129,3 +129,4 @@ export function useAuth() {
   }
   return context;
 }
+
