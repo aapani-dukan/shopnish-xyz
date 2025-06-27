@@ -4,7 +4,7 @@ import { createContext, useContext, useEffect, useState } from "react";
 import { User as FirebaseUser, onAuthStateChanged } from "firebase/auth";
 import { auth, handleRedirectResult } from "@/lib/firebase";
 import { apiRequest } from "@/lib/queryClient"; // आपका apiRequest
-import { User } from "@shared/backend/schema";
+import { User } from "@shared/backend/schema"; // Ensure this User type matches your backend response
 
 interface AuthContextType {
   firebaseUser: FirebaseUser | null;
@@ -36,9 +36,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           };
           console.log("UserData prepared for /api/auth/login:", userData);
 
-          // ✅ यहाँ मुख्य बदलाव: apiRequest से प्राप्त Response ऑब्जेक्ट पर .json() कॉल करें
           const apiResponseObject = await apiRequest("POST", "/api/auth/login", userData);
-          const { user: backendUser } = await apiResponseObject.json(); // <-- यह बदलाव है!
+          // ✅ Backend से पूरी प्रतिक्रिया (जिसमें token और user दोनों हों) प्राप्त करें
+          const { user: backendUser, token } = await apiResponseObject.json();
 
           console.log("API request to /api/auth/login successful. Backend User received:", backendUser);
 
@@ -47,37 +47,64 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               throw new Error("Invalid user data from backend: Missing or invalid UUID.");
           }
 
+          // ✅ JWT Token को localStorage में सेव करें
+          if (token) {
+              localStorage.setItem('authToken', token);
+              console.log("Auth token saved to localStorage.");
+          } else {
+              console.warn("No auth token received from backend /api/auth/login.");
+          }
+
           setUser(backendUser);
           console.log("User data set in context:", backendUser);
 
         } catch (error) {
           console.error("Error creating/fetching user in our database:", error);
           setUser(null);
+          localStorage.removeItem('authToken'); // एरर पर टोकन हटा दें
         }
       } else {
-        console.log("No Firebase user detected. Setting user to null.");
+        console.log("No Firebase user detected. Setting user to null and clearing token.");
         setUser(null);
+        localStorage.removeItem('authToken'); // यूजर साइन आउट पर टोकन हटा दें
       }
 
       setIsLoadingAuth(false);
       console.log("Auth loading set to false.");
     });
 
+    // ✅ कंपोनेंट माउंट होने पर localStorage से टोकन और यूजर डेटा (यदि कोई हो) लोड करें
+    // यह पेज रिफ्रेश पर 'isAuthenticated' स्थिति को बनाए रखने में मदद करेगा
+    const storedToken = localStorage.getItem('authToken');
+    if (storedToken) {
+        // आप यहां /api/me एंडपॉइंट को कॉल करके टोकन को वैलिडेट कर सकते हैं
+        // और यूजर डेटा को फिर से फ़ेच कर सकते हैं ताकि सुनिश्चित हो सके कि यह अप-टू-डेट है।
+        // अभी के लिए, हम बस मान लेते हैं कि टोकन वैध है और यूजर को लोडिंग के बाद ऑथेंटिकेटेड मान लेते हैं।
+        // एक अधिक मजबूत समाधान में यहां एक `/api/me` कॉल शामिल होगा।
+    } else {
+        // यदि कोई टोकन नहीं है, तो लोडिंग को तुरंत समाप्त करें
+        setIsLoadingAuth(false);
+    }
+
+
     return unsubscribe;
-  }, []);
+
+  }, []); // Empty dependency array means this runs once on mount
 
   const signOut = async () => {
     try {
       await auth.signOut();
       setUser(null);
       setFirebaseUser(null);
+      localStorage.removeItem('authToken'); // साइन आउट पर टोकन हटा दें
       console.log("User signed out successfully.");
     } catch (error) {
       console.error("Error signing out:", error);
     }
   };
 
-  const isAuthenticated = !!user && typeof user.uuid === 'string';
+  // ✅ isAuthenticated की जांच में localStorage में टोकन की उपस्थिति शामिल करें
+  const isAuthenticated = !!user && typeof user.uuid === 'string' && !!localStorage.getItem('authToken');
 
   return (
     <AuthContext.Provider
