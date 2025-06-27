@@ -5,38 +5,72 @@ import { signInWithGoogle } from "@/lib/firebase";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Store } from "lucide-react";
-import { useLocation } from "wouter"; // useLocation इम्पोर्ट करें
+import { useLocation } from "wouter";
+import { useAuth } from "@/hooks/useAuth"; // ✅ useAuth हुक को इम्पोर्ट करें
 
 export default function AuthPage() {
   const [isLoading, setIsLoading] = useState(false);
-  const [location, navigate] = useLocation(); // ✅ location भी प्राप्त करें
+  const [, navigate] = useLocation();
+  const { login } = useAuth(); // ✅ useAuth हुक से लॉगिन फंक्शन प्राप्त करें
 
   const handleGoogleSignIn = async () => {
     try {
       setIsLoading(true);
-      await signInWithGoogle();
 
-      // ✅ पिछले URL को चेक करें (यदि उपलब्ध हो)
-      // Wouter के साथ, यदि आप सीधे किसी URL पर नहीं गए हैं,
-      // तो 'location.search' में रीडायरेक्ट पैरामीटर हो सकता है।
-      // एक अधिक मजबूत समाधान एक 'redirect_to' क्वेरी पैरामीटर होगा
-      // जिसे आप लॉगिन पेज पर जाने से पहले जोड़ सकते हैं।
-      
-      // एक सरल समाधान के रूप में, लॉगिन के बाद डिफ़ॉल्ट रूप से होम पर जाएं
-      // और उम्मीद करें कि seller-apply पेज यदि आवश्यक हो तो रीडायरेक्ट करेगा।
-      // लेकिन यदि आप चाहते हैं कि वे वापस seller-apply पर जाएं, तो आपको URL में इसे भेजना होगा।
+      /* 1️⃣ Firebase popup/redirect */
+      const result = await signInWithGoogle();
+      const fbUser = result.user;
+      if (!fbUser) {
+        // यदि यूजर पॉपअप बंद कर दे या कोई समस्या हो
+        setIsLoading(false);
+        return;
+      }
 
-      // एक अधिक उन्नत तरीका:
-      // यदि आप `seller-apply` से `/auth?redirect_to=/seller-apply` पर रीडायरेक्ट करते हैं,
-      // तो आप इसे `location.search` से पार्स कर सकते हैं।
-      const params = new URLSearchParams(location.search);
-      const redirectTo = params.get("redirect_to") || "/"; // डिफ़ॉल्ट रूप से होम
+      /* 2️⃣ Firebase ID-Token */
+      const token = await fbUser.getIdToken();
 
-      navigate(redirectTo); // ✅ उपयोगकर्ता को पिछले पेज या होम पर रीडायरेक्ट करें
-      
+      /* 3️⃣ 🔒 Backend /api/auth/login - अब useAuth के login फंक्शन का उपयोग करें */
+      // ✅ useAuth के login फंक्शन को कॉल करें
+      const userObject = await login(token, false); // `false` क्योंकि यह केवल लॉगिन पेज है, सेलर आवेदन नहीं
+
+      if (!userObject) {
+        throw new Error("Login failed: Could not get user data from backend.");
+      }
+
+      // ✅ userObject.role और userObject.approvalStatus (यदि विक्रेता है) के आधार पर रीडायरेक्ट करें
+      switch (userObject.role) {
+        case "seller":
+          // यदि विक्रेता स्वीकृत है, डैशबोर्ड पर जाएं
+          if (userObject.approvalStatus === "approved") {
+            navigate("/seller-dashboard");
+          }
+          // यदि विक्रेता लंबित है, स्थिति पृष्ठ पर जाएं
+          else if (userObject.approvalStatus === "pending") {
+            navigate("/seller-status");
+          }
+          // यदि विक्रेता किसी अन्य स्थिति में है (जैसे 'rejected'), आवेदन पृष्ठ पर जाएं
+          else {
+            navigate("/seller-apply");
+          }
+          break;
+
+        case "admin":
+          navigate("/admin-dashboard");
+          break;
+
+        case "delivery":
+          navigate("/delivery-dashboard");
+          break;
+
+        case "customer":
+        default:
+          // ग्राहक या अन्य अप्रत्याशित भूमिकाओं के लिए डिफ़ॉल्ट होमपेज या विक्रेता आवेदन पर जाएं
+          navigate("/"); // होमपेज पर रीडायरेक्ट करें
+          break;
+      }
     } catch (err: any) {
       console.error("Auth error:", err);
-      alert(`Sign in failed: ${err.message || "Please try again."}`);
+      alert(`Login failed: ${err.message || "Please try again."}`);
     } finally {
       setIsLoading(false);
     }
@@ -71,3 +105,4 @@ export default function AuthPage() {
     </div>
   );
 }
+
