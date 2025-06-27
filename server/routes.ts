@@ -13,9 +13,8 @@ import {
   insertReviewSchema,
 } from "../shared/backend/schema";
 import jwt from 'jsonwebtoken'; 
-// ✅ 'firebase-admin/auth' से सीधे 'getAuth' इम्पोर्ट करें
-import { getAuth } from 'firebase-admin/auth'; 
-import { DecodedIdToken } from 'firebase-admin/auth'; // DecodedIdToken टाइप को सीधे इम्पोर्ट करें
+// ✅ Firebase Admin SDK को डिफ़ॉल्ट एक्सपोर्ट के रूप में इम्पोर्ट करें
+import * as admin from 'firebase-admin'; 
 
 
 // Routers
@@ -48,9 +47,9 @@ export async function registerRoutes(app: Express): Promise<void> {
         return res.status(401).json({ message: "Authorization token missing." });
       }
 
-      let decodedToken: DecodedIdToken; // ✅ सीधे DecodedIdToken का उपयोग करें
+      let decodedToken: admin.auth.DecodedIdToken; // ✅ 'admin.auth' का उपयोग करें
       try {
-        decodedToken = await getAuth().verifyIdToken(firebaseIdToken); // ✅ getAuth() का उपयोग करें
+        decodedToken = await admin.auth().verifyIdToken(firebaseIdToken); // ✅ 'admin.auth()' का उपयोग करें
       } catch (decodeError) {
         console.error("Firebase ID Token verification failed:", decodeError);
         return res.status(401).json({ message: "Invalid or expired Firebase ID token." });
@@ -156,9 +155,9 @@ export async function registerRoutes(app: Express): Promise<void> {
         return res.status(401).json({ message: "Authorization token missing." });
       }
 
-      let decodedToken: DecodedIdToken; // ✅ सीधे DecodedIdToken का उपयोग करें
+      let decodedToken: admin.auth.DecodedIdToken; // ✅ 'admin.auth' का उपयोग करें
       try {
-        decodedToken = await getAuth().verifyIdToken(firebaseIdToken); // ✅ getAuth() का उपयोग करें
+        decodedToken = await admin.auth().verifyIdToken(firebaseIdToken); // ✅ 'admin.auth()' का उपयोग करें
       } catch (decodeError) {
         console.error("Firebase ID Token verification failed:", decodeError);
         return res.status(401).json({ message: "Invalid or expired Firebase ID token." });
