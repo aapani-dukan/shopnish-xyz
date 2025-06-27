@@ -4,7 +4,7 @@ import express, { type Express, Request, Response } from "express";
 import { storage } from "./storage";
 
 import { z } from "zod";
- import { verifyToken, AuthenticatedRequest } from "./middleware/verifyToken"; 
+import { verifyToken, AuthenticatedRequest } from "./middleware/verifyToken"; // ✅ verifyToken और AuthenticatedRequest को वापस इम्पोर्ट करें
 import { requireAuth } from "./middleware/requireAuth";
 import { parseIntParam } from "./util/parseIntParam";
 import {
@@ -13,7 +13,7 @@ import {
   insertReviewSchema,
 } from "../shared/backend/schema";
 import jwt from 'jsonwebtoken'; 
-import * as firebaseAdmin from 'firebase-admin'; // ✅ Firebase Admin SDK को इम्पोर्ट करें
+import * as firebaseAdmin from 'firebase-admin'; // ✅ Firebase Admin SDK को सही तरीके से इम्पोर्ट करें
 
 // Routers
 import adminVendorsRouter from "./roots/admin/vendors";
@@ -24,10 +24,9 @@ import adminProductsRouter from "./roots/admin/products";
 import adminPasswordRoutes from "./roots/admin/admin-password";
 
 
-// ✅ AuthenticatedRequest को फिर से परिभाषित करें ताकि यह सिर्फ req.user से डेटाबेस user को दर्शाए
-// या इसे FirebaseUserRequest जैसा कुछ कहें यदि आप Firebase user data को सीधे उपयोग करते हैं
+// FirebaseAuthenticatedRequest इंटरफेस को जैसा था वैसा ही रहने दें
 interface FirebaseAuthenticatedRequest extends Request {
-  user?: { // Firebase Auth user data
+  user?: { 
     uid: string;
     email?: string | null;
     name?: string | null;
@@ -38,19 +37,19 @@ interface FirebaseAuthenticatedRequest extends Request {
 export async function registerRoutes(app: Express): Promise<void> {
 
   // --- AUTH ROUTES ---
-  // ✅ /api/auth/login से verifyToken हटा दें
+  // /api/auth/login से verifyToken हटा दिया गया है
   app.post("/api/auth/login", async (req: FirebaseAuthenticatedRequest, res: Response) => {
     try {
-      // ✅ अब Firebase ID टोकन को यहां मैन्युअल रूप से सत्यापित करें
+      // Firebase ID टोकन को यहां मैन्युअल रूप से सत्यापित करें
       const firebaseIdToken = req.headers.authorization?.split(' ')[1]; // Bearer टोकन से प्राप्त करें
 
       if (!firebaseIdToken) {
         return res.status(401).json({ message: "Authorization token missing." });
       }
 
-      let decodedToken: admin.auth.DecodedIdToken;
+      let decodedToken: firebaseAdmin.auth.DecodedIdToken; // ✅ firebaseAdmin का उपयोग करें
       try {
-        decodedToken = await admin.auth().verifyIdToken(firebaseIdToken);
+        decodedToken = await firebaseAdmin.auth().verifyIdToken(firebaseIdToken); // ✅ firebaseAdmin का उपयोग करें
       } catch (decodeError) {
         console.error("Firebase ID Token verification failed:", decodeError);
         return res.status(401).json({ message: "Invalid or expired Firebase ID token." });
@@ -58,7 +57,7 @@ export async function registerRoutes(app: Express): Promise<void> {
 
       const uid = decodedToken.uid;
       const email = decodedToken.email;
-      const name = decodedToken.name || decodedToken.email?.split('@')[0]; // Firebase user से नाम लें
+      const name = decodedToken.name || decodedToken.email?.split('@')[0]; 
 
       if (!uid || !email) { 
         return res.status(401).json({ message: "Authentication failed: Firebase user data missing." });
@@ -82,9 +81,9 @@ export async function registerRoutes(app: Express): Promise<void> {
         }
 
         user = await storage.createUser({
-          email: email, // Firebase से ईमेल का उपयोग करें
-          firebaseUid: uid, // Firebase से uid का उपयोग करें
-          name: name || email.split('@')[0], // Firebase से नाम या ईमेल का उपयोग करें
+          email: email, 
+          firebaseUid: uid, 
+          name: name || email.split('@')[0], 
           role: userRole,
           approvalStatus: userApprovalStatus
         });
@@ -94,10 +93,9 @@ export async function registerRoutes(app: Express): Promise<void> {
         console.log(`Existing user logged in: ${user.email} with role: ${user.role} and status: ${user.approvalStatus}`);
       }
 
-      // JWT टोकन बनाएं
       const token = jwt.sign(
         {
-          id: user.id, // आपके डेटाबेस यूजर का ID
+          id: user.id, 
           firebaseUid: user.firebaseUid,
           email: user.email,
           role: user.role,
@@ -111,7 +109,6 @@ export async function registerRoutes(app: Express): Promise<void> {
       let sellerDetails = undefined;
       let finalApprovalStatus = user.approvalStatus;
 
-      // यदि उपयोगकर्ता एक विक्रेता है, तो विक्रेता के विवरण प्राप्त करें
       if (user.role === "seller") {
         sellerDetails = await storage.getSellerByUserFirebaseUid(user.firebaseUid);
         if (sellerDetails) {
@@ -126,7 +123,7 @@ export async function registerRoutes(app: Express): Promise<void> {
         message: isNewUser ? "User created and logged in successfully" : "Login successful",
         token: token, 
         user: {
-          uuid: user.id.toString(), // client-side में user.id को uuid के रूप में उपयोग करें
+          uuid: user.id.toString(), 
           email: user.email,
           name: user.name,
           role: user.role,
@@ -141,8 +138,7 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
 
-  // बाकी के रूट्स जैसे थे वैसे ही रहें
-  // ...
+  // --- ADMIN ROUTES ---
   app.use("/api/admin/vendors", adminVendorsRouter);
   app.use("/api/admin/products", adminProductsRouter);
   app.use("/api/admin-login", adminPasswordRoutes); 
@@ -151,6 +147,7 @@ export async function registerRoutes(app: Express): Promise<void> {
   
   app.use("/api/seller-me", sellerMeRouter); 
 
+  // /api/delivery/login से verifyToken हटा दिया गया है
   app.post("/api/delivery/login", async (req: FirebaseAuthenticatedRequest, res: Response) => {
     try {
       const firebaseIdToken = req.headers.authorization?.split(' ')[1];
@@ -159,9 +156,9 @@ export async function registerRoutes(app: Express): Promise<void> {
         return res.status(401).json({ message: "Authorization token missing." });
       }
 
-      let decodedToken: admin.auth.DecodedIdToken;
+      let decodedToken: firebaseAdmin.auth.DecodedIdToken; // ✅ firebaseAdmin का उपयोग करें
       try {
-        decodedToken = await admin.auth().verifyIdToken(firebaseIdToken);
+        decodedToken = await firebaseAdmin.auth().verifyIdToken(firebaseIdToken); // ✅ firebaseAdmin का उपयोग करें
       } catch (decodeError) {
         console.error("Firebase ID Token verification failed:", decodeError);
         return res.status(401).json({ message: "Invalid or expired Firebase ID token." });
@@ -222,6 +219,7 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
 
+  // बाकी सभी रूट्स को verifyToken मिडलवेयर की आवश्यकता है, इसलिए इसे इम्पोर्ट किया गया है
   app.get("/api/delivery/me", verifyToken, async (req: AuthenticatedRequest, res: Response) => {
     try {
       if (!req.user || !req.user.uid) return res.status(401).json({ message: "Unauthorized" });
