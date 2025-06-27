@@ -19,24 +19,31 @@ interface Product {
 export default function AdminDashboard() {
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
-  const [activeTab, setActiveTab] = useState<"vendors" | "products">("vendors");
-
+  const [activeTab, setActiveTab] = useState("vendors");
   const fetchVendors = async () => {
-    try {
-      const res = await apiRequest("GET", "/api/admin/vendors");
-      const data = await res.json();
-      setVendors(Array.isArray(data) ? data : []);
-    } catch (error) {
-      console.error("Error fetching vendors:", error);
+  try {
+    const res = await apiRequest("GET", "/api/admin/vendors");
+    console.log("Fetched from API:", res);
+
+    if (Array.isArray(res.data?.data)) {
+      setVendors(res.data.data); // ✅ ये सही जगह है जहाँ array है
+    } else {
       setVendors([]);
     }
-  };
+  } catch (error) {
+    console.error("Error fetching vendors:", error);
+    setVendors([]);
+  }
+};
 
   const fetchProducts = async () => {
     try {
       const res = await apiRequest("GET", "/api/admin/products");
-      const data = await res.json();
-      setProducts(Array.isArray(data) ? data : []);
+      if (Array.isArray(res.data)) {
+        setProducts(res.data);
+      } else {
+        setProducts([]);
+      }
     } catch (error) {
       console.error("Error fetching products:", error);
       setProducts([]);
@@ -45,8 +52,8 @@ export default function AdminDashboard() {
 
   const approveVendor = async (vendorId: string) => {
     try {
-      await apiRequest("POST", "/api/sellers/approve", { sellerId: vendorId });
-      await fetchVendors();
+      await apiRequest("POST", `/api/sellers/approve`, { sellerId: vendorId });
+      fetchVendors();
       alert("Vendor approved successfully!");
     } catch (error) {
       console.error("Error approving vendor:", error);
@@ -58,11 +65,11 @@ export default function AdminDashboard() {
     const reason = prompt("Enter rejection reason:");
     if (!reason) return;
     try {
-      await apiRequest("POST", "/api/sellers/reject", {
+      await apiRequest("POST", `/api/sellers/reject`, {
         sellerId: vendorId,
         rejectionReason: reason,
       });
-      await fetchVendors();
+      fetchVendors();
       alert("Vendor rejected successfully!");
     } catch (error) {
       console.error("Error rejecting vendor:", error);
@@ -73,7 +80,7 @@ export default function AdminDashboard() {
   const approveProduct = async (productId: number) => {
     try {
       await apiRequest("POST", `/api/admin/approve-product/${productId}`, {});
-      await fetchProducts();
+      fetchProducts();
       alert("Product approved successfully!");
     } catch (error) {
       console.error("Error approving product:", error);
@@ -88,7 +95,7 @@ export default function AdminDashboard() {
       await apiRequest("POST", `/api/admin/reject-product/${productId}`, {
         rejectionReason: reason,
       });
-      await fetchProducts();
+      fetchProducts();
       alert("Product rejected successfully!");
     } catch (error) {
       console.error("Error rejecting product:", error);
@@ -173,10 +180,7 @@ export default function AdminDashboard() {
                 ))
               ) : (
                 <tr>
-                  <td
-                    colSpan={4}
-                    className="border px-4 py-4 text-center text-gray-500"
-                  >
+                  <td colSpan={4} className="border px-4 py-4 text-center text-gray-500">
                     No vendors found.
                   </td>
                 </tr>
@@ -225,10 +229,7 @@ export default function AdminDashboard() {
                 ))
               ) : (
                 <tr>
-                  <td
-                    colSpan={5}
-                    className="border px-4 py-4 text-center text-gray-500"
-                  >
+                  <td colSpan={5} className="border px-4 py-4 text-center text-gray-500">
                     No products found.
                   </td>
                 </tr>
@@ -240,3 +241,4 @@ export default function AdminDashboard() {
     </div>
   );
 }
+
