@@ -1,3 +1,4 @@
+
 // client/src/pages/seller-apply.tsx
 import { useState, useEffect } from "react"; // ✅ useEffect को इम्पोर्ट करें
 import { useAuth } from "@/hooks/useAuth";
@@ -145,3 +146,4 @@ export default function SellerApplyPage() {
     </div>
   );
 }
+
