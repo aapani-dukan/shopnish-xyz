@@ -17,62 +17,43 @@ const API_BASE_URL = ""; // यह सुनिश्चित करें क�
 // यह वह apiRequest है जिसे हम उपयोग करेंगे!
 export async function apiRequest<T>(
   method: string,
-  path: string, // URL की जगह 'path' का उपयोग करें
-  data?: unknown, // 'any' की जगह 'unknown' अधिक सुरक्षित है
-): Promise<Response> {
+  path: string,
+  data?: unknown,
+): Promise<T> {
   const url = `${API_BASE_URL}${path}`;
-
   const headers: HeadersInit = {
     ...(data ? { "Content-Type": "application/json" } : {}),
   };
-
-  console.log(`[apiRequest] Starting request: ${method} ${url}`);
-  console.log(`[apiRequest] Current Firebase user for token check:`, auth.currentUser);
 
   let token: string | null = null;
   try {
     if (auth.currentUser) {
       token = await auth.currentUser.getIdToken();
-      console.log(`[apiRequest] Firebase ID Token obtained: ${token ? 'Yes' : 'No'}`);
-    } else {
-      console.warn("[apiRequest] No Firebase currentUser available to get ID token. Request might be unauthorized.");
     }
   } catch (tokenError) {
-    console.error("[apiRequest] Error getting Firebase ID Token:", tokenError);
+    console.error("[apiRequest] Token error:", tokenError);
   }
 
-  if (token) {
-    headers["Authorization"] = `Bearer ${token}`;
-    console.log("[apiRequest] Authorization header added.");
-  } else {
-    console.log("[apiRequest] No Authorization header added (token was null or error occurred).");
-  }
-
-  console.log(`[apiRequest] Request headers:`, headers);
-  console.log(`[apiRequest] Request body (JSON.stringify):`, data ? JSON.stringify(data) : 'No body');
+  if (token) headers["Authorization"] = `Bearer ${token}`;
 
   try {
-  const res = await fetch(url, {
-    method,
-    headers,
-    body: data ? JSON.stringify(data) : undefined,
-    credentials: "include",
-  });
+    const res = await fetch(url, {
+      method,
+      headers,
+      body: data ? JSON.stringify(data) : undefined,
+      credentials: "include",
+    });
 
-  console.log(`[apiRequest] Received response for ${url}. Status: ${res.status}`);
+    if (!res.ok) {
+      const text = (await res.text()) || res.statusText;
+      throw new Error(`${res.status}: ${text}`);
+    }
 
-  if (!res.ok) {
-    const text = (await res.text()) || res.statusText;
-    console.error(`[apiRequest] API Error Response: ${res.status}: ${text}`);
-    throw new Error(`${res.status}: ${text}`);
-  }
-
-  console.log(`[apiRequest] Request ${url} successful.`);
-
-  const json = await res.json(); // ✅ यही असली JSON data है
-  return json;
-} catch (fetchError) {
-  console.error(`[apiRequest] Fetch operation failed for ${url}:`, fetchError);
-  throw fetchError;
+    // ✅ ये करो: Parsed JSON return करो
+    const json = await res.json();
+    return json;
+  } catch (fetchError) {
+    console.error(`[apiRequest] Fetch failed: ${url}`, fetchError);
+    throw fetchError;
   }
 }
