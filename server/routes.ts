@@ -4,7 +4,7 @@ import express, { type Express, Request, Response } from "express";
 import { storage } from "./storage";
 
 import { z } from "zod";
-import { verifyToken, AuthenticatedRequest } from "./middleware/verifyToken";
+// import { verifyToken, AuthenticatedRequest } from "./middleware/verifyToken"; // ✅ verifyToken यहां से हटा दें
 import { requireAuth } from "./middleware/requireAuth";
 import { parseIntParam } from "./util/parseIntParam";
 import {
@@ -12,29 +12,58 @@ import {
   insertOrderSchema,
   insertReviewSchema,
 } from "../shared/backend/schema";
-import jwt from 'jsonwebtoken'; // ✅ JWT को इम्पोर्ट करें
+import jwt from 'jsonwebtoken'; 
+import * as admin from 'firebase-admin'; // ✅ Firebase Admin SDK को इम्पोर्ट करें
 
 // Routers
 import adminVendorsRouter from "./roots/admin/vendors";
-
 import sellersApplyRouter from "../routes/sellers/apply";       
-
 import sellersRejectRouter from "../routes/sellers/reject";       
 import sellerMeRouter from "../routes/sellerMe";
 import adminProductsRouter from "./roots/admin/products";
 import adminPasswordRoutes from "./roots/admin/admin-password";
 
 
+// ✅ AuthenticatedRequest को फिर से परिभाषित करें ताकि यह सिर्फ req.user से डेटाबेस user को दर्शाए
+// या इसे FirebaseUserRequest जैसा कुछ कहें यदि आप Firebase user data को सीधे उपयोग करते हैं
+interface FirebaseAuthenticatedRequest extends Request {
+  user?: { // Firebase Auth user data
+    uid: string;
+    email?: string | null;
+    name?: string | null;
+  };
+}
+
+
 export async function registerRoutes(app: Express): Promise<void> {
 
   // --- AUTH ROUTES ---
-  app.post("/api/auth/login", verifyToken, async (req: AuthenticatedRequest, res: Response) => {
+  // ✅ /api/auth/login से verifyToken हटा दें
+  app.post("/api/auth/login", async (req: FirebaseAuthenticatedRequest, res: Response) => {
     try {
-      if (!req.user || !req.user.uid) { // ✅ uid की भी जांच करें
+      // ✅ अब Firebase ID टोकन को यहां मैन्युअल रूप से सत्यापित करें
+      const firebaseIdToken = req.headers.authorization?.split(' ')[1]; // Bearer टोकन से प्राप्त करें
+
+      if (!firebaseIdToken) {
+        return res.status(401).json({ message: "Authorization token missing." });
+      }
+
+      let decodedToken: admin.auth.DecodedIdToken;
+      try {
+        decodedToken = await admin.auth().verifyIdToken(firebaseIdToken);
+      } catch (decodeError) {
+        console.error("Firebase ID Token verification failed:", decodeError);
+        return res.status(401).json({ message: "Invalid or expired Firebase ID token." });
+      }
+
+      const uid = decodedToken.uid;
+      const email = decodedToken.email;
+      const name = decodedToken.name || decodedToken.email?.split('@')[0]; // Firebase user से नाम लें
+
+      if (!uid || !email) { 
         return res.status(401).json({ message: "Authentication failed: Firebase user data missing." });
       }
 
-      const { email, uid, name } = req.user;
       const requestedRole = (req.query.role as string) || "customer";
 
       let user = await storage.getUserByFirebaseUid(uid);
@@ -53,9 +82,9 @@ export async function registerRoutes(app: Express): Promise<void> {
         }
 
         user = await storage.createUser({
-          email: email!,
-          firebaseUid: uid,
-          name: name || email!.split('@')[0],
+          email: email, // Firebase से ईमेल का उपयोग करें
+          firebaseUid: uid, // Firebase से uid का उपयोग करें
+          name: name || email.split('@')[0], // Firebase से नाम या ईमेल का उपयोग करें
           role: userRole,
           approvalStatus: userApprovalStatus
         });
@@ -65,19 +94,17 @@ export async function registerRoutes(app: Express): Promise<void> {
         console.log(`Existing user logged in: ${user.email} with role: ${user.role} and status: ${user.approvalStatus}`);
       }
 
-      // ✅ JWT टोकन बनाएं
-      // इसमें user.id, user.firebaseUid, user.role जैसे आवश्यक दावे शामिल करें
-      // यह टोकन आपके कस्टम बैकएंड API कॉल को अधिकृत करने के लिए उपयोग किया जाएगा।
+      // JWT टोकन बनाएं
       const token = jwt.sign(
         {
-          id: user.id,
+          id: user.id, // आपके डेटाबेस यूजर का ID
           firebaseUid: user.firebaseUid,
-          email: user.email, // ईमेल भी उपयोगी हो सकता है
+          email: user.email,
           role: user.role,
-          approvalStatus: user.approvalStatus // यदि आवश्यक हो
+          approvalStatus: user.approvalStatus 
         },
-        process.env.JWT_SECRET as string, // ✅ सुनिश्चित करें कि JWT_SECRET ENV में है
-        { expiresIn: '7d' } // टोकन की समय सीमा समाप्त होने की तिथि
+        process.env.JWT_SECRET as string, 
+        { expiresIn: '7d' } 
       );
       console.log("Generated JWT Token for user:", user.id);
 
@@ -90,23 +117,21 @@ export async function registerRoutes(app: Express): Promise<void> {
         if (sellerDetails) {
           finalApprovalStatus = sellerDetails.approvalStatus;
         } else {
-          
           console.warn(`User ${user.email} has role 'seller' but no matching seller profile found.`);
-          // यदि seller profile नहीं मिलती, तो approvalStatus को user के approvalStatus से लें
           finalApprovalStatus = user.approvalStatus;
         }
       }
 
       res.json({
         message: isNewUser ? "User created and logged in successfully" : "Login successful",
-        token: token, // ✅ यहां JWT टोकन भेजें!
+        token: token, 
         user: {
           uuid: user.id.toString(), // client-side में user.id को uuid के रूप में उपयोग करें
           email: user.email,
           name: user.name,
           role: user.role,
-          seller: sellerDetails, // विक्रेता के विवरण यदि लागू हो
-          approvalStatus: finalApprovalStatus, // विक्रेता के लिए वास्तविक अनुमोदन स्थिति
+          seller: sellerDetails, 
+          approvalStatus: finalApprovalStatus, 
         }
       });
 
@@ -116,27 +141,39 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
 
-  // --- ADMIN ROUTES ---
+  // बाकी के रूट्स जैसे थे वैसे ही रहें
+  // ...
   app.use("/api/admin/vendors", adminVendorsRouter);
   app.use("/api/admin/products", adminProductsRouter);
-  app.use("/api/admin-login", adminPasswordRoutes); // यह admin-password को हैंडल करता है
+  app.use("/api/admin-login", adminPasswordRoutes); 
 
-  // --- SELLER ROUTES ---
-  // ✅ सुनिश्चित करें कि ये राउटर्स 'roots' डायरेक्टरी से आ रहे हैं और सही से ऑथेंटिकेटेड हैं।
-  // यदि ये विक्रेता प्रबंधन के लिए एडमिन रूट्स हैं, तो उन्हें adminVendorsRouter में मर्ज करने पर विचार करें।
-  // यदि वे विक्रेता-विशिष्ट रूट्स हैं (जैसे विक्रेता डैशबोर्ड), तो उन्हें उचित रूप से हैंडल करें।
-   app.use("/api/sellers/apply", sellersApplyRouter); // यह सार्वजनिक या ग्राहक द्वारा उपयोग किया जाता है
+   app.use("/api/sellers/apply", sellersApplyRouter); 
   
   app.use("/api/seller-me", sellerMeRouter); 
 
-  // --- DELIVERY LOGIN ---
-  app.post("/api/delivery/login", verifyToken, async (req: AuthenticatedRequest, res: Response) => {
+  app.post("/api/delivery/login", async (req: FirebaseAuthenticatedRequest, res: Response) => {
     try {
-      if (!req.user || !req.user.uid) {
-        return res.status(401).json({ message: "Authentication failed: Firebase user data missing." });
+      const firebaseIdToken = req.headers.authorization?.split(' ')[1];
+
+      if (!firebaseIdToken) {
+        return res.status(401).json({ message: "Authorization token missing." });
       }
 
-      const { email, uid, name } = req.user;
+      let decodedToken: admin.auth.DecodedIdToken;
+      try {
+        decodedToken = await admin.auth().verifyIdToken(firebaseIdToken);
+      } catch (decodeError) {
+        console.error("Firebase ID Token verification failed:", decodeError);
+        return res.status(401).json({ message: "Invalid or expired Firebase ID token." });
+      }
+
+      const uid = decodedToken.uid;
+      const email = decodedToken.email;
+      const name = decodedToken.name || decodedToken.email?.split('@')[0];
+
+      if (!uid) {
+        return res.status(401).json({ message: "Authentication failed: Firebase user data missing." });
+      }
 
       let deliveryBoy = await storage.getDeliveryBoyByFirebaseUid(uid);
       let isNewDeliveryBoy = false;
@@ -154,13 +191,12 @@ export async function registerRoutes(app: Express): Promise<void> {
         console.log(`Delivery boy logged in: ${deliveryBoy.email}`);
       }
 
-      // ✅ JWT टोकन बनाएं
       const token = jwt.sign(
         {
           id: deliveryBoy.id,
           firebaseUid: deliveryBoy.firebaseUid,
           email: deliveryBoy.email,
-          role: "delivery", // डिलीवरी बॉय के लिए भूमिका 'delivery' है
+          role: "delivery", 
           approvalStatus: deliveryBoy.approvalStatus
         },
         process.env.JWT_SECRET as string,
@@ -171,12 +207,12 @@ export async function registerRoutes(app: Express): Promise<void> {
 
       res.json({
         message: isNewDeliveryBoy ? "Delivery boy created and logged in successfully" : "Login successful",
-        token: token, // ✅ यहां JWT टोकन भेजें!
+        token: token, 
         user: {
           uuid: deliveryBoy.id.toString(),
           email: deliveryBoy.email,
           name: deliveryBoy.name,
-          role: "delivery", // हार्डकोड करें क्योंकि यह डिलीवरी-विशिष्ट लॉगिन है
+          role: "delivery", 
           approvalStatus: deliveryBoy.approvalStatus,
         }
       });
@@ -188,19 +224,15 @@ export async function registerRoutes(app: Express): Promise<void> {
 
   app.get("/api/delivery/me", verifyToken, async (req: AuthenticatedRequest, res: Response) => {
     try {
-      // ✅ सुनिश्चित करें कि यह रूट केवल डिलीवरी भूमिका वाले उपयोगकर्ताओं के लिए ही एक्सेस किया जा सके।
-      // आपको यहां requireDeliveryAuth जैसा एक मिडलवेयर जोड़ना चाहिए।
-      // अभी के लिए, हम सिर्फ user.uid की जांच करेंगे।
       if (!req.user || !req.user.uid) return res.status(401).json({ message: "Unauthorized" });
 
       const deliveryBoy = await storage.getDeliveryBoyByFirebaseUid(req.user.uid);
       if (!deliveryBoy) return res.status(404).json({ message: "Delivery profile not found." });
 
-      // ✅ यहां भूमिका 'delivery' के रूप में सेट करें क्योंकि यह एक डिलीवरी-विशिष्ट एंडपॉइंट है।
       res.json({ user: {
         uuid: deliveryBoy.id.toString(),
         ...deliveryBoy,
-        role: "delivery" // सुनिश्चित करें कि यह हमेशा 'delivery' के रूप में वापस आता है
+        role: "delivery" 
       }});
     } catch (error) {
       console.error("Error in /api/delivery/me:", error);
@@ -327,7 +359,7 @@ export async function registerRoutes(app: Express): Promise<void> {
       console.error("Error clearing cart:", error);
       res.status(500).json({ message: "Failed to clear cart." });
     }
-  });
+    });
 
   // --- ORDER ROUTES ---
   app.post("/api/orders", verifyToken, requireAuth, async (req: AuthenticatedRequest, res) => {
