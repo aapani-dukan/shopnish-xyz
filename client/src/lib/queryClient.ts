@@ -20,7 +20,7 @@ method: string,
 path: string, // URL की जगह 'path' का उपयोग करें
 data?: unknown, // 'any' की जगह 'unknown' अधिक सुरक्षित है
 ): Promise<Response> {
-const url = ${API_BASE_URL}${path};
+const url = `${API_BASE_URL}${path}`; // ✅ Correct
 
 const headers: HeadersInit = {
 ...(data ? { "Content-Type": "application/json" } : {}),
