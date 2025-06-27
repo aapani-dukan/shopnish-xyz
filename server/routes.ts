@@ -13,7 +13,7 @@ import {
   insertReviewSchema,
 } from "../shared/backend/schema";
 import jwt from 'jsonwebtoken'; 
-import * as admin from 'firebase-admin'; // ✅ Firebase Admin SDK को इम्पोर्ट करें
+import * as firebaseAdmin from 'firebase-admin'; // ✅ Firebase Admin SDK को इम्पोर्ट करें
 
 // Routers
 import adminVendorsRouter from "./roots/admin/vendors";
