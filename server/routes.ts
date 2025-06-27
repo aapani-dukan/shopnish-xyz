@@ -4,7 +4,7 @@ import express, { type Express, Request, Response } from "express";
 import { storage } from "./storage";
 
 import { z } from "zod";
-// import { verifyToken, AuthenticatedRequest } from "./middleware/verifyToken"; // ✅ verifyToken यहां से हटा दें
+ import { verifyToken, AuthenticatedRequest } from "./middleware/verifyToken"; 
 import { requireAuth } from "./middleware/requireAuth";
 import { parseIntParam } from "./util/parseIntParam";
 import {
