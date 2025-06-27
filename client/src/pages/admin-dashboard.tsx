@@ -20,15 +20,13 @@ export default function AdminDashboard() {
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [activeTab, setActiveTab] = useState("vendors");
-
-const fetchVendors = async () => {
+  const fetchVendors = async () => {
   try {
     const res = await apiRequest("GET", "/api/admin/vendors");
-    
-console.log("Fetched from API:", res.data);
-    // ✅ सही जगह से array access करें
-    if (Array.isArray(res.data.data)) {
-      setVendors(res.data.data); // ✅ अब ये सही चलेगा
+    console.log("Fetched from API:", res);
+
+    if (Array.isArray(res.data?.data)) {
+      setVendors(res.data.data); // ✅ ये सही जगह है जहाँ array है
     } else {
       setVendors([]);
     }
