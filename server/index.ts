@@ -1,4 +1,4 @@
-//server/index.ts
+// server/index.ts
 import express, { type Request, type Response, type NextFunction } from "express";
 import cors from "cors";
 import { registerRoutes } from "./routes";
@@ -24,8 +24,6 @@ app.use(express.urlencoded({ extended: false }));
 async function runMigrations() {
   const connectionString = process.env.DATABASE_URL;
 
-  console.log("Executing runMigrations function...");
-  console.log("Checking DATABASE_URL...");
   if (!connectionString) {
     console.error("❌ DATABASE_URL environment variable is not set.");
     return;
@@ -41,25 +39,20 @@ async function runMigrations() {
   const db = drizzle(pool);
 
   try {
-    console.log("🚀 Starting Drizzle migrations...");
     const migrationsPath = path.resolve(__dirname, "migrations");
-    console.log(`📁 Running migrations from: ${migrationsPath}`);
-
     await migrate(db, { migrationsFolder: migrationsPath });
-    console.log("✅ Drizzle migrations completed successfully.");
+    console.log("✅ Drizzle migrations completed.");
   } catch (error: any) {
     if (error?.code === "42P07") {
       console.warn("⚠️ Table already exists. Skipping migration.");
     } else {
-      console.error("❌ Drizzle Migrations failed:", error);
+      console.error("❌ Migration Error:", error);
     }
   } finally {
-    console.log("🔁 Closing database pool...");
     try {
       await pool.end();
-      console.log("✅ Database pool closed.");
     } catch (poolError) {
-      console.error("❌ Failed to close database pool:", poolError);
+      console.error("❌ Failed to close pool:", poolError);
     }
   }
 }
@@ -72,14 +65,20 @@ async function runMigrations() {
     await runMigrations();
   }
 
-  console.log("✅ Migrations done. Starting server setup...");
+  console.log("✅ Migrations done. Starting server...");
 
   if (!isDev) {
     await registerRoutes(app);
     log("🌐 Production mode: Serving static files...");
     serveStatic(app);
+
+    // ✅ IMPORTANT: Fallback for SPA frontend routing (Wouter)
+    app.get("*", (req, res) => {
+      res.sendFile(path.join(__dirname, "public", "index.html"));
+    });
   }
 
+  // 🔻 Error handler
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
     const message = err.message || "Internal Server Error";
