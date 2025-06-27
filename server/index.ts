@@ -9,14 +9,8 @@ import { migrate } from "drizzle-orm/node-postgres/migrator";
 import { Pool } from "pg";
 import path from "path";
 import { fileURLToPath } from "url";
-
-// ✅ Firebase Admin SDK के विशिष्ट मॉड्यूल को इम्पोर्ट करें
-// इससे बंडलर को सही मॉड्यूल खोजने में मदद मिलेगी
-import { initializeApp, getApps, cert } from 'firebase-admin/app'; // या 'firebase-admin/app' से initializeApp, getApps इम्पोर्ट करें
-import { getAuth } from 'firebase-admin/auth'; // auth के लिए
-// यदि आप एप्लिकेशन डिफ़ॉल्ट क्रेडेंशियल का उपयोग कर रहे हैं:
-import { applicationDefault } from 'firebase-admin/credential';
-
+// ✅ Firebase Admin SDK को डिफ़ॉल्ट एक्सपोर्ट के रूप में इम्पोर्ट करें
+import * as admin from 'firebase-admin'; 
 
 const app = express();
 let server: Server;
@@ -70,10 +64,10 @@ async function runMigrations() {
   const isDev = app.get("env") === "development";
 
   // ✅ Firebase Admin SDK को इनिशियलाइज़ करें
-  // getApps() का उपयोग यह जांचने के लिए करें कि क्या कोई ऐप पहले से इनिशियलाइज़ है
-  if (!getApps().length) { 
-    initializeApp({
-      credential: applicationDefault() // 'applicationDefault' सीधे इम्पोर्ट किया गया
+  // 'admin.apps' का उपयोग करें
+  if (!admin.apps.length) { 
+    admin.initializeApp({
+      credential: admin.credential.applicationDefault() 
     });
   }
   console.log("✅ Firebase Admin SDK initialized.");
