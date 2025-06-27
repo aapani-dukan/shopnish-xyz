@@ -4,12 +4,14 @@ import { Request, Response, NextFunction } from "express";
 import { verifyAndDecodeToken } from "../util/authUtils";
 import { storage } from "../storage"; // ✅ storage इम्पोर्ट करें
 
+
 export interface AuthenticatedRequest extends Request {
   user?: {
     uid: string;
     email?: string;
     name?: string;
-    id?: number; // ✅ डेटाबेस ID जोड़ने के लिए इसे वैकल्पिक करें
+    id?: number; // डेटाबेस ID
+    role?: 'customer' | 'seller' | 'admin' | 'delivery'; // ✅ भूमिका जोड़ें
   };
 }
 
@@ -27,23 +29,24 @@ export const verifyToken = async (
   const idToken = authHeader.split(" ")[1];
 
   try {
-    const decoded = await verifyAndDecodeToken(idToken);
+    const decoded = await verifyAndDecodeToken(idToken); // यह Firebase decoded token है
 
-    // ✅ Firebase UID का उपयोग करके डेटाबेस से यूजर को खोजें
+  
     const dbUser = await storage.getUserByFirebaseUid(decoded.uid);
 
     if (!dbUser) {
-      // यदि Firebase UID से कोई यूज़र नहीं मिला, तो यह एक अमान्य स्थिति हो सकती है
-      // या यूज़र ने अभी तक हमारे सिस्टम में रजिस्टर नहीं किया है (जैसे कि /api/auth/login से पहले)।
-      // आप यहां 403 या 404 भी लौटा सकते हैं, या बस `id` को undefined छोड़ सकते हैं।
-      console.warn(`User with Firebase UID ${decoded.uid} not found in database during token verification.`);
+      console.warn(`User with Firebase UID ${decoded.uid} not found in database during token verification. They might be a new user not yet registered via /api/auth/login.`);
+      // यदि dbUser नहीं मिलता है, तो आप अभी भी प्रमाणीकरण को पास कर सकते हैं
+      // लेकिन बिना DB ID या भूमिका के। यह `/api/auth/login` जैसे सार्वजनिक रूट्स के लिए ठीक है
+      // जहां आप यूज़र को बनाना चाहते हैं। प्रतिबंधित रूट्स के लिए, यह एक समस्या होगी।
     }
 
     req.user = {
       uid: decoded.uid,
       email: decoded.email,
       name: decoded.name || decoded.displayName || "",
-      id: dbUser ? dbUser.id : undefined, // ✅ यहाँ डेटाबेस ID असाइन करें
+      id: dbUser ? dbUser.id : undefined,
+      role: dbUser ? dbUser.role : undefined, // ✅ यहाँ यूज़र की भूमिका असाइन करें
     };
     next();
   } catch (error: any) {
