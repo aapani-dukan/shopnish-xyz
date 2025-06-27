@@ -25,8 +25,7 @@ const url = `${API_BASE_URL}${path}`; // ✅ Correct
 const headers: HeadersInit = {
 ...(data ? { "Content-Type": "application/json" } : {}),
 };
-
-console.log([apiRequest] Starting request: ${method} ${url});
+console.log(`[apiRequest] Starting request: ${method} ${url}`);
 console.log([apiRequest] Current Firebase user for token check:, auth.currentUser);
 
 let token: string | null = null;
