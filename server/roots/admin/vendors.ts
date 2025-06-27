@@ -1,22 +1,17 @@
-// server/roots/admin/vendors.ts
+// server/roots/admin/vendors.ts (नई फाइल बनाएँ)
 
 import express from 'express';
 import { storage } from '../../storage'; // storage.ts से इंपोर्ट करें
-import { requireAdminAuth } from '../../middleware/requireAdminAuth'; // ✅ नया: एडमिन ऑथेंटिकेशन मिडलवेयर
 
 const router = express.Router();
 
-// ✅ सभी एडमिन रूट्स पर requireAdminAuth मिडलवेयर लागू करें।
-// यह सुनिश्चित करता है कि इन रूट्स तक केवल प्रमाणित और 'admin' भूमिका वाले यूज़र ही पहुँच सकें।
-router.use(requireAdminAuth);
-
 // GET /api/admin/vendors
-// सभी वेंडर्स को प्राप्त करें (pending, approved, rejected)
-router.get('/', async (req, res) => {
+router.get('/', async (req, res) => { // रूट सिर्फ '/' है क्योंकि यह /api/admin/vendors पर माउंट होगा
   try {
-    const vendors = await storage.getSellers(); 
+    // getSellers को बिना किसी फिल्टर के कॉल करें ताकि सभी वेंडर्स मिलें (pending, approved, rejected)
+    const vendors = await storage.getSellers(); // storage से getSellers फंक्शन कॉल करें
     
-    console.log("Fetched Vendors:", vendors);
+console.log("Fetched Vendors:", vendors); // ✅ log to confirm
     return res.status(200).json({ success: true, data: vendors });
   } catch (error) {
     console.error('Error fetching admin vendors:', error);
@@ -24,44 +19,32 @@ router.get('/', async (req, res) => {
   }
 });
 
-// POST /api/admin/vendors/approve-vendor/:id
-// एक विक्रेता को 'approved' स्थिति में अपडेट करें
+// आपको यहां /api/admin/approve-vendor/:id और /api/admin/reject-vendor/:id भी जोड़ना होगा
+// अगर वे अलग राउटर्स में नहीं हैं और आप admin-dashboard से ही उन्हें मैनेज करना चाहते हैं।
+// उदाहरण के लिए:
+
 router.post('/approve-vendor/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const sellerId = parseInt(id, 10); // ✅ स्ट्रिंग ID को पूर्णांक में बदलें
-
-    if (isNaN(sellerId)) {
-        return res.status(400).json({ success: false, message: 'Invalid seller ID provided.' });
-    }
-
-    await storage.updateSellerStatus(sellerId, 'approved'); // storage.ts में इस फ़ंक्शन को अपडेट करें
-    
-    return res.status(200).json({ success: true, message: 'Vendor approved successfully.' });
+    await storage.updateSellerStatus(id, 'approved'); // सुनिश्चित करें कि storage.ts में यह फंक्शन है
+    return res.status(200).json({ success: true, message: 'Vendor approved.' });
   } catch (error) {
     console.error('Error approving vendor:', error);
     return res.status(500).json({ success: false, message: 'Failed to approve vendor.' });
   }
 });
 
-// POST /api/admin/vendors/reject-vendor/:id
-// एक विक्रेता को 'rejected' स्थिति में अपडेट करें
 router.post('/reject-vendor/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const sellerId = parseInt(id, 10); // ✅ स्ट्रिंग ID को पूर्णांक में बदलें
-
-    if (isNaN(sellerId)) {
-        return res.status(400).json({ success: false, message: 'Invalid seller ID provided.' });
-    }
-
-    await storage.updateSellerStatus(sellerId, 'rejected'); // storage.ts में इस फ़ंक्शन को अपडेट करें
-    
-    return res.status(200).json({ success: true, message: 'Vendor rejected successfully.' });
+    await storage.updateSellerStatus(id, 'rejected'); // सुनिश्चित करें कि storage.ts में यह फंक्शन है
+    return res.status(200).json({ success: true, message: 'Vendor rejected.' });
   } catch (error) {
     console.error('Error rejecting vendor:', error);
     return res.status(500).json({ success: false, message: 'Failed to reject vendor.' });
   }
 });
 
+
 export default router;
+
