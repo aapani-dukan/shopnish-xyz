@@ -2,7 +2,7 @@
 
 import express, { type Express, Request, Response } from "express";
 import { storage } from "./storage";
-// import { seedDatabase } from "./seed"; // ✅ यदि आप सीडिंग को अलग से हैंडल कर रहे हैं, तो इसे हटा दें
+
 import { z } from "zod";
 import { verifyToken, AuthenticatedRequest } from "./middleware/verifyToken";
 import { requireAuth } from "./middleware/requireAuth";
@@ -16,22 +16,16 @@ import jwt from 'jsonwebtoken'; // ✅ JWT को इम्पोर्ट क�
 
 // Routers
 import adminVendorsRouter from "./roots/admin/vendors";
-// import pendingSellersRouter from "../routes/sellers/pending"; // ✅ इन्हें हटाएं या उनके उपयोग की पुष्टि करें
-// import sellersApplyRouter from "../routes/sellers/apply";       // ✅ यदि वे adminVendorsRouter में कवर नहीं हैं
-// import sellersApproveRouter from "../routes/sellers/approve";     // ✅ तो उनके राउटिंग पथों को फिर से विचार करें
-// import sellersRejectRouter from "../routes/sellers/reject";       // ✅ यदि वे adminVendorsRouter में कवर नहीं हैं
+
+import sellersApplyRouter from "../routes/sellers/apply";       
+
+import sellersRejectRouter from "../routes/sellers/reject";       
 import sellerMeRouter from "./roots/sellerMe"; // ✅ सुनिश्चित करें कि यह 'roots' के भीतर है
 import adminProductsRouter from "./roots/admin/products";
 import adminPasswordRoutes from "./roots/admin/admin-password";
 
 
 export async function registerRoutes(app: Express): Promise<void> {
-  // ✅ यदि आप सीडिंग को एप्लिकेशन स्टार्ट अप पर कहीं और हैंडल कर रहे हैं, तो इसे हटा दें
-  // try {
-  //   console.log("Database seeded successfully.");
-  // } catch (error) {
-  //   console.error("Failed to seed database:", error);
-  // }
 
   // --- AUTH ROUTES ---
   app.post("/api/auth/login", verifyToken, async (req: AuthenticatedRequest, res: Response) => {
@@ -96,11 +90,7 @@ export async function registerRoutes(app: Express): Promise<void> {
         if (sellerDetails) {
           finalApprovalStatus = sellerDetails.approvalStatus;
         } else {
-          // यदि user.role 'seller' है लेकिन कोई sellerDetails नहीं है, तो एक बनाएं
-          // यह तभी होना चाहिए जब कोई उपयोगकर्ता सीधे डेटाबेस में 'seller' के रूप में जोड़ा गया हो
-          // लेकिन seller_profiles टेबल में उनकी प्रविष्टि न हो।
-          // या तो यहां बनाएं, या सुनिश्चित करें कि वे seller-apply फ्लो से गुजरे हैं।
-          // अभी के लिए, हम मान लेंगे कि वे seller-apply से गुजरेंगे।
+          
           console.warn(`User ${user.email} has role 'seller' but no matching seller profile found.`);
           // यदि seller profile नहीं मिलती, तो approvalStatus को user के approvalStatus से लें
           finalApprovalStatus = user.approvalStatus;
@@ -135,11 +125,9 @@ export async function registerRoutes(app: Express): Promise<void> {
   // ✅ सुनिश्चित करें कि ये राउटर्स 'roots' डायरेक्टरी से आ रहे हैं और सही से ऑथेंटिकेटेड हैं।
   // यदि ये विक्रेता प्रबंधन के लिए एडमिन रूट्स हैं, तो उन्हें adminVendorsRouter में मर्ज करने पर विचार करें।
   // यदि वे विक्रेता-विशिष्ट रूट्स हैं (जैसे विक्रेता डैशबोर्ड), तो उन्हें उचित रूप से हैंडल करें।
-  // app.use("/api/sellers/pending", pendingSellersRouter);
-  // app.use("/api/sellers/apply", sellersApplyRouter); // यह सार्वजनिक या ग्राहक द्वारा उपयोग किया जाता है
-  // app.use("/api/sellers/approve", sellersApproveRouter);
-  // app.use("/api/sellers/reject", sellersRejectRouter);
-  app.use("/api/seller-me", sellerMeRouter); // ✅ सुनिश्चित करें कि यह /api/seller-me है और सही फ़ाइल से आता है।
+   app.use("/api/sellers/apply", sellersApplyRouter); // यह सार्वजनिक या ग्राहक द्वारा उपयोग किया जाता है
+  
+  app.use("/api/seller-me", sellerMeRouter); 
 
   // --- DELIVERY LOGIN ---
   app.post("/api/delivery/login", verifyToken, async (req: AuthenticatedRequest, res: Response) => {
