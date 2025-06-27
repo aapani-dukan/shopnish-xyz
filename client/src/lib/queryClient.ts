@@ -26,7 +26,7 @@ const headers: HeadersInit = {
 ...(data ? { "Content-Type": "application/json" } : {}),
 };
 console.log(`[apiRequest] Starting request: ${method} ${url}`);
-console.log([apiRequest] Current Firebase user for token check:, auth.currentUser);
+console.log(`[apiRequest] Current Firebase user for token check:`, auth.currentUser);
 
 let token: string | null = null;
 try {
