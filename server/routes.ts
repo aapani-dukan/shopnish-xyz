@@ -20,7 +20,7 @@ import adminVendorsRouter from "./roots/admin/vendors";
 import sellersApplyRouter from "../routes/sellers/apply";       
 
 import sellersRejectRouter from "../routes/sellers/reject";       
-import sellerMeRouter from "./roots/sellerMe"; // ✅ सुनिश्चित करें कि यह 'roots' के भीतर है
+import sellerMeRouter from "../routes/sellerMe";
 import adminProductsRouter from "./roots/admin/products";
 import adminPasswordRoutes from "./roots/admin/admin-password";
 
