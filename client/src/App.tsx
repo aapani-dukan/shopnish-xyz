@@ -23,7 +23,7 @@ import DeliveryApplyPage from "@/pages/delivery-apply";
 import LoginPage from "@/pages/login";
 // ✅ Centralized auth-based routing
 import { AuthRedirectGuard } from "@/components/auth-redirect-guard";
-
+import AdminLogin from "@/pages/admin-login"; //
 // ✅ 'PendingPage' का इम्पोर्ट हटा दिया गया है
 // import PendingPage from "@/pages/seller-pending"; 
 
@@ -43,7 +43,7 @@ function AppRouter() {
         <Route path="/seller-apply" component={SellerApplyPage} />
         <Route path="/seller-status" component={SellerStatusPage} />
         <Route path="/login" component={LoginPage} />
-
+        
         {/* Delivery Routes */}
         <Route path="/delivery-dashboard" component={DeliveryDashboard} />
         <Route path="/delivery-apply" component={DeliveryApplyPage} />
@@ -51,6 +51,7 @@ function AppRouter() {
         {/* <Route path="/seller-pending" component={PendingPage} /> */}
 
         {/* Admin Route */}
+        <Route path="/admin-login" component={AdminLogin} /> // ✅ Add in Switch
         <Route path="/admin-dashboard" component={AdminDashboard} />
 
         {/* 404 */}
