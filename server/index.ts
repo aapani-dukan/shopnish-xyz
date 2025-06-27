@@ -121,7 +121,3 @@ app.use((req, res, next) => {
 
   next();
 });
-// ✅ Serve frontend index.html for all non-API routes (SPA fallback for Wouter)
-app.get("*", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "index.html"));
-});
