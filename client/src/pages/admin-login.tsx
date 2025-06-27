@@ -5,7 +5,8 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Shield } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { auth } from "@/lib/firebase"; // ✅ Firebase auth import
+import { auth, googleProvider } from "@/lib/firebase"; // ✅ firebase
+import { signInWithRedirect, signOut } from "firebase/auth";
 import axios from "axios";
 
 export default function AdminLogin() {
@@ -26,24 +27,21 @@ export default function AdminLogin() {
 
     const user = auth.currentUser;
     if (!user) {
-      toast({
-        title: "Not Logged In",
-        description: "Please login with Google first.",
-        variant: "destructive",
-      });
+      // 🔁 Force logout and show account chooser
+      await signOut(auth);
+      await signInWithRedirect(auth, googleProvider);
       return;
     }
 
     const firebaseUid = user.uid;
-
     setLoading(true);
+
     try {
       const res = await axios.post("/api/admin-login", {
         firebaseUid,
         password,
       });
 
-      // ✅ Success → Save token or flag
       localStorage.setItem("isAdmin", "true");
       setLocation("/admin-dashboard");
     } catch (err: any) {
@@ -65,7 +63,7 @@ export default function AdminLogin() {
             <Shield className="h-8 w-8 text-primary" />
           </div>
           <CardTitle className="text-2xl">Admin Panel Login</CardTitle>
-          <p className="text-muted-foreground">Enter password to access admin features</p>
+          <p className="text-muted-foreground">Sign in with Google and enter password</p>
         </CardHeader>
         <CardContent className="space-y-4">
           <Input
