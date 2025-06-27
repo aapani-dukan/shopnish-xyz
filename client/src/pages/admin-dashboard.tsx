@@ -21,19 +21,21 @@ export default function AdminDashboard() {
   const [products, setProducts] = useState<Product[]>([]);
   const [activeTab, setActiveTab] = useState("vendors");
 
-  const fetchVendors = async () => {
-    try {
-      const res = await apiRequest("GET", "/api/admin/vendors");
-      if (Array.isArray(res.data)) {
-        setVendors(res.data);
-      } else {
-        setVendors([]);
-      }
-    } catch (error) {
-      console.error("Error fetching vendors:", error);
+const fetchVendors = async () => {
+  try {
+    const res = await apiRequest("GET", "/api/admin/vendors");
+
+    // ✅ सही जगह से array access करें
+    if (Array.isArray(res.data.data)) {
+      setVendors(res.data.data); // ✅ अब ये सही चलेगा
+    } else {
       setVendors([]);
     }
-  };
+  } catch (error) {
+    console.error("Error fetching vendors:", error);
+    setVendors([]);
+  }
+};
 
   const fetchProducts = async () => {
     try {
