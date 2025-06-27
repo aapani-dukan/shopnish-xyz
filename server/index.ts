@@ -9,8 +9,7 @@ import { migrate } from "drizzle-orm/node-postgres/migrator";
 import { Pool } from "pg";
 import path from "path";
 import { fileURLToPath } from "url";
-// ✅ Firebase Admin SDK को डिफ़ॉल्ट एक्सपोर्ट के रूप में इम्पोर्ट करें
-import * as admin from 'firebase-admin'; 
+import * as admin from "firebase-admin";
 
 const app = express();
 let server: Server;
@@ -22,10 +21,26 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
+// --- Firebase Admin Initialization ---
+if (!admin.apps.length) {
+  try {
+    admin.initializeApp({
+      credential: admin.credential.cert({
+        projectId: process.env.FIREBASE_PROJECT_ID,
+        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+        privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, "\n"),
+      }),
+    });
+    console.log("✅ Firebase Admin SDK initialized.");
+  } catch (error) {
+    console.error("❌ Firebase Admin initialization failed:", error);
+    process.exit(1);
+  }
+}
+
 // --- Drizzle Migrations ---
 async function runMigrations() {
   const connectionString = process.env.DATABASE_URL;
-
   if (!connectionString) {
     console.error("❌ DATABASE_URL environment variable is not set.");
     return;
@@ -33,9 +48,7 @@ async function runMigrations() {
 
   const pool = new Pool({
     connectionString,
-    ssl: {
-      rejectUnauthorized: false,
-    },
+    ssl: { rejectUnauthorized: false },
   });
 
   const db = drizzle(pool);
@@ -63,15 +76,6 @@ async function runMigrations() {
 (async () => {
   const isDev = app.get("env") === "development";
 
-  // ✅ Firebase Admin SDK को इनिशियलाइज़ करें
-  // 'admin.apps' का उपयोग करें
-  if (!admin.apps.length) { 
-    admin.initializeApp({
-      credential: admin.credential.applicationDefault() 
-    });
-  }
-  console.log("✅ Firebase Admin SDK initialized.");
-
   if (isDev) {
     await runMigrations();
   }
@@ -83,13 +87,12 @@ async function runMigrations() {
     log("🌐 Production mode: Serving static files...");
     serveStatic(app);
 
-    // ✅ IMPORTANT: Fallback for SPA frontend routing (Wouter)
+    // ✅ SPA fallback for Wouter
     app.get("*", (req, res) => {
       res.sendFile(path.join(__dirname, "public", "index.html"));
     });
   }
 
-  // 🔻 Error handler
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
     const message = err.message || "Internal Server Error";
@@ -112,7 +115,7 @@ async function runMigrations() {
   );
 })();
 
-// --- Request Logging for /api routes ---
+// --- API request logger ---
 app.use((req, res, next) => {
   const start = Date.now();
   const p = req.path;
