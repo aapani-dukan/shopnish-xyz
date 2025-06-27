@@ -10,8 +10,8 @@ import * as admin from "firebase-admin";
 import adminVendorsRouter from "./roots/admin/vendors";
 import adminProductsRouter from "./roots/admin/products";
 import adminPasswordRoutes from "./roots/admin/admin-password";
-import sellersApplyRouter from "./sellers/apply";
-import sellersRejectRouter from "./sellers/reject";
+import sellersApplyRouter from "../routes/sellers/apply";
+import sellersRejectRouter from "../routes/sellers/reject";
 import sellerMeRouter from "./sellerMe";
 
   import { parseIntParam } from "./util/parseIntParam";
