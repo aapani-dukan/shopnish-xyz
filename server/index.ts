@@ -9,6 +9,7 @@ import { migrate } from "drizzle-orm/node-postgres/migrator";
 import { Pool } from "pg";
 import path from "path";
 import { fileURLToPath } from "url";
+import * as firebaseAdmin from 'firebase-admin'; // ✅ Firebase Admin SDK को सही तरीके से इम्पोर्ट करें
 
 const app = express();
 let server: Server;
@@ -60,6 +61,14 @@ async function runMigrations() {
 // --- Start Server ---
 (async () => {
   const isDev = app.get("env") === "development";
+
+  // ✅ Firebase Admin SDK को इनिशियलाइज़ करें
+  if (!firebaseAdmin.apps.length) {
+    firebaseAdmin.initializeApp({
+      credential: firebaseAdmin.credential.applicationDefault() // यह GOOGLE_APPLICATION_CREDENTIALS ENV variable का उपयोग करता है
+    });
+  }
+  console.log("✅ Firebase Admin SDK initialized.");
 
   if (isDev) {
     await runMigrations();
