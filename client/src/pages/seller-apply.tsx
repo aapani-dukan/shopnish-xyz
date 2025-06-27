@@ -1,14 +1,62 @@
 // client/src/pages/seller-apply.tsx
-import { useState } from "react";
+import { useState, useEffect } from "react"; // ✅ useEffect को इम्पोर्ट करें
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Store, ArrowLeft, Rocket, Percent, Zap, Headphones, Globe } from "lucide-react";
-import { Link } from "wouter";
-import SellerOnboardingDialog from "@/components/seller/SellerOnboardingDialog"; // ✅ SellerOnboardingDialog इम्पोर्टेड है
+import { Link, useLocation } from "wouter"; // ✅ useLocation को इम्पोर्ट करें
+import SellerOnboardingDialog from "@/components/seller/SellerOnboardingDialog";
 
 export default function SellerApplyPage() {
-  const { signOut } = useAuth();
-  const [isModalOpen, setIsModalOpen] = useState(false); // ✅ `SellerOnboardingDialog` को नियंत्रित करने के लिए स्टेट
+  const { user, isAuthenticated, isLoadingAuth, signOut } = useAuth(); // ✅ user, isAuthenticated, isLoadingAuth प्राप्त करें
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [, navigate] = useLocation(); // ✅ navigate फ़ंक्शन प्राप्त करें
+
+  // ✅ प्रमाणीकरण और भूमिका-आधारित रीडायरेक्ट लॉजिक
+  useEffect(() => {
+    if (isLoadingAuth) {
+      // प्रमाणीकरण स्थिति लोड होने की प्रतीक्षा करें
+      return;
+    }
+
+    if (!isAuthenticated) {
+      // यदि प्रमाणित नहीं है, तो लॉगिन पेज पर रीडायरेक्ट करें
+      console.log("SellerApplyPage: Not authenticated, redirecting to login.");
+      navigate("/auth");
+      return;
+    }
+
+    if (user) {
+      // यदि उपयोगकर्ता प्रमाणित है, तो उसकी भूमिका और अनुमोदन स्थिति जांचें
+      if (user.role === "seller") {
+        if (user.approvalStatus === "approved") {
+          console.log("SellerApplyPage: Seller approved, redirecting to dashboard.");
+          navigate("/seller-dashboard"); // विक्रेता डैशबोर्ड पर रीडायरेक्ट करें
+          return;
+        } else if (user.approvalStatus === "pending") {
+          console.log("SellerApplyPage: Seller pending, redirecting to status page.");
+          navigate("/seller-status"); // विक्रेता स्थिति पृष्ठ पर रीडायरेक्ट करें
+          return;
+        }
+        // यदि विक्रेता की स्थिति 'rejected' या कोई अन्य है, तो वे आवेदन फॉर्म में बने रहेंगे
+      }
+      // यदि उपयोगकर्ता एक 'customer' या 'admin' या 'delivery' है, तो वे भी आवेदन फॉर्म में बने रहेंगे
+    }
+  }, [isAuthenticated, isLoadingAuth, user, navigate]); // निर्भरता सरणी में user और navigate जोड़ें
+
+  // यदि प्रमाणीकरण की स्थिति अभी भी लोड हो रही है, तो लोडिंग इंडिकेटर दिखाएं
+  if (isLoadingAuth) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4 bg-gray-50">
+        <p className="text-gray-700">Loading seller application status...</p>
+      </div>
+    );
+  }
+
+  // यदि उपयोगकर्ता प्रमाणित नहीं है, तो useEffect उन्हें /auth पर रीडायरेक्ट कर देगा।
+  // यदि उपयोगकर्ता एक विक्रेता है (अनुमोदित या लंबित), तो useEffect उन्हें उनके डैशबोर्ड/स्थिति पृष्ठ पर रीडायरेक्ट कर देगा।
+  // तो, यदि यह कोड यहाँ पहुँचता है, तो इसका मतलब है कि उपयोगकर्ता लॉग इन है लेकिन अभी तक विक्रेता नहीं है,
+  // या उनकी विक्रेता भूमिका अस्वीकृत है, और उन्हें आवेदन फॉर्म देखना चाहिए।
+  // या यदि उपयोगकर्ता एक ग्राहक है और विक्रेता बनना चाहता है।
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -45,7 +93,6 @@ export default function SellerApplyPage() {
           <h1 className="text-3xl font-bold text-gray-900 mb-4">The way is here</h1>
           <p className="text-lg text-gray-600 mb-8">Start your selling journey with us. Complete your application to get approved as a seller.</p>
           
-          {/* ✅ बटन जो `SellerOnboardingDialog` मॉडल को खोलेगा */}
           <Button 
             onClick={() => setIsModalOpen(true)}
             className="inline-flex items-center px-8 py-4 bg-amber-600 hover:bg-amber-700 text-white font-medium rounded-xl transition-colors duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 text-lg"
@@ -91,7 +138,6 @@ export default function SellerApplyPage() {
         </div>
       </main>
 
-      {/* ✅ SellerOnboardingDialog को `isOpen` और `onClose` props के साथ रेंडर करें */}
       <SellerOnboardingDialog 
         isOpen={isModalOpen} 
         onClose={() => setIsModalOpen(false)} 
