@@ -6,12 +6,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Store } from "lucide-react";
 import { useLocation } from "wouter";
-import { useAuth } from "@/hooks/useAuth"; // ✅ useAuth हुक को इम्पोर्ट करें
 
 export default function AuthPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [, navigate] = useLocation();
-  const { login } = useAuth(); // ✅ useAuth हुक से लॉगिन फंक्शन प्राप्त करें
 
   const handleGoogleSignIn = async () => {
     try {
@@ -20,24 +18,47 @@ export default function AuthPage() {
       /* 1️⃣ Firebase popup/redirect */
       const result = await signInWithGoogle();
       const fbUser = result.user;
-      if (!fbUser) {
-        // यदि यूजर पॉपअप बंद कर दे या कोई समस्या हो
-        setIsLoading(false);
-        return;
-      }
+      if (!fbUser) return;
 
       /* 2️⃣ Firebase ID-Token */
       const token = await fbUser.getIdToken();
 
-      /* 3️⃣ 🔒 Backend /api/auth/login - अब useAuth के login फंक्शन का उपयोग करें */
-      // ✅ useAuth के login फंक्शन को कॉल करें
-      const userObject = await login(token, false); // `false` क्योंकि यह केवल लॉगिन पेज है, सेलर आवेदन नहीं
+      /* 3️⃣ 🔒 Backend /api/auth/login */
+      const res = await fetch("/api/auth/login?role=seller", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          firebaseUid: fbUser.uid,
+          email: fbUser.email!,
+          name: fbUser.displayName || fbUser.email!,
+        }),
+      });
 
-      if (!userObject) {
-        throw new Error("Login failed: Could not get user data from backend.");
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.message || res.statusText);
       }
 
-      // ✅ userObject.role और userObject.approvalStatus (यदि विक्रेता है) के आधार पर रीडायरेक्ट करें
+      /* 4️⃣ Server response → user object + role */
+      const { user: userObject } = await res.json(); // ✅ सुनिश्चित करें कि बैकएंड 'user' कुंजी के तहत डेटा भेजता है
+
+      // ✅ सुनिश्चित करें कि 'uuid' मौजूद है
+      if (!userObject || !userObject.uuid) {
+        throw new Error("User UUID missing from backend response!");
+      }
+
+      // ✅ userObject.role का उपयोग करें
+      if (!userObject.role) {
+        throw new Error("User role missing from backend!");
+      }
+
+      console.log("AuthPage: Backend user object received:", userObject); // डीबगिंग के लिए लॉग करें
+
+      /* 5️⃣ Final redirect logic */
+      // userObject.role और userObject.approvalStatus (यदि विक्रेता है) के आधार पर रीडायरेक्ट करें
       switch (userObject.role) {
         case "seller":
           // यदि विक्रेता स्वीकृत है, डैशबोर्ड पर जाएं
@@ -48,7 +69,7 @@ export default function AuthPage() {
           else if (userObject.approvalStatus === "pending") {
             navigate("/seller-status");
           }
-          // यदि विक्रेता किसी अन्य स्थिति में है (जैसे 'rejected'), आवेदन पृष्ठ पर जाएं
+          // यदि विक्रेता किसी अन्य स्थिति में है (जैसे 'rejected' या 'none'), आवेदन पृष्ठ पर जाएं
           else {
             navigate("/seller-apply");
           }
@@ -65,12 +86,12 @@ export default function AuthPage() {
         case "customer":
         default:
           // ग्राहक या अन्य अप्रत्याशित भूमिकाओं के लिए डिफ़ॉल्ट होमपेज या विक्रेता आवेदन पर जाएं
-          navigate("/"); // होमपेज पर रीडायरेक्ट करें
+          navigate("/seller-apply"); // या "/" यदि आप उन्हें होमपेज पर भेजना चाहते हैं
           break;
       }
-    } catch (err: any) {
+    } catch (err: any) { // 'any' टाइप किया गया ताकि 'err.message' को एक्सेस किया जा सके
       console.error("Auth error:", err);
-      alert(`Login failed: ${err.message || "Please try again."}`);
+      alert(`Login failed: ${err.message || "Please try again."}`); // एरर मैसेज दिखाएं
     } finally {
       setIsLoading(false);
     }
