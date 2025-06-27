@@ -49,3 +49,4 @@ export function handleRedirectResult() {
 export function logout() {
   return signOut(auth);
 }
+
