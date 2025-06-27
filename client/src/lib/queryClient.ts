@@ -52,25 +52,26 @@ export async function apiRequest<T>(
   console.log(`[apiRequest] Request body (JSON.stringify):`, data ? JSON.stringify(data) : 'No body');
 
   try {
-    const res = await fetch(url, { // 'response' की जगह 'res' उपयोग करें ताकि कंसिस्टेंट रहे
-      method,
-      headers,
-      body: data ? JSON.stringify(data) : undefined,
-      credentials: "include", // यह महत्वपूर्ण है
-    });
+  const res = await fetch(url, {
+    method,
+    headers,
+    body: data ? JSON.stringify(data) : undefined,
+    credentials: "include",
+  });
 
-    console.log(`[apiRequest] Received response for ${url}. Status: ${res.status}`);
+  console.log(`[apiRequest] Received response for ${url}. Status: ${res.status}`);
 
-    if (!res.ok) {
-      const text = (await res.text()) || res.statusText;
-      console.error(`[apiRequest] API Error Response: ${res.status}: ${text}`);
-      throw new Error(`${res.status}: ${text}`);
-    }
-
-    console.log(`[apiRequest] Request ${url} successful.`);
-    return res;
-  } catch (fetchError) {
-    console.error(`[apiRequest] Fetch operation failed for ${url}:`, fetchError);
-    throw fetchError;
+  if (!res.ok) {
+    const text = (await res.text()) || res.statusText;
+    console.error(`[apiRequest] API Error Response: ${res.status}: ${text}`);
+    throw new Error(`${res.status}: ${text}`);
   }
-}
+
+  console.log(`[apiRequest] Request ${url} successful.`);
+
+  const json = await res.json(); // ✅ यही असली JSON data है
+  return json;
+} catch (fetchError) {
+  console.error(`[apiRequest] Fetch operation failed for ${url}:`, fetchError);
+  throw fetchError;
+  }
