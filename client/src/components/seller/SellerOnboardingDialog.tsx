@@ -413,4 +413,4 @@ export default function SellerOnboardingDialog({ isOpen, onClose }: SellerOnboar
       </DialogContent>
     </Dialog>
   );
-      }
+              }
