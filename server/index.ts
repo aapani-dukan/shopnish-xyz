@@ -1,4 +1,4 @@
-//server/index.ts
+// server/index.ts
 import express, { type Request, type Response, type NextFunction } from "express";
 import cors from "cors";
 import { registerRoutes } from "./routes";
@@ -9,9 +9,11 @@ import { migrate } from "drizzle-orm/node-postgres/migrator";
 import { Pool } from "pg";
 import path from "path";
 import { fileURLToPath } from "url";
+// ✅ Firebase Admin SDK के लिए कोई सीधा इम्पोर्ट यहाँ नहीं
 
 const app = express();
 let server: Server;
+let firebaseAdmin: any; // ✅ Firebase Admin SDK ऑब्जेक्ट को स्टोर करने के लिए वेरिएबल
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -68,6 +70,27 @@ async function runMigrations() {
 (async () => {
   const isDev = app.get("env") === "development";
 
+  // ✅ Firebase Admin SDK को डायनामिकली इम्पोर्ट और इनिशियलाइज़ करें
+  try {
+    console.log("Attempting to import firebase-admin dynamically...");
+    const adminModule = await import('firebase-admin');
+    firebaseAdmin = adminModule.default || adminModule; // CommonJS इंटरॉप के लिए
+    
+    // यह चेक करें कि SDK पहले से इनिशियलाइज़ है या नहीं
+    if (!firebaseAdmin.apps.length) { 
+      firebaseAdmin.initializeApp({
+        credential: firebaseAdmin.credential.applicationDefault() 
+      });
+      console.log("✅ Firebase Admin SDK initialized dynamically.");
+    } else {
+        console.log("✅ Firebase Admin SDK already initialized.");
+    }
+  } catch (error) {
+    console.error("❌ Error initializing Firebase Admin SDK:", error);
+    // यदि Firebase Admin SDK इनिशियलाइज़ नहीं हो पाता है, तो ऐप को बंद करना उचित है
+    process.exit(1); 
+  }
+
   if (isDev) {
     await runMigrations();
   }
@@ -75,11 +98,18 @@ async function runMigrations() {
   console.log("✅ Migrations done. Starting server setup...");
 
   if (!isDev) {
-    await registerRoutes(app);
+    // ✅ registerRoutes को firebaseAdmin ऑब्जेक्ट पास करें
+    await registerRoutes(app, firebaseAdmin); 
     log("🌐 Production mode: Serving static files...");
     serveStatic(app);
+
+    // ✅ IMPORTANT: Fallback for SPA frontend routing (Wouter)
+    app.get("*", (req, res) => {
+      res.sendFile(path.join(__dirname, "public", "index.html"));
+    });
   }
 
+  // 🔻 Error handler
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
     const message = err.message || "Internal Server Error";
@@ -121,5 +151,3 @@ app.use((req, res, next) => {
 
   next();
 });
-
-
