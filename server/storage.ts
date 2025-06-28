@@ -2,7 +2,7 @@
 
 import { db } from "./db";
 import {
-  users, categories, products, cartItems, orders, orderItems, reviews, sellersPgtable, deliveryBoys,
+  users, categories, products, cartItems, orders, orderItems, reviews, sellersPgTable, deliveryBoys,
   type User, type InsertUser, type Category, type InsertCategory,
   type Product, type InsertProduct, type CartItem, type InsertCartItem,
   type Order, type InsertOrder, type OrderItem, type InsertOrderItem,
@@ -83,20 +83,35 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  async getSellers(filters?: { approvalStatus?: string }): Promise<Seller[]> {
-    try {
-      let query = db.select().from(sellersPgTable);
-      if (filters?.approvalStatus) {
-        query = query.where(eq(sellersPgTable.approvalStatus, filters.approvalStatus));
-      }
-      const sellersList = await query;
-      return sellersList;
-    } catch (error) {
-      console.error("Error getting sellersPgTable:", error);
-      return [];
+  
+async getSellers(filters?: { approvalStatus?: string }): Promise<Seller[]> {
+  try {
+    let query = db.select().from(sellersPgTable);
+    if (filters?.approvalStatus) {
+      query = query.where(eq(sellersPgTable.approvalStatus, filters.approvalStatus));
     }
+    const sellersList = await query;
+    return sellersList;
+  } catch (error) {
+    console.error("Error getting sellersPgTable:", error);
+    return [];
   }
+}
 
+async getSellerByUserFirebaseUid(firebaseUid: string): Promise<Seller | undefined> {
+  try {
+    const seller = await db
+      .select()
+      .from(sellersPgTable)
+      .where(eq(sellersPgTable.userId, firebaseUid)) // ✅ string match
+      .limit(1);
+
+    return seller[0];
+  } catch (error) {
+    console.error("Error fetching seller by Firebase UID:", error);
+    return undefined;
+  }
+}
   async createUser(user: InsertUser): Promise<User> {
     const result = await db.insert(users).values(user).returning();
     return result[0];
@@ -167,7 +182,7 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  export async function updateSellerStatus(id: string, status: 'approved' | 'pending' | 'rejected') {
+   async updateSellerStatus(id: string, status: 'approved' | 'pending' | 'rejected') {
   try {
     await db.update(sellersPgTable)
       .set({ approvalStatus: status })
@@ -403,5 +418,6 @@ export class DatabaseStorage implements IStorage {
 }
 
 export const storage = new DatabaseStorage();
+
 
 
