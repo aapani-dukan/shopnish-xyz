@@ -2,7 +2,7 @@
 
 import { db } from "./db";
 import {
-  users, categories, products, cartItems, orders, orderItems, reviews, sellersPgTable, deliveryBoys,
+  users, categories, products, cartItems, orders, orderItems, reviews, sellersPgtable, deliveryBoys,
   type User, type InsertUser, type Category, type InsertCategory,
   type Product, type InsertProduct, type CartItem, type InsertCartItem,
   type Order, type InsertOrder, type OrderItem, type InsertOrderItem,
@@ -83,71 +83,25 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  
-async getSellers(filters?: { approvalStatus?: string }): Promise<Seller[]> {
-  try {
-    let query = db.select().from(sellersPgTable);
-    if (filters?.approvalStatus) {
-      query = query.where(eq(sellersPgTable.approvalStatus, filters.approvalStatus));
+  async getSellers(filters?: { approvalStatus?: string }): Promise<Seller[]> {
+    try {
+      let query = db.select().from(sellersPgTable);
+      if (filters?.approvalStatus) {
+        query = query.where(eq(sellersPgTable.approvalStatus, filters.approvalStatus));
+      }
+      const sellersList = await query;
+      return sellersList;
+    } catch (error) {
+      console.error("Error getting sellersPgTable:", error);
+      return [];
     }
-    const sellersList = await query;
-    return sellersList;
-  } catch (error) {
-    console.error("Error getting sellersPgTable:", error);
-    return [];
-  }
-}
-
-async getSellerByUserFirebaseUid(firebaseUid: string): Promise<Seller | undefined> {
-  try {
-    const seller = await db
-      .select()
-      .from(sellersPgTable)
-      .where(eq(sellersPgTable.userId, firebaseUid)) // ✅ string match
-      .limit(1);
-
-    return seller[0];
-  } catch (error) {
-    console.error("Error fetching seller by Firebase UID:", error);
-    return undefined;
-  }
-}
-  
-async createUser(data: {
-  email: string;
-  firebaseUid: string;
-  name: string;
-  role: "customer" | "seller";
-  approvalStatus: "approved" | "pending" | "rejected";
-}) {
-  // ✅ पहले चेक करो कि user पहले से है क्या?
-  const existing = await db
-    .select()
-    .from(users)
-    .where(eq(users.firebaseUid, data.firebaseUid))
-    .limit(1);
-
-  if (existing.length > 0) {
-    console.log("User already exists with Firebase UID:", data.firebaseUid);
-    return existing[0]; // ✅ पुराना user return कर दो
   }
 
-  // ✅ अगर नहीं है, तो insert करो
-  const inserted = await db
-    .insert(users)
-    .values({
-      firebaseUid: data.firebaseUid,
-      email: data.email,
-      name: data.name,
-      role: data.role,
-      approvalStatus: data.approvalStatus,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    })
-    .returning();
+  async createUser(user: InsertUser): Promise<User> {
+    const result = await db.insert(users).values(user).returning();
+    return result[0];
+  }
 
-  return inserted[0];
-}
   // Categories
   async getCategories(): Promise<Category[]> {
     try {
@@ -213,7 +167,7 @@ async createUser(data: {
     }
   }
 
-   async updateSellerStatus(id: string, status: 'approved' | 'pending' | 'rejected') {
+  export async function updateSellerStatus(id: string, status: 'approved' | 'pending' | 'rejected') {
   try {
     await db.update(sellersPgTable)
       .set({ approvalStatus: status })
@@ -449,3 +403,5 @@ async createUser(data: {
 }
 
 export const storage = new DatabaseStorage();
+
+
