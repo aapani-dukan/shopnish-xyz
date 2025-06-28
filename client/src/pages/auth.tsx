@@ -21,7 +21,7 @@ export default function AuthPage() {
 
       const token = await fbUser.getIdToken();
 
-      // 2️⃣ Hit backend login without forcing seller role
+      // 2️⃣ Backend Login
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: {
@@ -50,7 +50,7 @@ export default function AuthPage() {
         throw new Error("User role missing from backend!");
       }
 
-      // 3️⃣ Redirect based on role + approval
+      // 3️⃣ Role-based redirect
       switch (userObject.role) {
         case "seller":
           if (userObject.approvalStatus === "approved") {
@@ -58,7 +58,7 @@ export default function AuthPage() {
           } else if (userObject.approvalStatus === "pending") {
             navigate("/seller-status");
           } else {
-            navigate("/seller-apply"); // rejected, none etc.
+            navigate("/seller-apply");
           }
           break;
 
@@ -72,7 +72,8 @@ export default function AuthPage() {
 
         case "customer":
         default:
-          navigate("/"); // send to home, not seller-apply!
+          // 🔥 Main Fix: Customer को भी /seller-apply पर भेजो ताकि seller बनने की प्रक्रिया शुरू हो सके
+          navigate("/seller-apply");
           break;
       }
     } catch (err: any) {
