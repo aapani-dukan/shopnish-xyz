@@ -83,16 +83,12 @@ router.post("/", verifyToken, isAdmin, async (req: AuthenticatedRequest, res: Re
 
     const updatedSeller = updatedSellerResult[0]; 
 
-    // 3. Update user role to "seller" and approvalStatus to "approved"
-const updatedUserResult = await db
-  .update(users)
-  .set({ 
-    role: "seller", 
-    approvalStatus: "approved",  // ✅ जोड़ें
-    updatedAt: new Date() 
-  })
-  .where(eq(users.firebaseUid, existingSeller.userId)) // ✅ Firebase UID पर आधारित
-  .returning();
+    // 3. Update user role to "seller"
+    const updatedUserResult = await db
+      .update(users)
+      .set({ role: "seller", updatedAt: new Date() })
+      .where(eq(users.firebaseUid, existingSeller.userId)) // ✅ existingSeller.userId का उपयोग करें (जो Firebase UID है)
+      .returning(); 
 
     const updatedUser = updatedUserResult[0]; 
 
@@ -119,4 +115,3 @@ const updatedUserResult = await db
 });
 
 export default router;
-
