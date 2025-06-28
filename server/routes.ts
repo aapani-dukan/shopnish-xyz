@@ -1,92 +1,217 @@
+
 // server/routes.ts
+
 import express, { type Express, Request, Response } from "express";
 import { storage } from "./storage";
-import { seedDatabase } from "./seed";
+
 import { z } from "zod";
-import { verifyToken, AuthenticatedRequest } from "./middleware/verifyToken";
+import { verifyToken, AuthenticatedRequest } from "./middleware/verifyToken"; 
 import { requireAuth } from "./middleware/requireAuth";
-import { parseIntParam } from "./utils/parseIntParam";
+import { parseIntParam } from "./util/parseIntParam";
+import {
+  insertCartItemSchema,
+  insertOrderSchema,
+  insertReviewSchema,
+} from "../shared/backend/schema";
+import jwt from 'jsonwebtoken'; 
+// ✅ 'firebase-admin/auth' से सीधे 'getAuth' इम्पोर्ट करें
+import { getAuth } from 'firebase-admin/auth'; 
+import { DecodedIdToken } from 'firebase-admin/auth'; // DecodedIdToken टाइप को सीधे इम्पोर्ट करें
+
 
 // Routers
-import pendingSellersRouter from "../routes/sellers/pending";
-import sellersApplyRouter from "../routes/sellers/apply";
-import sellersApproveRouter from "../routes/sellers/approve";
-import sellersRejectRouter from "../routes/sellers/reject";
+import adminVendorsRouter from "./roots/admin/vendors";
+import sellersApplyRouter from "../routes/sellers/apply";       
+import sellersRejectRouter from "../routes/sellers/reject";       
 import sellerMeRouter from "../routes/sellerMe";
+import adminProductsRouter from "./roots/admin/products";
+import adminPasswordRoutes from "./roots/admin/admin-password";
+
+
+// FirebaseAuthenticatedRequest इंटरफेस को जैसा था वैसा ही रहने दें
+interface FirebaseAuthenticatedRequest extends Request {
+  user?: { 
+    uid: string;
+    email?: string | null;
+    name?: string | null;
+  };
+}
+
 
 export async function registerRoutes(app: Express): Promise<void> {
-  try {
-    await seedDatabase();
-    console.log("Database seeded successfully.");
-  } catch (error) {
-    console.error("Failed to seed database:", error);
-  }
 
   // --- AUTH ROUTES ---
-  app.post("/api/auth/login", verifyToken, async (req: AuthenticatedRequest, res: Response) => {
+  app.post("/api/auth/login", async (req: FirebaseAuthenticatedRequest, res: Response) => {
     try {
-      if (!req.user) {
-        return res.status(401).json({ message: "Authentication failed." });
+      const firebaseIdToken = req.headers.authorization?.split(' ')[1]; 
+
+      if (!firebaseIdToken) {
+        return res.status(401).json({ message: "Authorization token missing." });
       }
 
-      const { email, uid, displayName } = req.user;
-      const role = (req.query.role as string) || "customer";
+      let decodedToken: DecodedIdToken; // ✅ सीधे DecodedIdToken का उपयोग करें
+      try {
+        decodedToken = await getAuth().verifyIdToken(firebaseIdToken); // ✅ getAuth() का उपयोग करें
+      } catch (decodeError) {
+        console.error("Firebase ID Token verification failed:", decodeError);
+        return res.status(401).json({ message: "Invalid or expired Firebase ID token." });
+      }
 
-      let user = await storage.getUserByEmail(email);
+      const uid = decodedToken.uid;
+      const email = decodedToken.email;
+      const name = decodedToken.name || decodedToken.email?.split('@')[0]; 
+
+      if (!uid || !email) { 
+        return res.status(401).json({ message: "Authentication failed: Firebase user data missing." });
+      }
+
+      const requestedRole = (req.query.role as string) || "customer";
+
+      let user = await storage.getUserByFirebaseUid(uid);
+      let isNewUser = false;
+
       if (!user) {
+        let userRole: "customer" | "seller" = "customer";
+        let userApprovalStatus: "approved" | "pending" | "rejected" = "approved";
+
+        if (requestedRole === "seller") {
+          userRole = "seller";
+          userApprovalStatus = "pending";
+        } else {
+          userRole = "customer";
+          userApprovalStatus = "approved";
+        }
+
         user = await storage.createUser({
-          email,
-          firebaseUid: uid,
-          name: displayName || email.split('@')[0],
-          role,
-          approvalStatus: role === "seller" ? "pending" : "approved"
+          email: email, 
+          firebaseUid: uid, 
+          name: name || email.split('@')[0], 
+          role: userRole,
+          approvalStatus: userApprovalStatus
         });
-        console.log(`New user created: ${user.email}`);
+        isNewUser = true;
+        console.log(`New user created: ${user.email} with role: ${user.role} and status: ${user.approvalStatus}`);
       } else {
-        console.log(`Existing user logged in: ${user.email}`);
+        console.log(`Existing user logged in: ${user.email} with role: ${user.role} and status: ${user.approvalStatus}`);
       }
 
-      res.json({ message: "Login successful", user });
+      const token = jwt.sign(
+        {
+          id: user.id, 
+          firebaseUid: user.firebaseUid,
+          email: user.email,
+          role: user.role,
+          approvalStatus: user.approvalStatus 
+        },
+        process.env.JWT_SECRET as string, 
+        { expiresIn: '7d' } 
+      );
+      console.log("Generated JWT Token for user:", user.id);
+
+      let sellerDetails = undefined;
+      let finalApprovalStatus = user.approvalStatus;
+
+      if (user.role === "seller") {
+        sellerDetails = await storage.getSellerByUserFirebaseUid(user.firebaseUid);
+        if (sellerDetails) {
+          finalApprovalStatus = sellerDetails.approvalStatus;
+        } else {
+          console.warn(`User ${user.email} has role 'seller' but no matching seller profile found.`);
+          finalApprovalStatus = user.approvalStatus;
+        }
+      }
+
+      res.json({
+        message: isNewUser ? "User created and logged in successfully" : "Login successful",
+        token: token, 
+        user: {
+          uuid: user.id.toString(), 
+          email: user.email,
+          name: user.name,
+          role: user.role,
+          seller: sellerDetails, 
+          approvalStatus: finalApprovalStatus, 
+        }
+      });
+
     } catch (error) {
       console.error("Error in /api/auth/login:", error);
       res.status(500).json({ message: "Internal server error." });
     }
   });
 
-  // --- SELLER ROUTES ---
-  app.use("/api/sellers/pending", pendingSellersRouter);
-  app.use("/api/sellers/apply", sellersApplyRouter);
-  app.use("/api/sellers/approve", sellersApproveRouter);
-  app.use("/api/sellers/reject", sellersRejectRouter);
-  app.use("/api/seller/me", sellerMeRouter);
+  // --- ADMIN ROUTES ---
+  app.use("/api/admin/vendors", adminVendorsRouter);
+  app.use("/api/admin/products", adminProductsRouter);
+  app.use("/api/admin-login", adminPasswordRoutes); 
 
-  // --- DELIVERY LOGIN ---
-  app.post("/api/delivery/login", verifyToken, async (req: AuthenticatedRequest, res: Response) => {
+   app.use("/api/sellers/apply", sellersApplyRouter); 
+  
+  app.use("/api/seller-me", sellerMeRouter); 
+
+  app.post("/api/delivery/login", async (req: FirebaseAuthenticatedRequest, res: Response) => {
     try {
-      if (!req.user) {
-        return res.status(401).json({ message: "Authentication failed." });
+      const firebaseIdToken = req.headers.authorization?.split(' ')[1];
+
+      if (!firebaseIdToken) {
+        return res.status(401).json({ message: "Authorization token missing." });
       }
 
-      const { email, uid, displayName } = req.user;
+      let decodedToken: DecodedIdToken; // ✅ सीधे DecodedIdToken का उपयोग करें
+      try {
+        decodedToken = await getAuth().verifyIdToken(firebaseIdToken); // ✅ getAuth() का उपयोग करें
+      } catch (decodeError) {
+        console.error("Firebase ID Token verification failed:", decodeError);
+        return res.status(401).json({ message: "Invalid or expired Firebase ID token." });
+      }
 
-      let deliveryBoy = await storage.getDeliveryBoyByEmail(email);
+      const uid = decodedToken.uid;
+      const email = decodedToken.email;
+      const name = decodedToken.name || decodedToken.email?.split('@')[0];
+
+      if (!uid) {
+        return res.status(401).json({ message: "Authentication failed: Firebase user data missing." });
+      }
+
+      let deliveryBoy = await storage.getDeliveryBoyByFirebaseUid(uid);
+      let isNewDeliveryBoy = false;
+
       if (!deliveryBoy) {
         deliveryBoy = await storage.createDeliveryBoy({
-          email,
+          email: email!,
           firebaseUid: uid,
-          name: displayName || email.split('@')[0],
+          name: name || email!.split('@')[0],
           approvalStatus: "pending"
         });
+        isNewDeliveryBoy = true;
         console.log(`New delivery boy created: ${deliveryBoy.email}`);
       } else {
         console.log(`Delivery boy logged in: ${deliveryBoy.email}`);
       }
 
+      const token = jwt.sign(
+        {
+          id: deliveryBoy.id,
+          firebaseUid: deliveryBoy.firebaseUid,
+          email: deliveryBoy.email,
+          role: "delivery", 
+          approvalStatus: deliveryBoy.approvalStatus
+        },
+        process.env.JWT_SECRET as string,
+        { expiresIn: '7d' }
+      );
+      console.log("Generated JWT Token for delivery boy:", deliveryBoy.id);
+
+
       res.json({
-        message: "Login successful",
+        message: isNewDeliveryBoy ? "Delivery boy created and logged in successfully" : "Login successful",
+        token: token, 
         user: {
-          ...deliveryBoy,
-          role: "delivery"
+          uuid: deliveryBoy.id.toString(),
+          email: deliveryBoy.email,
+          name: deliveryBoy.name,
+          role: "delivery", 
+          approvalStatus: deliveryBoy.approvalStatus,
         }
       });
     } catch (error) {
@@ -95,19 +220,25 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
 
+  // बाकी सभी रूट्स verifyToken मिडलवेयर का उपयोग करते हैं
   app.get("/api/delivery/me", verifyToken, async (req: AuthenticatedRequest, res: Response) => {
     try {
-      if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+      if (!req.user || !req.user.uid) return res.status(401).json({ message: "Unauthorized" });
 
       const deliveryBoy = await storage.getDeliveryBoyByFirebaseUid(req.user.uid);
-      if (!deliveryBoy) return res.status(404).json({ message: "Not found" });
+      if (!deliveryBoy) return res.status(404).json({ message: "Delivery profile not found." });
 
-      res.json({ user: { ...deliveryBoy, role: "delivery" } });
+      res.json({ user: {
+        uuid: deliveryBoy.id.toString(),
+        ...deliveryBoy,
+        role: "delivery" 
+      }});
     } catch (error) {
       console.error("Error in /api/delivery/me:", error);
       res.status(500).json({ message: "Internal server error." });
     }
   });
+
 
   // --- PRODUCT & CATEGORY ROUTES ---
   app.get("/api/categories", async (_req, res) => {
@@ -150,6 +281,9 @@ export async function registerRoutes(app: Express): Promise<void> {
   // --- CART ROUTES ---
   app.get("/api/cart", verifyToken, requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
+      if (req.user?.id === undefined) {
+        return res.status(401).json({ message: "Unauthorized: User database ID not found." });
+      }
       const cartItems = await storage.getCartItemsByUserId(req.user.id);
       res.json(cartItems);
     } catch (error) {
@@ -160,6 +294,9 @@ export async function registerRoutes(app: Express): Promise<void> {
 
   app.post("/api/cart", verifyToken, requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
+      if (req.user?.id === undefined) {
+        return res.status(401).json({ message: "Unauthorized: User database ID not found." });
+      }
       const parsedItem = insertCartItemSchema.parse({ ...req.body, userId: req.user.id });
       const cartItem = await storage.addCartItem(parsedItem);
       res.status(201).json(cartItem);
@@ -182,6 +319,9 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
 
     try {
+      if (req.user?.id === undefined) {
+        return res.status(401).json({ message: "Unauthorized: User database ID not found." });
+      }
       const updatedItem = await storage.updateCartItemQuantity(itemId, req.user.id, quantity);
       if (!updatedItem) return res.status(404).json({ message: "Cart item not found." });
       res.json(updatedItem);
@@ -196,6 +336,9 @@ export async function registerRoutes(app: Express): Promise<void> {
     if (itemId === null) return;
 
     try {
+      if (req.user?.id === undefined) {
+        return res.status(401).json({ message: "Unauthorized: User database ID not found." });
+      }
       await storage.removeCartItem(itemId, req.user.id);
       res.status(204).send();
     } catch (error) {
@@ -206,17 +349,23 @@ export async function registerRoutes(app: Express): Promise<void> {
 
   app.delete("/api/cart", verifyToken, requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
+      if (req.user?.id === undefined) {
+        return res.status(401).json({ message: "Unauthorized: User database ID not found." });
+      }
       await storage.clearCart(req.user.id);
       res.status(204).send();
     } catch (error) {
       console.error("Error clearing cart:", error);
       res.status(500).json({ message: "Failed to clear cart." });
     }
-  });
+    });
 
   // --- ORDER ROUTES ---
   app.post("/api/orders", verifyToken, requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
+      if (req.user?.id === undefined) {
+        return res.status(401).json({ message: "Unauthorized: User database ID not found." });
+      }
       const parsedOrder = insertOrderSchema.parse({ ...req.body, customerId: req.user.id });
       const order = await storage.createOrder(parsedOrder);
       res.status(201).json(order);
@@ -231,6 +380,9 @@ export async function registerRoutes(app: Express): Promise<void> {
 
   app.get("/api/orders", verifyToken, requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
+      if (req.user?.id === undefined) {
+        return res.status(401).json({ message: "Unauthorized: User database ID not found." });
+      }
       const orders = await storage.getOrdersByUserId(req.user.id);
       res.json(orders);
     } catch (error) {
@@ -244,12 +396,15 @@ export async function registerRoutes(app: Express): Promise<void> {
     if (orderId === null) return;
 
     try {
+      if (req.user?.id === undefined) {
+        return res.status(401).json({ message: "Unauthorized: User database ID not found." });
+      }
       const order = await storage.getOrderById(orderId, req.user.id);
       if (!order) return res.status(404).json({ message: "Order not found." });
       res.json(order);
     } catch (error) {
       console.error("Error fetching order:", error);
-      res.status(500).json({ message: "Failed to fetch order." });
+      res.status(500).json({ message: "Internal server error." });
     }
   });
 
@@ -272,7 +427,10 @@ export async function registerRoutes(app: Express): Promise<void> {
     if (productId === null) return;
 
     try {
-      const parsedReview = insertReviewSchema.parse({ ...req.body, productId, userId: req.user.id });
+      if (req.user?.id === undefined) {
+        return res.status(401).json({ message: "Unauthorized: User database ID not found." });
+      }
+      const parsedReview = insertReviewSchema.parse({ ...req.body, productId, customerId: req.user.id });
       const review = await storage.addReview(parsedReview);
       res.status(201).json(review);
     } catch (error) {
@@ -284,4 +442,5 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
 }
+
 
