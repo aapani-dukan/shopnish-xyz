@@ -1,5 +1,6 @@
+// client/src/pages/auth.tsx
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { signInWithGoogle } from "@/lib/firebase";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -8,20 +9,22 @@ import { useLocation } from "wouter";
 
 export default function AuthPage() {
   const [isLoading, setIsLoading] = useState(false);
-  const [, navigate] = useLocation();
+  const [location, navigate] = useLocation();
+
+  // ✅ extract "next" query param (e.g., ?next=seller-apply)
+  const searchParams = new URLSearchParams(location.split("?")[1]);
+  const nextPage = searchParams.get("next");
 
   const handleGoogleSignIn = async () => {
     try {
       setIsLoading(true);
 
-      // 1️⃣ Firebase Login
       const result = await signInWithGoogle();
       const fbUser = result.user;
       if (!fbUser) return;
 
       const token = await fbUser.getIdToken();
 
-      // 2️⃣ Backend Login
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: {
@@ -42,15 +45,11 @@ export default function AuthPage() {
 
       const { user: userObject } = await res.json();
 
-      if (!userObject || !userObject.uuid) {
-        throw new Error("User UUID missing from backend response!");
+      if (!userObject?.uuid || !userObject.role) {
+        throw new Error("Incomplete user data from backend.");
       }
 
-      if (!userObject.role) {
-        throw new Error("User role missing from backend!");
-      }
-
-      // 3️⃣ Role-based redirect
+      // ✅ Role-based redirect with "next" intent preserved
       switch (userObject.role) {
         case "seller":
           if (userObject.approvalStatus === "approved") {
@@ -72,8 +71,11 @@ export default function AuthPage() {
 
         case "customer":
         default:
-          // 🔥 Main Fix: Customer को भी /seller-apply पर भेजो ताकि seller बनने की प्रक्रिया शुरू हो सके
-          navigate("/seller-apply");
+          if (nextPage === "seller-apply") {
+            navigate("/seller-apply");
+          } else {
+            navigate("/");
+          }
           break;
       }
     } catch (err: any) {
