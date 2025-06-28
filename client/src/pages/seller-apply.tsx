@@ -1,13 +1,14 @@
+// client/src/pages/seller-apply.tsx
 import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Store, ArrowLeft, Rocket, Percent, Zap, Headphones, Globe } from "lucide-react";
 import { Link } from "wouter";
-import SellerRegistrationModal from "@/components/seller-registration-modal";
+import SellerOnboardingDialog from "@/components/seller/SellerOnboardingDialog"; // ✅ SellerOnboardingDialog इम्पोर्टेड है
 
 export default function SellerApplyPage() {
   const { signOut } = useAuth();
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false); // ✅ `SellerOnboardingDialog` को नियंत्रित करने के लिए स्टेट
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -26,7 +27,7 @@ export default function SellerApplyPage() {
               </div>
               <span className="font-semibold text-gray-900">Seller Application</span>
             </div>
-            <button 
+            <button
               onClick={signOut}
               className="text-sm text-gray-500 hover:text-gray-700 transition-colors"
             >
@@ -44,6 +45,7 @@ export default function SellerApplyPage() {
           <h1 className="text-3xl font-bold text-gray-900 mb-4">The way is here</h1>
           <p className="text-lg text-gray-600 mb-8">Start your selling journey with us. Complete your application to get approved as a seller.</p>
           
+          {/* ✅ बटन जो `SellerOnboardingDialog` मॉडल को खोलेगा */}
           <Button 
             onClick={() => setIsModalOpen(true)}
             className="inline-flex items-center px-8 py-4 bg-amber-600 hover:bg-amber-700 text-white font-medium rounded-xl transition-colors duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 text-lg"
@@ -89,7 +91,8 @@ export default function SellerApplyPage() {
         </div>
       </main>
 
-      <SellerApplicationModal 
+      {/* ✅ SellerOnboardingDialog को `isOpen` और `onClose` props के साथ रेंडर करें */}
+      <SellerOnboardingDialog 
         isOpen={isModalOpen} 
         onClose={() => setIsModalOpen(false)} 
       />
