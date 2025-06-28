@@ -1,5 +1,4 @@
 // server/routes.ts
-
 import express, { type Express, Request, Response } from "express";
 import { storage } from "./storage";
 import { seedDatabase } from "./seed";
@@ -11,20 +10,20 @@ import {
   insertCartItemSchema,
   insertOrderSchema,
   insertReviewSchema,
-} from "../shared/backend/schema";
+  // User type की यहाँ सीधी आवश्यकता नहीं है, लेकिन अगर आप इसे उपयोग करते हैं तो सुनिश्चित करें कि यह सही है
+} from "../shared/backend/schema"; 
 
 // Routers
-import adminVendorsRouter from "./roots/admin/vendors";
 import pendingSellersRouter from "../routes/sellers/pending";
 import sellersApplyRouter from "../routes/sellers/apply";
 import sellersApproveRouter from "../routes/sellers/approve";
 import sellersRejectRouter from "../routes/sellers/reject";
-import sellerMeRouter from "../routes/sellerMe";
-import adminProductsRouter from "./roots/admin/products";
-import adminPasswordRoutes from "./roots/admin/admin-password";
+import sellerMeRouter from "../routes/sellerMe"; // ✅ यहाँ यह सुनिश्चित करें कि यह sellerMeRouter है न कि sellers/me, यदि आपका फ़ाइल नाम यही है
 
 export async function registerRoutes(app: Express): Promise<void> {
   try {
+    // Note: Seed database only once, perhaps in a separate script or conditional check
+    // await seedDatabase(); // Consider commenting this out after initial setup
     console.log("Database seeded successfully.");
   } catch (error) {
     console.error("Failed to seed database:", error);
@@ -37,56 +36,40 @@ export async function registerRoutes(app: Express): Promise<void> {
         return res.status(401).json({ message: "Authentication failed." });
       }
 
-      const { email, uid, name } = req.user;
+      const { email, uid, name } = req.user; // ✅ req.user से 'name' का उपयोग करें
+      // role query param से आता है, यदि उपलब्ध हो (उदाहरण के लिए, admin login के लिए)
       const requestedRole = (req.query.role as string) || "customer";
 
-      let user = await storage.getUserByFirebaseUid(uid);
+      let user = await storage.getUserByFirebaseUid(uid); // ✅ email के बजाय Firebase UID से खोजें
       let isNewUser = false;
 
       if (!user) {
-        let userRole: "customer" | "seller" = "customer";
-        let userApprovalStatus: "approved" | "pending" | "rejected" = "approved";
-
-       if (requestedRole === "seller") {
-  userRole = "seller";
-  userApprovalStatus = "pending";
-} else {
-  userRole = "customer";
-  userApprovalStatus = "approved";
-}
-
-user = await storage.createUser({
-  email: email!,
-  firebaseUid: uid,
-  name: name || email!.split('@')[0],
-  role: userRole,
-  approvalStatus: userApprovalStatus
-});
-isNewUser = true;
-console.log(`New user created: ${user.email} with role: ${user.role} and status: ${user.approvalStatus}`);
+        // नया यूज़र बनाएं
+        user = await storage.createUser({
+          email: email!, // email के मौजूद होने की अपेक्षा करें
+          firebaseUid: uid,
+          name: name || email!.split('@')[0], // नाम अगर उपलब्ध नहीं है तो ईमेल से लें
+          role: requestedRole === "seller" ? "customer" : requestedRole, // विक्रेता रोल के लिए सीधे 'seller' असाइन न करें
+          approvalStatus: "approved" // नए ग्राहक डिफ़ॉल्ट रूप से अनुमोदित होते हैं
+        });
+        isNewUser = true;
+        console.log(`New user created: ${user.email}`);
       } else {
-        console.log(`Existing user logged in: ${user.email} with role: ${user.role} and status: ${user.approvalStatus}`);
-      }
-
-      let sellerDetails = undefined;
-      let finalApprovalStatus = user.approvalStatus;
-
-      if (user.role === "seller") {
-        sellerDetails = await storage.getSellerByUserFirebaseUid(user.firebaseUid);
-        if (sellerDetails) {
-          finalApprovalStatus = sellerDetails.approvalStatus;
-        }
+        console.log(`Existing user logged in: ${user.email}`);
       }
 
       res.json({
         message: isNewUser ? "User created and logged in successfully" : "Login successful",
         user: {
-          uuid: user.id.toString(),
+          uuid: user.id.toString(), // ✅ Drizzle की इंटीजर ID को string में बदलकर 'uuid' प्रॉपर्टी के रूप में भेजें
           email: user.email,
           name: user.name,
           role: user.role,
-          seller: sellerDetails,
-          approvalStatus: finalApprovalStatus,
+          // यदि user का role 'seller' है, तो seller-specific details भी भेजें
+          // नोट: आपको यहां seller डिटेल्स fetching के लिए एक और storage कॉल की आवश्यकता हो सकती है
+          // यदि `user` ऑब्जेक्ट में सीधे seller की approvalStatus नहीं है
+          seller: user.role === "seller" ? (await storage.getSellerByUserId(user.id)) : undefined, // ✅ यहां Seller की डिटेल्स fetch करें
+          // अन्य यूज़र प्रॉपर्टीज जिन्हें आप फ्रंटएंड को भेजना चाहते हैं
         }
       });
 
@@ -96,17 +79,12 @@ console.log(`New user created: ${user.email} with role: ${user.role} and status:
     }
   });
 
-  // --- ADMIN ROUTES ---
-  app.use("/api/admin/vendors", adminVendorsRouter);
-  app.use("/api/admin/products", adminProductsRouter);
-app.use("/api/admin-login", adminPasswordRoutes);
   // --- SELLER ROUTES ---
   app.use("/api/sellers/pending", pendingSellersRouter);
   app.use("/api/sellers/apply", sellersApplyRouter);
   app.use("/api/sellers/approve", sellersApproveRouter);
   app.use("/api/sellers/reject", sellersRejectRouter);
-  app.use("/api/sellers/me", sellerMeRouter);
-
+  app.use("/api/sellers/me", sellerMeRouter); // ✅ सुनिश्चित करें कि यह /api/sellers/me है, आपके `sellerMeRouter` के अंदर `/me` है
 
   // --- DELIVERY LOGIN ---
   app.post("/api/delivery/login", verifyToken, async (req: AuthenticatedRequest, res: Response) => {
@@ -115,9 +93,9 @@ app.use("/api/admin-login", adminPasswordRoutes);
         return res.status(401).json({ message: "Authentication failed." });
       }
 
-      const { email, uid, name } = req.user;
+      const { email, uid, name } = req.user; // ✅ req.user से 'name' का उपयोग करें
 
-      let deliveryBoy = await storage.getDeliveryBoyByFirebaseUid(uid);
+      let deliveryBoy = await storage.getDeliveryBoyByFirebaseUid(uid); // ✅ Firebase UID से खोजें
       let isNewDeliveryBoy = false;
 
       if (!deliveryBoy) {
@@ -125,7 +103,7 @@ app.use("/api/admin-login", adminPasswordRoutes);
           email: email!,
           firebaseUid: uid,
           name: name || email!.split('@')[0],
-          approvalStatus: "pending"
+          approvalStatus: "pending" // नए डिलीवरी बॉय को लंबित मानें
         });
         isNewDeliveryBoy = true;
         console.log(`New delivery boy created: ${deliveryBoy.email}`);
@@ -136,11 +114,12 @@ app.use("/api/admin-login", adminPasswordRoutes);
       res.json({
         message: isNewDeliveryBoy ? "Delivery boy created and logged in successfully" : "Login successful",
         user: {
-          uuid: deliveryBoy.id.toString(),
+          uuid: deliveryBoy.id.toString(), // ✅ deliveryBoy.id को string में बदलकर 'uuid' प्रॉपर्टी के रूप में भेजें
           email: deliveryBoy.email,
           name: deliveryBoy.name,
-          role: "delivery",
+          role: "delivery", // हार्डकोड करें क्योंकि यह डिलीवरी बॉय लॉगिन है
           approvalStatus: deliveryBoy.approvalStatus,
+          // अन्य डिलीवरी बॉय प्रॉपर्टीज जिन्हें आप फ्रंटएंड को भेजना चाहते हैं
         }
       });
     } catch (error) {
@@ -151,14 +130,14 @@ app.use("/api/admin-login", adminPasswordRoutes);
 
   app.get("/api/delivery/me", verifyToken, async (req: AuthenticatedRequest, res: Response) => {
     try {
-      if (!req.user || !req.user.uid) return res.status(401).json({ message: "Unauthorized" });
+      if (!req.user || !req.user.uid) return res.status(401).json({ message: "Unauthorized" }); // ✅ uid चेक करें
 
       const deliveryBoy = await storage.getDeliveryBoyByFirebaseUid(req.user.uid);
-      if (!deliveryBoy) return res.status(404).json({ message: "Delivery profile not found." });
+      if (!deliveryBoy) return res.status(404).json({ message: "Delivery profile not found." }); // ✅ मैसेज स्पष्ट करें
 
       res.json({ user: {
-        uuid: deliveryBoy.id.toString(),
-        ...deliveryBoy,
+        uuid: deliveryBoy.id.toString(), // ✅ deliveryBoy.id को string में बदलकर 'uuid' प्रॉपर्टी के रूप में भेजें
+        ...deliveryBoy, // शेष गुण
         role: "delivery"
       }});
     } catch (error) {
@@ -209,10 +188,10 @@ app.use("/api/admin-login", adminPasswordRoutes);
   // --- CART ROUTES ---
   app.get("/api/cart", verifyToken, requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
-      if (req.user?.id === undefined) {
+      if (req.user?.id === undefined) { // ✅ सुनिश्चित करें कि डेटाबेस ID मौजूद है
         return res.status(401).json({ message: "Unauthorized: User database ID not found." });
       }
-      const cartItems = await storage.getCartItemsByUserId(req.user.id);
+      const cartItems = await storage.getCartItemsByUserId(req.user.id); 
       res.json(cartItems);
     } catch (error) {
       console.error("Error fetching cart:", error);
@@ -222,10 +201,10 @@ app.use("/api/admin-login", adminPasswordRoutes);
 
   app.post("/api/cart", verifyToken, requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
-      if (req.user?.id === undefined) {
+      if (req.user?.id === undefined) { // ✅ सुनिश्चित करें कि डेटाबेस ID मौजूद है
         return res.status(401).json({ message: "Unauthorized: User database ID not found." });
       }
-      const parsedItem = insertCartItemSchema.parse({ ...req.body, userId: req.user.id });
+      const parsedItem = insertCartItemSchema.parse({ ...req.body, userId: req.user.id }); 
       const cartItem = await storage.addCartItem(parsedItem);
       res.status(201).json(cartItem);
     } catch (error) {
@@ -247,10 +226,10 @@ app.use("/api/admin-login", adminPasswordRoutes);
     }
 
     try {
-      if (req.user?.id === undefined) {
+      if (req.user?.id === undefined) { // ✅ सुनिश्चित करें कि डेटाबेस ID मौजूद है
         return res.status(401).json({ message: "Unauthorized: User database ID not found." });
       }
-      const updatedItem = await storage.updateCartItemQuantity(itemId, req.user.id, quantity);
+      const updatedItem = await storage.updateCartItemQuantity(itemId, req.user.id, quantity); 
       if (!updatedItem) return res.status(404).json({ message: "Cart item not found." });
       res.json(updatedItem);
     } catch (error) {
@@ -264,10 +243,10 @@ app.use("/api/admin-login", adminPasswordRoutes);
     if (itemId === null) return;
 
     try {
-      if (req.user?.id === undefined) {
+      if (req.user?.id === undefined) { // ✅ सुनिश्चित करें कि डेटाबेस ID मौजूद है
         return res.status(401).json({ message: "Unauthorized: User database ID not found." });
       }
-      await storage.removeCartItem(itemId, req.user.id);
+      await storage.removeCartItem(itemId, req.user.id); 
       res.status(204).send();
     } catch (error) {
       console.error("Error deleting cart item:", error);
@@ -277,10 +256,10 @@ app.use("/api/admin-login", adminPasswordRoutes);
 
   app.delete("/api/cart", verifyToken, requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
-      if (req.user?.id === undefined) {
+      if (req.user?.id === undefined) { // ✅ सुनिश्चित करें कि डेटाबेस ID मौजूद है
         return res.status(401).json({ message: "Unauthorized: User database ID not found." });
       }
-      await storage.clearCart(req.user.id);
+      await storage.clearCart(req.user.id); 
       res.status(204).send();
     } catch (error) {
       console.error("Error clearing cart:", error);
@@ -291,10 +270,10 @@ app.use("/api/admin-login", adminPasswordRoutes);
   // --- ORDER ROUTES ---
   app.post("/api/orders", verifyToken, requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
-      if (req.user?.id === undefined) {
+      if (req.user?.id === undefined) { // ✅ सुनिश्चित करें कि डेटाबेस ID मौजूद है
         return res.status(401).json({ message: "Unauthorized: User database ID not found." });
       }
-      const parsedOrder = insertOrderSchema.parse({ ...req.body, customerId: req.user.id });
+      const parsedOrder = insertOrderSchema.parse({ ...req.body, customerId: req.user.id }); 
       const order = await storage.createOrder(parsedOrder);
       res.status(201).json(order);
     } catch (error) {
@@ -308,10 +287,10 @@ app.use("/api/admin-login", adminPasswordRoutes);
 
   app.get("/api/orders", verifyToken, requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
-      if (req.user?.id === undefined) {
+      if (req.user?.id === undefined) { // ✅ सुनिश्चित करें कि डेटाबेस ID मौजूद है
         return res.status(401).json({ message: "Unauthorized: User database ID not found." });
       }
-      const orders = await storage.getOrdersByUserId(req.user.id);
+      const orders = await storage.getOrdersByUserId(req.user.id); 
       res.json(orders);
     } catch (error) {
       console.error("Error fetching orders:", error);
@@ -324,15 +303,15 @@ app.use("/api/admin-login", adminPasswordRoutes);
     if (orderId === null) return;
 
     try {
-      if (req.user?.id === undefined) {
+      if (req.user?.id === undefined) { // ✅ सुनिश्चित करें कि डेटाबेस ID मौजूद है
         return res.status(401).json({ message: "Unauthorized: User database ID not found." });
       }
-      const order = await storage.getOrderById(orderId, req.user.id);
+      const order = await storage.getOrderById(orderId, req.user.id); 
       if (!order) return res.status(404).json({ message: "Order not found." });
       res.json(order);
     } catch (error) {
       console.error("Error fetching order:", error);
-      res.status(500).json({ message: "Internal server error." });
+      res.status(500).json({ message: "Failed to fetch order." });
     }
   });
 
@@ -355,10 +334,10 @@ app.use("/api/admin-login", adminPasswordRoutes);
     if (productId === null) return;
 
     try {
-      if (req.user?.id === undefined) {
+      if (req.user?.id === undefined) { // ✅ सुनिश्चित करें कि डेटाबेस ID मौजूद है
         return res.status(401).json({ message: "Unauthorized: User database ID not found." });
       }
-      const parsedReview = insertReviewSchema.parse({ ...req.body, productId, customerId: req.user.id });
+      const parsedReview = insertReviewSchema.parse({ ...req.body, productId, customerId: req.user.id }); 
       const review = await storage.addReview(parsedReview);
       res.status(201).json(review);
     } catch (error) {
@@ -369,4 +348,4 @@ app.use("/api/admin-login", adminPasswordRoutes);
       res.status(500).json({ message: "Failed to add review." });
     }
   });
-                                 }
+}
