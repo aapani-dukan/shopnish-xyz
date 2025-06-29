@@ -2,17 +2,20 @@
 
 import { Request, Response, NextFunction } from "express";
 import { verifyAndDecodeToken } from "../util/authUtils";
-import { storage } from "../storage"; // ✅ storage इम्पोर्ट करें
+import { storage } from "../storage"; // ✅ DB access layer
 
+export type UserRole = 'customer' | 'seller' | 'admin' | 'delivery';
+
+export interface AuthenticatedUser {
+  userId: string; // Firebase UID
+  email?: string;
+  name?: string;
+  id?: number;
+  role?: UserRole;
+}
 
 export interface AuthenticatedRequest extends Request {
-  user?: {
-    userId: string;  // ✅ यह अब आपका main Firebase UID है
-    email?: string;
-    name?: string;
-    id?: number;
-    role?: 'customer' | 'seller' | 'admin' | 'delivery';
-  };
+  user?: AuthenticatedUser;
 }
 
 export const verifyToken = async (
@@ -29,30 +32,21 @@ export const verifyToken = async (
   const idToken = authHeader.split(" ")[1];
 
   try {
-    const decoded = await verifyAndDecodeToken(idToken); // यह Firebase decoded token है
+    const decoded = await verifyAndDecodeToken(idToken); // 🔐 Firebase decoded token
 
-  
     const dbUser = await storage.getUserByFirebaseUid(decoded.uid);
 
-    if (!dbUser) {
-      console.warn(`User with Firebase UID ${decoded.uid} not found in database during token verification. They might be a new user not yet registered via /api/auth/login.`);
-      // यदि dbUser नहीं मिलता है, तो आप अभी भी प्रमाणीकरण को पास कर सकते हैं
-      // लेकिन बिना DB ID या भूमिका के। यह `/api/auth/login` जैसे सार्वजनिक रूट्स के लिए ठीक है
-      // जहां आप यूज़र को बनाना चाहते हैं। प्रतिबंधित रूट्स के लिए, यह एक समस्या होगी।
-    }
-        req.user = {
-      userId: decoded.uid, // 🔴 यही key चाहिए तुम्हारे AuthenticatedRequest के हिसाब से
-      email: decoded.email,
-      name: decoded.name,
-      role: decoded.role as "customer" | "seller" | "admin" | "delivery", // अगर तुमने custom claim set किया है तो
+    req.user = {
+      userId: decoded.uid,
+      email: decoded.email || dbUser?.email,
+      name: decoded.name || dbUser?.name,
+      id: dbUser?.id,
+      role: dbUser?.role || "customer", // fallback
     };
-    
-  
+
     next();
   } catch (error: any) {
     console.error("❌ Firebase token verification failed:", error.message || error);
     return res.status(401).json({ message: "Invalid or expired token" });
   }
 };
-
-
