@@ -1,25 +1,14 @@
 {
   "compilerOptions": {
-    "composite": true,
-    "skipLibCheck": true,
+    "target": "ES2020",
     "module": "ESNext",
-    "moduleResolution": "bundler",
+    "moduleResolution": "node",
+    "outDir": "dist",
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
     "allowSyntheticDefaultImports": true,
     "strict": true,
-    "noEmit": true,
-    "baseUrl": "./",
-    "paths": {
-      "@shared/backend/*": ["shared/backend/*"],
-    "@shared/frontend/*": ["shared/frontend/*"] 
-    }
+    "skipLibCheck": true
   },
-  "include": [
-    "server/**/*.ts",
-    "shared/**/*.ts",
-    "shared/**/*.tsx"
-  ],
-  "references": [
-    { "path": "./client" },
-    { "path": "./server" }
-  ]
+  "include": ["server/**/*"]
 }
