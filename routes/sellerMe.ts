@@ -1,35 +1,38 @@
-// routes/sellers/me.ts
-import express from "express";
-import { verifyToken, AuthenticatedRequest } from "../server/middleware/verifyToken";
-import { db } from "../server/db";
-// ✅ 'sellers' को 'sellersPgTable' से बदलें ताकि सही Drizzle टेबल का उपयोग हो
-import { sellersPgTable } from "../shared/backend/schema"; 
-import { eq } from "drizzle-orm"; 
+import { Router, Response } from "express";
+import { verifyToken, AuthenticatedRequest } from "../../server/middleware/verifyToken";
+import { db } from "../../server/db";
+import { sellersPgTable } from "../../shared/backend/schema";
+import { eq } from "drizzle-orm";
 
-const router = express.Router();
+const router = Router();
 
-// 🔐 Protected route for seller's own data
-router.get("/me", verifyToken, async (req: AuthenticatedRequest, res) => {
-  if (!req.user?.uid) {
+/**
+ * GET /api/sellers/me
+ * Purpose: Authenticated seller can fetch their own application/profile
+ */
+router.get("/", verifyToken, async (req: AuthenticatedRequest, res: Response) => {
+  const firebaseUid = req.user?.uid;
+
+  if (!firebaseUid) {
     return res.status(401).json({ message: "Unauthorized: Missing user info." });
   }
 
   try {
-    // ✅ NEW: Drizzle ORM में सही सिंटैक्स और sellersPgTable का उपयोग करें
-    const sellerResult = await db.select()
-                                 .from(sellersPgTable) // ✅ sellersPgTable का उपयोग करें
-                                 .where(eq(sellersPgTable.userId, req.user.uid)) // ✅ sellersPgTable.userId का उपयोग करें
-                                 .limit(1); 
+    const sellerResult = await db
+      .select()
+      .from(sellersPgTable)
+      .where(eq(sellersPgTable.userId, firebaseUid))
+      .limit(1);
 
-    const seller = sellerResult.length > 0 ? sellerResult[0] : undefined; 
+    const seller = sellerResult[0];
 
     if (!seller) {
-      return res.status(404).json({ message: "Seller profile not found for this user." });
+      return res.status(404).json({ message: "Seller profile not found." });
     }
 
-    res.status(200).json({ data: seller });
+    res.status(200).json({ seller });
   } catch (error) {
-    console.error("Error fetching seller info:", error);
+    console.error("Error in /api/sellers/me:", error);
     res.status(500).json({ message: "Internal Server Error", error: (error as Error).message });
   }
 });
