@@ -17,7 +17,7 @@ const isAdmin = async (req: AuthenticatedRequest, res: Response, next: NextFunct
   try {
     const userResult = await db.select()
                                .from(users)
-                               .where(eq(users.firebaseUid, req.user.uid))
+                               .where(eq(users.firebaseUid, req.user.userId)) // ✅ FIXED
                                .limit(1); 
 
     const user = userResult.length > 0 ? userResult[0] : null; 
