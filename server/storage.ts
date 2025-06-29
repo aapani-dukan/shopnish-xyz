@@ -64,9 +64,6 @@ export class DatabaseStorage implements IStorage {
   }
 
   
-async addReview(data: InsertReview) {
-  return db.insert(reviews).values(data).returning().get();
-}
   async getUserById(id: number): Promise<User | undefined> {
     try {
       const result = await db.select().from(users).where(eq(users.id, id)).limit(1);
