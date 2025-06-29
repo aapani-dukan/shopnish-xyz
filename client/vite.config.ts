@@ -26,9 +26,9 @@ export default defineConfig(({ command }) => {
       alias: {
         '@':       path.resolve(__dirname, './src'),
         '@shared': path.resolve(__dirname, '..', 'shared/frontend'), // browser-safe shared code
-        buffer:    'buffer/',
+        buffer:    'buffer',
         stream:    'stream-browserify',
-        util:      'util/'
+        util:      'util'
       }
     },
 
