@@ -13,7 +13,7 @@
     "client:dev": "cd client && vite",
     "db:push": "drizzle-kit push:pg --accept-data-loss"
   },
-  "keywords":,
+  "keywords":[],
   "author": "",
   "license": "ISC",
   "dependencies": {
