@@ -1,13 +1,11 @@
 {
-  "name": "test-app",
+  "name": "shopnish-app",
   "version": "1.0.0",
   "type": "module",
-  "main": "index.js",
+  "main": "dist/server/index.js",
   "scripts": {
-    "start": "node index.js",
-    "build": "echo 'Build success'"
-  },
-  "dependencies": {
-    "express": "^4.21.2"
+    "dev": "concurrently \"ts-node server/index.ts\" \"vite\"",
+    "build": "tsc",
+    "start": "NODE_ENV=production node dist/server/index.js"
   }
 }
