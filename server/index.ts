@@ -8,8 +8,7 @@ import { drizzle } from "drizzle-orm/node-postgres";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
 import { Pool } from "pg";
 import path from "path";
-import { fileURLToPath } from require("url"); // ✅ CommonJS के लिए require का उपयोग करें
-// ✅ Firebase Admin SDK को डिफ़ॉल्ट एक्सपोर्ट के रूप में इम्पोर्ट करें
+const { fileURLToPath } = require("url");
 import * as admin from 'firebase-admin'; 
 
 const app = express();
