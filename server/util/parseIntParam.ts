@@ -12,3 +12,17 @@ export function parseIntParam(
   }
   return num;
 }
+
+// ✅ Helper: stripUnknownFields — unknown properties को हटा देता है
+export function stripUnknownFields<T extends object>(
+  input: T,
+  allowed: (keyof T)[]
+): Partial<T> {
+  const result: Partial<T> = {};
+  for (const key of allowed) {
+    if (input[key] !== undefined) {
+      result[key] = input[key];
+    }
+  }
+  return result;
+}
