@@ -52,7 +52,7 @@
     "@stripe/react-stripe-js": "^3.7.0",
     "@stripe/stripe-js": "^7.3.1",
     "@tanstack/react-query": "^5.60.5",
-    "@babel/preset-typescript": "^7.24.5"
+    "@babel/preset-typescript": "^7.24.5",
     "@types/memoizee": "^0.4.12",
     "axios": "^1.9.0",
     "bcryptjs": "^2.4.3",
