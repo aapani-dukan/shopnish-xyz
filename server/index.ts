@@ -9,15 +9,14 @@ import { migrate } from "drizzle-orm/node-postgres/migrator";
 import { Pool } from "pg";
 import path from "path";
 const { fileURLToPath } = require("url");
-import * as admin from 'firebase-admin'; 
+import * as admin from "firebase-admin";
 
 const app = express();
 let server: Server;
 
-// ✅ CommonJS के लिए __filename और __dirname को डिफाइन करें
-const __filename = typeof require!== 'undefined'? require('url').fileURLToPath(import.meta.url) : '';
-const __dirname = typeof require!== 'undefined'? require('path').dirname(__filename) : '';
-
+// ✅ CommonJS के लिए __filename और __dirname
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 app.use(cors());
 app.use(express.json());
@@ -64,11 +63,10 @@ async function runMigrations() {
 (async () => {
   const isDev = app.get("env") === "development";
 
-  // ✅ Firebase Admin SDK को इनिशियलाइज़ करें
-  // 'admin.apps' का उपयोग करें
-  if (!admin.apps.length) { 
+  // ✅ Firebase Admin SDK Init
+  if (!admin.apps.length) {
     admin.initializeApp({
-      credential: admin.credential.applicationDefault() 
+      credential: admin.credential.applicationDefault(),
     });
   }
   console.log("✅ Firebase Admin SDK initialized.");
@@ -80,11 +78,11 @@ async function runMigrations() {
   console.log("✅ Migrations done. Starting server...");
 
   if (!isDev) {
-    await registerRoutes(app); // ✅ registerRoutes को admin ऑब्जेक्ट पास करने की अब आवश्यकता नहीं है
+    await registerRoutes(app);
     log("🌐 Production mode: Serving static files...");
     serveStatic(app);
 
-    // ✅ IMPORTANT: Fallback for SPA frontend routing (Wouter)
+    // Fallback route for SPA
     app.get("*", (req, res) => {
       res.sendFile(path.join(__dirname, "public", "index.html"));
     });
@@ -92,17 +90,13 @@ async function runMigrations() {
 
   // 🔻 Error handler
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-    const status = err.status |
-| err.statusCode |
-| 500;
-    const message = err.message |
-| "Internal Server Error";
+    const status = err.status || err.statusCode || 500;
+    const message = err.message || "Internal Server Error";
     res.status(status).json({ message });
     throw err;
   });
 
-  const port = process.env.PORT |
-| 5000;
+  const port = process.env.PORT || 5000;
 
   if (isDev) {
     log("⚙️ Development mode (Vite HMR)...");
@@ -124,14 +118,17 @@ app.use((req, res, next) => {
   let captured: unknown;
 
   const orig = res.json.bind(res);
-  res.json = (body,...rest) => ((captured = body), orig(body,...rest));
+  res.json = (body, ...rest) => {
+    captured = body;
+    return orig(body, ...rest);
+  };
 
   res.on("finish", () => {
     if (!p.startsWith("/api")) return;
     const ms = Date.now() - start;
     let line = `${req.method} ${p} ${res.statusCode} in ${ms}ms`;
     if (captured) line += ` :: ${JSON.stringify(captured)}`;
-    log(line.length > 90? line.slice(0, 89) + "…" : line);
+    log(line.length > 90 ? line.slice(0, 89) + "…" : line);
   });
 
   next();
