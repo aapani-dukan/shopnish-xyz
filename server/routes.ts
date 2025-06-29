@@ -60,7 +60,7 @@ export async function registerRoutes(app: Express): Promise<void> {
       const uid = decodedToken.uid;
       const email = decodedToken.email;
       const name = decodedToken.name |
-| decodedToken.email?.split('@'); 
+ decodedToken.email?.split('@'); 
 
       if (!uid ||!email) { 
         return res.status(401).json({ message: "Authentication failed: Firebase user data missing." });
