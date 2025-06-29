@@ -1,4 +1,4 @@
-//server/index.ts
+// server/index.ts
 import express, { type Request, type Response, type NextFunction } from "express";
 import cors from "cors";
 import { registerRoutes } from "./routes";
@@ -8,13 +8,17 @@ import { drizzle } from "drizzle-orm/node-postgres";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
 import { Pool } from "pg";
 import path from "path";
-import { fileURLToPath } from "url";
+import { fileURLToPath } = require("url"); // ✅ CommonJS के लिए require का उपयोग करें
+// ✅ Firebase Admin SDK को डिफ़ॉल्ट एक्सपोर्ट के रूप में इम्पोर्ट करें
+import * as admin from 'firebase-admin'; 
 
 const app = express();
 let server: Server;
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+// ✅ CommonJS के लिए __filename और __dirname को डिफाइन करें
+const __filename = typeof require!== 'undefined'? require('url').fileURLToPath(import.meta.url) : '';
+const __dirname = typeof require!== 'undefined'? require('path').dirname(__filename) : '';
+
 
 app.use(cors());
 app.use(express.json());
@@ -24,8 +28,6 @@ app.use(express.urlencoded({ extended: false }));
 async function runMigrations() {
   const connectionString = process.env.DATABASE_URL;
 
-  console.log("Executing runMigrations function...");
-  console.log("Checking DATABASE_URL...");
   if (!connectionString) {
     console.error("❌ DATABASE_URL environment variable is not set.");
     return;
@@ -41,25 +43,20 @@ async function runMigrations() {
   const db = drizzle(pool);
 
   try {
-    console.log("🚀 Starting Drizzle migrations...");
     const migrationsPath = path.resolve(__dirname, "migrations");
-    console.log(`📁 Running migrations from: ${migrationsPath}`);
-
     await migrate(db, { migrationsFolder: migrationsPath });
-    console.log("✅ Drizzle migrations completed successfully.");
+    console.log("✅ Drizzle migrations completed.");
   } catch (error: any) {
     if (error?.code === "42P07") {
       console.warn("⚠️ Table already exists. Skipping migration.");
     } else {
-      console.error("❌ Drizzle Migrations failed:", error);
+      console.error("❌ Migration Error:", error);
     }
   } finally {
-    console.log("🔁 Closing database pool...");
     try {
       await pool.end();
-      console.log("✅ Database pool closed.");
     } catch (poolError) {
-      console.error("❌ Failed to close database pool:", poolError);
+      console.error("❌ Failed to close pool:", poolError);
     }
   }
 }
@@ -68,26 +65,45 @@ async function runMigrations() {
 (async () => {
   const isDev = app.get("env") === "development";
 
+  // ✅ Firebase Admin SDK को इनिशियलाइज़ करें
+  // 'admin.apps' का उपयोग करें
+  if (!admin.apps.length) { 
+    admin.initializeApp({
+      credential: admin.credential.applicationDefault() 
+    });
+  }
+  console.log("✅ Firebase Admin SDK initialized.");
+
   if (isDev) {
     await runMigrations();
   }
 
-  console.log("✅ Migrations done. Starting server setup...");
+  console.log("✅ Migrations done. Starting server...");
 
   if (!isDev) {
-    await registerRoutes(app);
+    await registerRoutes(app); // ✅ registerRoutes को admin ऑब्जेक्ट पास करने की अब आवश्यकता नहीं है
     log("🌐 Production mode: Serving static files...");
     serveStatic(app);
+
+    // ✅ IMPORTANT: Fallback for SPA frontend routing (Wouter)
+    app.get("*", (req, res) => {
+      res.sendFile(path.join(__dirname, "public", "index.html"));
+    });
   }
 
+  // 🔻 Error handler
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-    const status = err.status || err.statusCode || 500;
-    const message = err.message || "Internal Server Error";
+    const status = err.status |
+| err.statusCode |
+| 500;
+    const message = err.message |
+| "Internal Server Error";
     res.status(status).json({ message });
     throw err;
   });
 
-  const port = process.env.PORT || 5000;
+  const port = process.env.PORT |
+| 5000;
 
   if (isDev) {
     log("⚙️ Development mode (Vite HMR)...");
@@ -109,17 +125,15 @@ app.use((req, res, next) => {
   let captured: unknown;
 
   const orig = res.json.bind(res);
-  res.json = (body, ...rest) => ((captured = body), orig(body, ...rest));
+  res.json = (body,...rest) => ((captured = body), orig(body,...rest));
 
   res.on("finish", () => {
     if (!p.startsWith("/api")) return;
     const ms = Date.now() - start;
     let line = `${req.method} ${p} ${res.statusCode} in ${ms}ms`;
     if (captured) line += ` :: ${JSON.stringify(captured)}`;
-    log(line.length > 90 ? line.slice(0, 89) + "…" : line);
+    log(line.length > 90? line.slice(0, 89) + "…" : line);
   });
 
   next();
 });
-
-
