@@ -1,14 +1,17 @@
-// client/tsconfig.json
 {
+  "extends": "../tsconfig.json",
   "compilerOptions": {
-    // ... आपके मौजूदा विकल्प ...
-    "baseUrl": "./",
-    "paths": {
-      "@/*": ["./src/*"],
-      "@shared/*": ["../shared/*"] // <-- इसे जोड़ें
-    }
-    // ...
+    "module": "esnext",
+    "target": "esnext",
+    "lib": ["dom", "dom.iterable", "esnext"],
+    "jsx": "react-jsx",
+    "allowJs": true,
+    "moduleResolution": "bundler",
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "types": ["vite/client"]
   },
-  "include": ["src"],
-  
+  "include": ["src"]
 }
