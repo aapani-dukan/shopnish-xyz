@@ -8,8 +8,8 @@
     "noEmit": false,
     "outDir": "../dist",
     "resolveJsonModule": true,
-    "rootDir": "../",                     
-    "allowImportingTsExtensions": true     
+    "rootDir": "../"                     
+      
   },
   "include": [
     "../server/**/*.ts",
