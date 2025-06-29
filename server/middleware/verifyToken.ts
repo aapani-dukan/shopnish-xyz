@@ -40,13 +40,13 @@ export const verifyToken = async (
       // लेकिन बिना DB ID या भूमिका के। यह `/api/auth/login` जैसे सार्वजनिक रूट्स के लिए ठीक है
       // जहां आप यूज़र को बनाना चाहते हैं। प्रतिबंधित रूट्स के लिए, यह एक समस्या होगी।
     }
-    req.user = {
-  userId: decoded.uid, // Firebase UID को userId में डालो
-  email: decoded.email,
-  name: decoded.name,
-  role: decoded.role,
-  id: decoded.id // अगर available हो
-};
+        req.user = {
+      userId: decoded.uid, // 🔴 यही key चाहिए तुम्हारे AuthenticatedRequest के हिसाब से
+      email: decoded.email,
+      name: decoded.name,
+      role: decoded.role as "customer" | "seller" | "admin" | "delivery", // अगर तुमने custom claim set किया है तो
+    };
+    
   
     next();
   } catch (error: any) {
