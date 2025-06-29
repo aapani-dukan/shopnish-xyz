@@ -66,8 +66,7 @@ export async function registerRoutes(app: Express): Promise<void> {
         return res.status(401).json({ message: "Authentication failed: Firebase user data missing." });
       }
 
-      const requestedRole = (req.query.role as string) |
-| "customer";
+    const requestedRole = (req.query.role as string) || "customer";
 
       let user = await storage.getUserByFirebaseUid(uid);
       let isNewUser = false;
@@ -87,8 +86,7 @@ export async function registerRoutes(app: Express): Promise<void> {
         user = await storage.createUser({
           email: email, 
           firebaseUid: uid, 
-          name: name |
-| email.split('@'), 
+          name: name || email.split('@'), 
           role: userRole,
           approvalStatus: userApprovalStatus
         });
@@ -170,8 +168,7 @@ export async function registerRoutes(app: Express): Promise<void> {
 
       const uid = decodedToken.uid;
       const email = decodedToken.email;
-      const name = decodedToken.name |
-| decodedToken.email?.split('@');
+      const name = decodedToken.name || decodedToken.email?.split('@');
 
       if (!uid) {
         return res.status(401).json({ message: "Authentication failed: Firebase user data missing." });
@@ -184,8 +181,7 @@ export async function registerRoutes(app: Express): Promise<void> {
         deliveryBoy = await storage.createDeliveryBoy({
           email: email!,
           firebaseUid: uid,
-          name: name |
-| email!.split('@'),
+          name: name || email!.split('@'),
           approvalStatus: "pending"
         });
         isNewDeliveryBoy = true;
@@ -319,8 +315,7 @@ export async function registerRoutes(app: Express): Promise<void> {
     if (itemId === null) return;
 
     const { quantity } = req.body;
-    if (typeof quantity!== "number" |
-| quantity <= 0) {
+    if (typeof quantity!== "number" || quantity <= 0) {
       return res.status(400).json({ message: "Quantity must be a positive number." });
     }
 
