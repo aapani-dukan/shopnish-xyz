@@ -6,7 +6,7 @@
   "type": "commonjs",
   "scripts": {
     "start": "NODE_ENV=production node dist/index.js",
-     "build": "cd client && vite build && cd .. && tsc -p server && cp -R server/migrations dist/migrations",
+      "build": "cd client && vite build && cd .. && tsc -p server && mkdir -p dist/migrations && cp -R server/migrations/* dist/migrations/", 
   
     "dev": "concurrently \"npm run server:dev\" \"npm run client:dev\"",
     "server:dev": "nodemon --exec ts-node server/index.ts",
