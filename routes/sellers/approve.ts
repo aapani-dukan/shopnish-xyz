@@ -17,23 +17,21 @@ const isAdmin = async (req: AuthenticatedRequest, res: Response, next: NextFunct
   try {
     const userResult = await db.select()
                                .from(users)
-                               .where(eq(users.firebaseUid, req.user.uid))
+                               .where(eq(users.firebaseUid, req.user.userId)) // ✅ FIXED HERE
                                .limit(1); 
 
     const user = userResult.length > 0 ? userResult[0] : null; 
 
     if (user?.role === 'admin') {
-      next(); // एडमिन है, तो अगले मिडलवेयर/राउट पर जाएँ
+      next();
     } else {
-      return res.status(403).json({ message: "Forbidden: Not an admin." }); // एडमिन नहीं है
+      return res.status(403).json({ message: "Forbidden: Not an admin." });
     }
   } catch (error) {
     console.error("Error checking admin role:", error);
-    // ✅ एरर को ठीक से हैंडल करें
     return res.status(500).json({ message: "Internal server error during role check." });
   }
 };
-
 
 /**
  * Endpoint to approve a seller application.
