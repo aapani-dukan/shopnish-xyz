@@ -7,11 +7,11 @@ import { storage } from "../storage"; // ✅ storage इम्पोर्ट �
 
 export interface AuthenticatedRequest extends Request {
   user?: {
-    uid: string;
+    userId: string;  // ✅ यह अब आपका main Firebase UID है
     email?: string;
     name?: string;
-    id?: number; // डेटाबेस ID
-    role?: 'customer' | 'seller' | 'admin' | 'delivery'; // ✅ भूमिका जोड़ें
+    id?: number;
+    role?: 'customer' | 'seller' | 'admin' | 'delivery';
   };
 }
 
