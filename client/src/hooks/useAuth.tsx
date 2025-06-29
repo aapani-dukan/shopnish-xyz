@@ -38,7 +38,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
           // ✅ यहाँ मुख्य बदलाव: apiRequest से प्राप्त Response ऑब्जेक्ट पर .json() कॉल करें
           const apiResponseObject = await apiRequest("POST", "/api/auth/login", userData);
-          const { user: backendUser } = await apiResponseObject.json(); // <-- यह बदलाव है!
+          const backendUserResponse = await apiRequest("POST", "/api/auth/login", userData);
+const backendUser = backendUserResponse.user;
 
           console.log("API request to /api/auth/login successful. Backend User received:", backendUser);
 
