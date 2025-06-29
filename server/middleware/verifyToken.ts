@@ -40,14 +40,14 @@ export const verifyToken = async (
       // लेकिन बिना DB ID या भूमिका के। यह `/api/auth/login` जैसे सार्वजनिक रूट्स के लिए ठीक है
       // जहां आप यूज़र को बनाना चाहते हैं। प्रतिबंधित रूट्स के लिए, यह एक समस्या होगी।
     }
-
     req.user = {
-      uid: decoded.uid,
-      email: decoded.email,
-      name: decoded.name || decoded.displayName || "",
-      id: dbUser ? dbUser.id : undefined,
-      role: dbUser ? dbUser.role : undefined, // ✅ यहाँ यूज़र की भूमिका असाइन करें
-    };
+  userId: decoded.uid, // Firebase UID को userId में डालो
+  email: decoded.email,
+  name: decoded.name,
+  role: decoded.role,
+  id: decoded.id // अगर available हो
+};
+  
     next();
   } catch (error: any) {
     console.error("❌ Firebase token verification failed:", error.message || error);
