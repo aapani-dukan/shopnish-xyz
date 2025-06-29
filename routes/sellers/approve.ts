@@ -10,7 +10,7 @@ const router = Router();
 
 // एक साधारण isAdmin मिडलवेयर का उदाहरण
 const isAdmin = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
-  if (!req.user?.uid) {
+  if (!req.user?.userId) {
     return res.status(401).json({ message: "Unauthorized: User not authenticated." });
   }
 
