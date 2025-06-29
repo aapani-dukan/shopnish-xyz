@@ -77,16 +77,25 @@ async addReview(data: InsertReview) {
     }
   }
 
-  async getUserByFirebaseUid(firebaseUid: string): Promise<User | undefined> {
-    try {
-      const result = await db.select().from(users).where(eq(users.firebaseUid, firebaseUid)).limit(1);
-      return result.length > 0 ? result[0] : undefined;
-    } catch (error) {
-      console.error("Error getting user by Firebase UID:", error);
+async getUserById(id: number): Promise<User | undefined> {
+  try {
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, id))
+      .limit(1);
+
+    if (!user) {
+      console.warn(`⚠️ No user found with id ${id}`);
       return undefined;
     }
-  }
 
+    return user;
+  } catch (error) {
+    console.error(`❌ Error fetching user with id ${id}:`, error);
+    return undefined;
+  }
+} 
   
 async getSellers(filters?: { approvalStatus?: string }): Promise<Seller[]> {
   try {
