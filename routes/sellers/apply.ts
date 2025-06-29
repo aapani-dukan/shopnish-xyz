@@ -14,7 +14,7 @@ const router = Router();
  */
 router.post("/", verifyToken, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
-    const firebaseUid = req.user?.uid;
+    const firebaseUid = req.user?.userId;
 
     if (!firebaseUid) {
       return res.status(401).json({ message: "Unauthorized: User not authenticated." });
