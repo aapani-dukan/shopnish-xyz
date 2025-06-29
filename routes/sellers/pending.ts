@@ -1,31 +1,30 @@
-// routes/sellers/pending.ts
 import { Router, Response, NextFunction } from "express";
 import { db } from "../../server/db";
-// ✅ 'sellers' को 'sellersPgTable' से बदलें ताकि सही Drizzle टेबल का उपयोग हो
 import { sellersPgTable, users } from "../../shared/backend/schema"; 
 import { verifyToken, AuthenticatedRequest } from "../../server/middleware/verifyToken";
-import { eq, desc } from "drizzle-orm"; 
+import { eq, desc, sql } from "drizzle-orm";
 
 const router = Router();
 
-// isAdmin मिडलवेयर (पिछले वाले के समान, सुनिश्चित करें कि यह आपके सिस्टम में सही ढंग से परिभाषित है)
+// ✅ isAdmin middleware (reuse from previous file)
 const isAdmin = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   if (!req.user?.uid) {
     return res.status(401).json({ message: "Unauthorized: User not authenticated." });
   }
 
   try {
-    const userResult = await db.select()
-                               .from(users)
-                               .where(eq(users.firebaseUid, req.user.uid))
-                               .limit(1); 
+    const userResult = await db
+      .select()
+      .from(users)
+      .where(eq(users.firebaseUid, req.user.uid))
+      .limit(1);
 
-    const user = userResult.length > 0 ? userResult[0] : null; 
+    const user = userResult[0];
 
-    if (user?.role === 'admin') {
-      next(); 
+    if (user?.role === "admin") {
+      next();
     } else {
-      return res.status(403).json({ message: "Forbidden: Not an admin." }); 
+      return res.status(403).json({ message: "Forbidden: Not an admin." });
     }
   } catch (error) {
     console.error("Error checking admin role:", error);
@@ -33,23 +32,23 @@ const isAdmin = async (req: AuthenticatedRequest, res: Response, next: NextFunct
   }
 };
 
-
 /**
- * Endpoint to get all pending seller applications.
- * Requires authentication and admin privileges.
+ * GET /api/sellers/pending
+ * Returns all sellers with approvalStatus = 'pending'
+ * Only for authenticated admins
  */
 router.get("/", verifyToken, isAdmin, async (_req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
-    // ✅ NEW: Drizzle ORM में सही सिंटैक्स और sellersPgTable का उपयोग करें
-    const pendingSellers = await db.select()
-                                   .from(sellersPgTable) // ✅ sellersPgTable का उपयोग करें
-                                   .where(eq(sellersPgTable.approvalStatus, "pending")) // ✅ sellersPgTable का उपयोग करें
-                                   .orderBy(desc(sellersPgTable.createdAt)); // ✅ sellersPgTable.createdAt का उपयोग करें (appliedAt नहीं)
+    const pendingSellers = await db
+      .select()
+      .from(sellersPgTable)
+      .where(eq(sellersPgTable.approvalStatus, sql`'pending'::seller_approval_status`)) // ✅ Enum-safe
+      .orderBy(desc(sellersPgTable.createdAt));
 
     res.json(pendingSellers);
   } catch (error) {
     console.error("Error fetching pending sellers:", error);
-    next(error); 
+    next(error);
   }
 });
 
