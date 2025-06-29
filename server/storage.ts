@@ -186,12 +186,18 @@ async getSellerByUserFirebaseUid(firebaseUid: string): Promise<Seller | undefine
     }
   }
 
-   async updateSellerStatus(id: string, status: 'approved' | 'pending' | 'rejected') {
+  async updateSellerStatus(id: string, status: 'approved' | 'pending' | 'rejected') {
   try {
+    const numericId = parseInt(id);
+    if (isNaN(numericId)) {
+      throw new Error(`Invalid seller ID: ${id}`);
+    }
+
     await db.update(sellersPgTable)
       .set({ approvalStatus: status })
-      .where(eq(sellersPgTable.id, parseInt(id))); // ID को parseInt करें क्योंकि req.params.id string होता है
-    console.log(`Seller ${id} status updated to ${status}`);
+      .where(eq(sellersPgTable.id, numericId));
+
+    console.log(`Seller ${numericId} status updated to ${status}`);
   } catch (error) {
     console.error(`Error updating seller ${id} status to ${status}:`, error);
     throw error;
