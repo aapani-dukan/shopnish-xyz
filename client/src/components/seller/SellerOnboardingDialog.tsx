@@ -51,9 +51,9 @@ export default function SellerOnboardingDialog({ isOpen, onClose }: SellerOnboar
   const [showSuccess, setShowSuccess] = useState(false);
 
   const { data: existingSellerProfile, isLoading: isSellerProfileLoading } = useQuery({
-    queryKey: ["/api/sellers/me", user?.uid], // ✅ queryKey में user.uuid के बजाय user.uid का उपयोग करें
+    queryKey: ["/api/sellers/me", user?.userId], // ✅ queryKey में user.uuid के बजाय user.uid का उपयोग करें
     queryFn: async () => {
-      if (!user?.uid) { // ✅ user.uuid के बजाय user.uid का उपयोग करें
+      if (!user?.userId) { // ✅ user.uuid के बजाय user.uid का उपयोग करें
         return null;
       }
       try {
@@ -66,7 +66,7 @@ export default function SellerOnboardingDialog({ isOpen, onClose }: SellerOnboar
         throw error;
       }
     },
-    enabled: !isLoadingAuth && isAuthenticated && !!user?.uid, // ✅ user.uuid के बजाय user.uid का उपयोग करें
+    enabled: !isLoadingAuth && isAuthenticated && !!user?.userId, // ✅ user.uuid के बजाय user.uid का उपयोग करें
     staleTime: Infinity,
     cacheTime: 10 * 60 * 1000,
   });
