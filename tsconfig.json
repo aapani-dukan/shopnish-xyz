@@ -14,13 +14,7 @@
       "@shared/frontend/*": ["shared/frontend/*"]
     }
   },
-  "include": [
-    "server/**/*.ts",
-    "shared/**/*.ts",
-    "shared/**/*.tsx",
-    "client/**/*.ts",
-    "client/**/*.tsx"
-  ],
+  "include": [],
   "references": [
     { "path": "./client" },
     { "path": "./server" }
