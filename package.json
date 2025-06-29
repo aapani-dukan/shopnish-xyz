@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "start": "NODE_ENV=production node dist/index.js",
-    "build": "cd client && vite build && cd .. && esbuild server/index.ts --bundle --platform=node --format=esm --outdir=dist --external:firebase-admin && cp -R server/migrations dist/migrations",
+    "build": "cd client && vite build && cd .. && esbuild server/index.ts --bundle --platform=node --format=esm --outdir=dist --external:firebase-admin --external:@babel/preset-typescript/package.json --external:lightningcss --external:../pkg && cp -R server/migrations dist/migrations",
 
     "dev": "concurrently \"npm run server:dev\" \"npm run client:dev\"",
     "server:dev": "nodemon --exec ts-node-esm server/index.ts",
