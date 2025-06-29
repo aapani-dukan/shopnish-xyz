@@ -10,7 +10,7 @@ const router = express.Router();
 
 // 🔐 Protected route for seller's own data
 router.get("/me", verifyToken, async (req: AuthenticatedRequest, res) => {
-  if (!req.user?.uid) {
+  if (!req.user?.userId) {
     return res.status(401).json({ message: "Unauthorized: Missing user info." });
   }
 
