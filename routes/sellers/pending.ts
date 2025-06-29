@@ -10,7 +10,7 @@ const router = Router();
 
 // isAdmin मिडलवेयर (पिछले वाले के समान, सुनिश्चित करें कि यह आपके सिस्टम में सही ढंग से परिभाषित है)
 const isAdmin = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
-  if (!req.user?.uid) {
+  if (!req.user?.userId) {
     return res.status(401).json({ message: "Unauthorized: User not authenticated." });
   }
 
