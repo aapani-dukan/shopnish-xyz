@@ -9,7 +9,7 @@ import "./index.css";
 
 // ✅ Firebase Auth से संबंधित इम्पोर्ट्स
 import { useEffect } from 'react'; // useEffect को इम्पोर्ट करें
-import { handleRedirectResult, GoogleAuthProvider } from './lib/firebase'; // handleRedirectResult और GoogleAuthProvider को इम्पोर्ट करें
+import { handleRedirectResult, googleProvider } from './lib/firebase'; // handleRedirectResult और GoogleAuthProvider को इम्पोर्ट करें
 // import { useLocation } from "wouter"; // Wouter के लिए useLocation हुक, यदि आप नेविगेट करना चाहते हैं
 
 // Pages
