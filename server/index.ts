@@ -1,28 +1,28 @@
 // server/index.ts
-import express, { type Request, type Response, type NextFunction } from "express";
-import cors from "cors";
-import { registerRoutes } from "./routes";
-import { setupVite, serveStatic, log } from "./vite";
-import { createServer, type Server } from "http";
-import { drizzle } from "drizzle-orm/node-postgres";
-import { migrate } from "drizzle-orm/node-postgres/migrator";
-import { Pool } from "pg";
-import path from "path";
+const express = require("express");
+const cors = require("cors");
+const { registerRoutes } = require("./routes");
+const { setupVite, serveStatic, log } = require("./vite");
+const { createServer } = require("http");
+const { drizzle } = require("drizzle-orm/node-postgres");
+const { migrate } = require("drizzle-orm/node-postgres/migrator");
+const { Pool } = require("pg");
+const path = require("path");
 const { fileURLToPath } = require("url");
-import * as admin from "firebase-admin";
+const admin = require("firebase-admin");
+
+const __filename = fileURLToPath(__filename); // fileURLToPath expects import.meta.url, so skip this
+const __dirname = __dirname; // Fallback in CJS
 
 const app = express();
-let server: Server;
+let server;
 
-// ✅ CommonJS के लिए __filename और __dirname
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
+// ✅ Middleware setup
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-// --- Drizzle Migrations ---
+// ✅ Drizzle Migrations
 async function runMigrations() {
   const connectionString = process.env.DATABASE_URL;
 
@@ -33,9 +33,7 @@ async function runMigrations() {
 
   const pool = new Pool({
     connectionString,
-    ssl: {
-      rejectUnauthorized: false,
-    },
+    ssl: { rejectUnauthorized: false },
   });
 
   const db = drizzle(pool);
@@ -44,7 +42,7 @@ async function runMigrations() {
     const migrationsPath = path.resolve(__dirname, "migrations");
     await migrate(db, { migrationsFolder: migrationsPath });
     console.log("✅ Drizzle migrations completed.");
-  } catch (error: any) {
+  } catch (error) {
     if (error?.code === "42P07") {
       console.warn("⚠️ Table already exists. Skipping migration.");
     } else {
@@ -59,11 +57,11 @@ async function runMigrations() {
   }
 }
 
-// --- Start Server ---
+// ✅ Main server start
 (async () => {
   const isDev = app.get("env") === "development";
 
-  // ✅ Firebase Admin SDK Init
+  // ✅ Initialize Firebase Admin SDK
   if (!admin.apps.length) {
     admin.initializeApp({
       credential: admin.credential.applicationDefault(),
@@ -82,14 +80,14 @@ async function runMigrations() {
     log("🌐 Production mode: Serving static files...");
     serveStatic(app);
 
-    // Fallback route for SPA
+    // ✅ Fallback route for frontend (SPA)
     app.get("*", (req, res) => {
       res.sendFile(path.join(__dirname, "public", "index.html"));
     });
   }
 
   // 🔻 Error handler
-  app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
+  app.use((err, _req, res, _next) => {
     const status = err.status || err.statusCode || 500;
     const message = err.message || "Internal Server Error";
     res.status(status).json({ message });
@@ -98,12 +96,11 @@ async function runMigrations() {
 
   const port = process.env.PORT || 5000;
 
+  server = createServer(app);
+
   if (isDev) {
     log("⚙️ Development mode (Vite HMR)...");
-    server = createServer(app);
     await setupVite(app, server);
-  } else {
-    server = createServer(app);
   }
 
   server.listen({ port, host: "0.0.0.0" }, () =>
@@ -111,11 +108,11 @@ async function runMigrations() {
   );
 })();
 
-// --- Request Logging for /api routes ---
+// ✅ API Request Logger
 app.use((req, res, next) => {
   const start = Date.now();
   const p = req.path;
-  let captured: unknown;
+  let captured;
 
   const orig = res.json.bind(res);
   res.json = (body, ...rest) => {
