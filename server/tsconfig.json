@@ -15,7 +15,8 @@
     "types": ["node"],
     "lib": ["ES2022"],
     // यह लाइन बदलें:
-    "outDir": "../dist/server", // <--- यहां बदलाव करें!
+    "outDir": "server", 
+    "rootDir: "server",
     "noEmit":false,
     "baseUrl": "..",
     "paths": {
