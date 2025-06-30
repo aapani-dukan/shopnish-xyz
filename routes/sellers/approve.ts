@@ -1,4 +1,6 @@
-import { Router, Request, Response, NextFunction } from "express";
+// routes/sellers/approve.ts
+
+import { Router, Response, NextFunction } from "express";
 import { db } from "../../server/db";
 import { sellersPgTable, users } from "../../shared/backend/schema"; 
 import { verifyToken, AuthenticatedRequest } from "../../server/middleware/verifyToken";
@@ -6,7 +8,7 @@ import { eq } from "drizzle-orm";
 
 const router = Router();
 
-// 🔐 Admin Middleware
+// 🔐 Admin-only Middleware
 const isAdmin = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   if (!req.user?.userId) {
     return res.status(401).json({ message: "Unauthorized: User not authenticated." });
@@ -16,55 +18,58 @@ const isAdmin = async (req: AuthenticatedRequest, res: Response, next: NextFunct
     const userResult = await db
       .select()
       .from(users)
-      .where(eq(users.firebaseUid, req.user.userId))
+      .where(eq(users.firebaseUid, req.user.userId)) // 🧠 Cross-check field name
       .limit(1);
 
-    const user = userResult.length > 0 ? userResult[0] : null;
+    const user = userResult[0];
 
     if (user?.role === "admin") {
-      next();
+      return next();
     } else {
       return res.status(403).json({ message: "Forbidden: Not an admin." });
     }
   } catch (error) {
-    console.error("Error checking admin role:", error);
+    console.error("❌ Error checking admin role:", error);
     return res.status(500).json({ message: "Internal server error during role check." });
   }
 };
 
-// ✅ Approve Seller Endpoint
+// ✅ Seller Approval Route
 router.post("/", verifyToken, isAdmin, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const { sellerId } = req.body;
 
     if (typeof sellerId !== "number" || sellerId <= 0) {
-      return res.status(400).json({ message: "A valid sellerId (number) is required." });
+      return res.status(400).json({ message: "Invalid sellerId. It must be a positive number." });
     }
 
-    const existingSellerResult = await db
+    const sellerResult = await db
       .select()
       .from(sellersPgTable)
       .where(eq(sellersPgTable.id, sellerId))
       .limit(1);
 
-    const existingSeller = existingSellerResult.length > 0 ? existingSellerResult[0] : null;
+    const seller = sellerResult[0];
 
-    if (!existingSeller) {
+    if (!seller) {
       return res.status(404).json({ message: "Seller not found." });
     }
 
-    if (existingSeller.approvalStatus === "approved") {
+    if (seller.approvalStatus === "approved") {
       return res.status(400).json({ message: "Seller is already approved." });
     }
 
-    if (existingSeller.approvalStatus === "rejected") {
-      return res.status(400).json({ message: "Seller was previously rejected. Cannot approve directly. Please review." });
+    if (seller.approvalStatus === "rejected") {
+      return res.status(400).json({
+        message: "Seller was previously rejected. Cannot approve directly. Please review.",
+      });
     }
 
+    // ✅ Approve seller
     const updatedSellerResult = await db
       .update(sellersPgTable)
       .set({
-        approvalStatus: "approved" as const,
+        approvalStatus: "approved",
         approvedAt: new Date(),
         rejectionReason: null,
         updatedAt: new Date(),
@@ -74,21 +79,22 @@ router.post("/", verifyToken, isAdmin, async (req: AuthenticatedRequest, res: Re
 
     const updatedSeller = updatedSellerResult[0];
 
+    // ✅ Update user role to "seller"
     const updatedUserResult = await db
       .update(users)
       .set({ role: "seller", updatedAt: new Date() })
-      .where(eq(users.firebaseUid, existingSeller.userId))
+      .where(eq(users.firebaseUid, seller.userId)) // 👈 Confirm this field is `firebaseUid`
       .returning();
 
     const updatedUser = updatedUserResult[0];
 
     if (!updatedUser) {
-      console.error("Seller approve: Could not find user to update role for firebaseUid:", existingSeller.userId);
+      console.error("❌ Could not update user role. Firebase UID:", seller.userId);
       return res.status(500).json({ message: "Failed to update user role." });
     }
 
-    res.json({
-      message: "Seller approved and role updated to 'seller'",
+    return res.status(200).json({
+      message: "Seller approved successfully",
       seller: updatedSeller,
       user: {
         firebaseUid: updatedUser.firebaseUid,
@@ -98,8 +104,11 @@ router.post("/", verifyToken, isAdmin, async (req: AuthenticatedRequest, res: Re
       },
     });
   } catch (error) {
-    console.error("Error in seller approve route:", error);
-    res.status(500).json({ message: "Internal Server Error", error: (error as Error).message });
+    console.error("❌ Error in seller approval route:", error);
+    return res.status(500).json({
+      message: "Internal Server Error",
+      error: (error as Error).message,
+    });
   }
 });
 
