@@ -7,14 +7,14 @@ export type UserRole = "customer" | "seller" | "admin" | "delivery";
 
 // Authenticated user object
 export interface AuthenticatedUser {
-  userId: string;
+  userId: string;         // Firebase UID
   email?: string;
   name?: string;
-  id?: number;
+  id?: number;            // Internal DB ID (like seller.id)
   role?: UserRole;
 }
 
-// Extended request type with user
+// Request with attached user
 export interface AuthenticatedRequest extends Request {
   user?: AuthenticatedUser;
 }
