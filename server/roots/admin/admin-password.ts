@@ -1,7 +1,7 @@
 // server/roots/admin/admin-password.ts
 import { Router, Response } from 'express';
 import { db } from '../../db.js'; // Correct relative path
-import { users, userRoleEnum } from '@/shared/backend/schema.js';
+import { users, userRoleEnum } from '@/shared/backend/schema';
 import { eq } from 'drizzle-orm';
 import { AuthenticatedRequest } from '../../middleware/verifyToken.js';
 import { requireAuth } from '../../middleware/authMiddleware.js'; // This might need to be requireAdminAuth
