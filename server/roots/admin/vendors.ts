@@ -1,50 +1,63 @@
-// server/roots/admin/vendors.ts (नई फाइल बनाएँ)
+// server/roots/admin/vendors.ts
+import { Router, Response } from 'express';
+import { storage } from '../../storage'; // Correct relative path
+import { AuthenticatedRequest } from '../../middleware/verifyToken';
+import { requireAdminAuth } from '../../middleware/authMiddleware';
+import { approvalStatusEnum } from '@/shared/backend/schema'; // Import approvalStatusEnum
 
-import express from 'express';
-import { storage } from '../../storage'; // storage.ts से इंपोर्ट करें
+const router = Router();
 
-const router = express.Router();
-
-// GET /api/admin/vendors
-router.get('/', async (req, res) => { // रूट सिर्फ '/' है क्योंकि यह /api/admin/vendors पर माउंट होगा
+// Get pending sellers
+router.get('/admin/sellers/pending', requireAdminAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    // getSellers को बिना किसी फिल्टर के कॉल करें ताकि सभी वेंडर्स मिलें (pending, approved, rejected)
-    const vendors = await storage.getSellers(); // storage से getSellers फंक्शन कॉल करें
-    
-console.log("Fetched Vendors:", vendors); // ✅ log to confirm
-    return res.status(200).json({ success: true, data: vendors });
-  } catch (error) {
-    console.error('Error fetching admin vendors:', error);
-    return res.status(500).json({ success: false, message: 'Failed to fetch vendors.' });
+    const pendingSellers = await storage.getSellers(approvalStatusEnum.enumValues[0]); // Fetch pending sellers
+    res.status(200).json(pendingSellers);
+  } catch (error: any) {
+    console.error('Failed to fetch pending sellers:', error);
+    res.status(500).json({ error: 'Internal server error.' });
   }
 });
 
-// आपको यहां /api/admin/approve-vendor/:id और /api/admin/reject-vendor/:id भी जोड़ना होगा
-// अगर वे अलग राउटर्स में नहीं हैं और आप admin-dashboard से ही उन्हें मैनेज करना चाहते हैं।
-// उदाहरण के लिए:
+// Approve seller
+router.post('/admin/sellers/:sellerId/approve', requireAdminAuth, async (req: AuthenticatedRequest, res: Response) => {
+  const sellerId = parseInt(req.params.sellerId);
+  if (isNaN(sellerId)) {
+    return res.status(400).json({ error: 'Invalid seller ID.' });
+  }
 
-router.post('/approve-vendor/:id', async (req, res) => {
   try {
-    const { id } = req.params;
-    await storage.updateSellerStatus(id, 'approved'); // सुनिश्चित करें कि storage.ts में यह फंक्शन है
-    return res.status(200).json({ success: true, message: 'Vendor approved.' });
-  } catch (error) {
-    console.error('Error approving vendor:', error);
-    return res.status(500).json({ success: false, message: 'Failed to approve vendor.' });
+    const updatedSeller = await storage.updateSellerStatus(sellerId, approvalStatusEnum.enumValues[1]); // 'approved'
+    if (!updatedSeller) {
+      return res.status(404).json({ error: 'Seller not found or update failed.' });
+    }
+    res.status(200).json({ message: 'Seller approved successfully.', seller: updatedSeller });
+  } catch (error: any) {
+    console.error('Failed to approve seller:', error);
+    res.status(500).json({ error: 'Internal server error.' });
   }
 });
 
-router.post('/reject-vendor/:id', async (req, res) => {
+// Reject seller
+router.post('/admin/sellers/:sellerId/reject', requireAdminAuth, async (req: AuthenticatedRequest, res: Response) => {
+  const sellerId = parseInt(req.params.sellerId);
+  const { reason } = req.body;
+  if (isNaN(sellerId)) {
+    return res.status(400).json({ error: 'Invalid seller ID.' });
+  }
+  if (!reason) {
+    return res.status(400).json({ error: 'Rejection reason is required.' });
+  }
+
   try {
-    const { id } = req.params;
-    await storage.updateSellerStatus(id, 'rejected'); // सुनिश्चित करें कि storage.ts में यह फंक्शन है
-    return res.status(200).json({ success: true, message: 'Vendor rejected.' });
-  } catch (error) {
-    console.error('Error rejecting vendor:', error);
-    return res.status(500).json({ success: false, message: 'Failed to reject vendor.' });
+    const updatedSeller = await storage.updateSellerStatus(sellerId, approvalStatusEnum.enumValues[2], reason); // 'rejected'
+    if (!updatedSeller) {
+      return res.status(404).json({ error: 'Seller not found or update failed.' });
+    }
+    res.status(200).json({ message: 'Seller rejected successfully.', seller: updatedSeller });
+  } catch (error: any) {
+    console.error('Failed to reject seller:', error);
+    res.status(500).json({ error: 'Internal server error.' });
   }
 });
-
 
 export default router;
-
