@@ -1,5 +1,5 @@
 // server/storage.ts
-import { db } from './db';
+import { db } from './db.js';
 import {
   users,
   sellersPgTable as sellers,
