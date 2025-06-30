@@ -1,5 +1,5 @@
 import { NextFunction, Response } from "express";
-import { AuthenticatedRequest } from './verifyToken'; 
+import { AuthenticatedRequest } from './verifyToken.js'; 
 export function requireAuth(
   req: AuthenticatedRequest,
   res: Response,
