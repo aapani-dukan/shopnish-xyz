@@ -1,47 +1,37 @@
-import express from "express";
-import { storage } from "../../storage";
+// server/roots/admin/admin-password.ts
+import { Router, Response } from 'express';
+import { db } from '../../db'; // Correct relative path
+import { users, userRoleEnum } from '@/shared/backend/schema';
+import { eq } from 'drizzle-orm';
+import { AuthenticatedRequest } from '../../middleware/verifyToken';
+import { requireAuth } from '../../middleware/authMiddleware'; // This might need to be requireAdminAuth
 
-const router = express.Router();
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "admin123";
+const router = Router();
 
-router.post("/", async (req, res) => {
-  const { firebaseUid, password } = req.body;
+// Example route (adjust as per your actual implementation)
+router.get('/admin/users/:userId', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+    const userId = parseInt(req.params.userId);
 
-  if (!firebaseUid || !password) {
-    return res.status(400).json({ message: "Missing UID or password." });
-  }
-
-  try {
-    // ✅ Firebase UID से user खोजें
-    let user = await storage.getUserByFirebaseUid(firebaseUid);
-
-    // ✅ अगर user नहीं मिला, तो बनाओ admin के रूप में
-    if (!user) {
-      user = await storage.createUser({
-        firebaseUid,
-        email: `admin@auto.com`, // या client से भेजी गई email हो तो बेहतर
-        name: "Admin",
-        role: "admin",
-        approvalStatus: "approved"
-      });
-      console.log("✅ Admin user created.");
+    if (isNaN(userId)) {
+        return res.status(400).json({ error: 'Invalid user ID.' });
     }
 
-    // ✅ role check
-    if (user.role !== "admin") {
-      return res.status(403).json({ message: "Not an admin user." });
-    }
+    try {
+        const [user] = await db.select().from(users).where(eq(users.id, userId)); // Destructure to get the first element
+        if (!user) {
+            return res.status(404).json({ error: 'User not found.' });
+        }
 
-    // ✅ password check
-    if (password !== ADMIN_PASSWORD) {
-      return res.status(401).json({ message: "Invalid admin password." });
-    }
+        // Now you can safely access user.role
+        if (user.role !== userRoleEnum.enumValues[2]) { // Assuming 'admin' is enum index 2
+            return res.status(403).json({ error: 'Not an admin user.' });
+        }
 
-    res.json({ message: "Admin login success." });
-  } catch (err) {
-    console.error("Error in admin login:", err);
-    res.status(500).json({ message: "Internal server error." });
-  }
+        res.status(200).json(user);
+    } catch (error: any) {
+        console.error('Failed to fetch admin user:', error);
+        res.status(500).json({ error: 'Internal server error.' });
+    }
 });
 
 export default router;
