@@ -1,25 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import { verifyAndDecodeToken } from "../util/authUtils";
 import { storage } from "../storage";
-
-
 import { AuthenticatedRequest, AuthenticatedUser } from "@/shared/types";
-// Allowed roles in system
-export type UserRole = "customer" | "seller" | "admin" | "delivery";
-
-// Type used in all authenticated routes
-export interface AuthenticatedUser {
-  userId: string;         // Firebase UID
-  email?: string;
-  name?: string;
-  id?: number;            // Internal DB ID (like seller.id)
-  role?: UserRole;
-}
-
-// Request with attached user
-export interface AuthenticatedRequest extends Request {
-  user?: AuthenticatedUser;
-}
 
 // Middleware to verify Firebase token
 export const verifyToken = async (
@@ -38,16 +20,14 @@ export const verifyToken = async (
   try {
     const decoded = await verifyAndDecodeToken(idToken); // Firebase decoded token
 
-    // Lookup user in your own database (seller table, etc.)
     const dbSeller = await storage.getSellerByUserFirebaseUid(decoded.uid);
 
-    // Attach verified user to request
     req.user = {
       userId: decoded.uid,
       email: decoded.email ?? dbSeller?.email,
       name: (decoded as any)?.name ?? dbSeller?.businessName,
       id: dbSeller?.id,
-      role: "seller", // For now assume seller login path uses this middleware
+      role: "seller", // Right now only used for seller paths
     };
 
     next();
