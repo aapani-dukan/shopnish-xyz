@@ -1,5 +1,5 @@
 {
-  "extends": "../tsconfig.json",
+  "extends": "../tsconfig.base.json",
   "compilerOptions": {
     "composite": true,
     "tsBuildInfoFile": "../node_modules/.tsbuildinfo/tsconfig.server.tsbuildinfo",
@@ -13,14 +13,11 @@
     "forceConsistentCasingInFileNames": true,
     "types": ["node"],
     "lib": ["ES2022"],
-    "noEmit": false,
-    "outDir": "../dist/server",      // ✅ यह root से relative path है
-    "rootDir": ".",                  // ✅ server dir को root माना जाए
+    "outDir": "../dist/server",
+    "rootDir": ".",
     "baseUrl": "..",
     "paths": {
-      "@/shared/*": ["shared/*"],
-      "@shared/backend/*": ["shared/backend/*"],
-      "@shared/frontend/*": ["shared/frontend/*"]
+      "@/shared/*": ["shared/*"]
     }
   },
   "include": ["./**/*.ts", "./**/*.tsx"],
