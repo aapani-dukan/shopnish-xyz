@@ -1,11 +1,11 @@
 // server/middleware/verifyToken.ts
 import { Request } from 'express';
 import jwt from 'jsonwebtoken';
-import { db } from '../db'; // Assuming db is relative
+import { db } from '../db.js'; // Assuming db is relative
 import { users } from '@/shared/backend/schema';
 import { eq } from 'drizzle-orm';
 import { AuthenticatedUser } from '@/shared/types/auth'; // Ensure this path is correct
-import { storage } from '../storage'; // Assuming storage is relative
+import { storage } from '../storage.js'; // Assuming storage is relative
 
 // Define AuthenticatedRequest interface
 export interface AuthenticatedRequest extends Request { // EXPORT AuthenticatedRequest
