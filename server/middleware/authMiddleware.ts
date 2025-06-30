@@ -1,7 +1,7 @@
 // server/middleware/authMiddleware.ts
 import { Response, NextFunction } from 'express';
 import { verifyToken, AuthenticatedRequest } from './verifyToken.js'; // Import verifyToken and AuthenticatedRequest
-import { userRoleEnum } from '@/shared/backend/schema.js'; // Import userRoleEnum
+import { userRoleEnum } from '@/shared/backend/schema'; // Import userRoleEnum
 
 // Middleware for general authentication
 export const requireAuth = (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
