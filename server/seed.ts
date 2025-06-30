@@ -1,6 +1,6 @@
 // server/seed.ts
 
-import { db } from "./db";
+import { db } from "./db.js";
 import { faker } from "@faker-js/faker";
 import {
   users,
@@ -13,7 +13,6 @@ import {
   orderItems,
   cartItems,
   reviews,
-  // Drizzle pgEnums को इम्पोर्ट करें
   userRoleEnum,
   approvalStatusEnum,
 } from "@/shared/backend/schema";
