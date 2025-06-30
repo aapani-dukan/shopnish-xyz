@@ -1,38 +1,7 @@
 {
-  "compilerOptions": {
-    "target": "es2022",
-    "useDefineForClassFields": true,
-    "lib": ["es2022", "DOM", "DOM.Iterable"],
-    "module": "ESNext",
-    "skipLibCheck": true,
-
-    /* Bundler mode */
-    "moduleResolution": "bundler",
-    "allowImportingTsExtensions": true,
-    "resolveJsonModule": true,
-    "isolatedModules": true,
-    "noEmit": true,
-    "jsx": "react-jsx",
-
-    /* Linting */
-    "strict": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
-    "noFallthroughCasesInSwitch": true,
-
-    /* Path Aliases */
-    "baseUrl": ".", // यह बहुत महत्वपूर्ण है। यह बताता है कि @/ के लिए रूट डायरेक्टरी कहां से शुरू होती है।
-    "paths": {
-      "@/*": ["./src/*"], // यह लाइन सुनिश्चित करती है कि '@/` 'src/' फ़ोल्डर से मैप हो
-      "@/components/*": ["./src/components/*"],
-      "@/lib/*": ["./src/lib/*"],
-      "@/hooks/*": ["./src/hooks/*"],
-      "@/pages/*": ["./src/pages/*"],
-      // यदि आपके पास और कोई टॉप-लेवल फ़ोल्डर हैं जिन्हें आप एलियास करना चाहते हैं तो उन्हें भी यहां जोड़ें
-      // उदाहरण: "@/utils/*": ["./src/utils/*"]
-    }
-  },
-  "include": ["src"], // सुनिश्चित करें कि 'src' फ़ोल्डर शामिल है
-  "references": [{ "path": "./client/tsconfig.node.json" },
-   { "path": "./client/tsconfig.node.json" }]
+  "files": [],
+  "references": [
+    { "path": "./server" },
+    { "path": "./client" }
+  ]
 }
