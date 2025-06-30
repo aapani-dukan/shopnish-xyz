@@ -1,6 +1,24 @@
 {
   "compilerOptions": {
+    "target": "es2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "lib": ["ES2022"],
+    "strict": true,
+    "esModuleInterop": true,
     "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true
+    "forceConsistentCasingInFileNames": true,
+    "allowSyntheticDefaultImports": true,
+    "baseUrl": ".", // Important
+    "paths": {
+      "@/shared/*": ["shared/*"],
+      "@shared/backend/*": ["shared/backend/*"],
+      "@shared/frontend/*": ["shared/frontend/*"],
+      "@/components/*": ["client/src/components/*"],
+      "@/lib/*": ["client/src/lib/*"],
+      "@/pages/*": ["client/src/pages/*"],
+      "@/hooks/*": ["client/src/hooks/*"],
+      "@//*": ["client/src/*"]
+    }
   }
 }
