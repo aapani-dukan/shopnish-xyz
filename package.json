@@ -5,7 +5,7 @@
   "main": "dist/server/index.js",
   "scripts": {
     "dev": "concurrently \"ts-node server/index.ts\" \"vite\"",
-    "build": "tsc -b", 
+        "build": "cd client && vite build && cd .. && esbuild server/index.ts --bundle --platform=node --packages=external --format=esm --outdir=dist && cp -R server/migrations dist/migrations",
     "start": "NODE_ENV=production node dist/server/index.js"
   },
 
