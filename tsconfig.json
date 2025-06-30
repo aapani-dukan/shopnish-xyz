@@ -33,6 +33,6 @@
     }
   },
   "include": ["src"], // सुनिश्चित करें कि 'src' फ़ोल्डर शामिल है
-  "references": [{ "path": "./client/tsconfig.node.json" }]
-  "references": [{ "path": "./server/tsconfig.node.json" }]
+  "references": [{ "path": "./client/tsconfig.node.json" },
+  "references": { "path": "./server/tsconfig.node.json" }]
 }
