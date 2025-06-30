@@ -1,14 +1,33 @@
-// client/tsconfig.json
+
 {
   "compilerOptions": {
-    // ... आपके मौजूदा विकल्प ...
-    "baseUrl": "./",
+    "target": "ES2020",
+    "useDefineForClassFields": true,
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "skipLibCheck": true,
+
+    /* Bundler mode */
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "jsx": "react-jsx", // THIS IS THE KEY FOR JSX ERROR
+    // "jsx": "react", // Older React versions might use this
+
+    /* Linting */
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"],
-      "@shared/*": ["../shared/*"] // <-- इसे जोड़ें
+      "@/shared/*": ["../shared/*"]
     }
-    // ...
   },
   "include": ["src"],
-  
+  "references": [{ "path": "./tsconfig.node.json" }]
 }
+
