@@ -2,15 +2,19 @@
 
 import { Request } from "express";
 
-// Authenticated user structure set by verifyToken
+// Allowed roles in system
+export type UserRole = "customer" | "seller" | "admin" | "delivery";
+
+// Authenticated user object
 export interface AuthenticatedUser {
   userId: string;
-  email: string;
+  email?: string;
   name?: string;
-  role?: string;
+  id?: number;
+  role?: UserRole;
 }
 
-// Extended request object to include `user`
+// Extended request type with user
 export interface AuthenticatedRequest extends Request {
   user?: AuthenticatedUser;
 }
