@@ -5,11 +5,11 @@ import { storage } from "../storage"; // ✅ DB access layer
 export type UserRole = 'customer' | 'seller' | 'admin' | 'delivery';
 
 export interface AuthenticatedUser {
-  userId: string; // Firebase UID
+  userId: string;         // Firebase UID (Always)
   email?: string;
   name?: string;
-  id?: number;
-  role?: UserRole;
+  id?: number;            // Internal DB ID (seller ID)
+  role?: UserRole;        // Optional but useful
 }
 
 export interface AuthenticatedRequest extends Request {
@@ -32,14 +32,16 @@ export const verifyToken = async (
   try {
     const decoded = await verifyAndDecodeToken(idToken); // 🔐 Firebase decoded token
 
-    const dbUser = await storage.getSellerByUserFirebaseUid(decoded.uid);
+    // ⛏️ Important: Pull matching seller from DB
+    const dbSeller = await storage.getSellerByUserFirebaseUid(decoded.uid);
 
+    // ✅ Construct unified AuthenticatedUser object
     req.user = {
       userId: decoded.uid,
-      email: decoded.email || dbUser?.email,
-      name: decoded.name || dbUser?.name,
-      id: dbUser?.id,
-      role: dbUser?.role || "seller", // ✅ fallback set to "seller"
+      email: decoded.email ?? dbSeller?.email ?? undefined,
+      name: (decoded as any)?.name ?? undefined, // Firebase user.name isn't guaranteed
+      id: dbSeller?.id,
+      role: "seller", // For now assume only sellers go through this middleware
     };
 
     next();
