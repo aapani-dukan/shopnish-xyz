@@ -2,6 +2,8 @@ import { Request, Response, NextFunction } from "express";
 import { verifyAndDecodeToken } from "../util/authUtils";
 import { storage } from "../storage";
 
+
+import { AuthenticatedRequest, AuthenticatedUser } from "@/shared/types";
 // Allowed roles in system
 export type UserRole = "customer" | "seller" | "admin" | "delivery";
 
