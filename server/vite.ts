@@ -1,8 +1,8 @@
 // server/vite.ts
 import express, { Express } from 'express';
 import { createServer as createViteServer } from 'vite';
-import compression from 'compression'; // Add this import
-import sirv from 'sirv'; // Add this import
+import compression from 'compression';
+import sirv from 'sirv';
 
 const isProd = process.env.NODE_ENV === 'production';
 
@@ -12,7 +12,9 @@ let serve: any; // Or Sirv handler
 export async function setupVite(app: Express) {
   if (!isProd) {
     vite = await createViteServer({
-      server: { middleware: true },
+      server: {
+        middlewareMode: true, // 'middleware: true' को इससे बदलें
+      },
       appType: 'custom',
     });
     app.use(vite.middlewares);
