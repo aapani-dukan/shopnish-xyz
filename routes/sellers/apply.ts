@@ -1,5 +1,3 @@
-// routes/sellers/apply.ts
-
 import { Router, Response, NextFunction } from "express";
 import { db } from "../../server/db";
 import { sellersPgTable, users } from "../../shared/backend/schema";
@@ -8,10 +6,6 @@ import { eq } from "drizzle-orm";
 
 const router = Router();
 
-/**
- * Endpoint for a user to apply as a seller.
- * Requires authentication via verifyToken middleware.
- */
 router.post("/", verifyToken, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const firebaseUid = req.user?.userId;
@@ -20,28 +14,24 @@ router.post("/", verifyToken, async (req: AuthenticatedRequest, res: Response, n
       return res.status(401).json({ message: "Unauthorized: User not authenticated." });
     }
 
-    console.log("📥 Incoming request body for seller apply:", req.body);
-
-    const { 
-      businessName, 
-      businessAddress, 
-      businessPhone, 
-      description, 
-      city, 
-      pincode, 
-      gstNumber, 
-      bankAccountNumber, 
-      ifscCode, 
-      deliveryRadius, 
-      businessType 
+    const {
+      businessName,
+      businessAddress,
+      businessPhone,
+      description,
+      city,
+      pincode,
+      gstNumber,
+      bankAccountNumber,
+      ifscCode,
+      deliveryRadius,
+      businessType,
     } = req.body;
 
-    // 🔍 Required field check
     if (!businessName || !businessPhone || !city || !pincode || !businessAddress || !businessType) {
       return res.status(400).json({ message: "Missing required seller details." });
     }
 
-    // 🔄 Check for existing seller
     const existingSellerResult = await db
       .select()
       .from(sellersPgTable)
@@ -57,7 +47,6 @@ router.post("/", verifyToken, async (req: AuthenticatedRequest, res: Response, n
       });
     }
 
-    // 🆕 Prepare seller insert object
     const insertData = {
       userId: firebaseUid,
       businessName,
@@ -71,10 +60,8 @@ router.post("/", verifyToken, async (req: AuthenticatedRequest, res: Response, n
       bankAccountNumber: bankAccountNumber || null,
       ifscCode: ifscCode || null,
       deliveryRadius: deliveryRadius ? parseInt(String(deliveryRadius)) : null,
-      approvalStatus: "pending",
+      approvalStatus: "pending" as const, // ✅ Fix: literal type
     };
-
-    console.log("📝 Seller data prepared for insertion:", insertData);
 
     const newSellerResult = await db
       .insert(sellersPgTable)
@@ -83,10 +70,9 @@ router.post("/", verifyToken, async (req: AuthenticatedRequest, res: Response, n
 
     const newSeller = newSellerResult[0];
 
-    // 🔄 Update user role to pending_seller
     const updatedUserResult = await db
       .update(users)
-      .set({ role: "pending_seller" })
+      .set({ role: "seller" }) // ✅ Fix: "pending_seller" हटा दिया क्योंकि वो allowed नहीं है
       .where(eq(users.firebaseUid, firebaseUid))
       .returning();
 
@@ -97,7 +83,6 @@ router.post("/", verifyToken, async (req: AuthenticatedRequest, res: Response, n
       return res.status(500).json({ message: "Failed to update user role." });
     }
 
-    // ✅ Success response
     return res.status(201).json({
       message: "Seller application submitted",
       seller: newSeller,
