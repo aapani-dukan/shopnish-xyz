@@ -547,7 +547,7 @@ router.get('/products/:productId/reviews', async (req: Request, res: Response) =
     res.status(500).json({ error: 'Internal server error.' });
   }
 });
-export {registerRoutes};
 
-export default router;
+
+export default registerRoutes;
   
