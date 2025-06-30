@@ -34,11 +34,13 @@ export const serveStatic = (req: express.Request, res: express.Response, next: e
     next(); // In dev, Vite handles serving
   }
 };
-
-export function log() {
+export function log(message: string) { // <-- यहाँ 'message: string' जोड़ा
   if (!isProd) {
     console.log('Vite development server active.');
+    console.log(message); // <-- यहाँ भी संदेश प्रिंट करें
   } else {
     console.log('Serving static assets in production.');
+    console.log(message); // <-- और यहाँ भी
   }
 }
+
