@@ -1,29 +1,42 @@
 // server/vite.ts
-import { defineConfig, build } from 'vite';
-import { readFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
-import express from 'express';
-import compression from 'compression';
-import sirv from 'sirv';
-import { createServer } from 'node:http';
+import express, { Express } from 'express';
+import { createServer as createViteServer } from 'vite';
+import compression from 'compression'; // Add this import
+import sirv from 'sirv'; // Add this import
 
-// ...
+const isProd = process.env.NODE_ENV === 'production';
 
-async function createDevServer() {
-  const app = express();
-  const server = createServer(app);
+let vite: any; // Or ViteDevServer
+let serve: any; // Or Sirv handler
 
-  const vite = await (
-    await import('vite')
-  ).createServer({
-    logLevel: 'info',
-    server: {
-      middlewareMode: true,
-      hmr: { server },
-      // `allowedHosts` को boolean के बजाय true या string[] के रूप में सेट करें
-      allowedHosts: true, // या ['localhost', '.render.com']
-    },
-  });
+export async function setupVite(app: Express) {
+  if (!isProd) {
+    vite = await createViteServer({
+      server: { middleware: true },
+      appType: 'custom',
+    });
+    app.use(vite.middlewares);
+  } else {
+    app.use(compression());
+    serve = sirv('Client/dist', { // Path to your client-side build output
+      etag: true,
+      maxAge: 31536000, // 1 year
+    });
+  }
+}
 
-  // ...
+export const serveStatic = (req: express.Request, res: express.Response, next: express.NextFunction) => {
+  if (isProd) {
+    return serve(req, res, next);
+  } else {
+    next(); // In dev, Vite handles serving
+  }
+};
+
+export function log() {
+  if (!isProd) {
+    console.log('Vite development server active.');
+  } else {
+    console.log('Serving static assets in production.');
+  }
 }
