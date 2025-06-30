@@ -9,7 +9,7 @@
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "allowSyntheticDefaultImports": true,
-    "baseUrl": ".", // Important
+    "baseUrl": ".", 
     "paths": {
       "@/shared/*": ["shared/*"],
       "@shared/backend/*": ["shared/backend/*"],
