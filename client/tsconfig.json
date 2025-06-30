@@ -1,35 +1,35 @@
 {
   "compilerOptions": {
-    "target": "ES2022",
+    "target": "es2022",
+    "useDefineForClassFields": true,
+    "lib": ["es2022", "DOM", "DOM.Iterable"],
     "module": "ESNext",
-    "lib": ["ES2022", "DOM"],
-    "strict": true,
-    "esModuleInterop": true,
     "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true,
-    "moduleResolution": "Bundler", // 'Node' या 'Bundler' सबसे अच्छा काम करता है
-    "outDir": "./dist",
-    "baseUrl": ".", // यह महत्वपूर्ण है
-    "paths": {
-      // यह पाथ एलियास बहुत महत्वपूर्ण है
-      "@/shared/*": ["./shared/*"],
-      "@/server/*": ["./server/*"],
-      "@/client/*": ["./client/src/*"], // <--- यह लाइन सुनिश्चित करें कि यह सही है
-      "@/components/*": ["./client/src/components/*"],
-      "@/hooks/*": ["./client/src/hooks/*"],
-      "@/lib/*": ["./client/src/lib/*"],
-      "@/pages/*": ["./client/src/pages/*"],
-      "@/utils/*": ["./client/src/utils/*"]
-    },
+
+    /* Bundler mode */
+    "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
     "noEmit": true,
-    "jsx": "react-jsx"
+    "jsx": "react-jsx",
+
+    /* Linting */
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+
+    /* Path Aliases */
+    "baseUrl": ".", // यह महत्वपूर्ण है कि यह '.' पर सेट हो
+    "paths": {
+      "@/*": ["./src/*"], // यह लाइन सुनिश्चित करती है कि '@/` 'src/' फ़ोल्डर से मैप हो
+      "@/components/*": ["./src/components/*"],
+      "@/lib/*": ["./src/lib/*"],
+      "@/hooks/*": ["./src/hooks/*"],
+      "@/pages/*": ["./src/pages/*"]
+    }
   },
-  "include": [
-    "server/**/*.ts",
-    "shared/**/*.ts",
-    "client/**/*.tsx",
-    "client/**/*.ts"
-  ],
-  "exclude": ["node_modules", "dist"]
+  "include": ["src"],
+  "references": [{ "path": "./tsconfig.node.json" }]
 }
