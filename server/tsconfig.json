@@ -17,8 +17,10 @@
     "outDir": "../dist",
     "baseUrl": "..",
     "paths": {
-    "@shared/backend/*": ["shared/backend/*"],
-    "@shared/frontend/*": ["shared/frontend/*"]
+      // यह नया एलियास है जो "@/shared/types" को हल करेगा
+      "@/shared/*": ["shared/*"],
+      "@shared/backend/*": ["shared/backend/*"],
+      "@shared/frontend/*": ["shared/frontend/*"]
     }
   },
   "include": ["**/*.ts", "**/*.tsx"],
