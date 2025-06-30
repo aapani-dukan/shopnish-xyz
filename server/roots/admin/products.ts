@@ -1,8 +1,8 @@
 // server/roots/admin/products.ts
 import { Router, Response } from 'express';
-import { storage } from '../../storage'; // Correct relative path
-import { AuthenticatedRequest } from '../../middleware/verifyToken';
-import { requireAdminAuth } from '../../middleware/authMiddleware';
+import { storage } from '../../storage.js'; // Correct relative path
+import { AuthenticatedRequest } from '../../middleware/verifyToken.js';
+import { requireAdminAuth } from '../../middleware/authMiddleware.js';
 
 const router = Router();
 
