@@ -4,7 +4,8 @@
 "use client";
 
 import { useState } from "react";
-import { useAuth } from "@/hooks/useAuth"; // ✅ सही इम्पोर्ट
+import axios from "axios"; // ✅ axios इम्पोर्ट करें
+import { useAuth } from "@/hooks/useAuth";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -13,13 +14,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { apiRequest } from "@/lib/queryClient"; // ✅ सही इम्पोर्ट
-import { useToast } from "@/hooks/use-toast"; // ✅ सही इम्पोर्ट
+import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
 import { Check, X, Store, Loader2, AlertCircle, Clock } from "lucide-react";
 
-import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form"; // ✅ सही इम्पोर्ट
-import { ControllerRenderProps } from "react-hook-form"; // ✅ यह इम्पोर्ट 'field' टाइपिंग के लिए चाहिए
+import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
+import { ControllerRenderProps } from "react-hook-form";
 
 // Zod स्कीमा को seller-apply.ts राउट के अपेक्षित पेलोड से मैच करें
 const sellerFormSchema = z.object({
@@ -32,14 +33,13 @@ const sellerFormSchema = z.object({
   gstNumber: z.string().max(15).optional(),
   bankAccountNumber: z.string().regex(/^\d{9,18}$/, "Account number must be 9-18 digits."),
   ifscCode: z.string().regex(/^[A-Z]{4}0[A-Z0-9]{6}$/, "Invalid IFSC Code."),
-  // deliveryRadius को number के रूप में पार्स करने के लिए .transform() का उपयोग करें
-  deliveryRadius: z.string().transform(val => parseFloat(val)).refine(val => !isNaN(val) && val >= 1 && val <= 100, "Delivery radius must be a number between 1 and 100").default("5"),
+  // deliveryRadius को string के रूप में स्वीकार करें और उसे नंबर में बदलें
+  deliveryRadius: z.string().refine(val => !isNaN(parseFloat(val)) && parseFloat(val) >= 1 && parseFloat(val) <= 100, "Delivery radius must be a number between 1 and 100"),
   businessType: z.string().min(2, "Business Type is required.").max(50),
 });
 
 type FormData = z.infer<typeof sellerFormSchema>;
 
-// SellerProfile टाइप डिफाइन करें (यह आपके बैकएंड से आना चाहिए)
 interface SellerProfile {
   approvalStatus: "pending" | "approved" | "rejected";
   rejectionReason?: string | null;
@@ -58,30 +58,25 @@ export default function SellerOnboardingDialog({ isOpen, onClose }: SellerOnboar
   const [, setLocation] = useLocation();
   const [showSuccess, setShowSuccess] = useState(false);
 
-  // useQuery में सही टाइपिंग और 'user?.userId' का उपयोग
   const { data: existingSellerProfile, isLoading: isSellerProfileLoading } = useQuery<SellerProfile | null, Error>({
     queryKey: ["/api/sellers/me", user?.userId],
     queryFn: async () => {
       if (!user?.userId) {
-        return null; // यदि यूजर आईडी नहीं है तो फ़ेच न करें
+        return null;
       }
       try {
         const response = await apiRequest("GET", `/api/sellers/me`);
-        // सुनिश्चित करें कि डेटा SellerProfile टाइप का है
         return response.data as SellerProfile;
       } catch (error) {
-        // AxiosError को सही ढंग से संभालें
         if (axios.isAxiosError(error) && error.response && error.response.status === 404) {
-          return null; // यदि 404 मिलता है तो कोई प्रोफाइल नहीं है
+          return null;
         }
-        throw error; // अन्य त्रुटियों को re-throw करें
+        throw error;
       }
     },
-    // 'enabled' प्रॉपर्टी में null चेक को शामिल करें
     enabled: !isLoadingAuth && isAuthenticated && !!user?.userId,
-    staleTime: Infinity, // डेटा को हमेशा 'fresh' मानें जब तक कि यह इनवैलिडेट न हो जाए
-    // 'stateTime' नाम का कोई prop नहीं है, यह शायद 'staleTime' की गलती थी। इसे हटा दिया गया है।
-    // cacheTime: 10 * 60 * 1000, // कैश को 10 मिनट के बाद साफ करें
+    staleTime: Infinity,
+    gcTime: Infinity, // इसे भी Infinity पर सेट करें या एक उचित मान दें
   });
 
   const form = useForm<FormData>({
@@ -97,16 +92,16 @@ export default function SellerOnboardingDialog({ isOpen, onClose }: SellerOnboar
       gstNumber: "",
       bankAccountNumber: "",
       ifscCode: "",
-      deliveryRadius: "5", // Zod स्कीमा में इसे string के रूप में रखा है क्योंकि इनपुट type="number" भी string देता है
+      deliveryRadius: "5", // Zod स्कीमा में इसे string के रूप में रखा है
     },
   });
 
-  // mutationFn में AxiosResponse टाइपिंग को शामिल करें
-  const registerSellerMutation = useMutation<any, Error, FormData>({ // SuccessData, ErrorType, VariablesType
+  const registerSellerMutation = useMutation<any, Error, FormData>({
     mutationFn: async (data: FormData) => {
-      const payload = { ...data, deliveryRadius: parseFloat(data.deliveryRadius) }; // Zod transform से पहले इसे number में बदलें
+      // payload में deliveryRadius को number में बदलें
+      const payload = { ...data, deliveryRadius: parseFloat(data.deliveryRadius) };
       const response = await apiRequest("POST", "/api/sellers/apply", payload);
-      return response.data; // Response का डेटा वापस करें, पूरा रिस्पांस नहीं
+      return response.data;
     },
     onSuccess: (data) => {
       setShowSuccess(true);
@@ -126,7 +121,7 @@ export default function SellerOnboardingDialog({ isOpen, onClose }: SellerOnboar
         setLocation("/seller-status");
       }, 2000);
     },
-    onError: (error) => { // 'error' को 'any' के बजाय 'Error' टाइप करें
+    onError: (error) => {
       toast({
         title: "Registration Failed",
         description: axios.isAxiosError(error) ? error.response?.data?.message || "Something went wrong. Please try again." : error.message,
@@ -149,7 +144,6 @@ export default function SellerOnboardingDialog({ isOpen, onClose }: SellerOnboar
     return null;
   }
 
-  // --- लोडिंग और ऑथेंटिकेशन स्टेट हैंडलिंग ---
   if (isLoadingAuth) {
     return (
       <Dialog open={isOpen} onOpenChange={handleClose}>
@@ -183,7 +177,6 @@ export default function SellerOnboardingDialog({ isOpen, onClose }: SellerOnboar
     );
   }
 
-  // विक्रेता प्रोफ़ाइल लोडिंग
   if (isSellerProfileLoading) {
     return (
       <Dialog open={isOpen} onOpenChange={handleClose}>
@@ -198,7 +191,6 @@ export default function SellerOnboardingDialog({ isOpen, onClose }: SellerOnboar
     );
   }
 
-  // यदि विक्रेता प्रोफ़ाइल पहले से मौजूद है या लंबित है
   if (existingSellerProfile) {
     const statusText = existingSellerProfile.approvalStatus === "approved"
       ? "Approved"
@@ -234,7 +226,6 @@ export default function SellerOnboardingDialog({ isOpen, onClose }: SellerOnboar
     );
   }
 
-  // यदि सफलता मैसेज दिखाना है तो यह रेंडर होगा
   if (showSuccess) {
     return (
       <Dialog open={isOpen} onOpenChange={handleClose}>
@@ -252,7 +243,6 @@ export default function SellerOnboardingDialog({ isOpen, onClose }: SellerOnboar
     );
   }
 
-  // --- मुख्य डायलॉग सामग्री: केवल पंजीकरण फॉर्म ---
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -275,11 +265,10 @@ export default function SellerOnboardingDialog({ isOpen, onClose }: SellerOnboar
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
-            {/* Business Name Field */}
             <FormField
               control={form.control}
               name="businessName"
-              render={({ field }: { field: ControllerRenderProps<FormData, "businessName"> }) => ( // ✅ `field` को टाइप करें
+              render={({ field }: { field: ControllerRenderProps<FormData, "businessName"> }) => (
                 <FormItem>
                   <FormLabel>Business Name</FormLabel>
                   <FormControl><Input {...field} /></FormControl>
@@ -287,11 +276,10 @@ export default function SellerOnboardingDialog({ isOpen, onClose }: SellerOnboar
                 </FormItem>
               )}
             />
-            {/* Business Address Field */}
             <FormField
               control={form.control}
               name="businessAddress"
-              render={({ field }: { field: ControllerRenderProps<FormData, "businessAddress"> }) => ( // ✅ `field` को टाइप करें
+              render={({ field }: { field: ControllerRenderProps<FormData, "businessAddress"> }) => (
                 <FormItem>
                   <FormLabel>Business Address</FormLabel>
                   <FormControl><Textarea {...field} /></FormControl>
@@ -299,11 +287,10 @@ export default function SellerOnboardingDialog({ isOpen, onClose }: SellerOnboar
                 </FormItem>
               )}
             />
-            {/* Business Type Field */}
             <FormField
               control={form.control}
               name="businessType"
-              render={({ field }: { field: ControllerRenderProps<FormData, "businessType"> }) => ( // ✅ `field` को टाइप करें
+              render={({ field }: { field: ControllerRenderProps<FormData, "businessType"> }) => (
                 <FormItem>
                   <FormLabel>Business Type</FormLabel>
                   <FormControl><Input {...field} placeholder="e.g., grocery, electronics" /></FormControl>
@@ -311,11 +298,10 @@ export default function SellerOnboardingDialog({ isOpen, onClose }: SellerOnboar
                 </FormItem>
               )}
             />
-            {/* Description Field */}
             <FormField
               control={form.control}
               name="description"
-              render={({ field }: { field: ControllerRenderProps<FormData, "description"> }) => ( // ✅ `field` को टाइप करें
+              render={({ field }: { field: ControllerRenderProps<FormData, "description"> }) => (
                 <FormItem>
                   <FormLabel>Description</FormLabel>
                   <FormControl><Textarea {...field} /></FormControl>
@@ -323,11 +309,10 @@ export default function SellerOnboardingDialog({ isOpen, onClose }: SellerOnboar
                 </FormItem>
               )}
             />
-            {/* City Field */}
             <FormField
               control={form.control}
               name="city"
-              render={({ field }: { field: ControllerRenderProps<FormData, "city"> }) => ( // ✅ `field` को टाइप करें
+              render={({ field }: { field: ControllerRenderProps<FormData, "city"> }) => (
                 <FormItem>
                   <FormLabel>City</FormLabel>
                   <FormControl><Input {...field} /></FormControl>
@@ -335,11 +320,10 @@ export default function SellerOnboardingDialog({ isOpen, onClose }: SellerOnboar
                 </FormItem>
               )}
             />
-            {/* Pincode Field */}
             <FormField
               control={form.control}
               name="pincode"
-              render={({ field }: { field: ControllerRenderProps<FormData, "pincode"> }) => ( // ✅ `field` को टाइप करें
+              render={({ field }: { field: ControllerRenderProps<FormData, "pincode"> }) => (
                 <FormItem>
                   <FormLabel>Pincode</FormLabel>
                   <FormControl><Input {...field} type="text" inputMode="numeric" pattern="[0-9]*" /></FormControl>
@@ -347,11 +331,10 @@ export default function SellerOnboardingDialog({ isOpen, onClose }: SellerOnboar
                 </FormItem>
               )}
             />
-            {/* Business Phone Field */}
             <FormField
               control={form.control}
               name="businessPhone"
-              render={({ field }: { field: ControllerRenderProps<FormData, "businessPhone"> }) => ( // ✅ `field` को टाइप करें
+              render={({ field }: { field: ControllerRenderProps<FormData, "businessPhone"> }) => (
                 <FormItem>
                   <FormLabel>Business Phone</FormLabel>
                   <FormControl><Input {...field} type="tel" /></FormControl>
@@ -359,11 +342,10 @@ export default function SellerOnboardingDialog({ isOpen, onClose }: SellerOnboar
                 </FormItem>
               )}
             />
-            {/* GST Number Field */}
             <FormField
               control={form.control}
               name="gstNumber"
-              render={({ field }: { field: ControllerRenderProps<FormData, "gstNumber"> }) => ( // ✅ `field` को टाइप करें
+              render={({ field }: { field: ControllerRenderProps<FormData, "gstNumber"> }) => (
                 <FormItem>
                   <FormLabel>GST Number (Optional)</FormLabel>
                   <FormControl><Input {...field} /></FormControl>
@@ -371,11 +353,10 @@ export default function SellerOnboardingDialog({ isOpen, onClose }: SellerOnboar
                 </FormItem>
               )}
             />
-            {/* Bank Account Number Field */}
             <FormField
               control={form.control}
               name="bankAccountNumber"
-              render={({ field }: { field: ControllerRenderProps<FormData, "bankAccountNumber"> }) => ( // ✅ `field` को टाइप करें
+              render={({ field }: { field: ControllerRenderProps<FormData, "bankAccountNumber"> }) => (
                 <FormItem>
                   <FormLabel>Bank Account Number</FormLabel>
                   <FormControl><Input {...field} type="text" inputMode="numeric" pattern="[0-9]*" /></FormControl>
@@ -383,11 +364,10 @@ export default function SellerOnboardingDialog({ isOpen, onClose }: SellerOnboar
                 </FormItem>
               )}
             />
-            {/* IFSC Code Field */}
             <FormField
               control={form.control}
               name="ifscCode"
-              render={({ field }: { field: ControllerRenderProps<FormData, "ifscCode"> }) => ( // ✅ `field` को टाइप करें
+              render={({ field }: { field: ControllerRenderProps<FormData, "ifscCode"> }) => (
                 <FormItem>
                   <FormLabel>IFSC Code</FormLabel>
                   <FormControl><Input {...field} /></FormControl>
@@ -395,15 +375,13 @@ export default function SellerOnboardingDialog({ isOpen, onClose }: SellerOnboar
                 </FormItem>
               )}
             />
-            {/* Delivery Radius Field */}
             <FormField
               control={form.control}
               name="deliveryRadius"
-              render={({ field }: { field: ControllerRenderProps<FormData, "deliveryRadius"> }) => ( // ✅ `field` को टाइप करें
+              render={({ field }: { field: ControllerRenderProps<FormData, "deliveryRadius"> }) => (
                 <FormItem>
                   <FormLabel>Delivery Radius (in km)</FormLabel>
-                  {/* `field.value` को `string` में बदलें, क्योंकि Input कंपोनेंट `value` को `string` के रूप में लेता है */}
-                  <FormControl><Input {...field} type="number" value={String(field.value)} /></FormControl>
+                  <FormControl><Input {...field} type="number" /></FormControl>
                   <FormMessage />
                 </FormItem>
               )}
@@ -426,5 +404,5 @@ export default function SellerOnboardingDialog({ isOpen, onClose }: SellerOnboar
       </DialogContent>
     </Dialog>
   );
+} // ✅ सुनिश्चित करें कि यह अंतिम क्लोजिंग ब्रेस है
   
-}
