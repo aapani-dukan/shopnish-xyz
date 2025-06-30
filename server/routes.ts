@@ -160,7 +160,8 @@ function registerRoutes(app: Express) {
   app.use("/api/admin/products", adminProductsRoutes);
   app.use("/api/admin/vendors", adminVendorsRoutes);
   app.use("/api/admin/password", adminPasswordRoutes);
-  
+    app.use("/api", router);
+}
 
 // --- Admin Routes ---
 // Admin Routes
