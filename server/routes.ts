@@ -1,7 +1,7 @@
 // server/routes.ts
 import { Request, Response, Router, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
-import { db } from './db';
+import { db } from './db.js';
 import { and, eq, like, isNotNull } from 'drizzle-orm';
 import {
   users,
@@ -25,13 +25,13 @@ import {
   insertCartItemSchema,
 } from '@/shared/backend/schema'; // Updated import path for schema
 import { AuthenticatedRequest, AuthenticatedUser } from '@/shared/types/auth'; // Updated import path for auth types
-import { storage } from './storage';
-import { requireAuth, requireAdminAuth, requireSellerAuth, requireDeliveryBoyAuth } from './middleware/authMiddleware'; // Assuming this middleware file exists
-import adminApproveProductRoutes from './roots/admin/approve-product';
-import adminRejectProductRoutes from './roots/admin/reject-product';
-import adminProductsRoutes from './roots/admin/products';
-import adminVendorsRoutes from './roots/admin/vendors';
-import adminPasswordRoutes from './roots/admin/admin-password';
+import { storage } from './storage.js';
+import { requireAuth, requireAdminAuth, requireSellerAuth, requireDeliveryBoyAuth } from './middleware/authMiddleware.js'; // Assuming this middleware file exists
+import adminApproveProductRoutes from './roots/admin/approve-product.js';
+import adminRejectProductRoutes from './roots/admin/reject-product.js';
+import adminProductsRoutes from './roots/admin/products.js';
+import adminVendorsRoutes from './roots/admin/vendors.js';
+import adminPasswordRoutes from './roots/admin/admin-password.js';
 const router = Router();
 
 // Test Route
