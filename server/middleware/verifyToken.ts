@@ -1,21 +1,25 @@
 import { Request, Response, NextFunction } from "express";
 import { verifyAndDecodeToken } from "../util/authUtils";
-import { storage } from "../storage"; // ✅ DB access layer
+import { storage } from "../storage";
 
-export type UserRole = 'customer' | 'seller' | 'admin' | 'delivery';
+// Allowed roles in system
+export type UserRole = "customer" | "seller" | "admin" | "delivery";
 
+// Type used in all authenticated routes
 export interface AuthenticatedUser {
-  userId: string;         // Firebase UID (Always)
+  userId: string;         // Firebase UID
   email?: string;
   name?: string;
-  id?: number;            // Internal DB ID (seller ID)
-  role?: UserRole;        // Optional but useful
+  id?: number;            // Internal DB ID (like seller.id)
+  role?: UserRole;
 }
 
+// Request with attached user
 export interface AuthenticatedRequest extends Request {
   user?: AuthenticatedUser;
 }
 
+// Middleware to verify Firebase token
 export const verifyToken = async (
   req: AuthenticatedRequest,
   res: Response,
@@ -30,18 +34,18 @@ export const verifyToken = async (
   const idToken = authHeader.split(" ")[1];
 
   try {
-    const decoded = await verifyAndDecodeToken(idToken); // 🔐 Firebase decoded token
+    const decoded = await verifyAndDecodeToken(idToken); // Firebase decoded token
 
-    // ⛏️ Important: Pull matching seller from DB
+    // Lookup user in your own database (seller table, etc.)
     const dbSeller = await storage.getSellerByUserFirebaseUid(decoded.uid);
 
-    // ✅ Construct unified AuthenticatedUser object
+    // Attach verified user to request
     req.user = {
       userId: decoded.uid,
-      email: decoded.email ?? dbSeller?.email ?? undefined,
-      name: (decoded as any)?.name ?? undefined, // Firebase user.name isn't guaranteed
+      email: decoded.email ?? dbSeller?.email,
+      name: (decoded as any)?.name ?? dbSeller?.businessName,
       id: dbSeller?.id,
-      role: "seller", // For now assume only sellers go through this middleware
+      role: "seller", // For now assume seller login path uses this middleware
     };
 
     next();
