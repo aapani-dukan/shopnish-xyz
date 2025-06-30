@@ -6,7 +6,8 @@
   "type": "module",
   "scripts": {
     "start": "NODE_ENV=production node -r tsconfig-paths/register dist/index.js",
-    "build": "cd client && vite build && cd .. && esbuild server/index.ts --bundle --platform=node --packages=external --format=esm --outdir=dist && cp -R server/migrations dist/migrations",
+  "build": "cd client && vite build && cd .. && esbuild server/index.ts --bundle --platform=node --format=esm --outdir=dist --alias:'@/shared=./shared' && cp -R server/migrations dist/migrations",
+
     "dev": "concurrently \"npm run server:dev\" \"npm run client:dev\"",
     "server:dev": "nodemon --exec ts-node-esm server/index.ts",
     "client:dev": "cd client && vite",
