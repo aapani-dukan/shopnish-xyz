@@ -1,5 +1,5 @@
 import { NextFunction, Response } from "express";
-import { AuthenticatedRequest, AuthenticatedUser } from '@/shared/types/auth';
+import { AuthenticatedRequest } from './verifyToken'; 
 export function requireAuth(
   req: AuthenticatedRequest,
   res: Response,
