@@ -1,6 +1,6 @@
 // server/middleware/requireAdminAuth.ts
 import { Request, Response, NextFunction } from 'express';
-import { AuthenticatedRequest } from './verifyToken'; 
+import { AuthenticatedRequest } from './verifyToken.js'; 
 
 export function requireAdminAuth(req: AuthenticatedRequest, res: Response, next: NextFunction) {
   // पहले यह जांचें कि उपयोगकर्ता प्रमाणित है या नहीं।
