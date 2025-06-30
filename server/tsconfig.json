@@ -14,8 +14,8 @@
     "types": ["node"],
     "lib": ["ES2022"],
     "noEmit": false,
-    "outDir": "dist/server",
-    "rootDir": "server",
+    "outDir": "../dist/server",      // ✅ यह root से relative path है
+    "rootDir": ".",                  // ✅ server dir को root माना जाए
     "baseUrl": "..",
     "paths": {
       "@/shared/*": ["shared/*"],
@@ -23,6 +23,6 @@
       "@shared/frontend/*": ["shared/frontend/*"]
     }
   },
-  "include": ["**/*.ts", "**/*.tsx"],
-  "exclude": ["node_modules", "dist"]
+  "include": ["./**/*.ts", "./**/*.tsx"],
+  "exclude": ["../node_modules", "../dist"]
 }
