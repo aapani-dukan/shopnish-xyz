@@ -1,18 +1,21 @@
 {
   "compilerOptions": {
-    "target": "ES2020",
-    "module": "ESNext",
-    "moduleResolution": "node",
-    "outDir": "dist",
-    "esModuleInterop": true,
-    "resolveJsonModule": true,
-    "allowSyntheticDefaultImports": true,
+    "target": "ES2022",
+    "module": "NodeNext",
+    "lib": ["ES2022"],
     "strict": true,
+    "esModuleInterop": true,
     "skipLibCheck": true,
-    "baseUrl": ".",                             // ✅ जोड़ा गया
+    "forceConsistentCasingInFileNames": true,
+    "moduleResolution": "NodeNext",
+    "outDir": "./dist",
+    "baseUrl": ".", // This is crucial for paths
     "paths": {
-      "@shared/*": ["shared/*"]                 // ✅ जोड़ा गया alias
+      "@/shared/*": ["./shared/*"],
+      "@/server/*": ["./server/*"],
+      "@/client/*": ["./client/*"]
     }
   },
-  "include": ["server/**/*", "shared/**/*"]     // ✅ shared भी include किया गया
+  "include": ["server/**/*.ts", "shared/**/*.ts"], // Ensure these paths are correct
+  "exclude": ["node_modules", "dist"]
 }
