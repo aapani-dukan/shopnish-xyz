@@ -16,7 +16,7 @@
     "lib": ["ES2022"],
     // यह लाइन बदलें:
     "outDir": "server", 
-    "rootDir: "server",
+    "rootDir": "server",
     "noEmit":false,
     "baseUrl": "..",
     "paths": {
