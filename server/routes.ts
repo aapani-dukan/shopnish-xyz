@@ -550,5 +550,5 @@ router.get('/products/:productId/reviews', async (req: Request, res: Response) =
 });
 
 
-export {registerRoutes};
+export default registerRoutes;
   
