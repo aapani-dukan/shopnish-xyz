@@ -14,10 +14,8 @@
     "forceConsistentCasingInFileNames": true,
     "types": ["node"],
     "lib": ["ES2022"],
-    // यह लाइन बदलें:
-    "outDir": "server", 
-    "rootDir": "server",
-    "noEmit":false,
+    "outDir": "../dist/server",       // ✅ FIXED: Output folder is dist/server
+    "rootDir": ".",                   // ✅ Root is current server folder
     "baseUrl": "..",
     "paths": {
       "@/shared/*": ["shared/*"],
@@ -26,5 +24,5 @@
     }
   },
   "include": ["**/*.ts", "**/*.tsx"],
-  "exclude": ["node_modules", "dist"]
+  "exclude": ["node_modules", "../dist"]
 }
