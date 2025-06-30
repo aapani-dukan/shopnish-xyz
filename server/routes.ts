@@ -154,6 +154,13 @@ router.get('/seller/me', requireSellerAuth, async (req: AuthenticatedRequest, re
   }
 });
 
+function registerRoutes(app: Express) {
+  app.use("/api/admin/products/approve", adminApproveProductRoutes);
+  app.use("/api/admin/products/reject", adminRejectProductRoutes);
+  app.use("/api/admin/products", adminProductsRoutes);
+  app.use("/api/admin/vendors", adminVendorsRoutes);
+  app.use("/api/admin/password", adminPasswordRoutes);
+  
 
 // --- Admin Routes ---
 // Admin Routes
@@ -540,7 +547,7 @@ router.get('/products/:productId/reviews', async (req: Request, res: Response) =
     res.status(500).json({ error: 'Internal server error.' });
   }
 });
-
+export {registerRoutes};
 
 export default router;
   
