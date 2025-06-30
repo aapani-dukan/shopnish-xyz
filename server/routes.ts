@@ -129,12 +129,13 @@ export async function registerRoutes(app: Express): Promise<void> {
       let deliveryBoy = await storage.getDeliveryBoyByFirebaseUid(uid);
       let isNew = false;
       if (!deliveryBoy) {
-        deliveryBoy = await storage.createDeliveryBoy({
-          email: email!,
-          firebaseUid: uid,
-          name: name || email!,
-          approvalStatus: "pending",
-        });
+      deliveryBoy = await storage.createDeliveryBoy({
+  email: email!,
+  firebaseUid: uid,
+  name: name || email!,
+  approvalStatus: "pending",
+  vehicleType: "bike", // या जो भी default मान देना हो
+});
         isNew = true;
       }
 
