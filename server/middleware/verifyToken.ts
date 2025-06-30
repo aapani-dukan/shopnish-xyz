@@ -1,5 +1,3 @@
-// server/middleware/verifyToken.ts
-
 import { Request, Response, NextFunction } from "express";
 import { verifyAndDecodeToken } from "../util/authUtils";
 import { storage } from "../storage"; // ✅ DB access layer
@@ -34,14 +32,14 @@ export const verifyToken = async (
   try {
     const decoded = await verifyAndDecodeToken(idToken); // 🔐 Firebase decoded token
 
-    const dbUser = await storage.getUserByFirebaseUid(decoded.uid);
+    const dbUser = await storage.getSellerByUserFirebaseUid(decoded.uid);
 
     req.user = {
       userId: decoded.uid,
       email: decoded.email || dbUser?.email,
       name: decoded.name || dbUser?.name,
       id: dbUser?.id,
-      role: dbUser?.role || "customer", // fallback
+      role: dbUser?.role || "seller", // ✅ fallback set to "seller"
     };
 
     next();
