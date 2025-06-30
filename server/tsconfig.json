@@ -14,10 +14,10 @@
     "forceConsistentCasingInFileNames": true,
     "types": ["node"],
     "lib": ["ES2022"],
-    "outDir": "../dist",
+    // यह लाइन बदलें:
+    "outDir": "./dist/server", // <--- यहां बदलाव करें!
     "baseUrl": "..",
     "paths": {
-      // यह नया एलियास है जो "@/shared/types" को हल करेगा
       "@/shared/*": ["shared/*"],
       "@shared/backend/*": ["shared/backend/*"],
       "@shared/frontend/*": ["shared/frontend/*"]
