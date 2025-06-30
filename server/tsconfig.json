@@ -15,7 +15,7 @@
     "types": ["node"],
     "lib": ["ES2022"],
     // यह लाइन बदलें:
-    "outDir": "../dist/server", // <--- यहां बदलाव करें!
+    "outDir": "../dist", // <--- यहां बदलाव करें!
     "baseUrl": "..",
     "paths": {
       "@/shared/*": ["shared/*"],
