@@ -1,6 +1,6 @@
 import express from "express";
 import { db } from "../../db";
-import { products } from "../../../shared/backend/schema";
+import { products } from "../../../../shared/backend/schema";
 import { verifyToken, AuthenticatedRequest } from "../../middleware/verifyToken";
 import { eq } from "drizzle-orm";
 
