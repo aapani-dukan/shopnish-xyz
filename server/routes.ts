@@ -27,7 +27,11 @@ import {
 import { AuthenticatedRequest, AuthenticatedUser } from '@/shared/types/auth'; // Updated import path for auth types
 import { storage } from './storage';
 import { requireAuth, requireAdminAuth, requireSellerAuth, requireDeliveryBoyAuth } from './middleware/authMiddleware'; // Assuming this middleware file exists
-
+import adminApproveProductRoutes from './roots/admin/approve-product';
+import adminRejectProductRoutes from './roots/admin/reject-product';
+import adminProductsRoutes from './roots/admin/products';
+import adminVendorsRoutes from './roots/admin/vendors';
+import adminPasswordRoutes from './roots/admin/admin-password';
 const router = Router();
 
 // Test Route
@@ -150,7 +154,14 @@ router.get('/seller/me', requireSellerAuth, async (req: AuthenticatedRequest, re
   }
 });
 
+
 // --- Admin Routes ---
+// Admin Routes
+router.use('/', adminApproveProductRoutes);
+router.use('/', adminRejectProductRoutes);
+router.use('/', adminProductsRoutes);
+router.use('/', adminVendorsRoutes);
+router.use('/', adminPasswordRoutes); // If this is a separate router
 router.get('/admin/sellers', requireAdminAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const pendingSellers = await db.select().from(sellersPgTable).where(eq(sellersPgTable.approvalStatus, approvalStatusEnum.enumValues[0]));
