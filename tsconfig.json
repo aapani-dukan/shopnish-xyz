@@ -1,14 +1,17 @@
-// tsconfig.json (रूट में)
+// root tsconfig.json
 {
   "compilerOptions": {
-    // ... आपके अन्य compilerOptions ...
-    "noEmit": true, // यह क्लाइंट के लिए ठीक है, क्योंकि बंडलर JS जनरेट करता है
-    // ...
+    // ... अन्य compilerOptions ...
+    "baseUrl": ".", // यह सुनिश्चित करता है कि पाथ रूट से हल किए जाएं
+    "paths": {
+      "@shared/*": ["shared/*"], // सुनिश्चित करें कि यह एलियास मौजूद है
+      "@/shared/*": ["shared/*"]  // सुनिश्चित करें कि यह एलियास मौजूद है
+    }
   },
-  "include": ["src"],
-  "baseUrl": ".",
+  "include": ["src", "server", "shared"], // <--- 'shared' को यहां जोड़ना महत्वपूर्ण है
   "references": [
-    { "path": "./client/tsconfig.node.json" }, // यदि यह मौजूद है
-    { "path": "./server/tsconfig.json" } // <--- यह लाइन बहुत महत्वपूर्ण है: सर्वर बिल्ड को इनेबल करती है
+    { "path": "./client/tsconfig.node.json" },
+    { "path": "./server/tsconfig.json" }
   ]
 }
+
