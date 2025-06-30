@@ -1,3 +1,5 @@
+// routes/sellers/apply.ts
+
 import { Router, Response, NextFunction } from "express";
 import { db } from "../../server/db";
 import { sellersPgTable, users } from "../../shared/backend/schema";
@@ -32,23 +34,21 @@ router.post("/", verifyToken, async (req: AuthenticatedRequest, res: Response, n
       return res.status(400).json({ message: "Missing required seller details." });
     }
 
-    // 🔍 Check if seller already exists
+    // Check if seller already exists
     const existingSellerResult = await db
       .select()
       .from(sellersPgTable)
       .where(eq(sellersPgTable.userId, firebaseUid))
       .limit(1);
 
-    const existingSeller = existingSellerResult[0];
-
-    if (existingSeller) {
+    if (existingSellerResult.length > 0) {
       return res.status(400).json({
         message: "Seller application already exists or approved.",
-        status: existingSeller.approvalStatus,
+        status: existingSellerResult[0].approvalStatus,
       });
     }
 
-    // 📝 Prepare insert data
+    // Prepare insert data
     const insertData = {
       userId: firebaseUid,
       businessName,
@@ -72,11 +72,11 @@ router.post("/", verifyToken, async (req: AuthenticatedRequest, res: Response, n
 
     const newSeller = newSellerResult[0];
 
-    // ✅ Fix: Set role to "pending_seller"
+    // 🔄 Instead of "pending_seller", just keep the role as "seller" (system will decide based on approvalStatus)
     const updatedUserResult = await db
       .update(users)
-      .set({ role: "pending_seller" })
-      .where(eq(users.firebaseUid, firebaseUid))
+      .set({ role: "seller" })
+      .where(eq(users.firebaseUid, firebaseUid)) // 🧠 Confirm field name in your schema
       .returning();
 
     const updatedUser = updatedUserResult[0];
