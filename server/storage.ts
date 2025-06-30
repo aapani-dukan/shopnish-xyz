@@ -40,14 +40,13 @@ class DatabaseStorage {
     return db.insert(users).values(userData).returning();
   }
 
-  // --- Seller Methods ---
+  
+    // --- Seller Methods ---
   async getSellerByUserId(userId: number) {
-    // `sellers.userId` एक इंटीजर है, इसलिए `eq()` में इसकी तुलना `number` से करें।
     return db.select().from(sellers).where(eq(sellers.userId, userId)).execute();
   }
 
   async createSeller(sellerData: z.infer<typeof insertSellerSchema>) {
-    // सुनिश्चित करें कि sellerData ऑब्जेक्ट insertSellerSchema के अनुरूप हो
     return db.insert(sellers).values(sellerData).returning();
   }
 
@@ -56,10 +55,59 @@ class DatabaseStorage {
       .set({
         approvalStatus: status,
         rejectionReason: reason || null,
-        approvedAt: status === approvalStatusEnum.enumValues[1] ? new Date() : null, // 'approved' पर सेट होने पर approvedAt सेट करें
+        approvedAt: status === approvalStatusEnum.enumValues[1] ? new Date() : null,
       })
       .where(eq(sellers.id, sellerId));
   }
+
+  // New method for fetching all sellers (or pending sellers for admin)
+  async getSellers(status?: z.infer<typeof approvalStatusEnum>) {
+    let query = db.select().from(sellers).$dynamic();
+    if (status) {
+      query = query.where(eq(sellers.approvalStatus, status));
+    }
+    return query.execute();
+  }
+
+  // Renamed/modified method as per error, now handles seller approval status update
+  // This replaces updateSellerStatus
+  async updateSellerStatus(sellerId: number, newStatus: z.infer<typeof approvalStatusEnum>, rejectionReason?: string) {
+    const updateData: { approvalStatus: z.infer<typeof approvalStatusEnum>; rejectionReason?: string | null; approvedAt?: Date | null; } = {
+      approvalStatus: newStatus
+    };
+
+    if (newStatus === approvalStatusEnum.enumValues[1]) { // If approving
+      updateData.approvedAt = new Date();
+      updateData.rejectionReason = null; // Clear rejection reason
+    } else if (newStatus === approvalStatusEnum.enumValues[2]) { // If rejecting
+      updateData.rejectionReason = rejectionReason || 'No reason provided';
+      updateData.approvedAt = null; // Clear approved date
+    }
+
+    // Update the seller's record
+    const [updatedSeller] = await db.update(sellers)
+      .set(updateData)
+      .where(eq(sellers.id, sellerId))
+      .returning();
+
+    // Also update the user's role and approval status if the seller exists
+    if (updatedSeller) {
+      await db.update(users)
+        .set({
+          role: userRoleEnum.enumValues[1], // Assuming role 'seller'
+          approvalStatus: newStatus,
+        })
+        .where(eq(users.id, updatedSeller.userId));
+    }
+    return updatedSeller;
+  }
+
+
+  // ... (rest of the file remains the same, ensuring .execute() is used for all queries)
+}
+
+export const storage = new DatabaseStorage();
+
 
   // --- Category Methods ---
   async getCategories() {
