@@ -1,10 +1,9 @@
-// server/lib/firebaseAdmin.ts
 import admin from "firebase-admin";
-import serviceAccount from "../../FIREBASE_PRIVATE_KEY.json"; // ✅ सही path दो
+import serviceAccount from "../../FIREBASE_PRIVATE_KEY.json" assert { type: "json" }; // only in ESM
 
 if (!admin.apps.length) {
   admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount as admin.ServiceAccount),
+    credential: admin.credential.cert(serviceAccount),
   });
 }
 
