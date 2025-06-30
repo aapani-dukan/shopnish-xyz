@@ -1,8 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import { verifyAndDecodeToken } from "../util/authUtils";
 import { storage } from "../storage";
-import { AuthenticatedRequest, AuthenticatedUser } from "@/shared/types";
-
+import { AuthenticatedRequest, AuthenticatedUser } from '@/shared/types/auth';
 // Middleware to verify Firebase token
 export const verifyToken = async (
   req: AuthenticatedRequest,
