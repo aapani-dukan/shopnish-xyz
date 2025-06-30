@@ -6,6 +6,10 @@ import { z } from "zod";
 // --- Drizzle ORM Table Definitions ---
 
 // User roles: customer, seller, admin, delivery_boy
+// 'UserRole' और 'ApprovalStatus' enums को एक्सपोर्ट करें ताकि वे seed.ts और अन्य फ़ाइलों में उपयोग किए जा सकें
+export const UserRole = z.enum(["customer", "seller", "admin", "delivery_boy"]);
+export const ApprovalStatus = z.enum(["pending", "approved", "rejected"]);
+
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   firebaseUid: text("firebase_uid").unique(), // Firebase UID यहाँ जोड़ें
@@ -14,8 +18,8 @@ export const users = pgTable("users", {
   firstName: text("first_name"),
   lastName: text("last_name"),
   phone: text("phone"),
-  role: varchar("role", { enum: ["customer", "seller", "admin", "delivery_boy"] }).notNull().default("customer"),
-  approvalStatus: varchar("approval_status", { enum: ["pending", "approved", "rejected"] }).notNull().default("approved"),
+  role: varchar("role", { enum: UserRole.enumValues }).notNull().default("customer"), // Zod enum का उपयोग करें
+  approvalStatus: varchar("approval_status", { enum: ApprovalStatus.enumValues }).notNull().default("approved"), // Zod enum का उपयोग करें
   address: text("address"),
   city: text("city"),
   pincode: text("pincode"),
@@ -27,7 +31,8 @@ export const users = pgTable("users", {
 // ✅ Sellers Table - यह अब एक Drizzle pgTable है!
 export const sellersPgTable = pgTable("sellers", {
   id: serial("id").primaryKey(), // ऑटो-इंक्रीमेंटिंग प्राइमरी की
-  userId: text("user_id").unique().notNull(), // ✅ Firebase UID स्टोर करने के लिए TEXT
+  // userId को INTEGER में बदलें और users.id को रेफरेंस करें
+  userId: integer("user_id").unique().notNull().references(() => users.id),
   businessName: text("business_name").notNull(),
   businessType: text("business_type").notNull(), // grocery, restaurant, etc.
   description: text("description"),
@@ -42,7 +47,7 @@ export const sellersPgTable = pgTable("sellers", {
   email: text("email"), // Optional email (can be same as user's primary email)
   phone: text("phone"), // Optional phone (can be same as businessPhone)
   address: text("address"), // Optional address (can be same as businessAddress)
-  approvalStatus: varchar("approval_status", { enum: ["pending", "approved", "rejected"] }).notNull().default("pending"),
+  approvalStatus: varchar("approval_status", { enum: ApprovalStatus.enumValues }).notNull().default("pending"), // Zod enum का उपयोग करें
   approvedAt: timestamp("approved_at"),
   rejectionReason: text("rejection_reason"),
   createdAt: timestamp("created_at").defaultNow(),
@@ -116,11 +121,13 @@ export const deliveryAreas = pgTable("delivery_areas", {
 // Delivery boys
 export const deliveryBoys = pgTable("delivery_boys", {
   id: serial("id").primaryKey(),
-  firebaseUid: text("firebase_uid").unique().notNull(), // Firebase UID यहाँ जोड़ें
+  // firebaseUid को optional रखें यदि यह users.id से जुड़ता है
+  firebaseUid: text("firebase_uid").unique(),
+  // userId को INTEGER में बदलें और users.id को रेफरेंस करें
+  userId: integer("user_id").unique().notNull().references(() => users.id), // Firebase UID के बजाय users.id को रेफरेंस करें
   email: text("email").unique().notNull(),
   name: text("name"),
-  approvalStatus: varchar("approval_status", { enum: ["pending", "approved", "rejected"] }).notNull().default("pending"),
-  // userId: integer("user_id").references(() => users.id), // यदि आप Firebase UID से सीधे लिंक कर रहे हैं तो इसे optional करें या हटा दें
+  approvalStatus: varchar("approval_status", { enum: ApprovalStatus.enumValues }).notNull().default("pending"),
   vehicleType: text("vehicle_type").notNull(), // bike, cycle, auto
   vehicleNumber: text("vehicle_number"),
   licenseNumber: text("license_number"),
@@ -147,7 +154,7 @@ export const cartItems = pgTable("cart_items", {
 export const orders = pgTable("orders", {
   id: serial("id").primaryKey(),
   customerId: integer("customer_id").references(() => users.id),
-  deliveryBoyId: integer("delivery_boy_id").references(() => deliveryBoys.id),
+  deliveryBoyId: integer("delivery_boy_id").references(() => deliveryBoys.id), // nullable हो सकता है
   orderNumber: text("order_number").notNull().unique(),
   subtotal: decimal("subtotal", { precision: 10, scale: 2 }).notNull(),
   deliveryCharge: decimal("delivery_charge", { precision: 10, scale: 2 }).default("0"),
@@ -266,29 +273,8 @@ export const reviews = pgTable("reviews", {
 
 // --- Zod Schemas for Validation ---
 // ✅ `sellers` Zod ऑब्जेक्ट - अब Drizzle `sellersPgTable` से मेल खाता है
-export const sellers = z.object({
-  id: z.number().int().optional(), // serial() के लिए
-  userId: z.string(), // ✅ Firebase UID के लिए string
-  businessName: z.string().min(1, "Business Name is required"),
-  businessType: z.string().min(1, "Business Type is required"),
-  description: z.string().optional(),
-  businessAddress: z.string().min(1, "Business Address is required"),
-  city: z.string().min(1, "City is required"),
-  pincode: z.string().regex(/^\d{6}$/, "Pincode must be 6 digits"),
-  businessPhone: z.string().regex(/^\d{10}$/, "Phone number must be 10 digits"),
-  gstNumber: z.string().optional(),
-  bankAccountNumber: z.string().min(1, "Bank Account Number is required"),
-  ifscCode: z.string().min(1, "IFSC Code is required"),
-  deliveryRadius: z.number().min(1, "Delivery Radius must be at least 1 km"),
-  email: z.string().email().optional(),
-  phone: z.string().optional(),
-  address: z.string().optional(),
-  approvalStatus: z.enum(["pending", "approved", "rejected"]).default("pending").optional(),
-  approvedAt: z.date().optional(),
-  rejectionReason: z.string().optional(),
-  createdAt: z.date().optional(),
-  updatedAt: z.date().optional(),
-});
+// Drizzle-Zod से सीधे इन्फर करने के लिए इस मैनुअल Zod ऑब्जेक्ट की आवश्यकता नहीं है
+// export const sellers = z.object({ /* ... */ });
 
 // --- Insert Schemas (Drizzle-Zod) ---
 export const insertUserSchema = createInsertSchema(users).omit({
@@ -297,7 +283,15 @@ export const insertUserSchema = createInsertSchema(users).omit({
   updatedAt: true,
 });
 
-export const insertSellerSchema = createInsertSchema(sellersPgTable).omit({ // ✅ sellersPgTable से क्रिएट करें
+export const insertSellerSchema = createInsertSchema(sellersPgTable, { // ✅ sellersPgTable से क्रिएट करें
+  // userId को Zod में number के रूप में परिभाषित करें ताकि यह users.id (integer) से मेल खाए
+  userId: z.number(), // userId अब integer है, text नहीं
+  businessPhone: z.string().regex(/^\d{10}$/, "Phone number must be 10 digits"),
+  pincode: z.string().regex(/^\d{6}$/, "Pincode must be 6 digits"),
+  deliveryRadius: z.number().int().min(1, "Delivery Radius must be at least 1 km"),
+  // approvalStatus को enum के रूप में सीधे जोड़ें यदि createInsertSchema इसे इन्फर नहीं करता है
+  approvalStatus: ApprovalStatus.optional().default("pending"),
+}).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
@@ -312,17 +306,29 @@ export const insertCategorySchema = createInsertSchema(categories).omit({
   id: true,
 });
 
-export const insertProductSchema = createInsertSchema(products).omit({
+export const insertProductSchema = createInsertSchema(products, {
+  price: z.string(), // Drizzle decimal के लिए string
+  originalPrice: z.string().optional(), // Drizzle decimal के लिए string
+}).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
 });
 
-export const insertDeliveryAreaSchema = createInsertSchema(deliveryAreas).omit({
+export const insertDeliveryAreaSchema = createInsertSchema(deliveryAreas, {
+  deliveryCharge: z.string(), // Drizzle decimal के लिए string
+  freeDeliveryAbove: z.string().optional(), // Drizzle decimal के लिए string
+}).omit({
   id: true,
 });
 
-export const insertDeliveryBoySchema = createInsertSchema(deliveryBoys).omit({
+export const insertDeliveryBoySchema = createInsertSchema(deliveryBoys, {
+  userId: z.number(), // userId अब integer है
+  email: z.string().email(), // email को null नहीं होने दें
+  name: z.string().min(1, "Name is required"), // name को null नहीं होने दें
+  approvalStatus: ApprovalStatus.optional().default("pending"), // enum
+  rating: z.string().optional().default("5.0"), // decimal है तो string
+}).omit({
   id: true,
   createdAt: true,
 });
@@ -332,13 +338,22 @@ export const insertCartItemSchema = createInsertSchema(cartItems).omit({
   createdAt: true,
 });
 
-export const insertOrderSchema = createInsertSchema(orders).omit({
+export const insertOrderSchema = createInsertSchema(orders, {
+  subtotal: z.string(), // Drizzle decimal के लिए string
+  deliveryCharge: z.string().optional(), // Drizzle decimal के लिए string
+  discount: z.string().optional(), // Drizzle decimal के लिए string
+  total: z.string(), // Drizzle decimal के लिए string
+  deliveryAddress: z.record(z.string(), z.any()), // JSON type
+}).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
 });
 
-export const insertOrderItemSchema = createInsertSchema(orderItems).omit({
+export const insertOrderItemSchema = createInsertSchema(orderItems, {
+  unitPrice: z.string(), // Drizzle decimal के लिए string
+  totalPrice: z.string(), // Drizzle decimal के लिए string
+}).omit({
   id: true,
 });
 
@@ -347,7 +362,11 @@ export const insertOrderTrackingSchema = createInsertSchema(orderTracking).omit(
   createdAt: true,
 });
 
-export const insertPromoCodeSchema = createInsertSchema(promoCodes).omit({
+export const insertPromoCodeSchema = createInsertSchema(promoCodes, {
+  discountValue: z.string(),
+  minOrderAmount: z.string().optional(),
+  maxDiscount: z.string().optional(),
+}).omit({
   id: true,
   createdAt: true,
 });
@@ -356,16 +375,23 @@ export const insertServiceCategorySchema = createInsertSchema(serviceCategories)
   id: true,
 });
 
-export const insertServiceSchema = createInsertSchema(services).omit({
+export const insertServiceSchema = createInsertSchema(services, {
+  basePrice: z.string(), // Drizzle decimal के लिए string
+}).omit({
   id: true,
 });
 
-export const insertServiceProviderSchema = createInsertSchema(serviceProviders).omit({
+export const insertServiceProviderSchema = createInsertSchema(serviceProviders, {
+  rating: z.string().optional().default("5.0"), // decimal है तो string
+}).omit({
   id: true,
   createdAt: true,
 });
 
-export const insertServiceBookingSchema = createInsertSchema(serviceBookings).omit({
+export const insertServiceBookingSchema = createInsertSchema(serviceBookings, {
+  price: z.string(), // Drizzle decimal के लिए string
+  address: z.record(z.string(), z.any()), // JSON type
+}).omit({
   id: true,
   createdAt: true,
 });
@@ -379,8 +405,9 @@ export const insertReviewSchema = createInsertSchema(reviews).omit({
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
 
-export type Seller = typeof sellersPgTable.$inferSelect; // ✅ sellersPgTable से टाइप इन्फर करें
-export type InsertSeller = z.infer<typeof insertSellerSchema>; // ✅ insertSellerSchema से टाइप इन्फर करें
+// Seller Types
+export type Seller = typeof sellersPgTable.$inferSelect;
+export type InsertSeller = z.infer<typeof insertSellerSchema>;
 
 export type Store = typeof stores.$inferSelect;
 export type InsertStore = z.infer<typeof insertStoreSchema>;
@@ -427,4 +454,19 @@ export type InsertServiceBooking = z.infer<typeof insertServiceBookingSchema>;
 export type Review = typeof reviews.$inferSelect;
 export type InsertReview = z.infer<typeof insertReviewSchema>;
 
-                      
+// AuthenticatedRequest type (इसे भी यहां परिभाषित/निर्यात करें)
+// यदि आप इसे सीधे '@/shared/types' से इम्पोर्ट कर रहे हैं
+// तो यह फ़ाइल 'types.ts' बन जाएगी
+export interface AuthenticatedUser {
+  id: number; // users table id
+  firebaseUid: string;
+  email: string;
+  role: z.infer<typeof UserRole>;
+  approvalStatus: z.infer<typeof ApprovalStatus>;
+}
+
+import { Request } from 'express';
+
+export interface AuthenticatedRequest extends Request {
+  user?: AuthenticatedUser;
+  }
