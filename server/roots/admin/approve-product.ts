@@ -1,10 +1,10 @@
 // server/roots/admin/approve-product.ts
 import { Router, Response } from 'express';
-import { db } from '../../db'; // Correct relative path
+import { db } from '../../db.js'; // Correct relative path
 import { products, approvalStatusEnum } from '@/shared/backend/schema';
 import { eq } from 'drizzle-orm';
-import { AuthenticatedRequest } from '../../middleware/verifyToken'; // Corrected import path
-import { requireAdminAuth } from '../../middleware/authMiddleware'; // Corrected import path
+import { AuthenticatedRequest } from '../../middleware/verifyToken.js'; // Corrected import path
+import { requireAdminAuth } from '../../middleware/authMiddleware.js'; // Corrected import path
 
 const router = Router();
 
