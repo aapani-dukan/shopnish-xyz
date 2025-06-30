@@ -1,11 +1,29 @@
+// server/tsconfig.json
 {
-  "extends": "../tsconfig.base.json",
+  "extends": "../tsconfig.json", // यह सही है, क्योंकि यह रूट tsconfig को एक्सटेंड कर रहा है
   "compilerOptions": {
     "composite": true,
     "tsBuildInfoFile": "../node_modules/.tsbuildinfo/tsconfig.server.tsbuildinfo",
-    "outDir": "../dist/server",
-    "rootDir": "."
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "allowSyntheticDefaultImports": true,
+    "strict": true,
+    "noEmit": false, // <--- बहुत महत्वपूर्ण: इसे false होना चाहिए ताकि JS फाइलें जनरेट हों
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "types": ["node"],
+    "lib": ["ES2022"],
+    "outDir": "../dist/server", // <--- बहुत महत्वपूर्ण: यह सुनिश्चित करता है कि आउटपुट रूट/dist/server में जाए
+    "baseUrl": "..", // यह भी सही है
+    "paths": {
+      // आपके एलियास
+      "@/shared/*": ["shared/*"],
+      "@shared/backend/*": ["shared/backend/*"],
+      "@shared/frontend/*": ["shared/frontend/*"]
+    }
   },
-  "include": ["./**/*.ts", "./**/*.tsx"],
-  "exclude": ["../node_modules", "../dist"]
+  "include": ["**/*.ts", "**/*.tsx"], // यह सुनिश्चित करता है कि server/ के अंदर की सभी TS फाइलें शामिल हों
+  "exclude": ["node_modules", "dist"]
 }
