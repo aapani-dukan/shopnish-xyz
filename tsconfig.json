@@ -1,21 +1,30 @@
 {
   "compilerOptions": {
     "target": "ES2022",
-    "module": "NodeNext",
-    "lib": ["ES2022"],
+    "module": "ESNext", // NodeNext के बजाय ESNext का उपयोग करें
+    "lib": ["ES2022", "DOM"], // 'DOM' भी जोड़ें अगर आप इसमें कोई फ्रंटएंड कोड कंपाइल कर रहे हैं
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
-    "moduleResolution": "NodeNext",
+    "moduleResolution": "Node", // 'Node' या 'Bundler' का उपयोग करें, 'NodeNext' नहीं
     "outDir": "./dist",
-    "baseUrl": ".", // This is crucial for paths
+    "baseUrl": ".", // यह पाथ एलियास के लिए महत्वपूर्ण है
     "paths": {
       "@/shared/*": ["./shared/*"],
       "@/server/*": ["./server/*"],
-      "@/client/*": ["./client/*"]
-    }
+      "@/client/*": ["./client/*"] // अगर आप फ्रंटएंड को भी यहीं से हैंडल करते हैं
+    },
+    // यह मॉड्यूल एक्सटेंशन के लिए महत्वपूर्ण है
+    "allowImportingTsExtensions": true,
+    "noEmit": true, // यदि आप केवल टाइप चेकिंग कर रहे हैं और Vite/Webpack को कंपाइलेशन हैंडल करने दे रहे हैं
+    "jsx": "react-jsx" // यदि आपके पास JSX फ़ाइलें हैं (जैसे Loader.tsx)
   },
-  "include": ["server/**/*.ts", "shared/**/*.ts"], // Ensure these paths are correct
+  "include": [
+    "server/**/*.ts",
+    "shared/**/*.ts",
+    "client/**/*.tsx", // यदि आप इसमें फ्रंटएंड कंपोनेंट्स भी शामिल करते हैं
+    "client/**/*.ts"
+  ],
   "exclude": ["node_modules", "dist"]
 }
