@@ -1,34 +1,34 @@
-import express from "express";
-import { db } from "../../db";
-import { products } from "../../../../shared/backend/schema";
-import { verifyToken, AuthenticatedRequest } from "../../middleware/verifyToken";
-import { eq } from "drizzle-orm";
+// server/roots/admin/approve-product.ts
+import { Router, Response } from 'express';
+import { db } from '../../db'; // Correct relative path
+import { products, approvalStatusEnum } from '@/shared/backend/schema';
+import { eq } from 'drizzle-orm';
+import { AuthenticatedRequest } from '../../middleware/verifyToken'; // Corrected import path
+import { requireAdminAuth } from '../../middleware/authMiddleware'; // Corrected import path
 
-const router = express.Router();
+const router = Router();
 
-// 🔐 Approve product (admin only)
-router.post("/:productId", verifyToken, async (req: AuthenticatedRequest, res) => {
+router.post('/admin/products/:productId/approve', requireAdminAuth, async (req: AuthenticatedRequest, res: Response) => {
   const productId = parseInt(req.params.productId);
-
-  if (isNaN(productId) || productId <= 0) {
-    return res.status(400).json({ message: "Invalid productId" });
+  if (isNaN(productId)) {
+    return res.status(400).json({ error: 'Invalid product ID.' });
   }
 
   try {
-    const updatedProduct = await db
-      .update(products)
-      .set({ status: "approved", updatedAt: new Date() })
-      .where(eq(products.id, productId))
-      .returning();
-
-    if (!updatedProduct[0]) {
-      return res.status(404).json({ message: "Product not found" });
+    const [product] = await db.select().from(products).where(eq(products.id, productId));
+    if (!product) {
+      return res.status(404).json({ error: 'Product not found.' });
     }
 
-    return res.json({ message: "Product approved", product: updatedProduct[0] });
-  } catch (error) {
-    console.error("Error approving product:", error);
-    res.status(500).json({ message: "Failed to approve product" });
+    await db.update(products).set({
+      approvalStatus: approvalStatusEnum.enumValues[1], // approved
+      // approvedAt: new Date() // Add if you have this column in products
+    }).where(eq(products.id, productId));
+
+    res.status(200).json({ message: 'Product approved successfully.' });
+  } catch (error: any) {
+    console.error('Failed to approve product:', error);
+    res.status(500).json({ error: 'Internal server error.' });
   }
 });
 
