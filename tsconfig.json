@@ -1,17 +1,26 @@
-// root tsconfig.json
 {
   "compilerOptions": {
-    // ... अन्य compilerOptions ...
-    "baseUrl": ".", // यह सुनिश्चित करता है कि पाथ रूट से हल किए जाएं
+    "composite": true,
+    "skipLibCheck": true,
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "allowSyntheticDefaultImports": true,
+    "strict": true,
+    "noEmit": true,
+    "baseUrl": "./",
     "paths": {
-      "@shared/*": ["shared/*"], // सुनिश्चित करें कि यह एलियास मौजूद है
-      "@/shared/*": ["shared/*"]  // सुनिश्चित करें कि यह एलियास मौजूद है
+      "@shared/backend/*": ["shared/backend/*"],
+    "@shared/frontend/*": ["shared/frontend/*"] 
     }
   },
-  "include": ["src", "server", "shared"], // <--- 'shared' को यहां जोड़ना महत्वपूर्ण है
+  "include": [
+    "server/**/*.ts",
+    "shared/**/*.ts",
+    "shared/**/*.tsx"
+  ],
   "references": [
-    
-    { "path": "./server/tsconfig.json" }
+    { "path": "./client" },
+    { "path": "./server" }
   ]
 }
 
