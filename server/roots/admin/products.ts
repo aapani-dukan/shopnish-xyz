@@ -1,16 +1,24 @@
-import express from "express";
-import { storage } from "../../storage";
+// server/roots/admin/products.ts
+import { Router, Response } from 'express';
+import { storage } from '../../storage'; // Correct relative path
+import { AuthenticatedRequest } from '../../middleware/verifyToken';
+import { requireAdminAuth } from '../../middleware/authMiddleware';
 
-const router = express.Router();
+const router = Router();
 
-// ✅ केवल सभी products fetch करने का रूट रखें
-router.get("/", async (_req, res) => {
+router.get('/admin/products', requireAdminAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const products = await storage.getProducts(); // या storage.getAllProducts() अगर आपने उसे ऐसे नाम दिया हो
-    res.json(products);
-  } catch (error) {
-    console.error("Error fetching all products for admin:", error);
-    res.status(500).json({ message: "Failed to fetch products." });
+    const { categoryId, search, status } = req.query; // Assuming status filter might be needed
+
+    const productsList = await storage.getProducts({
+      categoryId: categoryId ? parseInt(categoryId as string) : undefined,
+      search: search as string | undefined,
+      // status: status as string | undefined, // Add if you implement this filter in storage
+    });
+    res.status(200).json(productsList);
+  } catch (error: any) {
+    console.error('Failed to fetch admin products:', error);
+    res.status(500).json({ error: 'Internal server error.' });
   }
 });
 
