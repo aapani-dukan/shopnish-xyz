@@ -10,7 +10,7 @@ export default function AuthPage() {
   const handleGoogleSignIn = async () => {
     try {
       setIsLoading(true);
-      await signInWithGoogle();
+    await signInWithGoogle("?role=seller"); 
     } catch (error) {
       console.error("Error signing in:", error);
       setIsLoading(false);
