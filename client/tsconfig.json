@@ -1,33 +1,35 @@
-
 {
   "compilerOptions": {
-    "target": "ES2020",
-    "useDefineForClassFields": true,
-    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "target": "ES2022",
     "module": "ESNext",
-    "skipLibCheck": true,
-
-    /* Bundler mode */
-    "moduleResolution": "bundler",
-    "allowImportingTsExtensions": true,
-    "resolveJsonModule": true,
-    "isolatedModules": true,
-    "noEmit": true,
-    "jsx": "react-jsx", // THIS IS THE KEY FOR JSX ERROR
-    // "jsx": "react", // Older React versions might use this
-
-    /* Linting */
+    "lib": ["ES2022", "DOM"],
     "strict": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
-    "noFallthroughCasesInSwitch": true,
-    "baseUrl": ".",
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "moduleResolution": "Bundler", // 'Node' या 'Bundler' सबसे अच्छा काम करता है
+    "outDir": "./dist",
+    "baseUrl": ".", // यह महत्वपूर्ण है
     "paths": {
-      "@/*": ["./src/*"],
-      "@/shared/*": ["../shared/*"]
-    }
+      // यह पाथ एलियास बहुत महत्वपूर्ण है
+      "@/shared/*": ["./shared/*"],
+      "@/server/*": ["./server/*"],
+      "@/client/*": ["./client/src/*"], // <--- यह लाइन सुनिश्चित करें कि यह सही है
+      "@/components/*": ["./client/src/components/*"],
+      "@/hooks/*": ["./client/src/hooks/*"],
+      "@/lib/*": ["./client/src/lib/*"],
+      "@/pages/*": ["./client/src/pages/*"],
+      "@/utils/*": ["./client/src/utils/*"]
+    },
+    "allowImportingTsExtensions": true,
+    "noEmit": true,
+    "jsx": "react-jsx"
   },
-  "include": ["src"],
-  "references": [{ "path": "./tsconfig.node.json" }]
+  "include": [
+    "server/**/*.ts",
+    "shared/**/*.ts",
+    "client/**/*.tsx",
+    "client/**/*.ts"
+  ],
+  "exclude": ["node_modules", "dist"]
 }
-
