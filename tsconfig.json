@@ -1,7 +1,13 @@
+// tsconfig.json (रूट में)
 {
-  "files": [],
+  "compilerOptions": {
+    // ... आपके अन्य compilerOptions ...
+    "noEmit": true, // यह क्लाइंट के लिए ठीक है, क्योंकि बंडलर JS जनरेट करता है
+    // ...
+  },
+  "include": ["src"], // या "client" और "server" फोल्डर को शामिल करें
   "references": [
-    { "path": "./server" },
-    { "path": "./client" }
+    { "path": "./client/tsconfig.node.json" }, // यदि यह मौजूद है
+    { "path": "./server/tsconfig.json" } // <--- यह लाइन बहुत महत्वपूर्ण है: सर्वर बिल्ड को इनेबल करती है
   ]
 }
