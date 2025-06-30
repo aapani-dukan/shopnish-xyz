@@ -10,7 +10,7 @@
   },
   "include": ["src", "server", "shared"], // <--- 'shared' को यहां जोड़ना महत्वपूर्ण है
   "references": [
-    { "path": "./client/tsconfig.node.json" },
+    
     { "path": "./server/tsconfig.json" }
   ]
 }
