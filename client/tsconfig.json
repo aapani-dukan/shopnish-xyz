@@ -1,27 +1,16 @@
+
+// client/tsconfig.json
 {
-  "extends": "../tsconfig.base.json",
   "compilerOptions": {
-    "target": "es2022",
-    "lib": ["es2022", "DOM", "DOM.Iterable"],
-    "module": "ESNext",
-    "moduleResolution": "bundler",
-    "allowImportingTsExtensions": true,
-    "resolveJsonModule": true,
-    "isolatedModules": true,
-    "noEmit": true,
-    "jsx": "react-jsx",
-    "strict": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
-    "noFallthroughCasesInSwitch": true,
-    "baseUrl": "..",
+    // ... आपके मौजूदा विकल्प ...
+    "baseUrl": "./",
     "paths": {
       "@/*": ["./src/*"],
-      "@/components/*": ["./src/components/*"],
-      "@/lib/*": ["./src/lib/*"],
-      "@/hooks/*": ["./src/hooks/*"],
-      "@/pages/*": ["./src/pages/*"]
+      "@shared/*": ["../shared/*"] // <-- इसे जोड़ें
     }
+    // ...
   },
-  "include": ["src"]
+  "include": ["src"],
+  
 }
+
