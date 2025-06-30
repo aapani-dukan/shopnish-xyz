@@ -1,27 +1,39 @@
 // server/roots/admin/reject-product.ts
-// ...
-// assuming 'product_id' is sent in request body for rejection
+import { Router, Response } from 'express';
+import { db } from '../../db'; // Correct relative path
+import { products, approvalStatusEnum } from '@/shared/backend/schema';
+import { eq } from 'drizzle-orm';
+import { AuthenticatedRequest } from '../../middleware/verifyToken'; // Corrected import path
+import { requireAdminAuth } from '../../middleware/authMiddleware'; // Corrected import path
+
+const router = Router();
+
 router.post('/admin/products/:productId/reject', requireAdminAuth, async (req: AuthenticatedRequest, res: Response) => {
   const productId = parseInt(req.params.productId);
   const { reason } = req.body;
-
   if (isNaN(productId)) {
-    return res.status(400).json({ error: "Invalid product ID." });
+    return res.status(400).json({ error: 'Invalid product ID.' });
+  }
+  if (!reason) {
+    return res.status(400).json({ error: 'Rejection reason is required.' });
   }
 
   try {
-    // product schema में 'status' फ़ील्ड नहीं है।
-    // यदि आपको उत्पाद की स्थिति को ट्रैक करने के लिए एक 'status' फ़ील्ड चाहिए,
-    // तो आपको इसे shared/backend/schema.ts में 'products' टेबल में जोड़ना होगा।
-    // उदाहरण के लिए: status: productStatusEnum("status").notNull().default("active"),
-    // फिर आप इसे यहाँ अपडेट कर सकते हैं।
-    // यदि नहीं, तो इस पंक्ति को हटा दें या टिप्पणी करें:
-    await db.update(products).set({ /* status: "rejected", */ description: reason }).where(eq(products.id, productId));
+    const [product] = await db.select().from(products).where(eq(products.id, productId));
+    if (!product) {
+      return res.status(404).json({ error: 'Product not found.' });
+    }
+
+    await db.update(products).set({
+      approvalStatus: approvalStatusEnum.enumValues[2], // rejected
+      rejectionReason: reason
+    }).where(eq(products.id, productId));
+
     res.status(200).json({ message: 'Product rejected successfully.' });
   } catch (error: any) {
     console.error('Failed to reject product:', error);
-    res.status(500).json({ error: 'Failed to reject product.' });
+    res.status(500).json({ error: 'Internal server error.' });
   }
 });
 
-// ...
+export default router;
