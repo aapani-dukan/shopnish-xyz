@@ -32,6 +32,7 @@ router.post("/", verifyToken, async (req: AuthenticatedRequest, res: Response, n
       return res.status(400).json({ message: "Missing required seller details." });
     }
 
+    // 🔍 Check if seller already exists
     const existingSellerResult = await db
       .select()
       .from(sellersPgTable)
@@ -47,6 +48,7 @@ router.post("/", verifyToken, async (req: AuthenticatedRequest, res: Response, n
       });
     }
 
+    // 📝 Prepare insert data
     const insertData = {
       userId: firebaseUid,
       businessName,
@@ -60,7 +62,7 @@ router.post("/", verifyToken, async (req: AuthenticatedRequest, res: Response, n
       bankAccountNumber: bankAccountNumber || null,
       ifscCode: ifscCode || null,
       deliveryRadius: deliveryRadius ? parseInt(String(deliveryRadius)) : null,
-      approvalStatus: "pending" as const, // ✅ Fix: literal type
+      approvalStatus: "pending" as const,
     };
 
     const newSellerResult = await db
@@ -70,9 +72,10 @@ router.post("/", verifyToken, async (req: AuthenticatedRequest, res: Response, n
 
     const newSeller = newSellerResult[0];
 
+    // ✅ Fix: Set role to "pending_seller"
     const updatedUserResult = await db
       .update(users)
-      .set({ role: "seller" }) // ✅ Fix: "pending_seller" हटा दिया क्योंकि वो allowed नहीं है
+      .set({ role: "pending_seller" })
       .where(eq(users.firebaseUid, firebaseUid))
       .returning();
 
