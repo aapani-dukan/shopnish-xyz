@@ -1,29 +1,35 @@
 // server/routes.ts
 
-import express, { type Express, Request, Response } from "express";
+import express, { type Express, Request, Response, NextFunction } from "express"; // NextFunction भी जोड़ा
 import jwt from "jsonwebtoken";
 import * as admin from "firebase-admin";
 import { z } from "zod";
 
 import { storage } from "./storage";
-import { verifyToken, AuthenticatedRequest } from "./middleware/verifyToken";
+// AuthenticatedRequest को अब सीधे '@/shared/types' से इम्पोर्ट करें
+// verifyToken middleware से नहीं, क्योंकि वह खुद इसे इम्पोर्ट करता है
+import { AuthenticatedRequest, AuthenticatedUser } from "@/shared/types";
+import { verifyToken } from "./middleware/verifyToken"; // verifyToken middleware को अभी भी इम्पोर्ट करें
 import { requireAuth } from "./middleware/requireAuth";
 import { parseIntParam } from "./util/parseIntParam";
 import {
   insertCartItemSchema,
   insertOrderSchema,
   insertReviewSchema,
-} from "../shared/backend/schema";
+} from "@/shared/backend/schema"; // पाथ एलियास का उपयोग करें
 
 // Routers
 import adminVendorsRouter from "./roots/admin/vendors";
 import adminProductsRouter from "./roots/admin/products";
 import adminPasswordRoutes from "./roots/admin/admin-password";
-import sellersApplyRouter from "../routes/sellers/apply";
-import sellersRejectRouter from "../routes/sellers/reject";
-import sellerMeRouter from "../routes/sellerMe";
+// पाथ्स को ठीक किया गया ताकि वे server/routes.ts से रिलेटिव हों
+import sellersApplyRouter from "./roots/sellers/apply";
+import sellersRejectRouter from "./roots/sellers/reject";
+import sellerMeRouter from "./roots/sellerMe";
 
-// Optional Firebase Authenticated Request type
+
+// FirebaseAuthenticatedRequest को AuthenticatedRequest के समान ही रखें
+// क्योंकि verifyToken middleware इसे बदल देगा
 interface FirebaseAuthenticatedRequest extends Request {
   user?: {
     uid: string;
@@ -34,7 +40,9 @@ interface FirebaseAuthenticatedRequest extends Request {
 
 export async function registerRoutes(app: Express): Promise<void> {
   // --- AUTH ROUTES ---
-  app.post("/api/auth/login", async (req: FirebaseAuthenticatedRequest, res: Response) => {
+  // यहां req: Request का उपयोग करें, क्योंकि FirebaseAuthenticatedRequest केवल यहां लोकल है
+  // और app.post Express के Request टाइप की अपेक्षा करता है
+  app.post("/api/auth/login", async (req: Request, res: Response) => {
     try {
       const firebaseIdToken = req.headers.authorization?.split(" ")[1];
       if (!firebaseIdToken) return res.status(401).json({ message: "Authorization token missing." });
@@ -58,32 +66,35 @@ export async function registerRoutes(app: Express): Promise<void> {
       let isNewUser = false;
 
       if (!user) {
-        const role = requestedRole === "seller" ? "seller" : "customer";
-        const approvalStatus = role === "seller" ? "pending" : "approved";
+        // भूमिका असाइनमेंट को UserRole टाइप के साथ संगत बनाएं
+        const role: AuthenticatedUser['role'] = requestedRole === "seller" ? "seller" : "customer";
+        const approvalStatus: AuthenticatedUser['approvalStatus'] = role === "seller" ? "pending" : "approved"; // approvalStatus को AuthenticatedUser से लिया
+
         user = await storage.createUser({
           email,
           firebaseUid: uid,
           name: name || email,
           role,
-          approvalStatus,
+          approvalStatus, // यहां approvalStatus फील्ड का उपयोग करें
         });
         isNewUser = true;
       }
 
+      // सुनिश्चित करें कि user ऑब्जेक्ट के गुण सही ढंग से एक्सेस किए गए हैं
       const token = jwt.sign(
         {
           id: user.id,
           firebaseUid: user.firebaseUid,
           email: user.email,
           role: user.role,
-          approvalStatus: user.approvalStatus,
+          approvalStatus: user.approvalStatus, // यह सुनिश्चित करें कि approvalStatus user ऑब्जेक्ट पर मौजूद है
         },
         process.env.JWT_SECRET as string,
         { expiresIn: "7d" }
       );
 
       let sellerDetails = undefined;
-      let finalApprovalStatus = user.approvalStatus;
+      let finalApprovalStatus = user.approvalStatus; // user.approvalStatus को सीधे उपयोग करें
       if (user.role === "seller") {
         sellerDetails = await storage.getSellerByUserFirebaseUid(user.firebaseUid);
         if (sellerDetails) finalApprovalStatus = sellerDetails.approvalStatus;
@@ -108,7 +119,7 @@ export async function registerRoutes(app: Express): Promise<void> {
   });
 
   // --- DELIVERY LOGIN ---
-  app.post("/api/delivery/login", async (req: FirebaseAuthenticatedRequest, res: Response) => {
+  app.post("/api/delivery/login", async (req: Request, res: Response) => { // यहां भी req: Request का उपयोग करें
     try {
       const firebaseIdToken = req.headers.authorization?.split(" ")[1];
       if (!firebaseIdToken) return res.status(401).json({ message: "Authorization token missing." });
@@ -129,13 +140,15 @@ export async function registerRoutes(app: Express): Promise<void> {
       let deliveryBoy = await storage.getDeliveryBoyByFirebaseUid(uid);
       let isNew = false;
       if (!deliveryBoy) {
-      deliveryBoy = await storage.createDeliveryBoy({
-  email: email!,
-  firebaseUid: uid,
-  name: name || email!,
-  approvalStatus: "pending",
-  vehicleType: "bike", // या जो भी default मान देना हो
-});
+        // email और name के लिए नॉन-नलेबल टाइप की अपेक्षा होने पर
+        // खाली स्ट्रिंग प्रदान करें यदि वे null हैं
+        deliveryBoy = await storage.createDeliveryBoy({
+            email: email || "", // null हो सकता है, तो खाली स्ट्रिंग दें
+            firebaseUid: uid,
+            name: name || email || "", // null हो सकता है, तो खाली स्ट्रिंग दें
+            approvalStatus: "pending",
+            vehicleType: "bike",
+        });
         isNew = true;
       }
 
@@ -170,8 +183,8 @@ export async function registerRoutes(app: Express): Promise<void> {
 
   app.get("/api/delivery/me", verifyToken, async (req: AuthenticatedRequest, res: Response) => {
     try {
-      if (!req.user?.uid) return res.status(401).json({ message: "Unauthorized." });
-      const deliveryBoy = await storage.getDeliveryBoyByFirebaseUid(req.user.uid);
+      if (!req.user?.userId) return res.status(401).json({ message: "Unauthorized." }); // userId का उपयोग करें
+      const deliveryBoy = await storage.getDeliveryBoyByFirebaseUid(req.user.userId); // userId का उपयोग करें
       if (!deliveryBoy) return res.status(404).json({ message: "Profile not found." });
       res.json({ user: { uuid: deliveryBoy.id.toString(), ...deliveryBoy, role: "delivery" } });
     } catch (err) {
@@ -203,10 +216,13 @@ export async function registerRoutes(app: Express): Promise<void> {
 
   app.get("/api/products", async (req, res) => {
     try {
+      // getProducts विधि में 'featured' प्रॉपर्टी की उपलब्धता की पुष्टि करें।
+      // यदि यह स्कीमा का हिस्सा नहीं है, तो इसे या तो जोड़ें या यहां से हटा दें।
+      // अभी के लिए, मान लें कि storage.getProducts इसे लेता है।
       const featured = req.query.featured === "true";
       const categoryId = req.query.categoryId ? parseInt(req.query.categoryId as string) : undefined;
       const search = req.query.search as string | undefined;
-      const products = await storage.getProducts({ featured, categoryId, search });
+      const products = await storage.getProducts({ featured, categoryId, search }); // featured को पास किया
       res.json(products);
     } catch (err) {
       console.error(err);
@@ -218,7 +234,8 @@ export async function registerRoutes(app: Express): Promise<void> {
     const id = parseIntParam(req.params.id, "productId", res);
     if (id === null) return;
     try {
-      const product = await storage.getProductById(id);
+      // 'getProductById' का नाम 'getProduct' में बदलें यदि storage में यही नाम है
+      const product = await storage.getProduct(id); // मेथड का नाम बदला
       if (!product) return res.status(404).json({ message: "Product not found." });
       res.json(product);
     } catch (err) {
@@ -280,14 +297,16 @@ export async function registerRoutes(app: Express): Promise<void> {
   });
 
   app.get("/api/orders", verifyToken, requireAuth, async (req: AuthenticatedRequest, res) => {
-    const orders = await storage.getOrdersByUserId(req.user!.id);
+    // 'getOrdersByUserId' का नाम 'getOrders' में बदलें यदि storage में यही नाम है
+    const orders = await storage.getOrders(req.user!.id); // मेथड का नाम बदला
     res.json(orders);
   });
 
   app.get("/api/orders/:id", verifyToken, requireAuth, async (req: AuthenticatedRequest, res) => {
     const id = parseIntParam(req.params.id, "order ID", res);
     if (id === null) return;
-    const order = await storage.getOrderById(id, req.user!.id);
+    // 'getOrderById' का नाम 'getOrder' में बदलें यदि storage में यही नाम है
+    const order = await storage.getOrder(id, req.user!.id); // मेथड का नाम बदला
     if (!order) return res.status(404).json({ message: "Order not found." });
     res.json(order);
   });
@@ -296,7 +315,8 @@ export async function registerRoutes(app: Express): Promise<void> {
   app.get("/api/products/:id/reviews", async (req, res) => {
     const productId = parseIntParam(req.params.id, "product ID", res);
     if (productId === null) return;
-    const reviews = await storage.getReviewsByProductId(productId);
+    // 'getReviewsByProductId' का नाम 'getReviews' में बदलें यदि storage में यही नाम है
+    const reviews = await storage.getReviews(productId); // मेथड का नाम बदला
     res.json(reviews);
   });
 
@@ -305,11 +325,12 @@ export async function registerRoutes(app: Express): Promise<void> {
     if (productId === null) return;
     try {
       const parsed = insertReviewSchema.parse({ ...req.body, productId, customerId: req.user!.id });
-      const review = await storage.addReview(parsed);
+      // 'addReview' का नाम 'createReview' में बदलें यदि storage में यही नाम है
+      const review = await storage.createReview(parsed); // मेथड का नाम बदला
       res.status(201).json(review);
     } catch (err) {
       if (err instanceof z.ZodError) return res.status(400).json({ message: "Invalid review", errors: err.errors });
       res.status(500).json({ message: "Failed to add review." });
     }
   });
-    }
+}
