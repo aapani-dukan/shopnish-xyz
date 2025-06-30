@@ -1,15 +1,19 @@
 import { Router, Response, NextFunction } from "express";
 import { db } from "../../server/db";
-import { sellersPgTable, users } from "../../shared/backend/schema"; 
+import { sellersPgTable, users } from "../../shared/backend/schema";
 import { verifyToken, AuthenticatedRequest } from "../../server/middleware/verifyToken";
-import { eq, desc } from "drizzle-orm"; 
+import { eq, desc } from "drizzle-orm";
 
 const router = Router();
 
-// 🔐 Admin Middleware
-const isAdmin = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+// 🔐 Middleware to ensure user is admin
+const isAdmin = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+) => {
   if (!req.user?.userId) {
-    return res.status(401).json({ message: "Unauthorized: User not authenticated." });
+    return res.status(401).json({ message: "Unauthorized: Missing user ID" });
   }
 
   try {
@@ -17,35 +21,44 @@ const isAdmin = async (req: AuthenticatedRequest, res: Response, next: NextFunct
       .select()
       .from(users)
       .where(eq(users.firebaseUid, req.user.userId))
-      .limit(1); 
+      .limit(1);
 
-    const user = userResult.length > 0 ? userResult[0] : null; 
+    const user = userResult[0];
 
-    if (user?.role === 'admin') {
-      next(); 
-    } else {
-      return res.status(403).json({ message: "Forbidden: Not an admin." }); 
+    if (user?.role === "admin") {
+      return next();
     }
+
+    return res.status(403).json({ message: "Forbidden: Admin access required" });
   } catch (error) {
-    console.error("Error checking admin role:", error);
-    return res.status(500).json({ message: "Internal server error during role check." });
+    console.error("❌ Error verifying admin role:", error);
+    return res
+      .status(500)
+      .json({ message: "Internal server error during role check" });
   }
 };
 
-// ✅ Pending Sellers Route
-router.get("/", verifyToken, isAdmin, async (_req: AuthenticatedRequest, res: Response, next: NextFunction) => {
-  try {
-    const pendingSellers = await db
-      .select()
-      .from(sellersPgTable)
-      .where(eq(sellersPgTable.approvalStatus, "pending" as const)) // ✅ fix with 'as const'
-      .orderBy(desc(sellersPgTable.createdAt)); // ✅ works fine in most Drizzle versions
+// ✅ Route to get all pending sellers (admin only)
+router.get(
+  "/",
+  verifyToken,
+  isAdmin,
+  async (_req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+    try {
+      const pendingSellers = await db
+        .select()
+        .from(sellersPgTable)
+        .where(eq(sellersPgTable.approvalStatus, "pending" as const))
+        .orderBy(desc(sellersPgTable.createdAt));
 
-    res.json(pendingSellers);
-  } catch (error) {
-    console.error("Error fetching pending sellers:", error);
-    next(error); 
+      return res.status(200).json({ data: pendingSellers });
+    } catch (error) {
+      console.error("❌ Error fetching pending sellers:", error);
+      return res
+        .status(500)
+        .json({ message: "Failed to fetch pending sellers", error });
+    }
   }
-});
+);
 
 export default router;
