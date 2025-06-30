@@ -1,30 +1,37 @@
 {
   "compilerOptions": {
-    "target": "ES2022",
-    "module": "ESNext", // NodeNext के बजाय ESNext का उपयोग करें
-    "lib": ["ES2022", "DOM"], // 'DOM' भी जोड़ें अगर आप इसमें कोई फ्रंटएंड कोड कंपाइल कर रहे हैं
-    "strict": true,
-    "esModuleInterop": true,
+    "target": "es2022",
+    "useDefineForClassFields": true,
+    "lib": ["es2022", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
     "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true,
-    "moduleResolution": "Node", // 'Node' या 'Bundler' का उपयोग करें, 'NodeNext' नहीं
-    "outDir": "./dist",
-    "baseUrl": ".", // यह पाथ एलियास के लिए महत्वपूर्ण है
-    "paths": {
-      "@/shared/*": ["./shared/*"],
-      "@/server/*": ["./server/*"],
-      "@/client/*": ["./client/*"] // अगर आप फ्रंटएंड को भी यहीं से हैंडल करते हैं
-    },
-    // यह मॉड्यूल एक्सटेंशन के लिए महत्वपूर्ण है
+
+    /* Bundler mode */
+    "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,
-    "noEmit": true, // यदि आप केवल टाइप चेकिंग कर रहे हैं और Vite/Webpack को कंपाइलेशन हैंडल करने दे रहे हैं
-    "jsx": "react-jsx" // यदि आपके पास JSX फ़ाइलें हैं (जैसे Loader.tsx)
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "jsx": "react-jsx",
+
+    /* Linting */
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+
+    /* Path Aliases */
+    "baseUrl": ".", // यह बहुत महत्वपूर्ण है। यह बताता है कि @/ के लिए रूट डायरेक्टरी कहां से शुरू होती है।
+    "paths": {
+      "@/*": ["./src/*"], // यह लाइन सुनिश्चित करती है कि '@/` 'src/' फ़ोल्डर से मैप हो
+      "@/components/*": ["./src/components/*"],
+      "@/lib/*": ["./src/lib/*"],
+      "@/hooks/*": ["./src/hooks/*"],
+      "@/pages/*": ["./src/pages/*"],
+      // यदि आपके पास और कोई टॉप-लेवल फ़ोल्डर हैं जिन्हें आप एलियास करना चाहते हैं तो उन्हें भी यहां जोड़ें
+      // उदाहरण: "@/utils/*": ["./src/utils/*"]
+    }
   },
-  "include": [
-    "server/**/*.ts",
-    "shared/**/*.ts",
-    "client/**/*.tsx", // यदि आप इसमें फ्रंटएंड कंपोनेंट्स भी शामिल करते हैं
-    "client/**/*.ts"
-  ],
-  "exclude": ["node_modules", "dist"]
+  "include": ["src"], // सुनिश्चित करें कि 'src' फ़ोल्डर शामिल है
+  "references": [{ "path": "./tsconfig.node.json" }]
 }
