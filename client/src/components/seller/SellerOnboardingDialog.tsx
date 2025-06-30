@@ -68,7 +68,7 @@ export default function SellerOnboardingDialog({ isOpen, onClose }: SellerOnboar
     },
     enabled: !isLoadingAuth && isAuthenticated && !!user?.userId, // ✅ user.uuid के बजाय user.uid का उपयोग करें
     staleTime: Infinity,
-    cacheTime: 10 * 60 * 1000,
+    stateTime: 10 * 60 * 1000,
   });
 
   const form = useForm<FormData>({
