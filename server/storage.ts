@@ -63,7 +63,19 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  
+  async getUserByFirebaseUid(firebaseUid: string): Promise<User | undefined> {
+  try {
+    const result = await db
+      .select()
+      .from(users)
+      .where(eq(users.firebaseUid, firebaseUid))
+      .limit(1);
+    return result.length > 0 ? result[0] : undefined;
+  } catch (error) {
+    console.error("Error getting user by Firebase UID:", error);
+    return undefined;
+  }
+  }
   async getUserById(id: number): Promise<User | undefined> {
     try {
       const result = await db.select().from(users).where(eq(users.id, id)).limit(1);
