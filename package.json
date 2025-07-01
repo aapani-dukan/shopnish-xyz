@@ -7,10 +7,9 @@
   "scripts": {
   "start": "NODE_ENV=production node -r tsconfig-paths/register dist/index.js",
   
- 
-"build": "cd client && vite build && cp -R dist ../dist/client-static && cd .. && esbuild server/index.ts --bundle --platform=node --format=esm --outdir=dist --alias:'@/shared=./shared' --packages=external --external:compression --external:sirv && cp -R server/migrations dist/migrations",
-    
-                                                                                                                     
+     "build": "cd client && vite build && cp -R dist ../client-build-temp && cd .. && esbuild server/index.ts --bundle --platform=node --format=esm --outdir=dist --alias:'@/shared=./shared' --packages=external --external:compression --external:sirv && cp -R server/migrations dist/migrations && mv client-build-temp dist/client-static",
+
+                                                                                                            
   
     "dev": "concurrently \"npm run server:dev\" \"npm run client:dev\"",
     "server:dev": "nodemon --exec ts-node-esm server/index.ts",
