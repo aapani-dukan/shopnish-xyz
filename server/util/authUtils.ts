@@ -14,15 +14,7 @@ if (!admin.apps.length) {
     throw new Error("❌ Missing Firebase environment variables.");
   }
 
-  admin.initializeApp({
-    credential: admin.credential.cert({
-      projectId,
-      clientEmail,
-      privateKey,
-    }),
-  });
-
-  console.log("✅ Firebase Admin initialized inside authUtils.ts");
+  
 }
 
 /**
