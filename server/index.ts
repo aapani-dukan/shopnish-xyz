@@ -96,7 +96,7 @@ async function runMigrations() {
     app.get("*", (req, res) => {
       // sirv पहले ही /client/dist को हैंडल कर रहा होगा
       // यदि रिक्वेस्ट किसी भी स्टैटिक फाइल से मैच नहीं करती है, तो index.html सर्व करें
-      res.sendFile(path.resolve(__dirname, '..', 'res.sendFile(path.resolve(__dirname, '..', 'dist', 'public', 'index.html'));
+      res.sendFile(path.resolve(__dirname, '..', 'dist', 'public', 'index.html'));
     });
   }
 
