@@ -19,4 +19,4 @@ if (!admin.apps.length) {
   console.log("✅ Firebase Admin initialized.");
 }
 
-export { admin };
+export default firebaseAdmin;
