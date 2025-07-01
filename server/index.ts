@@ -3,7 +3,7 @@ import express, { type Request, type Response, type NextFunction } from "express
 import cors from "cors";
 import registerRoutes from "./routes.js";
 import { setupVite, log } from "./vite.js";
-import {admin} from "./lib/firebaseAdmin.js";
+import { admin } from "./lib/firebaseAdmin.js"; // ✅ Firebase Admin properly imported
 import { createServer, type Server } from "http";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
@@ -12,8 +12,6 @@ import path from "path";
 import { fileURLToPath } from "url";
 import cookieParser from "cookie-parser";
 
-
-// ✅ ESM-compatible __filename & __dirname
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -35,9 +33,7 @@ async function runMigrations() {
 
   const pool = new Pool({
     connectionString,
-    ssl: {
-      rejectUnauthorized: false,
-    },
+    ssl: { rejectUnauthorized: false },
   });
 
   const db = drizzle(pool);
@@ -65,32 +61,26 @@ async function runMigrations() {
 (async () => {
   const isProd = process.env.NODE_ENV === "production";
 
-  // Run Migrations
   await runMigrations();
   console.log("✅ Migrations done. Starting server...");
 
-  // Vite setup (static files for production or Vite middleware for dev)
   await setupVite(app);
 
-  // Register all routes
   registerRoutes(app);
 
   if (isProd) {
-    // Catch-all fallback for SPA (must come last)
     app.get("*", (req, res) => {
       res.sendFile(path.resolve(__dirname, "..", "dist", "public", "index.html"));
     });
   }
 
-  // 🔻 Error handler (last middleware)
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
     const message = err.message || "Internal Server Error";
     console.error("❌ Server Error:", err);
     res.status(status).json({ message });
-    if (process.env.NODE_ENV !== "production") {
-      throw err;
-    }
+
+    if (process.env.NODE_ENV !== "production") throw err;
   });
 
   const port = process.env.PORT || 5000;
