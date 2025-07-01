@@ -1,5 +1,5 @@
 // server/routes.ts
-import { Request, Response, Router, NextFunction } from 'express';
+import express,{ Request, Response, Router, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { db } from './db.js';
 import { and, eq, like, isNotNull } from 'drizzle-orm';
@@ -31,8 +31,9 @@ import adminApproveProductRoutes from './roots/admin/approve-product.js';
 import adminRejectProductRoutes from './roots/admin/reject-product.js';
 import adminProductsRoutes from './roots/admin/products.js';
 import adminVendorsRoutes from './roots/admin/vendors.js';
+import * as admin from "firebase-admin";
 import adminPasswordRoutes from './roots/admin/admin-password.js';
-const router = Router();
+const router = express.Router();
 
 // Test Route
 router.get('/', (req: Request, res: Response) => {
@@ -151,6 +152,50 @@ router.get('/seller/me', requireSellerAuth, async (req: AuthenticatedRequest, re
   } catch (error: any) {
     console.error('Failed to fetch seller profile:', error);
     res.status(500).json({ error: 'Internal server error.' });
+  }
+});
+router.post('/auth/login', async (req, res) => {
+  const idToken = req.body.idToken; // क्लाइंट से Firebase idToken प्राप्त करें
+
+  if (!idToken) {
+    return res.status(400).json({ message: 'ID token is missing.' });
+  }
+
+  try {
+    
+    const decodedToken = await admin.auth().verifyIdToken(idToken);
+    const uid = decodedToken.uid
+    const expiresIn = 60 * 60 * 24 * 5 * 1000;
+    const sessionCookie = await admin.auth().createSessionCookie(idToken, { expiresIn });
+res.cookie('__session', sessionCookie, {
+      maxAge: expiresIn,
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+  sameSite: 'Lax',
+});
+    res.status(200).json({ message: 'User logged in successfully!', uid: uid });
+
+  } catch (error) {
+    console.error('Error verifying Firebase ID token or creating session cookie:', error);
+    res.status(401).json({ message: 'Unauthorized or invalid token.', error: error.message });
+  }
+});
+router.post('/auth/logout', async (req, res) => {
+  const sessionCookie = req.cookies?.__session || '';
+
+  // कुकी को हटा दें
+  res.clearCookie('__session');
+
+  // Firebase सेशन को भी रिवोक करें
+  try {
+    if (sessionCookie) {
+      const decodedClaims = await admin.auth().verifySessionCookie(sessionCookie);
+      await admin.auth().revokeRefreshTokens(decodedClaims.sub);
+    }
+    res.status(200).json({ message: 'Logged out successfully!' });
+  } catch (error) {
+    console.error('Error revoking session:', error);
+    res.status(500).json({ message: 'Logout failed.' });
   }
 });
 
