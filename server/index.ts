@@ -62,14 +62,6 @@ async function runMigrations() {
 (async () => {
   const isDev = app.get("env") === "development";
 
-  // ✅ Firebase Admin SDK initialization
-  if (!admin.apps.length) {
-    admin.initializeApp({
-      credential: admin.credential.applicationDefault(),
-    });
-  }
-  console.log("✅ Firebase Admin SDK initialized.");
-
   if (isDev) {
     await runMigrations();
   }
