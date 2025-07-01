@@ -1,28 +1,5 @@
 import * as admin from "firebase-admin";
 
-/**
- * Safe Firebase Admin SDK initialization:
- * इससे "The default Firebase app already exists" या
- * "Missing credentials" जैसी errors नहीं आएंगी।
- */
-if (!admin.apps.length) {
-  const projectId = process.env.FIREBASE_PROJECT_ID;
-  const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
-  const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, "\n");
-
-  if (!projectId || !clientEmail || !privateKey) {
-    throw new Error("❌ Missing Firebase environment variables.");
-  }
-
-  
-}
-
-/**
- * Verifies and decodes a Firebase ID token.
- * @param token - The Firebase ID token from the client (Bearer token)
- * @returns Decoded token if valid
- * @throws Error if token is invalid or expired
- */
 export async function verifyAndDecodeToken(token: string) {
   try {
     const decodedToken = await admin.auth().verifyIdToken(token);
