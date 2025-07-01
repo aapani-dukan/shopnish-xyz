@@ -31,7 +31,7 @@ export async function setupVite(app: Express) {
 
     // sirv मिडलवेयर को यहाँ इनिशियलाइज़ करें
     // 'client/dist' वह पाथ है जहाँ Vite आपकी क्लाइंट-साइड बिल्ड आउटपुट करता है
-    prodServeStaticMiddleware = sirv('client/dist', {
+  prodServeStaticMiddleware = sirv('dist/client-static', { 
       etag: true,
       maxAge: 31536000, // 1 साल के लिए कैश करें
       immutable: true, // फाइलों को अपरिवर्तनीय के रूप में चिह्नित करें
