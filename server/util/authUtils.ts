@@ -1,5 +1,5 @@
 // server/util/authUtils.ts
-import { admin } from "../lib/firebaseAdmin.js";
+import admin from "../lib/firebaseAdmin.js";
 
 export async function verifyAndDecodeToken(token: string) {
   try {
