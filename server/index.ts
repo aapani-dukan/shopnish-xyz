@@ -3,7 +3,7 @@ import express, { type Request, type Response, type NextFunction } from "express
 import cors from "cors";
 import registerRoutes from "./routes.js";
 import { setupVite, log } from "./vite.js";
-
+import {admin} from "./lib/firebaseAdmin.js";
 import { createServer, type Server } from "http";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
@@ -11,7 +11,7 @@ import { Pool } from "pg";
 import path from "path";
 import { fileURLToPath } from "url";
 import cookieParser from "cookie-parser";
-import {admin} from "./lib/firebaseAdmin.js";
+
 
 // ✅ ESM-compatible __filename & __dirname
 const __filename = fileURLToPath(import.meta.url);
