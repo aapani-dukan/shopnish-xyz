@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useState } from "react";
 import { User as FirebaseUser, onAuthStateChanged } from "firebase/auth";
-import { auth, handleRedirectResult } from "@/lib/firebase";
+import { auth } from "@/lib/firebase"; // handleRedirectResult की अब यहाँ सीधे जरूरत नहीं है, AuthProvider में ही हैंडल होगा
 import { apiRequest } from "@/lib/queryClient"; // आपका apiRequest
 import { User } from "@shared/backend/schema";
 
@@ -29,17 +29,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (fbUser) {
         console.log("Firebase user detected. Preparing data for backend API.");
         try {
-          const userData = {
+          // ✅ मुख्य बदलाव यहाँ है: Firebase ID Token प्राप्त करें
+          const idToken = await fbUser.getIdToken();
+          console.log("Firebase ID Token obtained.");
+
+          const userDataForLogin = {
             firebaseUid: fbUser.uid,
             email: fbUser.email!,
             name: fbUser.displayName || fbUser.email!,
+            idToken: idToken, // ✅ इसे यहाँ जोड़ा गया है!
           };
-          console.log("UserData prepared for /api/auth/login:", userData);
+          console.log("UserData prepared for /api/auth/login:", userDataForLogin);
 
-          // ✅ यहाँ मुख्य बदलाव: apiRequest से प्राप्त Response ऑब्जेक्ट पर .json() कॉल करें
-          const apiResponseObject = await apiRequest("POST", "/api/auth/login", userData);
-          const backendUserResponse = await apiRequest("POST", "/api/auth/login", userData);
-const backendUser = backendUserResponse.user;
+          // apiRequest फंक्शन को अपडेट किया गया है ताकि वह सही रिस्पोंस हैंडल कर सके
+          const backendUserResponse = await apiRequest("POST", "/api/auth/login", userDataForLogin);
+
+          // यदि आपका apiRequest सीधे JSON पार्स करके ऑब्जेक्ट देता है, तो .user को एक्सेस करें
+          const backendUser = backendUserResponse.user; // यदि आपका सर्वर { user: UserData } भेजता है
+          // यदि आपका सर्वर सीधे UserData ऑब्जेक्ट भेजता है, तो बस:
+          // const backendUser = backendUserResponse;
 
           console.log("API request to /api/auth/login successful. Backend User received:", backendUser);
 
@@ -53,6 +61,8 @@ const backendUser = backendUserResponse.user;
 
         } catch (error) {
           console.error("Error creating/fetching user in our database:", error);
+          // लॉगआउट करने का प्रयास करें यदि सर्वर लॉगिन विफल होता है
+          await auth.signOut();
           setUser(null);
         }
       } else {
@@ -102,4 +112,3 @@ export function useAuth() {
   }
   return context;
 }
-
