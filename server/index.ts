@@ -11,7 +11,7 @@ import { Pool } from "pg";
 import path from "path";
 import { fileURLToPath } from "url";
 import cookieParser from "cookie-parser";
-import * as admin from "firebase-admin"; // अगर firebaseAdmin.ts अलग है तो इस लाइन को हटा सकते हैं
+import {admin} from "./lib/firebaseAdmin.js";
 
 // ✅ ESM-compatible __filename & __dirname
 const __filename = fileURLToPath(import.meta.url);
