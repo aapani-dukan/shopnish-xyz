@@ -2,9 +2,8 @@
 import express, { Express } from 'express';
 import { createServer as createViteServer } from 'vite';
 import compression from 'compression';
-import sirv from 'sirv';
-
-const isProd = process.env.NODE_ENV === 'production';
+import sirvFactory from 'sirv'; // sirv का डिफ़ॉल्ट एक्सपोर्ट एक फ़ैक्टरी फ़ंक्शन होता है
+const serve = sirvFactory('client/dist', { dev: process.env.NODE_ENV !== 'production' });
 
 let vite: any; // Or ViteDevServer
 let serve: any; // Or Sirv handler
