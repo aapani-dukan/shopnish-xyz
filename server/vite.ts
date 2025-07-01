@@ -39,7 +39,7 @@ export async function setupVite(app: Express) {
 
     // production में इसे एक्सप्रेस मिडलवेयर के रूप में उपयोग करें
     app.use(prodServeStaticMiddleware);
-    log('Serving static assets in production.');
+    log('Serving static assets in production from:'parlth.resol(process.cwd(),'dist',client-static'));
   }
 }
 
