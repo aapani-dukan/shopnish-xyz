@@ -1,4 +1,3 @@
-
 // server/lib/firebaseAdmin.ts
 import * as admin from "firebase-admin";
 
@@ -10,12 +9,14 @@ if (!admin.apps.length) {
   };
 
   if (!serviceAccount.project_id || !serviceAccount.private_key || !serviceAccount.client_email) {
-    throw new Error("Missing Firebase environment variables (FIREBASE_PROJECT_ID, PRIVATE_KEY, or CLIENT_EMAIL).");
+    throw new Error("❌ Missing Firebase env vars: FIREBASE_PROJECT_ID, PRIVATE_KEY, or CLIENT_EMAIL.");
   }
 
   admin.initializeApp({
     credential: admin.credential.cert(serviceAccount as admin.ServiceAccount),
   });
+
+  console.log("✅ Firebase Admin initialized.");
 }
 
-export {admin};
+export { admin };
