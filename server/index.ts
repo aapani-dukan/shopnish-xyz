@@ -2,7 +2,8 @@
 import express, { type Request, type Response, type NextFunction } from "express";
 import cors from "cors";
 import registerRoutes from "./routes.js";
-import { setupVite, serveStatic, log } from "./vite.js";
+import { setupVite, log } from "./vite.js"; 
+
 import { createServer, type Server } from "http";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
