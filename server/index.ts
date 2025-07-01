@@ -10,6 +10,7 @@ import { migrate } from "drizzle-orm/node-postgres/migrator";
 import { Pool } from "pg";
 import path from "path";
 import { fileURLToPath } from "url";
+import cookieParser from 'cookie-parser';
 import * as admin from "firebase-admin"; // इसे Firebase Admin SDK इनिशियलाइज़ेशन के लिए इम्पोर्ट करें
 
 // ✅ ESM-compatible __filename & __dirname
@@ -22,7 +23,9 @@ let server: Server;
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
-
+app.use(cookieParser());
+secure: process.env.NODE_ENV === 'production': secure: true
+sameSite: 'Lax':
 // --- Drizzle Migrations ---
 async function runMigrations() {
   const connectionString = process.env.DATABASE_URL;
