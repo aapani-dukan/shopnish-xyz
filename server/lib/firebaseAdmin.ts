@@ -18,4 +18,4 @@ if (!admin.apps.length) {
   });
 }
 
-export default admin;
+export {admin};
