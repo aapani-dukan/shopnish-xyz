@@ -72,7 +72,7 @@ async function runMigrations() {
   if (!isDev) {
     await registerRoutes(app);
     log("🌐 Production mode: Serving static files...");
-    serveStatic(app);
+    
 
     // ✅ Fallback for SPA
     app.get("*", (req, res) => {
