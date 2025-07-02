@@ -1,9 +1,23 @@
 // server/lib/firebaseAdmin.ts
 
-// ✅ CommonJS मॉड्यूल को ESM में इम्पोर्ट करने का सबसे सुरक्षित तरीका
-import firebaseAdmin from 'firebase-admin'; // 'pkg' के बजाय 'firebaseAdmin' नाम दिया
+import firebaseAdmin from 'firebase-admin';
 
-// अब firebaseAdmin ऑब्जेक्ट से सभी आवश्यक फ़ंक्शंस और ऑब्जेक्ट्स को डिस्ट्रक्चर करें
+// ✅ ये लॉग्स जोड़ें
+console.log("--- Firebase ENV VARs Check ---");
+console.log("FIREBASE_PROJECT_ID:", process.env.FIREBASE_PROJECT_ID);
+console.log("FIREBASE_CLIENT_EMAIL:", process.env.FIREBASE_CLIENT_EMAIL);
+// PRIVATE_KEY की पूरी वैल्यू लॉग न करें, केवल यह जांचें कि यह मौजूद है या नहीं
+console.log("FIREBASE_PRIVATE_KEY present:", !!process.env.FIREBASE_PRIVATE_KEY);
+// अगर PRIVATE_KEY मौजूद है, तो इसकी कुछ लंबाई लॉग करें, ताकि पता चले कि यह खाली नहीं है
+if (process.env.FIREBASE_PRIVATE_KEY) {
+    console.log("FIREBASE_PRIVATE_KEY length:", process.env.FIREBASE_PRIVATE_KEY.length);
+    // प्राइवेट की की शुरुआत और अंत के कुछ कैरेक्टर भी देख सकते हैं
+    console.log("FIREBASE_PRIVATE_KEY start:", process.env.FIREBASE_PRIVATE_KEY.substring(0, 30));
+    console.log("FIREBASE_PRIVATE_KEY end:", process.env.FIREBASE_PRIVATE_KEY.substring(process.env.FIREBASE_PRIVATE_KEY.length - 30));
+}
+console.log("-------------------------------");
+
+
 const { initializeApp, credential, apps, auth: firebaseAuth } = firebaseAdmin;
 
 if (!apps.length) {
@@ -13,7 +27,8 @@ if (!apps.length) {
     clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
   };
 
-  if (!serviceAccount.projectId || !serviceAccount.privateKey || !serviceAccount.client_email) { // यहां client_email को clientEmail होना चाहिए, पिछली बार ठीक किया था, फिर से चेक करें
+  // ✅ यह सुनिश्चित करें कि यह 'clientEmail' है, न कि 'client_email'
+  if (!serviceAccount.projectId || !serviceAccount.privateKey || !serviceAccount.clientEmail) {
     console.error("❌ ERROR: Missing Firebase environment variables (FIREBASE_PROJECT_ID, PRIVATE_KEY, or CLIENT_EMAIL).");
     process.exit(1);
   }
@@ -26,6 +41,5 @@ if (!apps.length) {
   console.log('✅ Firebase Admin SDK already initialized.');
 }
 
-// ✅ authAdmin को एक्सपोर्ट करें
-const initializedApp = apps.length ? apps[0] : initializeApp({}); // यह सुनिश्चित करें कि यह हमेशा एक इनिशियलाइज़्ड ऐप इंस्टेंस प्राप्त करता है
+const initializedApp = apps.length ? apps[0] : initializeApp({});
 export const authAdmin = firebaseAuth(initializedApp);
