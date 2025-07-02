@@ -31,7 +31,7 @@ import adminApproveProductRoutes from './roots/admin/approve-product.js';
 import adminRejectProductRoutes from './roots/admin/reject-product.js';
 import adminProductsRoutes from './roots/admin/products.js';
 import adminVendorsRoutes from './roots/admin/vendors.js';
-import admin from './lib/firebaseAdmin.js';
+import { authAdmin } from './lib/firebaseAdmin'; 
 import adminPasswordRoutes from './roots/admin/admin-password.js';
 const router = express.Router();
 
