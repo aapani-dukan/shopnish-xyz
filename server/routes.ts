@@ -163,23 +163,36 @@ router.post('/auth/login', async (req, res) => {
 
   try {
     
-    const decodedToken = await admin.auth().verifyIdToken(idToken);
-    const uid = decodedToken.uid
-    const expiresIn = 60 * 60 * 24 * 5 * 1000;
-    const sessionCookie = await admin.auth().createSessionCookie(idToken, { expiresIn });
-res.cookie('__session', sessionCookie, {
+
+    const idToken = req.body.idToken; // सुनिश्चित करें कि आपका क्लाइंट idToken भेज रहा है
+    if (!idToken) {
+      return res.status(400).json({ message: 'ID token is required.' });
+    }
+
+    // `admin.auth()` के बजाय `authAdmin` का उपयोग करें
+    const decodedToken = await authAdmin.verifyIdToken(idToken);
+    const uid = decodedToken.uid;
+    const expiresIn = 60 * 60 * 24 * 5 * 1000; // 5 दिन
+
+    // `admin.auth()` के बजाय `authAdmin` का उपयोग करें
+    const sessionCookie = await authAdmin.createSessionCookie(idToken, { expiresIn });
+
+    res.cookie('__session', sessionCookie, {
       maxAge: expiresIn,
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-  sameSite: 'Lax',
-});
+      sameSite: 'Lax',
+    });
+
     res.status(200).json({ message: 'User logged in successfully!', uid: uid });
 
   } catch (error) {
     console.error('Error verifying Firebase ID token or creating session cookie:', error);
+    // सुनिश्चित करें कि आप client को error.message भेज रहे हैं ताकि अधिक जानकारी मिले
     res.status(401).json({ message: 'Unauthorized or invalid token.', error: error.message });
   }
 });
+
 router.post('/auth/logout', async (req, res) => {
   const sessionCookie = req.cookies?.__session || '';
 
@@ -189,8 +202,10 @@ router.post('/auth/logout', async (req, res) => {
   // Firebase सेशन को भी रिवोक करें
   try {
     if (sessionCookie) {
-      const decodedClaims = await admin.auth().verifySessionCookie(sessionCookie);
-      await admin.auth().revokeRefreshTokens(decodedClaims.sub);
+      // `admin.auth()` के बजाय `authAdmin` का उपयोग करें
+      const decodedClaims = await authAdmin.verifySessionCookie(sessionCookie);
+      // `admin.auth()` के बजाय `authAdmin` का उपयोग करें
+      await authAdmin.revokeRefreshTokens(decodedClaims.sub);
     }
     res.status(200).json({ message: 'Logged out successfully!' });
   } catch (error) {
@@ -198,6 +213,8 @@ router.post('/auth/logout', async (req, res) => {
     res.status(500).json({ message: 'Logout failed.' });
   }
 });
+
+   
 
 function registerRoutes(app: Express) {
   app.use("/api/admin/products/approve", adminApproveProductRoutes);
