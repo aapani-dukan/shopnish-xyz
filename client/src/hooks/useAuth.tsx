@@ -45,7 +45,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           const backendUserResponse = await apiRequest("POST", "/api/auth/login", userDataForLogin);
 
           // यदि आपका apiRequest सीधे JSON पार्स करके ऑब्जेक्ट देता है, तो .user को एक्सेस करें
-          const backendUser = backendUserResponse; // यदि आपका सर्वर { user: UserData } भेजता है
+          const backendUser = backendUserResponse.user; // यदि आपका सर्वर { user: UserData } भेजता है
           // यदि आपका सर्वर सीधे UserData ऑब्जेक्ट भेजता है, तो बस:
           // const backendUser = backendUserResponse;
 
