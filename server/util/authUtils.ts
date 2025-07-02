@@ -1,9 +1,13 @@
 // server/util/authUtils.ts
-import admin from "../lib/firebaseAdmin.js";
+
+// ✅ 'admin' के बजाय 'authAdmin' को इम्पोर्ट करें
+// सुनिश्चित करें कि पाथ सही है
+import { authAdmin } from "../lib/firebaseAdmin.js"; // .js एक्सटेंशन सही है यदि यह ESM है
 
 export async function verifyAndDecodeToken(token: string) {
   try {
-    const decodedToken = await admin.auth().verifyIdToken(token);
+    // ✅ 'admin.auth()' के बजाय सीधे 'authAdmin.verifyIdToken()' का उपयोग करें
+    const decodedToken = await authAdmin.verifyIdToken(token);
     return decodedToken;
   } catch (error) {
     console.error("❌ Firebase token verification failed:", error);
