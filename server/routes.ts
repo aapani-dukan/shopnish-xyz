@@ -184,7 +184,7 @@ router.post('/auth/login', async (req, res) => {
       sameSite: 'Lax',
     });
 
-    res.status(200).json({ message: 'User logged in successfully!', uid: uid });
+    res.status(200).json({ message: 'User logged in successfully!', uuid: uid });
 
   } catch (error) {
     console.error('Error verifying Firebase ID token or creating session cookie:', error);
