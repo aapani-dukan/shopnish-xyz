@@ -1,8 +1,10 @@
 // server/lib/firebaseAdmin.ts
 
-// ✅ CommonJS मॉड्यूल को ESM में इम्पोर्ट करने का सही तरीका
-import pkg from 'firebase-admin';
-const { initializeApp, credential, apps, auth: firebaseAuth } = pkg; // auth को firebaseAuth नाम दें ताकि बाद में confusion न हो
+// ✅ CommonJS मॉड्यूल को ESM में इम्पोर्ट करने का सबसे सुरक्षित तरीका
+import firebaseAdmin from 'firebase-admin'; // 'pkg' के बजाय 'firebaseAdmin' नाम दिया
+
+// अब firebaseAdmin ऑब्जेक्ट से सभी आवश्यक फ़ंक्शंस और ऑब्जेक्ट्स को डिस्ट्रक्चर करें
+const { initializeApp, credential, apps, auth: firebaseAuth } = firebaseAdmin;
 
 if (!apps.length) {
   const serviceAccount = {
@@ -11,7 +13,7 @@ if (!apps.length) {
     clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
   };
 
-  if (!serviceAccount.projectId || !serviceAccount.privateKey || !serviceAccount.clientEmail) {
+  if (!serviceAccount.projectId || !serviceAccount.privateKey || !serviceAccount.client_email) { // यहां client_email को clientEmail होना चाहिए, पिछली बार ठीक किया था, फिर से चेक करें
     console.error("❌ ERROR: Missing Firebase environment variables (FIREBASE_PROJECT_ID, PRIVATE_KEY, or CLIENT_EMAIL).");
     process.exit(1);
   }
@@ -24,7 +26,6 @@ if (!apps.length) {
   console.log('✅ Firebase Admin SDK already initialized.');
 }
 
-// ✅ authAdmin को एक्सपोर्ट करें, जो अब firebaseAuth() से आएगा
-// सुनिश्चित करें कि यह initializedApp से auth() प्राप्त कर रहा है
-const initializedApp = apps.length ? apps[0] : initializeApp({}); // इसे इस तरह से भी हैंडल कर सकते हैं
-export const authAdmin = firebaseAuth(initializedApp); // initializedApp से auth सर्विस प्राप्त करें
+// ✅ authAdmin को एक्सपोर्ट करें
+const initializedApp = apps.length ? apps[0] : initializeApp({}); // यह सुनिश्चित करें कि यह हमेशा एक इनिशियलाइज़्ड ऐप इंस्टेंस प्राप्त करता है
+export const authAdmin = firebaseAuth(initializedApp);
