@@ -145,13 +145,13 @@ router.post('/auth/login', async (req: Request, res: Response) => {
     res.status(200).json({
       message: 'User logged in successfully!',
       user: {
-        uuid: currentUser.uuid,
-        email: currentUser.email,
-        name: currentUser.name, // यदि आप नाम भेज रहे हैं
-        role: currentUser.role, // ✅ भूमिका अब यहां है!
+        uuid: user.uuid,
+        email: user.email,
+        name: user.name, // यदि आप नाम भेज रहे हैं
+        role: user.role, // ✅ भूमिका अब यहां है!
         // approvalStatus: currentUser.approvalStatus, // यदि आप इसे user ऑब्जेक्ट में सीधे भेजना चाहते हैं
         // यदि यूजर एक विक्रेता है और आप उसके seller ऑब्जेक्ट को फ्रंटएंड पर चाहते हैं
-        seller: currentUser.role === 'seller' ? { approvalStatus: currentUser.approvalStatus } : undefined,
+        seller: user.role === 'seller' ? { approvalStatus: user.approvalStatus } : undefined,
         // अन्य आवश्यक फ़ील्ड्स जो front-end को चाहिए
       }
     });
