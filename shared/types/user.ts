@@ -1,43 +1,46 @@
-// shared/types/user.ts 
+// shared/types/user.ts
 
-import { z } from "zod"; // यदि आप Zod enums से टाइप इनफर कर रहे हैं
-import { userRoleEnum, approvalStatusEnum } from '@/shared/backend/schema'; // Drizzle enums को इम्पोर्ट करें
+import { z } from "zod"; // Zod को इम्पोर्ट करें यदि आप Drizzle pgEnum से टाइप इनफर कर रहे हैं
 
+// यह सुनिश्चित करें कि आप 'userRoleEnum' और 'approvalStatusEnum' को सही जगह से इम्पोर्ट कर रहे हैं।
+// आमतौर पर, ये आपके Drizzle स्कीमा फ़ाइल से या एक अलग Enum फ़ाइल से आते हैं।
+// उदाहरण: import { userRoleEnum, approvalStatusEnum } from '@/shared/backend/schema';
+// या: import { userRoleEnum, approvalStatusEnum } from './enums'; // यदि enums एक अलग फ़ाइल में हैं
+import { userRoleEnum, approvalStatusEnum } from '@/shared/backend/schema'; // <-- अपने वास्तविक पाथ को यहाँ अपडेट करें!
+
+/**
+ * Represents the structure of a User object returned from the backend API.
+ * This type should accurately reflect the data shape sent by your /api/auth/login
+ * and /api/me endpoints.
+ */
 export interface User {
-  // आपकी यूजर टेबल में uuid कॉलम firebaseUid को स्टोर करता है
-  uuid: string; // Firebase UID / प्राइमरी यूजर आइडेंटिफायर
+  // Primary identifier for the user, typically maps to Firebase UID
+  uuid: string;
 
-  // अन्य फ़ील्ड्स जो आपके बैकएंड के user ऑब्जेक्ट में हैं
+  // Common user details
   email: string;
-  name?: string | null; // यदि बैकएंड से आ रहा है
-  role: z.infer<typeof userRoleEnum>; // यूजर की भूमिका
-  
-  // यदि यूजर एक विक्रेता है और आप उसके विवरण भी भेज रहे हैं
+  name?: string | null; // Optional: if displayName is sent and can be null
+
+  // User's role, inferred from your Drizzle pgEnum
+  role: z.infer<typeof userRoleEnum>;
+
+  // Optional: Seller-specific details, only present if the user's role is 'seller'
   seller?: {
     approvalStatus: z.infer<typeof approvalStatusEnum>;
-    // यहां अन्य विक्रेता-विशिष्ट फ़ील्ड्स जोड़ें यदि वे भी भेजे जा रहे हैं
-  } | null;
-
-  // यदि आपके यूजर ऑब्जेक्ट में कोई अन्य प्रॉपर्टीज हैं तो उन्हें यहां जोड़ें
-  // जैसे: firstName?: string; lastName?: string; phone?: string; आदि।
-  firstName?: string;
-  lastName?: string;
-  phone?: string;
-  address?: string;
-  city?: string;
-  pincode?: string;
-  isActive?: boolean;
-  createdAt?: string; // या Date यदि आप इसे Date ऑब्जेक्ट के रूप में हैंडल करते हैं
-  updatedAt?: string; // या Date
+    // Add other seller-specific fields here if your backend sends them within this object
+    // e.g., storeName?: string;
+  } | null; // Can be null or undefined if not a seller
+  
+  // Add any other top-level user properties that your backend sends
+  // For example, if your /me or login sends firstName, lastName, etc.
+  // firstName?: string | null;
+  // lastName?: string | null;
+  // phone?: string | null;
+  // address?: string | null;
+  // city?: string | null;
+  // pincode?: string | null;
+  // isActive?: boolean;
+  // createdAt?: string; // Or Date if you parse it as a Date object
+  // updatedAt?: string; // Or Date
 }
 
-// यदि आपके पास AuthenticatedUser इंटरफ़ेस है, तो उसे भी अपडेट करें
-// shared/types/auth.ts
-// export interface AuthenticatedUser {
-//   id: number; // यदि आपके DB में आंतरिक ID है
-//   uuid: string; // Firebase UID
-//   email: string;
-//   role: z.infer<typeof userRoleEnum>;
-//   approvalStatus: z.infer<typeof approvalStatusEnum>;
-//   // ... अन्य फ़ील्ड्स
-// }
