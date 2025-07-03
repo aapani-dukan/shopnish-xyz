@@ -259,9 +259,6 @@ router.get('/seller/me', requireSellerAuth, async (req: AuthenticatedRequest, re
 });
 
 
-// Don't forget to export the router
-export default router;
-
 router.post('/auth/login', async (req, res) => {
   const idToken = req.body.idToken; // क्लाइंट से Firebase idToken प्राप्त करें
 
