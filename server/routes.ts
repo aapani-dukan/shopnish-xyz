@@ -88,7 +88,7 @@ router.post('/auth/login', async (req: Request, res: Response) => {
 
   try {
     // 1. Firebase ID टोकन वैलिडेट करें
-    const decodedToken = await authAdmin().verifyIdToken(idToken); // ✅ admin.auth() का उपयोग करें
+    const decodedToken = await authAdmin.verifyIdToken(idToken);
     const firebaseUid = decodedToken.uid;
     const email = decodedToken.email || req.body.email; // Fallback to req.body.email if not in token
     const name = decodedToken.name || decodedToken.displayName || req.body.name || null;
@@ -119,8 +119,8 @@ router.post('/auth/login', async (req: Request, res: Response) => {
 
     // 3. Firebase सेशन कुकी बनाएं
     const expiresIn = 60 * 60 * 24 * 5 * 1000; // 5 दिन
-    const sessionCookie = await authAdmin().createSessionCookie(idToken, { expiresIn }); // ✅ admin.auth() का उपयोग करें
-
+    const sessionCookie = await authAdmin.createSessionCookie(idToken, { expiresIn });
+ 
     res.cookie('__session', sessionCookie, {
       maxAge: expiresIn,
       httpOnly: true,
