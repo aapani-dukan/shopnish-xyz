@@ -1,8 +1,8 @@
 // @shared/backend/schema.ts
-import { pgTable, text, serial, integer, decimal, boolean, timestamp, json, varchar, pgEnum } from "drizzle-orm/pg-core"; // pgEnum को इम्पोर्ट करें
+import { pgTable, text, serial, uuid, integer, decimal, boolean, timestamp, json, varchar, pgEnum } from "drizzle-orm/pg-core"; // pgEnum को इम्पोर्ट करें
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
-
+import { userRoleEnum, approvalStatusEnum } from './your-enum-file'; 
 // --- Drizzle ORM Table Definitions ---
 
 // Drizzle PG Enums - ये अब सीधे डेटाबेस में ENUM प्रकार बनाएंगे
@@ -15,7 +15,10 @@ export const approvalStatusEnum = pgEnum("approval_status", ["pending", "approve
 // User roles: customer, seller, admin, delivery_boy
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
-  uuid: string;
+  
+  uuid: text("uuid").notNull().unique(), 
+  // uuid: uuid("uuid").defaultRandom().notNull().unique(), // इसके लिए ऊपर 'uuid' को इम्पोर्ट करना होगा
+
   email: text("email").notNull().unique(),
   name: text("name"),
   firstName: text("first_name"),
@@ -31,6 +34,7 @@ export const users = pgTable("users", {
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
+
 
 export const sellersPgTable = pgTable("sellers", {
   id: serial("id").primaryKey(),
