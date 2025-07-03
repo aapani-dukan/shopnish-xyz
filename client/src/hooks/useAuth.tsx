@@ -4,7 +4,8 @@ import { createContext, useContext, useEffect, useState } from "react";
 import { User as FirebaseUser, onAuthStateChanged } from "firebase/auth";
 import { auth } from "@/lib/firebase"; // handleRedirectResult की अब यहाँ सीधे जरूरत नहीं है, AuthProvider में ही हैंडल होगा
 import { apiRequest } from "@/lib/queryClient"; // आपका apiRequest
-import { User } from "@shared/backend/schema";
+import { User } from "@/shared/types/user"; // ✅ नई फाइल से इम्पोर्ट करें
+
 
 interface AuthContextType {
   firebaseUser: FirebaseUser | null;
