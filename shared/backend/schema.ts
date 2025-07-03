@@ -15,7 +15,7 @@ export const approvalStatusEnum = pgEnum("approval_status", ["pending", "approve
 // User roles: customer, seller, admin, delivery_boy
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
-  firebaseUid: text("firebase_uid").unique(),
+  uuid: string;
   email: text("email").notNull().unique(),
   name: text("name"),
   firstName: text("first_name"),
