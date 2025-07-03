@@ -87,35 +87,48 @@ router.post('/auth/login', async (req: Request, res: Response) => {
   }
 
   try {
-    // 1. Firebase ID टोकन वैलिडेट करें
     const decodedToken = await authAdmin.verifyIdToken(idToken);
     const firebaseUid = decodedToken.uid;
-    const email = decodedToken.email || req.body.email; // Fallback to req.body.email if not in token
-    const name = decodedToken.name || decodedToken.displayName || req.body.name || null;
+    const email = decodedToken.email || req.body.email; // सुनिश्चित करें कि ईमेल हमेशा मौजूद हो
+    const name = decodedToken.displayName || req.body.name || null;
 
-    // 2. अपने डेटाबेस में यूजर को खोजें या बनाएं
-    let userFromDb = await db.select().from(users).where(eq(users.uuid, firebaseUid)).limit(1);
-    let currentUser;
+    // ✅ स्टेप 1: डेटाबेस में मौजूदा यूजर को खोजने का प्रयास करें
+    let [user] = await db.select().from(users).where(eq(users.uuid, firebaseUid));
 
-    if (userFromDb.length === 0) {
-      // यूजर मौजूद नहीं है, नया बनाएं (पहली बार लॉगिन)
+    if (!user) {
+      // ✅ स्टेप 2: यदि UID से यूजर नहीं मिला, तो ईमेल से खोजने का प्रयास करें
+      //    यह उन मामलों के लिए है जहाँ यूजर ने अतीत में केवल ईमेल से साइन अप किया होगा
+      //    और अब पहली बार Firebase Auth से जुड़ रहा है।
+      [user] = await db.select().from(users).where(eq(users.email, email));
+    }
+
+    if (!user) {
+      // ✅ स्टेप 3: यदि यूजर UID या ईमेल से नहीं मिला, तो एक नया यूजर बनाएं
       console.log("Creating new user in DB for Firebase UID:", firebaseUid);
-      currentUser = (await db.insert(users).values({
-        uuid: firebaseUid, // Firebase UID को uuid कॉलम में स्टोर करें
-        email: email!, // email हमेशा होना चाहिए
+      const [newUser] = await db.insert(users).values({
+        uuid: firebaseUid,
+        email: email,
         name: name,
-        role: userRoleEnum.enumValues[0], // ✅ डिफ़ॉल्ट रूप से 'customer'
-        approvalStatus: approvalStatusEnum.enumValues[1], // ✅ डिफ़ॉल्ट रूप से 'approved'
-        // अन्य आवश्यक फ़ील्ड्स यदि आपके स्कीमा में हैं
-      }).returning()).pop();
+        role: 'customer', // डिफ़ॉल्ट भूमिका सेट करें
+        // approvalStatus: 'approved' // यदि आवश्यक हो तो डिफ़ॉल्ट अप्रूवल स्टेटस
+      }).returning(); // नए बनाए गए यूजर को वापस पाने के लिए .returning() का उपयोग करें
+      user = newUser; // नए बनाए गए यूजर को 'user' वेरिएबल में असाइन करें
     } else {
-      currentUser = userFromDb[0];
-      console.log("Existing user found in DB:", currentUser.uuid);
+      // ✅ स्टेप 4: यदि यूजर मौजूद है, तो सुनिश्चित करें कि Firebase UID अपडेटेड है
+      //    यह महत्वपूर्ण है यदि यूजर ने पहले केवल ईमेल/पासवर्ड से साइन अप किया था
+      //    और अब Google Auth का उपयोग कर रहा है।
+      if (user.uuid === null || typeof user.uuid === 'undefined') {
+        console.log("Updating existing user with Firebase UID:", firebaseUid);
+        const [updatedUser] = await db.update(users)
+          .set({ uuid: firebaseUid })
+          .where(eq(users.id, user.id))
+          .returning();
+        user = updatedUser;
+      }
+      console.log("Found existing user in DB:", user.uuid);
     }
 
-    if (!currentUser) {
-      throw new Error("Could not create or retrieve user from database.");
-    }
+    
 
     // 3. Firebase सेशन कुकी बनाएं
     const expiresIn = 60 * 60 * 24 * 5 * 1000; // 5 दिन
