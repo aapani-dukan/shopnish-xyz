@@ -36,6 +36,7 @@ import adminPasswordRoutes from './roots/admin/admin-password.js';
 const router = express.Router();
 
 // Test Route
+
 router.get('/', (req: Request, res: Response) => {
   res.status(200).json({ message: 'API is running' });
 });
@@ -43,8 +44,33 @@ router.get('/', (req: Request, res: Response) => {
 // User Registration
 router.post('/register', async (req: Request, res: Response) => {
   try {
-    const userData = insertUserSchema.parse(req.body);
-    const [newUser] = await db.insert(users).values(userData).returning();
+    // Note: If using Firebase Auth for client-side registration,
+    // this endpoint might need to adjust or create a user in your DB.
+    // Ensure insertUserSchema has a 'uuid' field mapped to firebaseUid.
+    const userData = req.body; // Assuming req.body matches your user structure
+    // const userData = insertUserSchema.parse(req.body); // If you still want Zod validation here
+
+    // Ensure firebaseUid is provided, as it will be the uuid in DB
+    if (!userData.firebaseUid || !userData.email) {
+      return res.status(400).json({ error: 'Firebase UID and email are required for registration.' });
+    }
+
+    const [newUser] = await db.insert(users).values({
+      uuid: userData.firebaseUid, // Map Firebase UID to your DB's uuid
+      email: userData.email,
+      name: userData.name || null, // Optional
+      role: userRoleEnum.enumValues[0], // Default to customer
+      approvalStatus: approvalStatusEnum.enumValues[1], // Default to approved
+      // Add other fields from userData as needed (firstName, lastName, phone, etc.)
+      firstName: userData.firstName,
+      lastName: userData.lastName,
+      phone: userData.phone,
+      address: userData.address,
+      city: userData.city,
+      pincode: userData.pincode,
+    }).returning();
+    
+    // Do NOT create a JWT here if using Firebase Session Cookies for login.
     res.status(201).json(newUser);
   } catch (error: any) {
     console.error('User registration failed:', error);
@@ -52,50 +78,109 @@ router.post('/register', async (req: Request, res: Response) => {
   }
 });
 
-// User Login (Example - integrate with Firebase or actual auth later)
-router.post('/login', async (req: Request, res: Response) => {
-  const { email, firebaseUid } = req.body; // Assuming firebaseUid comes from client-side auth
+// ✅ Firebase Session Cookie based User Login - COMBINED AND CORRECTED
+router.post('/auth/login', async (req: Request, res: Response) => {
+  const { idToken } = req.body; // क्लाइंट से Firebase idToken प्राप्त करें
 
-  if (!email || !firebaseUid) {
-    return res.status(400).json({ error: 'Email and Firebase UID are required.' });
+  if (!idToken) {
+    return res.status(400).json({ message: 'ID token is missing.' });
   }
 
   try {
-    const [user] = await db.select().from(users).where(eq(users.firebaseUid, firebaseUid));
+    // 1. Firebase ID टोकन वैलिडेट करें
+    const decodedToken = await admin.auth().verifyIdToken(idToken); // ✅ admin.auth() का उपयोग करें
+    const firebaseUid = decodedToken.uid;
+    const email = decodedToken.email || req.body.email; // Fallback to req.body.email if not in token
+    const name = decodedToken.name || decodedToken.displayName || req.body.name || null;
 
-    if (!user) {
-      // If user doesn't exist, create them (first-time login with Firebase)
-      const [newUser] = await db.insert(users).values({
-        email,
-        firebaseUid,
-        role: userRoleEnum.enumValues[0], // Default to customer
-        approvalStatus: approvalStatusEnum.enumValues[1], // Default to approved
-      }).returning();
-      
-      const token = jwt.sign({ id: newUser.id, firebaseUid: newUser.firebaseUid, role: newUser.role, approvalStatus: newUser.approvalStatus }, process.env.JWT_SECRET || 'your_jwt_secret', { expiresIn: '1h' });
-      return res.status(200).json({ user: newUser, token });
+    // 2. अपने डेटाबेस में यूजर को खोजें या बनाएं
+    let userFromDb = await db.select().from(users).where(eq(users.uuid, firebaseUid)).limit(1);
+    let currentUser;
+
+    if (userFromDb.length === 0) {
+      // यूजर मौजूद नहीं है, नया बनाएं (पहली बार लॉगिन)
+      console.log("Creating new user in DB for Firebase UID:", firebaseUid);
+      currentUser = (await db.insert(users).values({
+        uuid: firebaseUid, // Firebase UID को uuid कॉलम में स्टोर करें
+        email: email!, // email हमेशा होना चाहिए
+        name: name,
+        role: userRoleEnum.enumValues[0], // ✅ डिफ़ॉल्ट रूप से 'customer'
+        approvalStatus: approvalStatusEnum.enumValues[1], // ✅ डिफ़ॉल्ट रूप से 'approved'
+        // अन्य आवश्यक फ़ील्ड्स यदि आपके स्कीमा में हैं
+      }).returning()).pop();
+    } else {
+      currentUser = userFromDb[0];
+      console.log("Existing user found in DB:", currentUser.uuid);
     }
 
-    const token = jwt.sign({ id: user.id, firebaseUid: user.firebaseUid, role: user.role, approvalStatus: user.approvalStatus }, process.env.JWT_SECRET || 'your_jwt_secret', { expiresIn: '1h' });
-    res.status(200).json({ user, token });
+    if (!currentUser) {
+      throw new Error("Could not create or retrieve user from database.");
+    }
+
+    // 3. Firebase सेशन कुकी बनाएं
+    const expiresIn = 60 * 60 * 24 * 5 * 1000; // 5 दिन
+    const sessionCookie = await admin.auth().createSessionCookie(idToken, { expiresIn }); // ✅ admin.auth() का उपयोग करें
+
+    res.cookie('__session', sessionCookie, {
+      maxAge: expiresIn,
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'Lax', // or 'Strict' depending on your needs
+    });
+
+    // 4. क्लाइंट को प्रतिक्रिया भेजें जिसमें पूरा यूजर ऑब्जेक्ट शामिल हो
+    res.status(200).json({
+      message: 'User logged in successfully!',
+      user: {
+        uuid: currentUser.uuid,
+        email: currentUser.email,
+        name: currentUser.name, // यदि आप नाम भेज रहे हैं
+        role: currentUser.role, // ✅ भूमिका अब यहां है!
+        // approvalStatus: currentUser.approvalStatus, // यदि आप इसे user ऑब्जेक्ट में सीधे भेजना चाहते हैं
+        // यदि यूजर एक विक्रेता है और आप उसके seller ऑब्जेक्ट को फ्रंटएंड पर चाहते हैं
+        seller: currentUser.role === 'seller' ? { approvalStatus: currentUser.approvalStatus } : undefined,
+        // अन्य आवश्यक फ़ील्ड्स जो front-end को चाहिए
+      }
+    });
+
   } catch (error: any) {
-    console.error('Login failed:', error);
-    res.status(500).json({ error: 'Internal server error.' });
+    console.error("Error during /auth/login:", error); // Debugging error
+    // Firebase auth errors: 'auth/argument-error', 'auth/id-token-expired' etc.
+    let errorMessage = "Login failed.";
+    if (error.code) {
+      errorMessage = `Firebase Auth Error: ${error.code}`;
+    } else if (error.message) {
+      errorMessage = error.message;
+    }
+    res.status(400).json({ message: errorMessage });
   }
 });
 
 
 // User Profile (requires authentication)
+// make sure 'requireAuth' middleware decodes the session cookie
+// and sets req.user correctly based on the 'uuid' or 'firebaseUid' from the decoded token
 router.get('/me', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    if (!req.user?.id) {
-      return res.status(401).json({ error: 'User not authenticated.' });
+    // Assuming req.user is populated by your requireAuth middleware
+    // with at least req.user.uuid (which is the Firebase UID)
+    if (!req.user?.uuid) { // Use uuid here as it's your primary identifier
+      return res.status(401).json({ error: 'User not authenticated or UUID missing.' });
     }
-    const [user] = await db.select().from(users).where(eq(users.id, req.user.id));
+    // Fetch user from DB using the UUID from the authenticated request
+    const [user] = await db.select().from(users).where(eq(users.uuid, req.user.uuid)); // Use users.uuid
     if (!user) {
-      return res.status(404).json({ error: 'User not found.' });
+      return res.status(404).json({ error: 'User not found in database.' });
     }
-    res.status(200).json(user);
+    // Ensure you return the same structure as your client-side User type
+    res.status(200).json({
+      uuid: user.uuid,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+      seller: user.role === 'seller' ? { approvalStatus: user.approvalStatus } : undefined,
+      // ... other fields from your User type
+    });
   } catch (error: any) {
     console.error('Failed to fetch user profile:', error);
     res.status(500).json({ error: 'Internal server error.' });
@@ -105,31 +190,42 @@ router.get('/me', requireAuth, async (req: AuthenticatedRequest, res: Response) 
 // --- Seller Routes ---
 router.post('/sellers/apply', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const userId = req.user?.id; // Authenticated user ID
+    // Assuming req.user.uuid is available from requireAuth middleware
+    const userUuid = req.user?.uuid; 
 
-    if (!userId) {
-      return res.status(401).json({ error: 'User not authenticated.' });
+    if (!userUuid) { // Changed from userId to userUuid
+      return res.status(401).json({ error: 'User not authenticated or UUID missing.' });
     }
 
-    // Check if seller application already exists for this user
-    const [existingSeller] = await db.select().from(sellersPgTable).where(eq(sellersPgTable.userId, userId));
+    // Get the internal database ID for the user using their UUID
+    const [dbUser] = await db.select({ id: users.id, role: users.role, approvalStatus: users.approvalStatus })
+                               .from(users).where(eq(users.uuid, userUuid));
+
+    if (!dbUser) {
+        return res.status(404).json({ error: 'User not found in database for application.' });
+    }
+
+    // Check if seller application already exists for this user (using internal ID)
+    const [existingSeller] = await db.select().from(sellersPgTable).where(eq(sellersPgTable.userId, dbUser.id));
     if (existingSeller) {
       return res.status(409).json({ error: 'Seller application already exists for this user.' });
     }
 
-    const sellerData = insertSellerSchema.parse({
+    const sellerData = { // Use a general object if insertSellerSchema expects other fields
       ...req.body,
-      userId: userId,
+      userId: dbUser.id, // Use the internal database ID here
       approvalStatus: approvalStatusEnum.enumValues[0], // Set to 'pending' by default
-    });
+    };
 
+    // Assuming insertSellerSchema expects fields that match sellerData
+    // const parsedSellerData = insertSellerSchema.parse(sellerData);
     const [newSeller] = await db.insert(sellersPgTable).values(sellerData).returning();
 
-    // Update user role to 'seller' and approvalStatus to 'pending'
+    // Update user role to 'seller' and approvalStatus to 'pending' in the users table
     await db.update(users).set({ 
       role: userRoleEnum.enumValues[1], // Set user role to 'seller'
       approvalStatus: approvalStatusEnum.enumValues[0], // Set user approval status to 'pending'
-    }).where(eq(users.id, userId));
+    }).where(eq(users.id, dbUser.id)); // Use the internal database ID here
 
     res.status(201).json(newSeller);
   } catch (error: any) {
@@ -140,11 +236,18 @@ router.post('/sellers/apply', requireAuth, async (req: AuthenticatedRequest, res
 
 router.get('/seller/me', requireSellerAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const userId = req.user?.id;
-    if (!userId) {
-      return res.status(401).json({ error: 'User not authenticated.' });
+    const userUuid = req.user?.uuid; // Assuming requireSellerAuth populates req.user.uuid
+    if (!userUuid) {
+      return res.status(401).json({ error: 'User not authenticated or UUID missing.' });
     }
-    const [seller] = await db.select().from(sellersPgTable).where(eq(sellersPgTable.userId, userId));
+
+    // Get internal user ID to fetch seller profile
+    const [dbUser] = await db.select({ id: users.id }).from(users).where(eq(users.uuid, userUuid));
+    if (!dbUser) {
+      return res.status(404).json({ error: 'User not found in database for seller profile.' });
+    }
+
+    const [seller] = await db.select().from(sellersPgTable).where(eq(sellersPgTable.userId, dbUser.id));
     if (!seller) {
       return res.status(404).json({ error: 'Seller profile not found.' });
     }
@@ -154,6 +257,11 @@ router.get('/seller/me', requireSellerAuth, async (req: AuthenticatedRequest, re
     res.status(500).json({ error: 'Internal server error.' });
   }
 });
+
+
+// Don't forget to export the router
+export default router;
+
 router.post('/auth/login', async (req, res) => {
   const idToken = req.body.idToken; // क्लाइंट से Firebase idToken प्राप्त करें
 
