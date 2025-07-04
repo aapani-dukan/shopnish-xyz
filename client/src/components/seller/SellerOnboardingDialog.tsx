@@ -1,7 +1,7 @@
 // client/src/components/seller/SellerOnboardingDialog.tsx
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react"; // useEffect इम्पोर्ट करें
 import { useAuth } from "@/hooks/useAuth";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
@@ -51,10 +51,28 @@ export default function SellerOnboardingDialog({ isOpen, onClose }: SellerOnboar
   const [, setLocation] = useLocation();
   const [showSuccess, setShowSuccess] = useState(false);
 
+  // यदि डायलॉग खुलते ही isAuthenticated नहीं है, तो तुरंत लॉग इन पेज पर रीडायरेक्ट करें
+  // useEffect(() => {
+  //   if (isOpen && !isLoadingAuth && !isAuthenticated) {
+  //     toast({ 
+  //       title: "Authentication Required", 
+  //       description: "Please log in to register as a seller.", 
+  //       variant: "destructive" 
+  //     });
+  //     onClose(); // डायलॉग बंद करें
+  //     setLocation("/auth"); // लॉगिन पेज पर भेजें
+  //   }
+  // }, [isOpen, isLoadingAuth, isAuthenticated, toast, onClose, setLocation]);
+
+
   const { data: existingSellerProfile, isLoading: isSellerProfileLoading } = useQuery<SellerProfile | null, Error>({
     queryKey: ["/api/sellers/me", user?.userId],
     queryFn: async ({ signal }) => {
-      if (!user?.idToken) return null;
+      // ✅ सुनिश्चित करें कि टोकन उपलब्ध होने पर ही API कॉल करें
+      if (!user?.idToken) {
+        // यदि टोकन मौजूद नहीं है, तो null लौटाएँ और क्वेरी को फिर से चलाने की प्रतीक्षा करें
+        return null;
+      }
       try {
         const response = await apiRequest("GET", `/api/sellers/me`, undefined, user.idToken, signal);
         return response.data as SellerProfile;
@@ -63,6 +81,7 @@ export default function SellerOnboardingDialog({ isOpen, onClose }: SellerOnboar
         throw error;
       }
     },
+    // ✅ query को तभी enable करें जब isLoadingAuth false हो, यूजर ऑथेंटिकेटेड हो और ID टोकन मौजूद हो
     enabled: !isLoadingAuth && isAuthenticated && !!user?.idToken,
     staleTime: 5 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
@@ -87,15 +106,13 @@ export default function SellerOnboardingDialog({ isOpen, onClose }: SellerOnboar
 
   const registerSellerMutation = useMutation<any, Error, FormData>({
     mutationFn: async (data: FormData) => {
-      console.log("registerSellerMutation mutationFn: Checking user for token/UID.");
-      console.log("User object in mutationFn:", user);
-      console.log("user.idToken:", user?.idToken ? "Present" : "Missing");
-      console.log("user.firebaseUid:", user?.firebaseUid ? "Present" : "Missing");
+      // ✅ mutationFn के अंदर फिर से जांच करें, क्योंकि यह तब तक शुरू नहीं होगा जब तक onSubmit न कहा जाए
       if (!user?.idToken || !user?.firebaseUid) {
-        throw new Error("User not authenticated or Firebase UID/Token missing.");
+        // यह त्रुटि तभी आएगी जब onSubmit चेक से कोई चूक हो जाए या async delay हो
+        throw new Error("User not authenticated or Firebase UID/Token missing at mutation time.");
       }
-      const payload = { 
-        ...data, 
+      const payload = {
+        ...data,
         deliveryRadius: parseFloat(data.deliveryRadius),
         firebaseUid: user.firebaseUid,
         email: user.email,
@@ -131,10 +148,16 @@ export default function SellerOnboardingDialog({ isOpen, onClose }: SellerOnboar
   });
 
   const onSubmit = (data: FormData) => {
-    console.log("onSubmit: Form submitted. Checking user object.");
-    console.log("User object in onSubmit:", user);
-    console.log("isAuthenticated:", isAuthenticated);
-    console.log("isLoadingAuth:", isLoadingAuth);
+    // ✅ यहाँ मुख्य जांच है कि क्या फॉर्म सबमिट करने के लिए तैयार है
+    if (isLoadingAuth || !isAuthenticated || !user?.firebaseUid || !user?.idToken) {
+        console.error("SellerOnboardingDialog: Attempted submit while auth loading or user data incomplete.");
+        toast({ 
+            title: "Authentication Pending", 
+            description: "Please wait, confirming your login status. Try again in a moment.", 
+            variant: "warning" 
+        });
+        return; // सबमिशन रोकें
+    }
     registerSellerMutation.mutate(data);
   };
 
@@ -146,6 +169,9 @@ export default function SellerOnboardingDialog({ isOpen, onClose }: SellerOnboar
 
   if (!isOpen) return null;
 
+  // --- Render based on loading and authentication status ---
+
+  // यदि प्रमाणीकरण अभी भी लोड हो रहा है, तो लोडिंग डायलॉग दिखाएं
   if (isLoadingAuth) {
     return (
       <Dialog open={isOpen} onOpenChange={handleClose}>
@@ -160,6 +186,7 @@ export default function SellerOnboardingDialog({ isOpen, onClose }: SellerOnboar
     );
   }
 
+  // यदि प्रमाणीकरण समाप्त हो गया है लेकिन यूजर लॉग इन नहीं है
   if (!isAuthenticated) {
     return (
       <Dialog open={isOpen} onOpenChange={handleClose}>
@@ -179,6 +206,7 @@ export default function SellerOnboardingDialog({ isOpen, onClose }: SellerOnboar
     );
   }
 
+  // यदि विक्रेता प्रोफ़ाइल लोड हो रही है
   if (isSellerProfileLoading) {
     return (
       <Dialog open={isOpen} onOpenChange={handleClose}>
@@ -193,6 +221,7 @@ export default function SellerOnboardingDialog({ isOpen, onClose }: SellerOnboar
     );
   }
 
+  // यदि मौजूदा विक्रेता प्रोफ़ाइल मिल जाती है
   if (existingSellerProfile) {
     const statusText = existingSellerProfile.approvalStatus === "approved"
       ? "Approved"
@@ -228,6 +257,7 @@ export default function SellerOnboardingDialog({ isOpen, onClose }: SellerOnboar
     );
   }
 
+  // सफलता संदेश दिखाएं
   if (showSuccess) {
     return (
       <Dialog open={isOpen} onOpenChange={handleClose}>
@@ -245,6 +275,7 @@ export default function SellerOnboardingDialog({ isOpen, onClose }: SellerOnboar
     );
   }
 
+  // मुख्य विक्रेता पंजीकरण फॉर्म
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -391,7 +422,7 @@ export default function SellerOnboardingDialog({ isOpen, onClose }: SellerOnboar
 
             <DialogFooter>
               <Button type="button" variant="outline" onClick={handleClose}>Cancel</Button>
-              <Button type="submit" disabled={registerSellerMutation.isPending}>
+              <Button type="submit" disabled={registerSellerMutation.isPending || isLoadingAuth || !isAuthenticated || !user?.firebaseUid || !user?.idToken}>
                 {registerSellerMutation.isPending ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Submitting...
@@ -406,4 +437,4 @@ export default function SellerOnboardingDialog({ isOpen, onClose }: SellerOnboar
       </DialogContent>
     </Dialog>
   );
-        }
+}
