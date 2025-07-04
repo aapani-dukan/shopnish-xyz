@@ -1,7 +1,10 @@
 // src/pages/Auth.tsx
 
 import { useState } from "react";
-import { signInWithGoogle } from "@/lib/firebase";
+// सुनिश्चित करें कि आप वही साइन-इन फंक्शन इम्पोर्ट करें जिसका आप उपयोग कर रहे हैं
+// यदि आप पॉपअप का उपयोग कर रहे हैं तो signInWithGoogle
+// यदि आप रीडायरेक्ट का उपयोग कर रहे हैं तो initiateGoogleSignInRedirect
+import { signInWithGoogle, /* initiateGoogleSignInRedirect */ } from "@/lib/firebase"; 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Store } from "lucide-react";
@@ -12,8 +15,10 @@ export default function AuthPage() {
   const handleGoogleSignIn = async () => {
     try {
       setIsLoading(true);
-      await signInWithGoogle();
-      // ✅ यहाँ यह लाइन जोड़ें: लॉगिन सफल होने पर isLoading को false करें
+      // 👇 यहाँ आपका Google साइन-इन फंक्शन कॉल होता है
+      await signInWithGoogle(); // या initiateGoogleSignInRedirect()
+      
+      // ✅ यह लाइन जोड़ें: लॉगिन सफल होने पर isLoading को false करें
       setIsLoading(false); 
     } catch (error) {
       console.error("Error signing in:", error);
