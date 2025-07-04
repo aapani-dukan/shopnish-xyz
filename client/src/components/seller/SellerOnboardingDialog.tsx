@@ -1,10 +1,7 @@
 // client/src/components/seller/SellerOnboardingDialog.tsx
-// यह अब केवल विक्रेता पंजीकरण फॉर्म को संभालता है।
-
 "use client";
 
 import { useState } from "react";
-import axios from "axios"; // ✅ axios इम्पोर्ट करें
 import { useAuth } from "@/hooks/useAuth";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
@@ -17,12 +14,10 @@ import { z } from "zod";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
-import { Check, X, Store, Loader2, AlertCircle, Clock } from "lucide-react";
+import { Check, X, Loader2, Clock } from "lucide-react";
 
 import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
-import { ControllerRenderProps } from "react-hook-form";
 
-// Zod स्कीमा को seller-apply.ts राउट के अपेक्षित पेलोड से मैच करें
 const sellerFormSchema = z.object({
   businessName: z.string().min(3, "Store name must be at least 3 characters.").max(100),
   description: z.string().min(10, "Description must be at least 10 characters.").max(500),
@@ -33,7 +28,6 @@ const sellerFormSchema = z.object({
   gstNumber: z.string().max(15).optional(),
   bankAccountNumber: z.string().regex(/^\d{9,18}$/, "Account number must be 9-18 digits."),
   ifscCode: z.string().regex(/^[A-Z]{4}0[A-Z0-9]{6}$/, "Invalid IFSC Code."),
-  // deliveryRadius को string के रूप में स्वीकार करें और उसे नंबर में बदलें
   deliveryRadius: z.string().refine(val => !isNaN(parseFloat(val)) && parseFloat(val) >= 1 && parseFloat(val) <= 100, "Delivery radius must be a number between 1 and 100"),
   businessType: z.string().min(2, "Business Type is required.").max(50),
 });
@@ -43,7 +37,6 @@ type FormData = z.infer<typeof sellerFormSchema>;
 interface SellerProfile {
   approvalStatus: "pending" | "approved" | "rejected";
   rejectionReason?: string | null;
-  // अन्य प्रॉपर्टीज जो आपके seller profile से आती हैं
 }
 
 interface SellerOnboardingDialogProps {
@@ -60,23 +53,19 @@ export default function SellerOnboardingDialog({ isOpen, onClose }: SellerOnboar
 
   const { data: existingSellerProfile, isLoading: isSellerProfileLoading } = useQuery<SellerProfile | null, Error>({
     queryKey: ["/api/sellers/me", user?.userId],
-    queryFn: async () => {
-      if (!user?.userId) {
-        return null;
-      }
+    queryFn: async ({ signal }) => {
+      if (!user?.idToken) return null;
       try {
-        const response = await apiRequest("GET", `/api/sellers/me`);
+        const response = await apiRequest("GET", `/api/sellers/me`, undefined, user.idToken, signal);
         return response.data as SellerProfile;
-      } catch (error) {
-        if (axios.isAxiosError(error) && error.response && error.response.status === 404) {
-          return null;
-        }
+      } catch (error: any) {
+        if (error?.response?.status === 404) return null;
         throw error;
       }
     },
-    enabled: !isLoadingAuth && isAuthenticated && !!user?.userId,
-    staleTime: Infinity,
-    gcTime: Infinity, // इसे भी Infinity पर सेट करें या एक उचित मान दें
+    enabled: !isLoadingAuth && isAuthenticated && !!user?.idToken,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
   });
 
   const form = useForm<FormData>({
@@ -92,15 +81,23 @@ export default function SellerOnboardingDialog({ isOpen, onClose }: SellerOnboar
       gstNumber: "",
       bankAccountNumber: "",
       ifscCode: "",
-      deliveryRadius: "5", // Zod स्कीमा में इसे string के रूप में रखा है
+      deliveryRadius: "5",
     },
   });
 
   const registerSellerMutation = useMutation<any, Error, FormData>({
     mutationFn: async (data: FormData) => {
-      // payload में deliveryRadius को number में बदलें
-      const payload = { ...data, deliveryRadius: parseFloat(data.deliveryRadius) };
-      const response = await apiRequest("POST", "/api/sellers/apply", payload);
+      if (!user?.idToken || !user?.firebaseUid) {
+        throw new Error("User not authenticated or Firebase UID/Token missing.");
+      }
+      const payload = { 
+        ...data, 
+        deliveryRadius: parseFloat(data.deliveryRadius),
+        firebaseUid: user.firebaseUid,
+        email: user.email,
+        name: user.name,
+      };
+      const response = await apiRequest("POST", "/api/sellers/apply", payload, user.idToken);
       return response.data;
     },
     onSuccess: (data) => {
@@ -112,7 +109,6 @@ export default function SellerOnboardingDialog({ isOpen, onClose }: SellerOnboar
       toast({
         title: "Application Submitted!",
         description: data.message || "Your seller application has been submitted successfully.",
-        variant: "default",
       });
 
       setTimeout(() => {
@@ -124,7 +120,7 @@ export default function SellerOnboardingDialog({ isOpen, onClose }: SellerOnboar
     onError: (error) => {
       toast({
         title: "Registration Failed",
-        description: axios.isAxiosError(error) ? error.response?.data?.message || "Something went wrong. Please try again." : error.message,
+        description: error instanceof Error ? error.message : "Something went wrong. Please try again.",
         variant: "destructive",
       });
     },
@@ -140,9 +136,7 @@ export default function SellerOnboardingDialog({ isOpen, onClose }: SellerOnboar
     setShowSuccess(false);
   };
 
-  if (!isOpen) {
-    return null;
-  }
+  if (!isOpen) return null;
 
   if (isLoadingAuth) {
     return (
@@ -150,7 +144,7 @@ export default function SellerOnboardingDialog({ isOpen, onClose }: SellerOnboar
         <DialogContent className="max-w-md">
           <div className="flex flex-col items-center justify-center p-6 text-center">
             <Loader2 className="h-10 w-10 animate-spin text-primary mb-4" />
-            <h2 className="text-xl font-semibold text-gray-900 mb-2">Verifying Login...</h2>
+            <h2 className="text-xl font-semibold text-gray-900">Verifying Login...</h2>
             <p className="text-gray-600">Please wait while we confirm your login status.</p>
           </div>
         </DialogContent>
@@ -164,9 +158,9 @@ export default function SellerOnboardingDialog({ isOpen, onClose }: SellerOnboar
         <DialogContent className="max-w-md">
           <div className="text-center p-6">
             <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <X className="text-red-600 text-2xl w-8 h-8" />
+              <X className="text-red-600 w-8 h-8" />
             </div>
-            <h2 className="text-xl font-semibold text-gray-900 mb-2">Authentication Required</h2>
+            <h2 className="text-xl font-semibold text-gray-900">Authentication Required</h2>
             <p className="text-gray-600 mb-6">
               It seems you're not logged in or your session has expired. Please log in to your account to register as a seller.
             </p>
@@ -183,7 +177,7 @@ export default function SellerOnboardingDialog({ isOpen, onClose }: SellerOnboar
         <DialogContent className="max-w-md">
           <div className="flex flex-col items-center justify-center p-6 text-center">
             <Loader2 className="h-10 w-10 animate-spin text-primary mb-4" />
-            <h2 className="text-xl font-semibold text-gray-900 mb-2">Checking Registration Status...</h2>
+            <h2 className="text-xl font-semibold text-gray-900">Checking Registration Status...</h2>
             <p className="text-gray-600">Please wait while we check if you've already registered.</p>
           </div>
         </DialogContent>
@@ -210,7 +204,7 @@ export default function SellerOnboardingDialog({ isOpen, onClose }: SellerOnboar
             <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
               {statusIcon}
             </div>
-            <h2 className="text-xl font-semibold text-gray-900 mb-2">Registration Status: {statusText}</h2>
+            <h2 className="text-xl font-semibold text-gray-900">Registration Status: {statusText}</h2>
             <p className="text-gray-600 mb-6">
               You have already submitted your seller application.
               {existingSellerProfile.approvalStatus === "rejected" && (
@@ -232,9 +226,9 @@ export default function SellerOnboardingDialog({ isOpen, onClose }: SellerOnboar
         <DialogContent className="max-w-md">
           <div className="text-center p-6">
             <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Check className="text-green-600 text-2xl w-8 h-8" />
+              <Check className="text-green-600 w-8 h-8" />
             </div>
-            <h2 className="text-xl font-semibold text-gray-900 mb-2">Application Submitted!</h2>
+            <h2 className="text-xl font-semibold text-gray-900">Application Submitted!</h2>
             <p className="text-gray-600 mb-6">Your seller application has been submitted successfully. We'll review it and get back to you soon.</p>
             <Button onClick={handleClose}>Close</Button>
           </div>
@@ -268,7 +262,7 @@ export default function SellerOnboardingDialog({ isOpen, onClose }: SellerOnboar
             <FormField
               control={form.control}
               name="businessName"
-              render={({ field }: { field: ControllerRenderProps<FormData, "businessName"> }) => (
+              render={({ field }) => (
                 <FormItem>
                   <FormLabel>Business Name</FormLabel>
                   <FormControl><Input {...field} /></FormControl>
@@ -279,7 +273,7 @@ export default function SellerOnboardingDialog({ isOpen, onClose }: SellerOnboar
             <FormField
               control={form.control}
               name="businessAddress"
-              render={({ field }: { field: ControllerRenderProps<FormData, "businessAddress"> }) => (
+              render={({ field }) => (
                 <FormItem>
                   <FormLabel>Business Address</FormLabel>
                   <FormControl><Textarea {...field} /></FormControl>
@@ -290,7 +284,7 @@ export default function SellerOnboardingDialog({ isOpen, onClose }: SellerOnboar
             <FormField
               control={form.control}
               name="businessType"
-              render={({ field }: { field: ControllerRenderProps<FormData, "businessType"> }) => (
+              render={({ field }) => (
                 <FormItem>
                   <FormLabel>Business Type</FormLabel>
                   <FormControl><Input {...field} placeholder="e.g., grocery, electronics" /></FormControl>
@@ -301,7 +295,7 @@ export default function SellerOnboardingDialog({ isOpen, onClose }: SellerOnboar
             <FormField
               control={form.control}
               name="description"
-              render={({ field }: { field: ControllerRenderProps<FormData, "description"> }) => (
+              render={({ field }) => (
                 <FormItem>
                   <FormLabel>Description</FormLabel>
                   <FormControl><Textarea {...field} /></FormControl>
@@ -312,7 +306,7 @@ export default function SellerOnboardingDialog({ isOpen, onClose }: SellerOnboar
             <FormField
               control={form.control}
               name="city"
-              render={({ field }: { field: ControllerRenderProps<FormData, "city"> }) => (
+              render={({ field }) => (
                 <FormItem>
                   <FormLabel>City</FormLabel>
                   <FormControl><Input {...field} /></FormControl>
@@ -323,7 +317,7 @@ export default function SellerOnboardingDialog({ isOpen, onClose }: SellerOnboar
             <FormField
               control={form.control}
               name="pincode"
-              render={({ field }: { field: ControllerRenderProps<FormData, "pincode"> }) => (
+              render={({ field }) => (
                 <FormItem>
                   <FormLabel>Pincode</FormLabel>
                   <FormControl><Input {...field} type="text" inputMode="numeric" pattern="[0-9]*" /></FormControl>
@@ -334,7 +328,7 @@ export default function SellerOnboardingDialog({ isOpen, onClose }: SellerOnboar
             <FormField
               control={form.control}
               name="businessPhone"
-              render={({ field }: { field: ControllerRenderProps<FormData, "businessPhone"> }) => (
+              render={({ field }) => (
                 <FormItem>
                   <FormLabel>Business Phone</FormLabel>
                   <FormControl><Input {...field} type="tel" /></FormControl>
@@ -345,7 +339,7 @@ export default function SellerOnboardingDialog({ isOpen, onClose }: SellerOnboar
             <FormField
               control={form.control}
               name="gstNumber"
-              render={({ field }: { field: ControllerRenderProps<FormData, "gstNumber"> }) => (
+              render={({ field }) => (
                 <FormItem>
                   <FormLabel>GST Number (Optional)</FormLabel>
                   <FormControl><Input {...field} /></FormControl>
@@ -356,7 +350,7 @@ export default function SellerOnboardingDialog({ isOpen, onClose }: SellerOnboar
             <FormField
               control={form.control}
               name="bankAccountNumber"
-              render={({ field }: { field: ControllerRenderProps<FormData, "bankAccountNumber"> }) => (
+              render={({ field }) => (
                 <FormItem>
                   <FormLabel>Bank Account Number</FormLabel>
                   <FormControl><Input {...field} type="text" inputMode="numeric" pattern="[0-9]*" /></FormControl>
@@ -367,7 +361,7 @@ export default function SellerOnboardingDialog({ isOpen, onClose }: SellerOnboar
             <FormField
               control={form.control}
               name="ifscCode"
-              render={({ field }: { field: ControllerRenderProps<FormData, "ifscCode"> }) => (
+              render={({ field }) => (
                 <FormItem>
                   <FormLabel>IFSC Code</FormLabel>
                   <FormControl><Input {...field} /></FormControl>
@@ -378,7 +372,7 @@ export default function SellerOnboardingDialog({ isOpen, onClose }: SellerOnboar
             <FormField
               control={form.control}
               name="deliveryRadius"
-              render={({ field }: { field: ControllerRenderProps<FormData, "deliveryRadius"> }) => (
+              render={({ field }) => (
                 <FormItem>
                   <FormLabel>Delivery Radius (in km)</FormLabel>
                   <FormControl><Input {...field} type="number" /></FormControl>
@@ -404,5 +398,4 @@ export default function SellerOnboardingDialog({ isOpen, onClose }: SellerOnboar
       </DialogContent>
     </Dialog>
   );
-} // ✅ सुनिश्चित करें कि यह अंतिम क्लोजिंग ब्रेस है
-  
+        }
