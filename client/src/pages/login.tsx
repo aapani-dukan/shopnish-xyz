@@ -1,7 +1,8 @@
 // client/src/pages/login.tsx
 "use client";
 import React, { useState } from "react";
-import { signInWithGoogle } from "@/lib/firebase";
+// import { signInWithGoogle } from "@/lib/firebase"; // ❌ इसकी जगह अब नया फंक्शन इस्तेमाल करें
+import { initiateGoogleSignInRedirect } from "@/lib/firebase"; // ✅ इसे इम्पोर्ट करें
 import { Button } from "@/components/ui/button";
 import GoogleIcon from "@/components/ui/GoogleIcon";
 import { useLocation } from "wouter";
@@ -14,16 +15,19 @@ export default function LoginPage() {
     try {
       setLoading(true);
 
-      const { user: fbUser } = await signInWithGoogle();
-      if (!fbUser) return;
+      // ✅ यहाँ signInWithGoogle() की जगह initiateGoogleSignInRedirect() इस्तेमाल करें
+      await initiateGoogleSignInRedirect();
+      
+      // ध्यान दें: initiateGoogleSignInRedirect() ब्राउज़र को रीडायरेक्ट करेगा,
+      // इसलिए इसके बाद का code (जैसे navigate("/")) तुरंत नहीं चलेगा।
+      // AuthRedirectGuard और useAuth.tsx का onAuthStateChanged/handleRedirectResult
+      // यूजर को सही पेज पर भेज देंगे जब वे वापस आएंगे।
 
-      // अगर backend पर customer बनाना हो तो यहाँ minimal POST कर दें
-      navigate("/");  // सीधे होम पर
     } catch (err) {
       console.error("Customer login error:", err);
       alert("Login failed, please try again.");
     } finally {
-      setLoading(false);
+      setLoading(false); // यह सुनिश्चित करता है कि लोडिंग बंद हो जाए
     }
   };
 
