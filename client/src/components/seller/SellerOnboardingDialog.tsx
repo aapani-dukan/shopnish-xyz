@@ -87,6 +87,10 @@ export default function SellerOnboardingDialog({ isOpen, onClose }: SellerOnboar
 
   const registerSellerMutation = useMutation<any, Error, FormData>({
     mutationFn: async (data: FormData) => {
+      console.log("registerSellerMutation mutationFn: Checking user for token/UID.");
+      console.log("User object in mutationFn:", user);
+      console.log("user.idToken:", user?.idToken ? "Present" : "Missing");
+      console.log("user.firebaseUid:", user?.firebaseUid ? "Present" : "Missing");
       if (!user?.idToken || !user?.firebaseUid) {
         throw new Error("User not authenticated or Firebase UID/Token missing.");
       }
@@ -127,6 +131,10 @@ export default function SellerOnboardingDialog({ isOpen, onClose }: SellerOnboar
   });
 
   const onSubmit = (data: FormData) => {
+    console.log("onSubmit: Form submitted. Checking user object.");
+    console.log("User object in onSubmit:", user);
+    console.log("isAuthenticated:", isAuthenticated);
+    console.log("isLoadingAuth:", isLoadingAuth);
     registerSellerMutation.mutate(data);
   };
 
