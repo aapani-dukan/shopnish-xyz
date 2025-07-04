@@ -1,3 +1,5 @@
+// src/pages/Auth.tsx
+
 import { useState } from "react";
 import { signInWithGoogle } from "@/lib/firebase";
 import { Button } from "@/components/ui/button";
@@ -10,7 +12,9 @@ export default function AuthPage() {
   const handleGoogleSignIn = async () => {
     try {
       setIsLoading(true);
-    await signInWithGoogle(); 
+      await signInWithGoogle();
+      // ✅ यहाँ यह लाइन जोड़ें: लॉगिन सफल होने पर isLoading को false करें
+      setIsLoading(false); 
     } catch (error) {
       console.error("Error signing in:", error);
       setIsLoading(false);
@@ -57,4 +61,3 @@ export default function AuthPage() {
     </div>
   );
 }
-
