@@ -4,77 +4,100 @@ import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useLocation } from "wouter";
-// import { apiRequest } from "@/lib/apiRequest"; // अब इसकी सीधी जरूरत नहीं होगी अगर आप fetch का उपयोग कर रहे हैं
 import { Truck } from "lucide-react";
-import { signInWithGooglePopup } from "@/lib/firebase"; // Common function import
+// import { signInWithGooglePopup } from "@/lib/firebase"; // ❌ अब इसकी जरूरत नहीं है
+import { initiateGoogleSignInRedirect, handleRedirectResult } from "@/lib/firebase"; // ✅ इन नए फ़ंक्शंस को इम्पोर्ट करें
 
 export default function DeliveryLogin() {
   const [, navigate] = useLocation();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
 
-  const handleFirebasePopupLogin = async () => {
-    setLoading(true);
+  // ✅ useEffect: यह रीडायरेक्ट के परिणाम को हैंडल करेगा जब यूजर वापस आएगा
+  useEffect(() => {
+    const handleRedirectLogin = async () => {
+      setLoading(true); // लोडिंग शुरू करें
+      try {
+        const result = await handleRedirectResult(); // रीडायरेक्ट के परिणाम को प्राप्त करें
+
+        if (result && result.user) { // यदि परिणाम और यूजर मौजूद हैं
+          const user = result.user;
+
+          // बाकी लॉजिक वैसा ही रहेगा जैसा पहले था
+          const token = await user.getIdToken();
+
+          const response = await fetch("/api/delivery/login", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              firebaseUid: user.uid,
+              email: user.email || "",
+              name: user.displayName || user.email || "",
+            }),
+          });
+
+          if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || "Failed to authenticate with backend.");
+          }
+
+          const backendResponse = await response.json();
+          const deliveryBoy = backendResponse.user;
+
+          if (!deliveryBoy) {
+            throw new Error("Delivery boy data not received from backend.");
+          }
+
+          localStorage.setItem("deliveryBoyToken", token);
+          localStorage.setItem("deliveryBoyEmail", deliveryBoy.email || "");
+
+          if (deliveryBoy.approvalStatus === "approved") {
+            toast({ title: "Login Successful", description: `Welcome ${deliveryBoy.name || deliveryBoy.email}` });
+            navigate("/delivery-dashboard");
+          } else {
+            toast({
+              title: "Approval Pending",
+              description: "You are not approved yet. Please wait for admin approval.",
+              variant: "destructive",
+            });
+          }
+        }
+      } catch (err: any) {
+        console.error("Delivery login (redirect result) failed:", err);
+        // यदि कोई त्रुटि है लेकिन यह यूजर के कारण नहीं है, तो शायद पॉप-अप ब्लॉक हुआ था
+        // इस मामले में, हम कोई टोस्ट नहीं दिखाते हैं, या एक अलग संदेश दिखाते हैं
+        if (err.code !== 'auth/popup-closed-by-user' && err.code !== 'auth/cancelled-popup-request') {
+          toast({
+            title: "Login Failed",
+            description: err.message || "Something went wrong during login.",
+            variant: "destructive",
+          });
+        }
+      } finally {
+        setLoading(false); // लोडिंग बंद करें, चाहे सफलता हो या विफलता
+      }
+    };
+
+    handleRedirectLogin(); // कंपोनेंट माउंट होने पर इसे चलाएँ
+  }, [navigate, toast]); // निर्भरताएँ जोड़ें
+
+  const handleGoogleLogin = async () => { // ✅ फ़ंक्शन का नाम बदलें ताकि यह स्पष्ट हो
+    setLoading(true); // लोडिंग शुरू करें
     try {
-      const result = await signInWithGooglePopup();
-      const user = result.user;
-
-      if (!user) {
-        throw new Error("Firebase user not found after sign-in.");
-      }
-
-      // Send token to backend using POST method to a new dedicated login endpoint
-      const token = await user.getIdToken();
-
-      const response = await fetch("/api/delivery/login", { // ✅ नया POST URL
-        method: "POST", // ✅ मेथड POST होना चाहिए
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`, // टोकन भेजना ज़रूरी है
-        },
-        body: JSON.stringify({
-          firebaseUid: user.uid,
-          email: user.email || "",
-          name: user.displayName || user.email || "",
-        }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Failed to authenticate with backend.");
-      }
-
-      const backendResponse = await response.json();
-      const deliveryBoy = backendResponse.user; // सर्वर से आया हुआ डिलीवरी बॉय डेटा
-
-      if (!deliveryBoy) {
-        throw new Error("Delivery boy data not received from backend.");
-      }
-
-      // Save in localStorage (आप अपने टोकन और ईमेल को localStorage में सेव कर सकते हैं)
-      localStorage.setItem("deliveryBoyToken", token);
-      localStorage.setItem("deliveryBoyEmail", deliveryBoy.email || ""); // या backendResponse से ईमेल
-
-      // Call backend to check approval (यह अब ऊपर वाले fetch कॉल में शामिल हो जाएगा)
-      if (deliveryBoy.approvalStatus === "approved") { // ✅ सर्वर रिस्पांस से approvalStatus चेक करें
-        toast({ title: "Login Successful", description: `Welcome ${deliveryBoy.name || deliveryBoy.email}` });
-        navigate("/delivery-dashboard");
-      } else {
-        toast({
-          title: "Approval Pending",
-          description: "You are not approved yet. Please wait for admin approval.",
-          variant: "destructive",
-        });
-      }
-    } catch (err: any) { // err को any टाइप दें ताकि message प्रॉपर्टी एक्सेस कर सकें
-      console.error("Delivery login failed:", err);
+      await initiateGoogleSignInRedirect(); // ✅ रीडायरेक्ट-आधारित साइन-इन शुरू करें
+      // इसके बाद, यूजर को Google के प्रमाणीकरण पृष्ठ पर रीडायरेक्ट किया जाएगा।
+      // जब वे वापस आएंगे, तो useEffect में handleRedirectLogin इसे संभालेगा।
+    } catch (err: any) {
+      console.error("Failed to initiate Google Sign-In Redirect:", err);
       toast({
         title: "Login Failed",
-        description: err.message || "Something went wrong during login.",
+        description: err.message || "Could not start Google login process.",
         variant: "destructive",
       });
-    } finally {
-      setLoading(false);
+      setLoading(false); // त्रुटि होने पर लोडिंग बंद करें
     }
   };
 
@@ -95,7 +118,7 @@ export default function DeliveryLogin() {
           <CardContent className="space-y-4">
             <Button
               className="w-full"
-              onClick={handleFirebasePopupLogin}
+              onClick={handleGoogleLogin} // ✅ नए हैंडलर का उपयोग करें
               disabled={loading}
             >
               {loading ? "Checking..." : "Login with Google"}
