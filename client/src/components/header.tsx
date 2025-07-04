@@ -18,27 +18,22 @@ interface HeaderProps {
 const Header: React.FC<HeaderProps> = ({ categories }) => {
   const { items, isCartOpen, toggleCart } = useCartStore();
   const [, navigate] = useLocation();
-  const { user } = useAuth(); // ✅ Get user from useAuth hook
+  const { user } = useAuth();
 
-  // 📦 'Become a Seller' बटन के लिए हैंडलर
+  // ✅ 'Become a Seller' बटन के लिए हैंडलर
   const handleBecomeSeller = async () => {
     if (user) {
-      // यदि यूजर पहले से लॉग इन है, तो उसे सीधे विक्रेता ऑनबोर्डिंग पेज पर भेजें
-      // या, यदि वह पहले से विक्रेता है, तो उसके डैशबोर्ड पर भेजें।
-      // आपको यहाँ अपनी विक्रेता ऑनबोर्डिंग लॉजिक के आधार पर रीडायरेक्ट पाथ निर्धारित करना होगा।
-      // मान लीजिए कि /seller-apply आपका विक्रेता आवेदन पेज है।
+      // ✅ यदि यूज़र लॉग इन है → उसे seller apply intent के साथ भेजो
       console.log("User is already logged in, navigating to seller application.");
-      navigate("/seller-apply"); // या /seller-dashboard यदि वह पहले से विक्रेता है
+      navigate("/seller-apply?intent=become-seller");
     } else {
-      // यदि यूजर लॉग इन नहीं है, तो Google रीडायरेक्ट साइन-इन प्रक्रिया शुरू करें
+      // 🔐 लॉगिन नहीं है → Google Sign-in Redirect चालू करो
       console.log("User is not logged in, initiating Google Sign-In Redirect for seller.");
       try {
         await initiateGoogleSignInRedirect();
-        // signInWithRedirect के बाद, ब्राउज़र रीडायरेक्ट होगा।
-        // AuthRedirectGuard और useAuth.tsx का onAuthStateChanged हैंडलर बाकी काम करेगा।
+        // Redirect के बाद AuthRedirectGuard बाकी संभाल लेगा
       } catch (error) {
         console.error("Error during Google Sign-In Redirect:", error);
-        // उपयोगकर्ता को त्रुटि दिखाएं
       }
     }
   };
@@ -74,9 +69,9 @@ const Header: React.FC<HeaderProps> = ({ categories }) => {
           )}
         </button>
 
-        {/* ✅ 'Become a Seller' बटन अब handleBecomeSeller को कॉल करेगा */}
+        {/* 🔘 Updated: Become a Seller Button */}
         <button
-          onClick={handleBecomeSeller} // ✅ Updated to call the new handler
+          onClick={handleBecomeSeller}
           className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
         >
           Become a Seller
