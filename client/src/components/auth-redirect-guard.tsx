@@ -3,12 +3,20 @@
 import { useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useLocation } from "wouter";
-import { useSearch } from "wouter/use-location";
+
+// ✅ SSR-compatible intent extractor
+function getIntentFromLocation(location: string): string | null {
+  try {
+    const url = new URL(location, "http://localhost"); // dummy base for parsing
+    return url.searchParams.get("intent");
+  } catch {
+    return null;
+  }
+}
 
 export function AuthRedirectGuard() {
   const [location, navigate] = useLocation();
-  const searchParams = new URLSearchParams(useSearch());
-  const intent = searchParams.get("intent");
+  const intent = getIntentFromLocation(location);
   const { user, isLoadingAuth } = useAuth();
 
   useEffect(() => {
