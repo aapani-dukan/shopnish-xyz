@@ -57,7 +57,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               throw new Error("Invalid user data from backend: Missing or invalid UUID.");
           }
 
-          setUser(backendUser);
+          setUser(backendUser,idToken);
           console.log("User data set in context:", backendUser);
 
         } catch (error) {
