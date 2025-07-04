@@ -3,8 +3,8 @@ import React from "react";
 import { useCartStore } from "@/lib/store";
 import CartModal from "./cart-modal";
 import { Link, useLocation } from "wouter";
-import { initiateGoogleSignInRedirect } from "@/lib/firebase"; // ✅ Import initiateGoogleSignInRedirect
-import { useAuth } from "@/hooks/useAuth"; // ✅ Import useAuth to check if user is logged in
+import { initiateGoogleSignInRedirect } from "@/lib/firebase"; // initiateGoogleSignInRedirect इम्पोर्ट करें
+import { useAuth } from "@/hooks/useAuth"; // useAuth इम्पोर्ट करें
 
 interface Category {
   id: string;
@@ -18,23 +18,37 @@ interface HeaderProps {
 const Header: React.FC<HeaderProps> = ({ categories }) => {
   const { items, isCartOpen, toggleCart } = useCartStore();
   const [, navigate] = useLocation();
-  const { user } = useAuth();
+  // ✅ isAuthenticated और isLoadingAuth को भी useAuth से प्राप्त करें
+  const { user, isAuthenticated, isLoadingAuth } = useAuth(); 
 
-  // ✅ 'Become a Seller' बटन के लिए हैंडलर
+  // 'Become a Seller' बटन के लिए हैंडलर
   const handleBecomeSeller = async () => {
-    if (user) {
-      // ✅ यदि यूज़र लॉग इन है → उसे seller apply intent के साथ भेजो
-      console.log("User is already logged in, navigating to seller application.");
-      navigate("/seller-apply?intent=become-seller");
-    } else {
-      // 🔐 लॉगिन नहीं है → Google Sign-in Redirect चालू करो
-      console.log("User is not logged in, initiating Google Sign-In Redirect for seller.");
+    // पहले जांचें कि ऑथेंटिकेशन अभी लोड हो रहा है या नहीं
+    if (isLoadingAuth) {
+      console.log("Auth is still loading, please wait.");
+      // यूजर को एक टोस्ट या कुछ UI फीडबैक दें
+      // आप यहां एक लोडिंग स्पिनर भी दिखा सकते हैं
+      return; 
+    }
+
+    // ✅ यदि यूज़र लॉग इन नहीं है (यानी isAuthenticated false है)
+    if (!isAuthenticated) {
+      console.log("User is not logged in, initiating Google Sign-In Redirect for seller application.");
       try {
-        await initiateGoogleSignInRedirect();
-        // Redirect के बाद AuthRedirectGuard बाकी संभाल लेगा
+        // Google Sign-in Redirect चालू करें
+        // AuthRedirectGuard और useAuth का useEffect लॉगिन के बाद बाकी का काम संभाल लेंगे
+        await initiateGoogleSignInRedirect(); 
+        // इस बिंदु पर, ब्राउज़र Google के लॉगिन पेज पर रीडायरेक्ट हो जाएगा।
+        // जब यूजर वापस आएगा, तो onAuthStateChanged (useAuth में) और AuthRedirectGuard उसे सही जगह भेजेंगे।
       } catch (error) {
         console.error("Error during Google Sign-In Redirect:", error);
+        // त्रुटि हैंडलिंग, जैसे टोस्ट दिखाना
       }
+    } else {
+      // ✅ यदि यूज़र पहले से लॉग इन है (isAuthenticated true है)
+      console.log("User is already logged in, navigating to seller application.");
+      // अब सीधे /seller-apply पर भेजें, AuthRedirectGuard भूमिका के आधार पर अंतिम निर्णय लेगा
+      navigate("/seller-apply?intent=become-seller"); 
     }
   };
 
@@ -69,12 +83,14 @@ const Header: React.FC<HeaderProps> = ({ categories }) => {
           )}
         </button>
 
-        {/* 🔘 Updated: Become a Seller Button */}
+        {/* Updated: Become a Seller Button */}
         <button
           onClick={handleBecomeSeller}
           className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+          // आप यहां बटन को isLoadingAuth के दौरान डिसेबल भी कर सकते हैं
+          disabled={isLoadingAuth} 
         >
-          Become a Seller
+          {isLoadingAuth ? "Loading Auth..." : "Become a Seller"}
         </button>
       </div>
 
