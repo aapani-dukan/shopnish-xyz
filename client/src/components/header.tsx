@@ -43,11 +43,15 @@ const Header: React.FC<HeaderProps> = ({ categories }) => {
       } catch (error) {
         console.error("Error during Google Sign-In Redirect:", error);
         // त्रुटि हैंडलिंग, जैसे टोस्ट दिखाना
+        // setErrorToast("Google Sign-In failed. Please try again."); // उदाहरण
       }
     } else {
       // ✅ यदि यूज़र पहले से लॉग इन है (isAuthenticated true है)
-      console.log("User is already logged in, navigating to seller application.");
-      // अब सीधे /seller-apply पर भेजें, AuthRedirectGuard भूमिका के आधार पर अंतिम निर्णय लेगा
+      console.log("User is already logged in, navigating to seller application with intent.");
+      // आपके नियम के अनुसार: यदि यूज़र लॉग इन है, तो `AuthRedirectGuard`
+      // उसकी भूमिका और स्टेटस (seller approved/pending) के आधार पर
+      // उसे सही जगह (dashboard/status/apply) पर रीडायरेक्ट करेगा।
+      // हमें बस `intent` के साथ `/seller-apply` पर नेविगेट करना है।
       navigate("/seller-apply?intent=become-seller"); 
     }
   };
@@ -87,7 +91,7 @@ const Header: React.FC<HeaderProps> = ({ categories }) => {
         <button
           onClick={handleBecomeSeller}
           className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-          // आप यहां बटन को isLoadingAuth के दौरान डिसेबल भी कर सकते हैं
+          // isLoadingAuth के दौरान बटन को डिसेबल करें ताकि यूजर क्लिक न कर सके जब तक ऑथ स्टेटस क्लियर न हो
           disabled={isLoadingAuth} 
         >
           {isLoadingAuth ? "Loading Auth..." : "Become a Seller"}
