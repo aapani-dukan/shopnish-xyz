@@ -15,16 +15,22 @@ function getIntentFromLocation(location: string): string | null {
 }
 
 // सार्वजनिक पथों की सूची
+// ✅ इन रास्तों पर बिना लॉगिन के भी जाया जा सकता है
 const PUBLIC_PATHS = [
-  "/", // ✅ होम पेज को यहाँ रखें, लेकिन इसे विशेष रूप से हैंडल करेंगे
+  "/",
   "/product",
   "/cart",
   "/checkout",
+];
+
+// ✅ लॉगिन/एडमिन-लॉगिन/Firebase handler जैसे स्पेशल ऑथ पाथ
+const AUTH_SPECIFIC_PATHS = [
   "/auth",
   "/login",
   "/admin-login",
   "/__/auth/handler",
 ];
+
 
 export function AuthRedirectGuard() {
   const [location, navigate] = useLocation();
@@ -45,77 +51,58 @@ export function AuthRedirectGuard() {
       return;
     }
 
-    // ✅ जांचें कि क्या वर्तमान स्थान एक सार्वजनिक पथ है (auth, login, handler को छोड़कर)
-    // हम चाहते हैं कि यूजर /auth पर जाए, भले ही / होम पेज पब्लिक हो।
-    const isActuallyPublicPath = PUBLIC_PATHS.some(
-      (path) => 
-        (location === path && path !== "/auth" && path !== "/login" && path !== "/admin-login") || // सटीक मैच, लेकिन लॉगिन/एडमिन-लॉगिन/auth को पब्लिक न मानें इस संदर्भ में
-        (path.endsWith("/") && location.startsWith(path) && path !== "/auth/") || 
-        (path === "/__/auth/handler" && location.includes(path)) 
+    // ✅ कुछ उपयोगी फ्लैग्स
+    const isOnPublicPath = PUBLIC_PATHS.some(
+      (path) => location === path || (path.endsWith("/") && location.startsWith(path))
     );
-    // होम पेज को विशेष रूप से हैंडल करें ताकि यह अनधिकृत होने पर /auth पर जा सके
+    const isOnAuthSpecificPath = AUTH_SPECIFIC_PATHS.some(
+      (path) => location === path || location.startsWith(path) || location.includes(path)
+    );
     const isHome = location === "/";
 
 
-    // 🔒 स्टेप 2: यूज़र लॉगिन नहीं है
+    // --- 🔒 यूज़र लॉगिन नहीं है ---
     if (!isAuthenticated) {
       console.log("AuthRedirectGuard: User not logged in.");
-      
-      // यदि यूजर /auth, /login, /admin-login पर नहीं है
-      // और वह किसी वास्तव में पब्लिक पथ पर नहीं है (जैसे कि /product),
-      // और वह Firebase handler पर भी नहीं है,
-      // तो उसे /auth पर रीडायरेक्ट करें।
-      if (
-        !location.startsWith("/auth") &&
-        !location.startsWith("/login") &&
-        !location.startsWith("/admin-login") &&
-        !location.includes("/__/auth/handler") &&
-        !isActuallyPublicPath // यदि यह वास्तव में सार्वजनिक नहीं है (जैसे /product)
-      ) {
-        console.log("AuthRedirectGuard: Not on auth/login/public path, redirecting to /auth.");
+
+      // यदि यूजर /auth या किसी ऑथ-स्पेसिफिक पाथ पर नहीं है
+      // और वह किसी सार्वजनिक पथ पर भी नहीं है, तो उसे /auth पर रीडायरेक्ट करें।
+      // यह सुनिश्चित करता है कि संरक्षित मार्ग तक पहुंचने की कोशिश करने वाले को /auth पर भेजा जाए।
+      if (!isOnAuthSpecificPath && !isOnPublicPath) {
+        console.log("AuthRedirectGuard: Not on auth/public path, redirecting to /auth.");
         navigate("/auth");
         return;
-      } 
-      // ✅ यदि यूजर होम पेज पर है और लॉग इन नहीं है, तो उसे /auth पर रीडायरेक्ट करें
-      else if (isHome && !location.startsWith("/auth")) { // सुनिश्चित करें कि हम पहले से /auth पर नहीं हैं
-          console.log("AuthRedirectGuard: User not logged in and on home page, redirecting to /auth.");
-          navigate("/auth");
-          return;
       }
-      console.log("AuthRedirectGuard: On a public/auth/handler path, staying put.");
-      return; // सार्वजनिक पथों पर रहने दें
+      
+      // ✅ ऐप खोलने पर: यदि यूजर होम पेज पर है और लॉग इन नहीं है, तो उसे /auth पर रीडायरेक्ट करें
+      // (यह आपके पहले नियम का पालन करता है कि ऐप खुलते ही अनधिकृत यूजर लॉगिन पेज पर जाए)
+      if (isHome && !isOnAuthSpecificPath) { // यदि वे होम पर हैं और /auth पर नहीं हैं
+        console.log("AuthRedirectGuard: User not logged in and on home page, redirecting to /auth.");
+        navigate("/auth");
+        return;
+      }
+
+      console.log("AuthRedirectGuard: On a public/auth-specific path, staying put.");
+      return; // सार्वजनिक या auth-विशिष्ट पथों पर रहने दें
     }
 
-    // 🔓 स्टेप 3: यूज़र लॉगिन है (`isAuthenticated` अब true है)
+    // --- 🔓 यूज़र लॉगिन है (`isAuthenticated` अब true है) ---
     console.log(
       "AuthRedirectGuard: User is logged in. Current role:",
-      user?.role
+      user?.role,
+      "Approval Status:",
+      user?.seller?.approvalStatus
     );
 
-    // यदि यूजर लॉगिन/auth पेज पर है लेकिन पहले से ही लॉग इन है, तो उसे उसकी भूमिका के आधार पर रीडायरेक्ट करें
-    if (location.startsWith("/auth") || location.startsWith("/login") || location.startsWith("/admin-login")) {
-      let targetPath = "/"; // डिफ़ॉल्ट रूप से ग्राहक होम
-      if (user?.role === "seller") {
-        const approvalStatus = user.seller?.approvalStatus;
-        if (approvalStatus === "approved") {
-          targetPath = "/seller-dashboard";
-        } else if (approvalStatus === "pending") {
-          targetPath = "/seller-status";
-        } else {
-          targetPath = "/seller-apply"; // यदि अभी तक आवेदन नहीं किया है
-        }
-      } else if (user?.role === "admin") {
-        targetPath = "/admin-dashboard";
-      } else if (user?.role === "delivery") {
-        targetPath = "/delivery-dashboard";
-      }
-
-      console.log(`AuthRedirectGuard: Logged in user on auth page, redirecting to ${targetPath}.`);
-      navigate(targetPath);
-      return; // रीडायरेक्ट के बाद बाहर निकलें
+    // ✅ ऐप खुलने पर/लॉगिन के बाद: यदि यूजर लॉगिन/auth पेज पर है लेकिन पहले से ही लॉग इन है
+    // तो उसे होम पेज पर भेजें (आपके नियम 1 का पालन करते हुए: लॉगिन के बाद होम पेज)
+    if (isOnAuthSpecificPath) {
+      console.log("AuthRedirectGuard: Logged in user on auth-specific page, redirecting to /.");
+      navigate("/"); // लॉगिन के बाद हमेशा होम पर भेजें जैसा आपने बताया
+      return;
     }
 
-    // स्टेप 4: रोल-आधारित संरक्षित मार्ग रीडायरेक्ट (लॉगिन/ऑथ पेज पर नहीं होने पर)
+    // --- रोल-आधारित रीडायरेक्ट लॉजिक ---
     if (!user?.role) {
       console.warn("AuthRedirectGuard: User logged in but role is missing. Defaulting to home.");
       if (location !== "/") {
@@ -124,75 +111,90 @@ export function AuthRedirectGuard() {
       return;
     }
 
-    let intendedRolePath: string | null = null;
+    let targetPath: string | null = null; // यह वह पाथ है जहां यूजर को जाना चाहिए
 
     switch (user.role) {
       case "seller": {
         const approvalStatus = user.seller?.approvalStatus;
+
+        // नियम: 1.seller-approved to seller dashboard
         if (approvalStatus === "approved") {
-          intendedRolePath = "/seller-dashboard";
-        } else if (approvalStatus === "pending") {
-          intendedRolePath = "/seller-status";
-        } else {
-          intendedRolePath = "/seller-apply";
+          targetPath = "/seller-dashboard";
+        } 
+        // नियम: 2. Seller - pending to please wait
+        else if (approvalStatus === "pending") {
+          targetPath = "/seller-status";
+        } 
+        // नियम: 3. इनके अलावा कोई भी रोल/स्टेटस हो तो seller apply form
+        else {
+          targetPath = "/seller-apply";
         }
 
-        // यदि विक्रेता अपने अपेक्षित पाथ पर है या /seller-apply पर है
-        if (location.startsWith(intendedRolePath) || location.startsWith("/seller-apply")) {
-            // यदि विक्रेता /seller-apply पर है और उसका आवेदन अनुमोदित/लंबित है
-            if (location.startsWith("/seller-apply") && (approvalStatus === "approved" || approvalStatus === "pending")) {
-                if (location !== intendedRolePath) {
-                    console.log(`AuthRedirectGuard: Seller on /seller-apply with status ${approvalStatus}, redirecting to ${intendedRolePath}`);
-                    navigate(intendedRolePath);
-                    return;
-                }
-            }
-            // यदि वे पहले से ही अपने सही पाथ पर हैं, तो कुछ न करें
-            console.log(`AuthRedirectGuard: Seller already on correct seller path (${location}). No redirect.`);
+        // यदि यूजर का इरादा "become-seller" है (बटन दबाने के बाद)
+        if (intent === "become-seller") {
+            console.log(`AuthRedirectGuard: Seller user (status: ${approvalStatus}) with 'become-seller' intent. Redirecting to ${targetPath}`);
+            navigate(targetPath);
+            return;
+        }
+
+        // यदि वर्तमान स्थान पहले से ही अपेक्षित पाथ पर है, तो रीडायरेक्ट न करें
+        if (location.startsWith(targetPath)) {
+            console.log(`AuthRedirectGuard: Seller already on correct path (${location}). No redirect.`);
             return;
         }
         
-        // यदि विक्रेता किसी गैर-विक्रेता संरक्षित पथ पर है या अपने सही डैशबोर्ड पर नहीं है
+        // यदि विक्रेता किसी गैर-विक्रेता संरक्षित पथ पर है, तो उसे उसके अपेक्षित पथ पर भेजें
         if (
-          !location.startsWith("/seller-") && 
-          !location.startsWith("/admin-") && 
-          !location.startsWith("/delivery-") && 
-          !isActuallyPublicPath // यदि सार्वजनिक नहीं है
+          !location.startsWith("/seller-") && // यदि वह विक्रेता-विशिष्ट पथ पर नहीं है
+          !location.startsWith("/admin-") && // और एडमिन पाथ पर नहीं है
+          !location.startsWith("/delivery-") && // और डिलीवरी पाथ पर नहीं है
+          !isOnPublicPath // और सार्वजनिक पाथ पर भी नहीं है
         ) {
-          console.log(`AuthRedirectGuard: Seller on non-seller/protected path, redirecting to ${intendedRolePath}`);
-          navigate(intendedRolePath);
+          console.log(`AuthRedirectGuard: Seller on non-seller/protected path, redirecting to ${targetPath}`);
+          navigate(targetPath);
           return;
         }
-        break;
+        break; // स्विच से बाहर निकलें
       }
 
       case "admin":
-        intendedRolePath = "/admin-dashboard";
-        if (!location.startsWith(intendedRolePath)) {
+        targetPath = "/admin-dashboard";
+        if (intent === "become-seller") { // एडमिन भी seller बन सकता है
+            console.log("AuthRedirectGuard: Admin user with 'become-seller' intent, redirecting to /seller-apply.");
+            navigate("/seller-apply");
+            return;
+        }
+        if (!location.startsWith(targetPath)) {
           console.log("AuthRedirectGuard: Admin, redirecting to /admin-dashboard.");
-          navigate(intendedRolePath);
+          navigate(targetPath);
           return;
         }
         break;
 
       case "delivery":
-        intendedRolePath = "/delivery-dashboard";
-        if (!location.startsWith(intendedRolePath)) {
+        targetPath = "/delivery-dashboard";
+        if (intent === "become-seller") { // डिलीवरी भी seller बन सकता है
+            console.log("AuthRedirectGuard: Delivery user with 'become-seller' intent, redirecting to /seller-apply.");
+            navigate("/seller-apply");
+            return;
+        }
+        if (!location.startsWith(targetPath)) {
           console.log("AuthRedirectGuard: Delivery, redirecting to /delivery-dashboard.");
-          navigate(intendedRolePath);
+          navigate(targetPath);
           return;
         }
         break;
 
       case "customer":
-      default:
-        // ✅ ग्राहक को /seller-apply पर जाने दें यदि intent "become-seller" है
-        if (intent === "become-seller" && location.startsWith("/seller-apply")) {
-          console.log("AuthRedirectGuard: Customer wants to become seller, allowing access to /seller-apply");
-          return; // उन्हें यहीं रहने दें
+      default: // डिफ़ॉल्ट रूप से ग्राहक (या अज्ञात भूमिका)
+        // यदि ग्राहक "become-seller" इंटेंट के साथ है, तो /seller-apply पर भेजें
+        if (intent === "become-seller") {
+          console.log("AuthRedirectGuard: Customer with 'become-seller' intent, redirecting to /seller-apply.");
+          navigate("/seller-apply");
+          return;
         }
 
-        // यदि ग्राहक किसी भी संरक्षित विक्रेता/एडमिन/डिलीवरी पेज पर है, तो होम पर रीडायरेक्ट करें
+        // यदि ग्राहक किसी संरक्षित विक्रेता/एडमिन/डिलीवरी पेज पर है, तो होम पर रीडायरेक्ट करें
         if (
           location.startsWith("/seller-") ||
           location.startsWith("/admin-") ||
@@ -203,39 +205,36 @@ export function AuthRedirectGuard() {
           return;
         }
 
-        // यदि ग्राहक किसी वास्तव में सार्वजनिक पथ पर है (होम को छोड़कर), तो उसे वहीं रहने दें
-        if (isActuallyPublicPath && !isHome) { // होम को यहां से बाहर रखें
-            console.log("AuthRedirectGuard: Customer on public path (not home). No redirect.");
-            return;
-        }
-
-        // ✅ यदि ग्राहक होम पर है और कोई विशेष मामला नहीं है, तो उसे वहीं रहने दें
+        // यदि ग्राहक होम पर है, तो उसे वहीं रहने दें (आपका नियम)
         if (isHome) {
             console.log("AuthRedirectGuard: Customer on home page. Staying put.");
             return;
         }
+        
+        // यदि ग्राहक किसी सार्वजनिक (लेकिन होम नहीं) पथ पर है, तो उसे वहीं रहने दें
+        if (isOnPublicPath && !isHome) {
+            console.log("AuthRedirectGuard: Customer on public path (not home). Staying put.");
+            return;
+        }
 
-        // यदि ग्राहक किसी ऐसे पथ पर है जो सार्वजनिक नहीं है और न ही होम है, तो होम पर रीडायरेक्ट करें
-        if (!isActuallyPublicPath && !isHome) {
-          console.log("AuthRedirectGuard: Customer not on home/public path, redirecting to /.");
+        // अंतिम कैच-ऑल: यदि ग्राहक किसी अनहैंडल्ड या गैर-सार्वजनिक पथ पर है, तो होम पर भेजें
+        if (!isOnPublicPath) { // अगर पब्लिक नहीं है तो होम पर भेज दो
+          console.log("AuthRedirectGuard: Customer not on public path, redirecting to /.");
           navigate("/");
           return;
         }
         break;
     }
 
-    // अंतिम कैच-ऑल: यदि कोई विशिष्ट रीडायरेक्ट नहीं हुआ है और यूजर अपने अपेक्षित रोल पाथ पर नहीं है
-    // और वह ग्राहक/अज्ञात भूमिका का है और वर्तमान में एक गैर-सार्वजनिक/गैर-होम पथ पर है
-    if (
-        isAuthenticated && 
-        !isLoadingAuth && 
-        user?.role === "customer" && // केवल ग्राहकों के लिए
-        !isActuallyPublicPath && 
-        !isHome
-    ) {
-        console.log("AuthRedirectGuard: Logged in customer on unhandled non-public/non-home path, redirecting to /.");
-        navigate("/");
-        return;
+    // ✅ अंतिम कैच-ऑल: यदि यूजर लॉग इन है और कोई विशेष रीडायरेक्ट लागू नहीं होता है,
+    // तो सुनिश्चित करें कि वे होम पेज पर हैं यदि वे पहले से ही किसी वैध स्थान पर नहीं हैं
+    // (यह मुख्य रूप से ग्राहक के लिए है जो किसी अनपेक्षित गैर-सार्वजनिक पथ पर हो सकता है)
+    if (isAuthenticated && !isLoadingAuth && user?.role === "customer") {
+        if (!isOnPublicPath && !isHome && !isOnAuthSpecificPath) { // सुनिश्चित करें कि यह किसी भी वैध पथ पर नहीं है
+            console.log("AuthRedirectGuard: Logged in customer on unhandled non-public path, redirecting to /.");
+            navigate("/");
+            return;
+        }
     }
 
 
