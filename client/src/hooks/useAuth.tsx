@@ -1,6 +1,6 @@
 // src/hooks/useAuth.ts
 
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useState, useCallback } from "react"; // useCallback इम्पोर्ट करें
 import { User as FirebaseUser, onAuthStateChanged } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { apiRequest } from "@/lib/queryClient";
@@ -8,12 +8,10 @@ import { User } from "@/shared/types/user"; // ✅ इम्पोर्ट क�
 
 
 interface AuthContextType {
-  // firebaseUser को context में रखने की आवश्यकता नहीं है यदि इसकी जानकारी User ऑब्जेक्ट में है
-  user: User | null; // ✅ Firebase UID और idToken अब इस User ऑब्जेक्ट में होगा
+  user: User | null;
   isLoadingAuth: boolean;
   isAuthenticated: boolean;
   signOut: () => Promise<void>;
-  // signInWithGoogle: () => Promise<void>; // यदि आप इसे context से provide करना चाहते हैं
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -24,6 +22,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoadingAuth, setIsLoadingAuth] = useState(true);
 
+  // signOut फंक्शन को useCallback में लपेटें ताकि अनावश्यक री-रेंडर से बचा जा सके
+  const signOut = useCallback(async () => {
+    try {
+      await auth.signOut();
+      setUser(null); // AuthProvider के स्टेट को भी साफ़ करें
+      setFirebaseUser(null); // FirebaseUser को भी साफ़ करें
+      console.log("User signed out successfully.");
+    } catch (error) {
+      console.error("Error signing out:", error);
+    }
+  }, []); // [] ही रखें क्योंकि यह किसी external dependency पर निर्भर नहीं करता
+
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
       setFirebaseUser(fbUser); // FirebaseUser को आंतरिक रूप से सेट करें
@@ -32,14 +42,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         console.log("Auth State Changed: Firebase user detected. UID:", fbUser.uid);
         try {
           const idToken = await fbUser.getIdToken();
-          console.log("Firebase ID Token obtained. Length:", idToken.length); // टोकन की लंबाई लॉग करें
+          console.log("Firebase ID Token obtained. Length:", idToken.length);
 
           const userDataForLogin = {
             firebaseUid: fbUser.uid,
             email: fbUser.email!,
             name: fbUser.displayName || fbUser.email!,
-            // idToken को सीधे यहां payload में भेजने की आवश्यकता नहीं है
-            // क्योंकि apiRequest इसे Authorization header में खुद ही जोड़ देगा
           };
           console.log("UserData prepared for /api/auth/login:", userDataForLogin);
 
@@ -48,9 +56,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           
           console.log("API request to /api/auth/login successful. Backend User received:", backendUser);
 
-          if (!backendUser || typeof backendUser.uuid === 'undefined' || backendUser.uuid === null) {
-              console.error("Backend user received does not have a 'uuid' property or it's null/undefined:", backendUser);
-              throw new Error("Invalid user data from backend: Missing or invalid UUID.");
+          // ✅ महत्वपूर्ण: backendUser से अपेक्षित गुणों की जांच करें
+          if (!backendUser || typeof backendUser.uuid === 'undefined' || backendUser.uuid === null || typeof backendUser.role === 'undefined') {
+              console.error("Backend user received does not have required properties (uuid/role) or they are null/undefined:", backendUser);
+              // यदि आवश्यक डेटा गायब है, तो यूजर को लॉग आउट करना बेहतर है ताकि वे ऐप के गलत स्टेट में न रहें।
+              await signOut(); // ✅ signOut को कॉल करें
+              return; // आगे न बढ़ें
           }
 
           // ✅ यहाँ सुधार: सुनिश्चित करें कि idToken को user ऑब्जेक्ट में जोड़ा गया है
@@ -60,37 +71,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               idToken: idToken, // ✅ idToken को user ऑब्जेक्ट में जोड़ें
           };
 
-          setUser(fullUser); // ✅ अब यह एक ही ऑब्जेक्ट पास करेगा
+          setUser(fullUser);
           console.log("User data (including idToken) set in context:", fullUser);
 
         } catch (error) {
           console.error("Error creating/fetching user in our database:", error);
           // यदि सर्वर लॉगिन विफल होता है तो Firebase से भी लॉगआउट करें
-          await auth.signOut();
-          setUser(null);
+          await signOut(); // ✅ signOut को कॉल करें
         }
       } else {
         console.log("Auth State Changed: No Firebase user detected. Setting user to null.");
-        setUser(null);
+        setUser(null); // यदि Firebase user नहीं है तो फ्रंटएंड user को भी null करें
       }
 
-      setIsLoadingAuth(false);
+      setIsLoadingAuth(false); // auth state लोड होने के बाद लोडिंग को फॉल्स करें
       console.log("Auth loading set to false.");
     });
 
     return unsubscribe;
-  }, []); // [] ही रखें, क्योंकि onAuthStateChanged लिसनर को सिर्फ एक बार सेट होना चाहिए
-
-  const signOut = async () => {
-    try {
-      await auth.signOut();
-      setUser(null);
-      setFirebaseUser(null);
-      console.log("User signed out successfully.");
-    } catch (error) {
-      console.error("Error signing out:", error);
-    }
-  };
+  }, [signOut]); // ✅ signOut को dependency array में जोड़ें क्योंकि यह useCallback से आ रहा है
 
   // isAuthenticated की गणना user ऑब्जेक्ट पर आधारित होनी चाहिए और इसमें uuid भी शामिल होना चाहिए
   const isAuthenticated = !!user && typeof user.uuid === 'string' && !!user.idToken;
