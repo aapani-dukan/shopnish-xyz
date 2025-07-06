@@ -1,3 +1,4 @@
+
 // src/pages/Auth.tsx
 
 import { useEffect, useState } from "react";
@@ -114,3 +115,8 @@ export default function AuthPage() {
     </div>
   );
 }
+
+
+
+
+
