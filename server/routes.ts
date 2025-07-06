@@ -1,48 +1,28 @@
 // server/routes.ts
 
-import { Request, Response, Router, NextFunction } from 'express';
+import { Router, Request, Response } from 'express';
 import { db } from './db.js';
-import { and, eq, like, isNotNull } from 'drizzle-orm';
+import { eq, like } from 'drizzle-orm';
 import {
   users,
   sellersPgTable,
   products,
   categories,
   deliveryBoys,
-  orders,
-  cartItems,
-  orderItems,
-  reviews,
   userRoleEnum,
   approvalStatusEnum,
-  insertUserSchema, // केवल अगर आप इसे यहाँ सीधे उपयोग कर रहे हैं
-  insertSellerSchema, // केवल अगर आप इसे यहाँ सीधे उपयोग कर रहे हैं
-  insertDeliveryBoySchema, // केवल अगर आप इसे यहाँ सीधे उपयोग कर रहे हैं
-  insertProductSchema, // केवल अगर आप इसे यहाँ सीधे उपयोग कर रहे हैं
-  insertOrderSchema, // केवल अगर आप इसे यहाँ सीधे उपयोग कर रहे हैं
-  insertOrderItemSchema, // केवल अगर आप इसे यहाँ सीधे उपयोग कर रहे हैं
-  insertReviewSchema, // केवल अगर आप इसे यहाँ सीधे उपयोग कर रहे हैं
-  insertCartItemSchema, // केवल अगर आप इसे यहाँ सीधे उपयोग कर रहे हैं
+  insertProductSchema,
 } from '@/shared/backend/schema';
-import { AuthenticatedRequest, AuthenticatedUser } from '@/shared/types/auth';
-// storage.js का इम्पोर्ट तभी रखें जब आप इसे सीधे इस फ़ाइल में उपयोग कर रहे हों
-// import { storage } from './storage.js';
+import { AuthenticatedRequest } from '@/shared/types/auth';
 
-// मिडलवेयर इम्पोर्ट्स - पाथ सुनिश्चित करें
-import { requireAuth, requireAdminAuth, requireSellerAuth, requireDeliveryBoyAuth } from './middleware/authMiddleware.js';
+import { requireAuth, requireAdminAuth, requireSellerAuth } from './middleware/authMiddleware.js';
 
-// रूट्स फ़ाइलें इम्पोर्ट करें - पाथ सुनिश्चित करें कि वे आपके `server/roots` फ़ोल्डर के अनुरूप हों
-import apiAuthLoginRouter from './roots/apiAuthLogin.js'; // आपका नया auth लॉगिन राउटर
+import apiAuthLoginRouter from './roots/apiAuthLogin.js';
 import adminApproveProductRoutes from './roots/admin/approve-product.js';
 import adminRejectProductRoutes from './roots/admin/reject-product.js';
 import adminProductsRoutes from './roots/admin/products.js';
 import adminVendorsRoutes from './roots/admin/vendors.js';
 import adminPasswordRoutes from './roots/admin/admin-password.js';
-
-// Firebase Admin SDK (यह आमतौर पर server/index.ts में इनिशियलाइज़ होता है)
-// यह इम्पोर्ट केवल तभी रखें जब आप authAdmin को सीधे इस फ़ाइल में उपयोग कर रहे हों
-// आपके `/auth/login` लॉजिक को apiAuthLogin.ts में ले जाया गया है, इसलिए इसकी यहां आवश्यकता नहीं है
-// import { authAdmin } from './lib/firebaseAdmin.js';
 
 
 const router = Router(); // यह आपका मुख्य /api राउटर है
@@ -66,7 +46,7 @@ router.post('/register', async (req: Request, res: Response) => {
       email: userData.email,
       name: userData.name || null,
       role: userRoleEnum.enumValues[0], // Default to customer
-      approvalStatus: approvalStatusEnum.enumValues[1], // Default to approved (या 'pending' अगर आप मैनुअल अप्रूवल चाहते हैं)
+      approvalStatus: approvalStatusEnum.enumValues[1], // Default to approved
       firstName: userData.firstName,
       lastName: userData.lastName,
       phone: userData.phone,
@@ -82,11 +62,12 @@ router.post('/register', async (req: Request, res: Response) => {
   }
 });
 
-// ✅ Authentication Routes (apiAuthLogin.ts से इम्पोर्ट किया गया है)
-// यह `/api/auth/login` को हैंडल करेगा
+// --- Authentication Routes ---
+// apiAuthLoginRouter को /auth पाथ के तहत माउंट करें। यह /api/auth/login को हैंडल करेगा।
 router.use('/auth', apiAuthLoginRouter);
 
-// --- User Profile (requires authentication) ---
+
+// --- User Profile (Authentication Required) ---
 router.get('/me', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     if (!req.user?.uuid) {
@@ -117,23 +98,7 @@ router.post('/auth/logout', async (req, res) => {
 
   try {
     if (sessionCookie) {
-      // Firebase Admin SDK (authAdmin) को server/index.ts में इनिशियलाइज़ किया गया है
-      // और इसे यहां सीधे उपयोग नहीं किया जा सकता, जब तक कि आप इसे यहां इम्पोर्ट न करें
-      // या एक मिडलवेयर के माध्यम से उपलब्ध न कराएं।
-      // यदि आप authAdmin को यहां उपयोग करना चाहते हैं, तो 'import { authAdmin } from './lib/firebaseAdmin.js';' को अनकमेंट करें
-      // और सुनिश्चित करें कि authAdmin वास्तव में Firebase Admin SDK का इंस्टेंस है।
-      // उदाहरण के लिए, आप इसे एक मिडलवेयर के माध्यम से req पर जोड़ सकते हैं।
-      
-      // यदि authAdmin इम्पोर्टेड है:
-      // const decodedClaims = await authAdmin.verifySessionCookie(sessionCookie);
-      // await authAdmin.revokeRefreshTokens(decodedClaims.sub);
-      
-      // वैकल्पिक रूप से, यदि आप authAdmin इम्पोर्ट नहीं करना चाहते हैं, तो यह सीधे admin.auth() का उपयोग करेगा (जो init हो चुका होगा)
-      // यह मानते हुए कि Firebase Admin SDK (admin) init हो चुका है और वैश्विक स्तर पर उपलब्ध है या req पर जोड़ा गया है।
-      // या, आप logout लॉजिक को एक अलग फ़ाइल में ले जा सकते हैं और वहां authAdmin को इम्पोर्ट कर सकते हैं।
-      // फिलहाल, इसे ऐसे ही छोड़ रहा हूं, लेकिन जान लें कि `authAdmin` को यहां उपलब्ध होना चाहिए।
-      console.warn("Logout: Firebase Admin SDK directly used here, ensure 'authAdmin' is properly available or imported.");
-      const admin = await import('firebase-admin'); // यहां डायनेमिक इम्पोर्ट का एक उदाहरण
+      const admin = await import('firebase-admin'); 
       const decodedClaims = await admin.auth().verifySessionCookie(sessionCookie);
       await admin.auth().revokeRefreshTokens(decodedClaims.sub);
     }
@@ -260,7 +225,7 @@ router.get('/products/:id', async (req: Request, res: Response) => {
 // --- Seller Products Routes ---
 router.post('/seller/products', requireSellerAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const userUuid = req.user?.uuid; // Assuming req.user.uuid is the user's UUID
+    const userUuid = req.user?.uuid; 
     if (!userUuid) {
       return res.status(401).json({ error: 'Unauthorized: User UUID missing.' });
     }
@@ -278,12 +243,9 @@ router.post('/seller/products', requireSellerAuth, async (req: AuthenticatedRequ
     const productData = {
       ...req.body,
       sellerId: seller.id,
-      storeId: req.body.storeId, // Ensure storeId is passed in the body
-      categoryId: req.body.categoryId || (await db.select().from(categories).limit(1))[0].id, // Default category
+      storeId: req.body.storeId,
+      categoryId: req.body.categoryId || (await db.select().from(categories).limit(1))[0].id,
     };
-
-    // If you are using Zod for validation, uncomment the next line
-    // const parsedProductData = insertProductSchema.parse(productData);
 
     const [newProduct] = await db.insert(products).values(productData).returning();
     res.status(201).json(newProduct);
@@ -297,11 +259,7 @@ router.post('/seller/products', requireSellerAuth, async (req: AuthenticatedRequ
 router.post('/delivery-boys/register', async (req: Request, res: Response) => {
   try {
     const { email, firebaseUid, name, vehicleType } = req.body;
-    // Assuming insertDeliveryBoySchema.parse(req.body) would be used if doing Zod validation here
-    // And approvalStatus is set to 'pending' by default.
-    // Ensure all required fields for deliveryBoys table are provided in req.body.
     
-    // Example: Minimal insertion for demonstration
     const [newDeliveryBoy] = await db.insert(deliveryBoys).values({
       uuid: firebaseUid,
       email: email,
@@ -318,19 +276,25 @@ router.post('/delivery-boys/register', async (req: Request, res: Response) => {
   }
 });
 
-// --- Admin Routes ---
-// एडमिन रूट्स के लिए एक समर्पित सब-राउटर
+---
+
+**Admin Routes**
+यह एडमिन-विशिष्ट रूट्स के लिए एक समर्पित **सब-राउटर** है।
+हमने `adminRouter.use(requireAdminAuth);` का उपयोग करके सभी एडमिन रूट्स पर **`requireAdminAuth`** मिडलवेयर लागू कर दिया है।
+
+```typescript
 const adminRouter = Router();
 adminRouter.use(requireAdminAuth); // सभी एडमिन रूट्स पर requireAdminAuth लागू करें
 
 // adminRouter में एडमिन-विशिष्ट रूट्स जोड़ें
+// ये रूट्स /api/admin/* के तहत एक्सेस किए जाएंगे
 adminRouter.use('/products/approve', adminApproveProductRoutes);
 adminRouter.use('/products/reject', adminRejectProductRoutes);
-adminRouter.use('/products', adminProductsRoutes);
-adminRouter.use('/vendors', adminVendorsRoutes);
-adminRouter.use('/password', adminPasswordRoutes);
+adminRouter.use('/products', adminProductsRoutes); // यह /api/admin/products को हैंडल करेगा
+adminRouter.use('/vendors', adminVendorsRoutes);   // यह /api/admin/vendors को हैंडल करेगा
+adminRouter.use('/password', adminPasswordRoutes); // यह /api/admin/password को हैंडल करेगा
 
-// एडमिन रूट: विक्रेताओं को देखना (अगर यह एक अलग राउटर नहीं है)
+// एडमिन रूट: विक्रेताओं को देखना
 adminRouter.get('/sellers', async (req: AuthenticatedRequest, res: Response) => {
   try {
     const pendingSellers = await db.select().from(sellersPgTable).where(eq(sellersPgTable.approvalStatus, approvalStatusEnum.enumValues[0]));
@@ -341,7 +305,7 @@ adminRouter.get('/sellers', async (req: AuthenticatedRequest, res: Response) => 
   }
 });
 
-// एडमिन रूट: विक्रेता को स्वीकार करना (अगर यह एक अलग राउटर नहीं है)
+// एडमिन रूट: विक्रेता को स्वीकार करना
 adminRouter.post('/sellers/:sellerId/approve', async (req: AuthenticatedRequest, res: Response) => {
   const sellerId = parseInt(req.params.sellerId);
   if (isNaN(sellerId)) {
@@ -371,7 +335,7 @@ adminRouter.post('/sellers/:sellerId/approve', async (req: AuthenticatedRequest,
   }
 });
 
-// एडमिन रूट: विक्रेता को अस्वीकार करना (अगर यह एक अलग राउटर नहीं है)
+// एडमिन रूट: विक्रेता को अस्वीकार करना
 adminRouter.post('/sellers/:sellerId/reject', async (req: AuthenticatedRequest, res: Response) => {
   const sellerId = parseInt(req.params.sellerId);
   const { reason } = req.body;
@@ -401,16 +365,3 @@ adminRouter.post('/sellers/:sellerId/reject', async (req: AuthenticatedRequest, 
     res.status(500).json({ error: 'Internal server error.' });
   }
 });
-
-
-// --- मुख्य राउटर में सभी प्रमुख सेक्शन्स को माउंट करें ---
-router.use('/admin', adminRouter); // `/api/admin/*` को हैंडल करेगा
-
-
-// --- registerRoutes फ़ंक्शन ---
-// यह फ़ंक्शन server/index.ts में उपयोग किया जाएगा
-export function registerRoutes(app: express.Express) { // 'express.Express' टाइप का उपयोग करें
-  app.use("/api", router); // आपका मुख्य `/api` राउटर यहाँ जोड़ा गया है
-}
-
-               
