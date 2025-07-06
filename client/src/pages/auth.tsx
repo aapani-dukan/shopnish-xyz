@@ -9,52 +9,98 @@ import { useAuth } from "@/hooks/useAuth";
 import { useLocation } from "wouter"; 
 
 export default function AuthPage() {
-  const [isLoading, setIsLoading] = useState(false);
-  const { isAuthenticated, isLoadingAuth } = useAuth(); 
-  const [, navigate] = useLocation(); // 'location' की अब यहां सीधे जरूरत नहीं है, लेकिन navigate चाहिए
+  const [isSigningIn, setIsSigningIn] = useState(false); // isLoading को isSigningIn में बदला
+  const { isAuthenticated, isLoadingAuth, user } = useAuth(); // ✅ 'user' को भी इम्पोर्ट करें
+  const [, navigate] = useLocation(); 
 
-  // ✅ localStorage से intent प्राप्त करें
+  // localStorage से 'intent' प्राप्त करें
   const storedIntent = localStorage.getItem('redirectIntent'); 
 
   useEffect(() => {
-    console.log("AuthPage useEffect: isLoadingAuth", isLoadingAuth, "isAuthenticated", isAuthenticated);
+    console.log("AuthPage useEffect triggered. Auth Status:", { isLoadingAuth, isAuthenticated, userId: user?.uid, currentPath: location });
+    console.log("AuthPage useEffect: Stored Intent:", storedIntent);
 
+    // ✅ स्टेप 1: ऑथेंटिकेशन स्टेट लोड होने तक प्रतीक्षा करें
     if (isLoadingAuth) {
+      console.log("AuthPage useEffect: Auth state is still loading. Waiting...");
       return;
     }
 
+    // ✅ स्टेप 2: यदि यूजर पहले से लॉग-इन है
     if (isAuthenticated) {
-      console.log("AuthPage: User is already logged in. Checking for stored intent or redirecting to home.");
-      // ✅ यदि यूजर पहले से लॉग-इन है, तो storedIntent के आधार पर रीडायरेक्ट करें
+      console.log("AuthPage useEffect: User is already authenticated.");
+
+      // यदि कोई विशिष्ट इंटेंट localStorage में है, तो उसे हैंडल करें
       if (storedIntent === "become-seller") {
-        console.log("AuthPage: Authenticated user with stored 'become-seller' intent. Clearing intent and navigating to seller-apply.");
-        localStorage.removeItem('redirectIntent'); // ✅ intent को उपयोग के बाद हटा दें
-        navigate("/seller-apply"); // या आपका AuthRedirectGuard इसे हैंडल करेगा
-                                  // लेकिन यहां सीधे भेजना बेहतर है ताकि गार्ड को कम काम करना पड़े
-      } else {
-        // यदि कोई विशिष्ट इंटेंट नहीं है, तो होम पर भेजें
-        console.log("AuthPage: Authenticated user with no specific intent. Redirecting to home.");
-        navigate("/"); 
-      }
+        console.log("AuthPage: Authenticated user with 'become-seller' intent. Redirecting to seller flow.");
+        localStorage.removeItem('redirectIntent'); // इंटेंट को उपयोग के बाद हटा दें
+        
+        // सीधे सही विक्रेता पेज पर रीडायरेक्ट करें
+        let sellerTargetPath: string;
+        if (user?.role === "seller") { 
+            const approvalStatus = user.seller?.approvalStatus;
+            if (approvalStatus === "approved") {
+                sellerTargetPath = "/seller-dashboard";
+            } else if (approvalStatus === "pending") {
+                sellerTargetPath = "/seller-status";
+            } else { // rejected या कोई और स्थिति
+                sellerTargetPath = "/seller-apply";
+            }
+        } else {
+            // यदि यूजर 'customer' या कोई अन्य भूमिका है, तो उसे अप्लाई करने के लिए भेजें
+            sellerTargetPath = "/seller-apply";
+        }
+        navigate(sellerTargetPath); // सीधे भेजें, AuthRedirectGuard को यहां हस्तक्षेप करने की जरूरत नहीं
+        return; // रीडायरेक्ट के बाद फंक्शन से बाहर
+      } 
+      
+      // यदि कोई विशिष्ट इंटेंट नहीं है, तो होम पेज पर भेजें
+      console.log("AuthPage: Authenticated user with no specific intent. Redirecting to home page.");
+      navigate("/"); // होम पेज पर भेजें
+      return; // रीडायरेक्ट के बाद फंक्शन से बाहर
     }
-  }, [isAuthenticated, isLoadingAuth, navigate, storedIntent]); 
-  // निर्भरताएं: isAuthenticated, isLoadingAuth, navigate, storedIntent
+
+    // ✅ यदि यूजर लॉग-इन नहीं है और ऑथेंटिकेशन लोड हो चुका है, तो यहां UI दिखेगा।
+    console.log("AuthPage useEffect: User is NOT authenticated and auth state is loaded. Displaying login form.");
+
+  }, [isAuthenticated, isLoadingAuth, navigate, storedIntent, user]); // निर्भरताएं: सुनिश्चित करें कि सभी उपयोग किए गए वेरिएबल्स शामिल हैं
 
   const handleGoogleSignIn = async () => {
     try {
-      setIsLoading(true);
+      setIsSigningIn(true); // isLoading की जगह isSigningIn का उपयोग करें
       console.log("AuthPage: Attempting Google Sign-In Redirect.");
       await initiateGoogleSignInRedirect(); 
+      // यह लाइन रीडायरेक्ट के कारण कभी नहीं पहुंचेगी, इसलिए setIsSigningIn(false) की जरूरत नहीं।
     } catch (error) {
       console.error("Error signing in:", error);
-      setIsLoading(false); 
+      setIsSigningIn(false); // त्रुटि होने पर ही isLoading को false करें
     }
   };
 
-  if (isLoadingAuth || isAuthenticated) {
-    return null; 
+  // ✅ रेंडरिंग लॉजिक को यहाँ और स्पष्ट करें:
+  if (isLoadingAuth) {
+    // जब तक ऑथेंटिकेशन स्टेट लोड नहीं हो जाती, एक लोडिंग इंडिकेटर दिखाएं।
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4 bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-lg text-gray-700">Loading authentication state...</p>
+        </div>
+      </div>
+    );
   }
 
+  // ✅ यदि यूजर लॉग-इन है (और isLoadingAuth false है), तो यह पेज नहीं दिखना चाहिए,
+  // क्योंकि useEffect उसे रीडायरेक्ट कर देगा। अगर किसी कारणवश useEffect ने अभी तक रीडायरेक्ट नहीं किया,
+  // तो भी हम लॉगिन UI नहीं दिखाना चाहते।
+  if (isAuthenticated) {
+      // यह स्थिति तब आ सकती है जब AuthRedirectGuard अभी प्रोसेस कर रहा हो।
+      // हम यहां कोई UI रेंडर नहीं करेंगे क्योंकि यूजर को वैसे भी रीडायरेक्ट किया जाएगा।
+      return null;
+  }
+
+  // ✅ यदि यूजर लॉग-इन नहीं है (isAuthenticated false है) और ऑथेंटिकेशन लोड हो चुका है (isLoadingAuth false है),
+  // तो लॉगिन फॉर्म दिखाएं।
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-gray-50">
       <div className="max-w-md w-full">
@@ -65,7 +111,7 @@ export default function AuthPage() {
                 <Store className="text-white text-2xl w-8 h-8" />
               </div>
               <h1 className="text-2xl font-semibold text-gray-900 mb-2">Welcome Back</h1>
-              {/* ✅ storedIntent के आधार पर मैसेज दिखाएं */}
+              {/* storedIntent के आधार पर मैसेज दिखाएं */}
               {storedIntent === "become-seller" ? (
                 <p className="text-gray-600">Please sign in to continue your seller application.</p>
               ) : (
@@ -75,7 +121,7 @@ export default function AuthPage() {
             
             <Button
               onClick={handleGoogleSignIn}
-              disabled={isLoading}
+              disabled={isSigningIn} // isLoading की जगह isSigningIn का उपयोग करें
               className="w-full bg-white border-2 border-gray-200 hover:border-gray-300 text-gray-700 hover:bg-gray-50 font-medium py-3 px-6 rounded-lg transition-colors duration-200"
               variant="outline"
             >
@@ -88,7 +134,7 @@ export default function AuthPage() {
               Continue with Google
             </Button>
             
-            {isLoading && (
+            {isSigningIn && ( // isLoading की जगह isSigningIn का उपयोग करें
               <div className="mt-4 flex items-center justify-center space-x-2 text-gray-600">
                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
                 <span className="text-sm">Signing you in...</span>
