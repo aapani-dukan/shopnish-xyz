@@ -1,107 +1,74 @@
-// src/pages/auth.tsx
+// src/pages/Auth.tsx
 
 import { useEffect, useState } from "react";
-import { initiateGoogleSignInRedirect } from "@/lib/firebase"; 
+import { initiateGoogleSignInRedirect } from "@/lib/firebase"; // ✅ initiateGoogleSignInRedirect का उपयोग करें
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Store } from "lucide-react";
-import { useAuth } from "@/hooks/useAuth"; 
-import { useLocation } from "wouter"; 
+import { useAuth } from "@/hooks/useAuth"; // ✅ useAuth इम्पोर्ट करें
+import { useLocation } from "wouter"; // ✅ useLocation इम्पोर्ट करें
 
 export default function AuthPage() {
-  const [isSigningIn, setIsSigningIn] = useState(false); 
-  const { isAuthenticated, isLoadingAuth, user } = useAuth(); 
-  const [, navigate] = useLocation(); 
+  const [isLoading, setIsLoading] = useState(false);
+  const { isAuthenticated, isLoadingAuth } = useAuth(); // ✅ isAuthenticated और isLoadingAuth प्राप्त करें
+  const [location, navigate] = useLocation(); // ✅ current location और navigate फ़ंक्शन प्राप्त करें
 
-  const storedIntent = localStorage.getItem('redirectIntent'); 
-
-  // ✅ कंसोल लॉग्स को और अधिक विशिष्ट बनाएं
-  console.log("Auth.tsx Render: isLoadingAuth:", isLoadingAuth, "isAuthenticated:", isAuthenticated, "StoredIntent:", storedIntent);
-
-  useEffect(() => {
-    console.log("Auth.tsx useEffect: Triggered. Current state:", { isLoadingAuth, isAuthenticated, userId: user?.uid });
-    console.log("Auth.tsx useEffect: Location:", location, "StoredIntent:", storedIntent);
-
-    // यदि ऑथेंटिकेशन स्टेट अभी लोड हो रही है, तो कुछ न करें
-    if (isLoadingAuth) {
-      console.log("Auth.tsx useEffect: Auth state is loading. Exiting useEffect.");
-      return;
-    }
-
-    // यदि यूजर पहले से लॉग-इन है (isAuthenticated true है)
-    if (isAuthenticated) {
-      console.log("Auth.tsx useEffect: User is authenticated. Checking for redirect logic.");
-      
-      // यदि कोई विशिष्ट इंटेंट localStorage में है, तो उसे हैंडल करें
-      if (storedIntent === "become-seller") {
-        console.log("Auth.tsx useEffect: Authenticated user with 'become-seller' intent. Redirecting to seller flow.");
-        localStorage.removeItem('redirectIntent'); // इंटेंट को उपयोग के बाद हटा दें
-        
-        let sellerTargetPath: string;
-        if (user?.role === "seller") { 
-            const approvalStatus = user.seller?.approvalStatus;
-            if (approvalStatus === "approved") {
-                sellerTargetPath = "/seller-dashboard";
-            } else if (approvalStatus === "pending") {
-                sellerTargetPath = "/seller-status";
-            } else { // rejected या कोई और स्थिति
-                sellerTargetPath = "/seller-apply";
-            }
-        } else {
-            // यदि यूजर 'customer' या कोई अन्य भूमिका है, तो उसे अप्लाई करने के लिए भेजें
-            sellerTargetPath = "/seller-apply";
-        }
-        navigate(sellerTargetPath); 
-        return; 
-      } 
-      
-      // यदि कोई विशिष्ट इंटेंट नहीं है, तो होम पेज पर भेजें (या AuthRedirectGuard को संभालने दें)
-      console.log("Auth.tsx useEffect: Authenticated user with no specific intent. Redirecting to home page.");
-      navigate("/"); 
-      return; 
-    }
-
-    // यदि यूजर लॉग-इन नहीं है और ऑथेंटिकेशन लोड हो चुका है, तो यहां UI दिखेगा।
-    console.log("Auth.tsx useEffect: User is NOT authenticated and auth state is loaded. This should display the login form.");
-
-  }, [isAuthenticated, isLoadingAuth, navigate, storedIntent, user, location]); // location को भी निर्भरता में जोड़ा
-
-  const handleGoogleSignIn = async () => {
+  // URL से 'intent' पैरामीटर निकालने का फ़ंक्शन
+  const getIntentFromLocation = (loc: string): string | null => {
     try {
-      setIsSigningIn(true); 
-      console.log("Auth.tsx handleGoogleSignIn: Initiating Google Sign-In Redirect.");
-      await initiateGoogleSignInRedirect(); 
-    } catch (error) {
-      console.error("Auth.tsx handleGoogleSignIn: Error signing in:", error);
-      setIsSigningIn(false); 
+      const url = new URL(loc, "http://localhost"); // डमी बेस URL ताकि parsing हो सके
+      return url.searchParams.get("intent");
+    } catch {
+      return null;
     }
   };
 
-  // ✅ रेंडरिंग लॉजिक: कौन सा UI दिखाना है?
-  // केस 1: ऑथेंटिकेशन स्टेट अभी लोड हो रही है
-  if (isLoadingAuth) {
-    console.log("Auth.tsx Render: Showing loading state.");
-    return (
-      <div className="min-h-screen flex items-center justify-center p-4 bg-gray-50">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-lg text-gray-700">Loading authentication state...</p>
-        </div>
-      </div>
-    );
+  const intent = getIntentFromLocation(location); // वर्तमान URL से इंटेंट प्राप्त करें
+
+  // ✅ useEffect: यह जांचने के लिए कि क्या यूजर पहले से लॉग-इन है और उसे रीडायरेक्ट करना है
+  useEffect(() => {
+    console.log("AuthPage useEffect: isLoadingAuth", isLoadingAuth, "isAuthenticated", isAuthenticated);
+
+    // यदि ऑथेंटिकेशन अभी लोड हो रहा है, तो कुछ न करें
+    if (isLoadingAuth) {
+      return;
+    }
+
+    // यदि यूजर पहले से लॉग-इन है और वह /auth पेज पर है, तो उसे होम पेज पर भेजें।
+    // AuthRedirectGuard को भी यह करना चाहिए, लेकिन यह एक अतिरिक्त सुरक्षा परत है।
+    // हालाँकि, 'AuthRedirectGuard' के नए लॉजिक में 'isAuthenticated' होने पर
+    // और 'isOnAuthSpecificPath' होने पर सीधे '/' पर भेज दिया जाता है।
+    // इसलिए, यह कंडीशन यहां उतनी आवश्यक नहीं है, लेकिन गलत व्यवहार को रोकने के लिए इसे रख सकते हैं।
+    if (isAuthenticated) {
+      console.log("AuthPage: User is already logged in. Redirecting to home or based on role.");
+      // यहां हम 'intent' को प्राथमिकता नहीं दे रहे हैं क्योंकि 'AuthRedirectGuard'
+      // Google लॉगिन के बाद पहले ही 'intent' को संभाल चुका होगा।
+      // यदि आप सीधे '/' पर रीडायरेक्ट करना चाहते हैं, तो यह ठीक है।
+      navigate("/"); 
+    }
+  }, [isAuthenticated, isLoadingAuth, navigate]); // निर्भरताएं: isAuthenticated, isLoadingAuth, navigate
+
+  const handleGoogleSignIn = async () => {
+    try {
+      setIsLoading(true);
+      console.log("AuthPage: Attempting Google Sign-In Redirect.");
+      // 👇 यहाँ आपका Google साइन-इन फंक्शन कॉल होता है
+      await initiateGoogleSignInRedirect(); // ✅ initiateGoogleSignInRedirect() का उपयोग करें
+      
+      // ✅ isLoading को false करने की आवश्यकता नहीं है क्योंकि यह एक रीडायरेक्ट है।
+      // ब्राउज़र नए पेज पर चला जाएगा।
+    } catch (error) {
+      console.error("Error signing in:", error);
+      setIsLoading(false); // त्रुटि होने पर ही isLoading को false करें
+    }
+  };
+
+  // ✅ यदि ऑथेंटिकेशन अभी लोड हो रहा है और यूजर लॉग इन है, तो कुछ भी रेंडर न करें
+  // (क्योंकि AuthRedirectGuard उसे रीडायरेक्ट कर देगा)
+  if (isLoadingAuth || isAuthenticated) {
+    return null; // या एक लोडिंग स्पिनर दिखाएं
   }
 
-  // केस 2: यूजर लॉग-इन है (और isLoadingAuth false है)
-  // इस स्थिति में useEffect तुरंत रीडायरेक्ट कर देगा।
-  // इसलिए, हम यहां कोई UI नहीं दिखाना चाहते।
-  if (isAuthenticated) {
-    console.log("Auth.tsx Render: User is authenticated. Not rendering login form, expecting redirect.");
-    return null; 
-  }
-
-  // केस 3: यूजर लॉग-इन नहीं है (isAuthenticated false है) और ऑथेंटिकेशन लोड हो चुका है (isLoadingAuth false है)
-  // यह वह स्थिति है जहाँ हम लॉगिन फॉर्म दिखाना चाहते हैं।
-  console.log("Auth.tsx Render: User not authenticated, auth loaded. Displaying login form.");
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-gray-50">
       <div className="max-w-md w-full">
@@ -112,7 +79,8 @@ export default function AuthPage() {
                 <Store className="text-white text-2xl w-8 h-8" />
               </div>
               <h1 className="text-2xl font-semibold text-gray-900 mb-2">Welcome Back</h1>
-              {storedIntent === "become-seller" ? (
+              {/* ✅ इंटेंट के आधार पर मैसेज दिखाएं */}
+              {intent === "become-seller" ? (
                 <p className="text-gray-600">Please sign in to continue your seller application.</p>
               ) : (
                 <p className="text-gray-600">Sign in to access your dashboard</p>
@@ -121,7 +89,7 @@ export default function AuthPage() {
             
             <Button
               onClick={handleGoogleSignIn}
-              disabled={isSigningIn} 
+              disabled={isLoading}
               className="w-full bg-white border-2 border-gray-200 hover:border-gray-300 text-gray-700 hover:bg-gray-50 font-medium py-3 px-6 rounded-lg transition-colors duration-200"
               variant="outline"
             >
@@ -134,7 +102,7 @@ export default function AuthPage() {
               Continue with Google
             </Button>
             
-            {isSigningIn && ( 
+            {isLoading && (
               <div className="mt-4 flex items-center justify-center space-x-2 text-gray-600">
                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
                 <span className="text-sm">Signing you in...</span>
