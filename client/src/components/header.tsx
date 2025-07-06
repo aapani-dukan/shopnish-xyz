@@ -15,62 +15,45 @@ interface HeaderProps {
   categories: Category[];
 }
 
+
 const Header: React.FC<HeaderProps> = ({ categories }) => {
   const { items, isCartOpen, toggleCart } = useCartStore();
   const [, navigate] = useLocation();
   const { user, isAuthenticated, isLoadingAuth } = useAuth(); 
 
-  // 'Become a Seller' बटन के लिए हैंडलर
-  const handleBecomeSeller = async () => {
-    // 1. पहले जांचें कि ऑथेंटिकेशन अभी लोड हो रहा है या नहीं
+  const handleBecomeSeller = () => {
     if (isLoadingAuth) {
       console.log("Header: Auth state still loading, please wait for 'Become a Seller' click.");
-      // यूजर को कोई UI फीडबैक दें, जैसे लोडिंग स्पिनर या बटन को डिसेबल रखना (जो पहले से है)
       return; 
     }
 
-    // 2. यदि यूज़र लॉग इन नहीं है (isAuthenticated false है)
     if (!isAuthenticated) {
-      console.log("Header: User is not logged in. Initiating Google Sign-In Redirect with intent.");
-      try {
-        // Google Sign-in Redirect चालू करें, और URL में intent जोड़ें
-        // ताकि लॉगिन के बाद AuthRedirectGuard इसे पढ़ सके।
-        await initiateGoogleSignInRedirect("become-seller"); 
-        // initiateGoogleSignInRedirect को intent पैरामीटर लेने के लिए अपडेट करना होगा
-        // इस बिंदु पर, ब्राउज़र Google के लॉगिन पेज पर रीडायरेक्ट हो जाएगा।
-        // जब यूजर वापस आएगा, तो onAuthStateChanged (useAuth में) और AuthRedirectGuard उसे सही जगह भेजेंगे।
-      } catch (error) {
-        console.error("Header: Error during Google Sign-In Redirect:", error);
-        // त्रुटि हैंडलिंग, जैसे टोस्ट दिखाना
-      }
+      console.log("Header: User is not logged in. Storing intent and redirecting to auth page.");
+      // ✅ localStorage में intent को स्टोर करें
+      localStorage.setItem('redirectIntent', 'become-seller'); // <--- यह नई लाइन है
+      navigate("/auth"); // अब हम सिर्फ /auth पर भेजेंगे, intent URL में नहीं होगा
+                        // AuthPage पर भी intent को URL से पढ़ने की जरूरत नहीं, localStorage से मिलेगा।
     } else {
-      // 3. यदि यूज़र पहले से लॉग इन है (isAuthenticated true है)
+      // ✅ यह लॉजिक पहले से सही है, इसमें कोई बदलाव नहीं।
       console.log("Header: User is already logged in. Determining seller path based on role and status.");
       let sellerTargetPath: string;
-
-      // यूजर की भूमिका के आधार पर अपेक्षित सेलर पाथ निर्धारित करें
-      if (user?.role === "seller") { // 'user?' का उपयोग करें क्योंकि user null हो सकता है
-        const approvalStatus = user.seller?.approvalStatus; // 'user.seller?' का उपयोग करें
+      if (user?.role === "seller") { 
+        const approvalStatus = user.seller?.approvalStatus;
         if (approvalStatus === "approved") {
           sellerTargetPath = "/seller-dashboard";
         } else if (approvalStatus === "pending") {
           sellerTargetPath = "/seller-status";
-        } else { // 'rejected' या 'customer' जिसने अभी तक अप्लाई नहीं किया
+        } else {
           sellerTargetPath = "/seller-apply";
         }
       } else {
-        // यदि यूजर 'customer' या कोई अन्य भूमिका है, तो उसे अप्लाई करने के लिए भेजें
         sellerTargetPath = "/seller-apply";
       }
-
       console.log(`Header: Redirecting logged-in user to: ${sellerTargetPath}`);
-      // लॉग-इन यूजर को सीधे उसके अपेक्षित विक्रेता पेज पर नेविगेट करें।
-      // हमें यहां URL में 'intent' जोड़ने की आवश्यकता नहीं है, क्योंकि AuthRedirectGuard
-      // अब लॉग-इन यूजर के लिए इंटेंट को पहले ही हैंडल कर चुका है (अगर वह /auth से आया है)।
-      // यहां हम सीधे सही जगह भेज रहे हैं।
       navigate(sellerTargetPath); 
     }
   };
+
 
   return (
     <header className="bg-white shadow-md px-4 py-3 flex items-center justify-between">
