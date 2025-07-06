@@ -1,30 +1,73 @@
 // src/pages/Auth.tsx
 
-import { useState } from "react";
-// सुनिश्चित करें कि आप वही साइन-इन फंक्शन इम्पोर्ट करें जिसका आप उपयोग कर रहे हैं
-// यदि आप पॉपअप का उपयोग कर रहे हैं तो signInWithGoogle
-// यदि आप रीडायरेक्ट का उपयोग कर रहे हैं तो initiateGoogleSignInRedirect
-import { signInWithGoogle, /* initiateGoogleSignInRedirect */ } from "@/lib/firebase"; 
+import { useEffect, useState } from "react";
+import { initiateGoogleSignInRedirect } from "@/lib/firebase"; // ✅ initiateGoogleSignInRedirect का उपयोग करें
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Store } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth"; // ✅ useAuth इम्पोर्ट करें
+import { useLocation } from "wouter"; // ✅ useLocation इम्पोर्ट करें
 
 export default function AuthPage() {
   const [isLoading, setIsLoading] = useState(false);
+  const { isAuthenticated, isLoadingAuth } = useAuth(); // ✅ isAuthenticated और isLoadingAuth प्राप्त करें
+  const [location, navigate] = useLocation(); // ✅ current location और navigate फ़ंक्शन प्राप्त करें
+
+  // URL से 'intent' पैरामीटर निकालने का फ़ंक्शन
+  const getIntentFromLocation = (loc: string): string | null => {
+    try {
+      const url = new URL(loc, "http://localhost"); // डमी बेस URL ताकि parsing हो सके
+      return url.searchParams.get("intent");
+    } catch {
+      return null;
+    }
+  };
+
+  const intent = getIntentFromLocation(location); // वर्तमान URL से इंटेंट प्राप्त करें
+
+  // ✅ useEffect: यह जांचने के लिए कि क्या यूजर पहले से लॉग-इन है और उसे रीडायरेक्ट करना है
+  useEffect(() => {
+    console.log("AuthPage useEffect: isLoadingAuth", isLoadingAuth, "isAuthenticated", isAuthenticated);
+
+    // यदि ऑथेंटिकेशन अभी लोड हो रहा है, तो कुछ न करें
+    if (isLoadingAuth) {
+      return;
+    }
+
+    // यदि यूजर पहले से लॉग-इन है और वह /auth पेज पर है, तो उसे होम पेज पर भेजें।
+    // AuthRedirectGuard को भी यह करना चाहिए, लेकिन यह एक अतिरिक्त सुरक्षा परत है।
+    // हालाँकि, 'AuthRedirectGuard' के नए लॉजिक में 'isAuthenticated' होने पर
+    // और 'isOnAuthSpecificPath' होने पर सीधे '/' पर भेज दिया जाता है।
+    // इसलिए, यह कंडीशन यहां उतनी आवश्यक नहीं है, लेकिन गलत व्यवहार को रोकने के लिए इसे रख सकते हैं।
+    if (isAuthenticated) {
+      console.log("AuthPage: User is already logged in. Redirecting to home or based on role.");
+      // यहां हम 'intent' को प्राथमिकता नहीं दे रहे हैं क्योंकि 'AuthRedirectGuard'
+      // Google लॉगिन के बाद पहले ही 'intent' को संभाल चुका होगा।
+      // यदि आप सीधे '/' पर रीडायरेक्ट करना चाहते हैं, तो यह ठीक है।
+      navigate("/"); 
+    }
+  }, [isAuthenticated, isLoadingAuth, navigate]); // निर्भरताएं: isAuthenticated, isLoadingAuth, navigate
 
   const handleGoogleSignIn = async () => {
     try {
       setIsLoading(true);
+      console.log("AuthPage: Attempting Google Sign-In Redirect.");
       // 👇 यहाँ आपका Google साइन-इन फंक्शन कॉल होता है
-      await signInWithGoogle(); // या initiateGoogleSignInRedirect()
+      await initiateGoogleSignInRedirect(); // ✅ initiateGoogleSignInRedirect() का उपयोग करें
       
-      // ✅ यह लाइन जोड़ें: लॉगिन सफल होने पर isLoading को false करें
-      setIsLoading(false); 
+      // ✅ isLoading को false करने की आवश्यकता नहीं है क्योंकि यह एक रीडायरेक्ट है।
+      // ब्राउज़र नए पेज पर चला जाएगा।
     } catch (error) {
       console.error("Error signing in:", error);
-      setIsLoading(false);
+      setIsLoading(false); // त्रुटि होने पर ही isLoading को false करें
     }
   };
+
+  // ✅ यदि ऑथेंटिकेशन अभी लोड हो रहा है और यूजर लॉग इन है, तो कुछ भी रेंडर न करें
+  // (क्योंकि AuthRedirectGuard उसे रीडायरेक्ट कर देगा)
+  if (isLoadingAuth || isAuthenticated) {
+    return null; // या एक लोडिंग स्पिनर दिखाएं
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-gray-50">
@@ -36,7 +79,12 @@ export default function AuthPage() {
                 <Store className="text-white text-2xl w-8 h-8" />
               </div>
               <h1 className="text-2xl font-semibold text-gray-900 mb-2">Welcome Back</h1>
-              <p className="text-gray-600">Sign in to access your seller dashboard</p>
+              {/* ✅ इंटेंट के आधार पर मैसेज दिखाएं */}
+              {intent === "become-seller" ? (
+                <p className="text-gray-600">Please sign in to continue your seller application.</p>
+              ) : (
+                <p className="text-gray-600">Sign in to access your dashboard</p>
+              )}
             </div>
             
             <Button
