@@ -276,13 +276,9 @@ router.post('/delivery-boys/register', async (req: Request, res: Response) => {
   }
 });
 
----
-
-**Admin Routes**
-यह एडमिन-विशिष्ट रूट्स के लिए एक समर्पित **सब-राउटर** है।
-हमने `adminRouter.use(requireAdminAuth);` का उपयोग करके सभी एडमिन रूट्स पर **`requireAdminAuth`** मिडलवेयर लागू कर दिया है।
-
-```typescript
+// Admin Routes
+// यह एडमिन-विशिष्ट रूट्स के लिए एक समर्पित सब-राउटर है।
+// हमने adminRouter.use(requireAdminAuth); का उपयोग करके सभी एडमिन रूट्स पर requireAdminAuth मिडलवेयर लागू कर दिया है।
 const adminRouter = Router();
 adminRouter.use(requireAdminAuth); // सभी एडमिन रूट्स पर requireAdminAuth लागू करें
 
@@ -365,3 +361,13 @@ adminRouter.post('/sellers/:sellerId/reject', async (req: AuthenticatedRequest, 
     res.status(500).json({ error: 'Internal server error.' });
   }
 });
+
+// --- मुख्य राउटर में सभी प्रमुख सेक्शन्स को माउंट करें ---
+router.use('/admin', adminRouter); // `/api/admin/*` को हैंडल करेगा
+
+
+// --- registerRoutes फ़ंक्शन ---
+// यह फ़ंक्शन server/index.ts में उपयोग किया जाएगा
+export function registerRoutes(app: express.Express) {
+  app.use("/api", router); // आपका मुख्य `/api` राउटर यहाँ जोड़ा गया है
+  }
