@@ -1,4 +1,4 @@
-// src/components/AuthRedirectGuard.tsx
+// src/guards/AuthRedirectGuard.tsx
 
 import { useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
@@ -17,7 +17,7 @@ const AUTH_SPECIFIC_PATHS = [
   "/auth",
   "/login", 
   "/admin-login", 
-  "/__/auth/handler",
+  "/__/auth/handler", // Firebase Auth handler path, if used
 ];
 
 export function AuthRedirectGuard() {
@@ -54,7 +54,7 @@ export function AuthRedirectGuard() {
     if (intent === "become-seller") {
       console.log("AuthRedirectGuard: 'become-seller' intent found in localStorage.");
       
-      // यदि यूज़र लॉग-इन है और उसका रोल seller है
+      // यदि यूज़र लॉग-इन है और उसका रोल 'seller' है
       if (isAuthenticated && user?.role === "seller") {
         console.log("AuthRedirectGuard: Authenticated seller with 'become-seller' intent. Determining seller path.");
         localStorage.removeItem('redirectIntent'); // इंटेंट को उपयोग के बाद हटा दें
@@ -83,8 +83,8 @@ export function AuthRedirectGuard() {
 
       } else {
         // यदि यूज़र लॉग-आउट है, या लॉग-इन है लेकिन उसका रोल 'seller' नहीं है,
-        // तो उसे /auth पर भेजें ताकि वह लॉगिन/साइन-अप कर सके और seller बन सके।
-        console.log("AuthRedirectGuard: Not a seller or not authenticated, but 'become-seller' intent found. Redirecting to /auth.");
+        // तो उसे /auth पर भेजें ताकि वह लॉगिन/साइन-अप कर सके और 'seller' बन सके।
+        console.log("AuthRedirectGuard: User is NOT a seller or NOT authenticated. Redirecting to /auth for seller onboarding.");
         if (location !== "/auth") { 
             navigate("/auth");
         }
@@ -130,7 +130,7 @@ export function AuthRedirectGuard() {
 
     // ✅ प्राथमिकता 2: यदि यूजर लॉगिन है और 'auth-specific' पेज पर है, तो होम पर भेजें
     if (isOnAuthSpecificPath) {
-      console.log("AuthRedirectGuard: Logged in user on auth-specific page (no intent). Redirecting to /.");
+      console.log("AuthRedirectGuard: Logged in user on auth-specific page. Redirecting to /.");
       navigate("/");
       console.groupEnd();
       return;
@@ -200,4 +200,4 @@ export function AuthRedirectGuard() {
   }, [user, isLoadingAuth, isAuthenticated, location, navigate, intent]); 
 
   return null; 
-}
+      }
