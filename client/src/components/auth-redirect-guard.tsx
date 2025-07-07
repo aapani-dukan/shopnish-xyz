@@ -1,4 +1,4 @@
-// src/guards/AuthRedirectGuard.tsx
+// src/components/AuthRedirectGuard.tsx
 
 import { useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
