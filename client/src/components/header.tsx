@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
-import { useCartStore } from "@/store/cartStore"; // सुनिश्चित करें कि यह पाथ सही है
+import { useCartStore } from "@/lib/store";
 
 // UI कॉम्पोनेंट्स इम्पोर्ट करें
 import { Button } from "@/components/ui/button";
