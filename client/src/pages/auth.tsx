@@ -19,58 +19,83 @@ export default function AuthPage() {
 
   useEffect(() => {
     console.log("Auth.tsx useEffect: Triggered. Current state inside effect:", { isLoadingAuth, isAuthenticated, userId: user?.uid });
-    console.log("Auth.tsx useEffect: Location:", location.pathname, "StoredIntent:", storedIntent); // ✅ location.pathname यूआरएल का पाथ देगा
+    console.log("Auth.tsx useEffect: Location:", location.pathname, "StoredIntent:", storedIntent);
 
-    // 1. ऑथेंटिकेशन स्टेट अभी लोड हो रही है तो रुकें
     if (isLoadingAuth) {
       console.log("Auth.tsx useEffect: Auth state is loading. Exiting useEffect.");
       return;
     }
 
-    // 2. यदि यूजर लॉग-इन है (isAuthenticated true है)
     if (isAuthenticated) {
       console.log("Auth.tsx useEffect: User is authenticated. Checking for redirect logic.");
       
-      // 'become-seller' इंटेंट को हैंडल करें
       if (storedIntent === "become-seller") {
         console.log("Auth.tsx useEffect: Authenticated user with 'become-seller' intent. Redirecting to seller flow.");
-        localStorage.removeItem('redirectIntent'); // इंटेंट को उपयोग के बाद हटा दें
+        localStorage.removeItem('redirectIntent'); 
         
         let sellerTargetPath: string;
-        // यूजर के रोल और सेलर अप्रूवल स्टेटस के आधार पर पाथ निर्धारित करें
         if (user?.role === "seller") { 
             const approvalStatus = user.seller?.approvalStatus;
             if (approvalStatus === "approved") {
                 sellerTargetPath = "/seller-dashboard";
             } else if (approvalStatus === "pending") {
                 sellerTargetPath = "/seller-status";
-            } else { // 'rejected' या कोई अन्य स्थिति, या यदि seller ऑब्जेक्ट है लेकिन कोई approvalStatus नहीं है
+            } else { 
                 sellerTargetPath = "/seller-apply";
             }
         } else {
-            // यदि यूजर लॉग-इन है लेकिन उसका रोल 'seller' नहीं है (जैसे 'customer'), उसे अप्लाई करने के लिए भेजें
             sellerTargetPath = "/seller-apply";
         }
         navigate(sellerTargetPath); 
         console.log(`Auth.tsx useEffect: Redirected to ${sellerTargetPath}`);
-        return; // ✅ सबसे महत्वपूर्ण: रीडायरेक्ट के बाद useEffect से तुरंत बाहर निकलें
+        return; 
       } 
       
-      // यदि कोई विशिष्ट इंटेंट नहीं है, तो डिफ़ॉल्ट रूप से होम पेज पर रीडायरेक्ट करें
       console.log("Auth.tsx useEffect: Authenticated user with no specific intent. Redirecting to home page.");
-      navigate("/"); // ✅ डिफ़ॉल्ट रीडायरेक्ट
+      navigate("/"); 
       console.log("Auth.tsx useEffect: Redirected to /");
-      return; // ✅ सबसे महत्वपूर्ण: रीडायरेक्ट के बाद useEffect से तुरंत बाहर निकलें
+      return; 
     }
 
-    // 3. यदि यूजर लॉग-इन नहीं है और ऑथेंटिकेशन लोड हो चुका है
     console.log("Auth.tsx useEffect: User is NOT authenticated and auth state is loaded. Login form should appear.");
 
-  }, [isAuthenticated, isLoadingAuth, navigate, storedIntent, user, location.pathname]); // ✅ location.pathname को dependencies में जोड़ा
-                                                                                        // ताकि URL बदलने पर useEffect फिर से चले
-// ... (बाकी AuthPage कंपोनेंट का कोड)
+  }, [isAuthenticated, isLoadingAuth, navigate, storedIntent, user, location.pathname]); 
+
+  // ✅ यह फ़ंक्शन यहाँ होना चाहिए! सुनिश्चित करें कि आपने इसे डिलीट या मिस नहीं किया है।
+  const handleGoogleSignIn = async () => {
+    try {
+      setIsSigningIn(true); 
+      console.log("Auth.tsx handleGoogleSignIn: Initiating Google Sign-In Redirect.");
+      await initiateGoogleSignInRedirect(); 
+    } catch (error) {
+      console.error("Auth.tsx handleGoogleSignIn: Error signing in:", error);
+      setIsSigningIn(false); 
+    }
+  };
+
+  // ✅ रेंडरिंग लॉजिक: कौन सा UI दिखाना है?
+  // ... (बाकी AuthPage का रेंडरिंग लॉजिक, जो लॉगिन फॉर्म दिखाता है)
+  // सुनिश्चित करें कि यह सारा HTML कोड भी मौजूद है जो Google बटन को रेंडर करता है
+  // और जहां handleGoogleSignIn को onClick में कॉल किया गया है।
   
-    
+  if (isLoadingAuth) {
+    console.log("Auth.tsx Render: Case 1 - Showing loading state.");
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4 bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-lg text-gray-700">Loading authentication state...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (isAuthenticated) {
+    console.log("Auth.tsx Render: Case 2 - User is authenticated. Not rendering login form, expecting redirect.");
+    return null; 
+  }
+
+  console.log("Auth.tsx Render: Case 3 - User not authenticated, auth loaded. Displaying login form.");
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-gray-50">
       <div className="max-w-md w-full">
@@ -89,7 +114,7 @@ export default function AuthPage() {
             </div>
             
             <Button
-              onClick={handleGoogleSignIn}
+              onClick={handleGoogleSignIn} // ✅ यहीं पर एरर आ रही थी
               disabled={isSigningIn} 
               className="w-full bg-white border-2 border-gray-200 hover:border-gray-300 text-gray-700 hover:bg-gray-50 font-medium py-3 px-6 rounded-lg transition-colors duration-200"
               variant="outline"
@@ -115,3 +140,4 @@ export default function AuthPage() {
     </div>
   );
 }
+
