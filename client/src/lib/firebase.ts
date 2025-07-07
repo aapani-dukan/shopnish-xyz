@@ -1,6 +1,6 @@
 // src/lib/firebase.ts
 
-import { initializeApp,setLogLevel } from "firebase/app";
+import { initializeApp } from "firebase/app";
 import { 
   getAuth, 
   setPersistence, 
@@ -9,9 +9,9 @@ import {
   signInWithPopup, 
   signOut as firebaseSignOut, 
   onAuthStateChanged, 
-  
-  getRedirectResult, // ✅ Add this import
-  signInWithRedirect // ✅ Add this import if you intend to use redirect later
+  setLogLevel,
+  getRedirectResult, 
+  signInWithRedirect // ✅ Make sure this is imported
 } from "firebase/auth";
 import { getFirestore, doc, getDoc, setDoc } from "firebase/firestore";
 
@@ -84,17 +84,19 @@ export const signInWithGoogle = async () => {
   }
 };
 
-// Function to handle Google sign-in with redirect (if you plan to use this instead of popup)
-// export const signInWithGoogleRedirect = async () => {
-//   try {
-//     await signInWithRedirect(auth, googleProvider);
-//     console.log("Firebase: Redirecting for Google sign-in.");
-//   } catch (error) {
-//     console.error("Firebase: Error during Google sign-in redirect:", error);
-//   }
-// };
+// ✅ Function to initiate Google Sign-In with Redirect (This is the one you need to export)
+export const initiateGoogleSignInRedirect = async () => {
+  try {
+    console.log("Firebase: Initiating Google sign-in with redirect...");
+    await signInWithRedirect(auth, googleProvider);
+  } catch (error) {
+    console.error("Firebase: Error initiating Google sign-in redirect:", error);
+    throw error;
+  }
+};
 
-// ✅ Function to handle Google Redirect Result (this is what useAuth.tsx expects)
+
+// Function to handle Google Redirect Result (this is what useAuth.tsx expects)
 export const handleGoogleRedirectResult = async () => {
   try {
     const result = await getRedirectResult(auth);
