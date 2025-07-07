@@ -1,3 +1,5 @@
+// src/components/headers/Header.tsx
+
 import React, { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
@@ -70,22 +72,20 @@ const Header: React.FC<HeaderProps> = ({ categories = [] }) => {
     }
   };
 
+  // --- `handleBecomeSeller` फ़ंक्शन में बदलाव ---
   const handleBecomeSeller = () => {
     console.log("Header: 'Become a Seller' clicked.");
+    
+    // यदि ऑथ स्टेट अभी भी लोड हो रहा है, तो इंतज़ार करें
     if (isLoadingAuth) {
       console.log("Header: Auth state still loading, please wait for 'Become a Seller' click.");
-      // यूज़र को कुछ प्रतिक्रिया दें, जैसे एक टोस्ट या डिसेबल्ड बटन
       return; 
     }
 
-    if (!isAuthenticated) {
-      console.log("Header: User is not logged in. Storing intent and redirecting to auth page.");
-      // ✅ localStorage में intent को स्टोर करें
-      localStorage.setItem('redirectIntent', 'become-seller'); 
-      navigate("/auth"); // सिर्फ /auth पर भेजें, AuthPage localStorage से intent पढ़ेगा
-    } else {
-      console.log("Header: User is already logged in. Determining seller path based on role and status.");
-      let sellerTargetPath: string;
+    let sellerTargetPath: string;
+    // अगर यूज़र लॉग-इन है
+    if (isAuthenticated) {
+      console.log("Header: User is authenticated. Determining seller path based on role and status.");
       if (user?.role === "seller") { 
         const approvalStatus = user.seller?.approvalStatus;
         if (approvalStatus === "approved") {
@@ -96,13 +96,22 @@ const Header: React.FC<HeaderProps> = ({ categories = [] }) => {
           sellerTargetPath = "/seller-apply";
         }
       } else {
-        // यदि यूज़र लॉग-इन है लेकिन उसका रोल 'seller' नहीं है
+        // यदि यूज़र लॉग-इन है लेकिन उसका रोल 'seller' नहीं है (शायद 'customer' या 'admin')
         sellerTargetPath = "/seller-apply";
       }
-      console.log(`Header: Redirecting logged-in user to: ${sellerTargetPath}`);
-      navigate(sellerTargetPath); 
+    } else {
+      // यदि यूज़र लॉग-आउट है, तो उसे /auth पर भेजें।
+      // AuthRedirectGuard या AuthPage उसे लॉगिन करने के लिए कहेगा
+      // और फिर उसे 'become-seller' इंटेंट के आधार पर सही जगह रीडायरेक्ट करेगा।
+      console.log("Header: User is not authenticated. Redirecting to /auth with intent.");
+      localStorage.setItem('redirectIntent', 'become-seller'); 
+      sellerTargetPath = "/auth";
     }
+    
+    console.log(`Header: Navigating to: ${sellerTargetPath}`);
+    navigate(sellerTargetPath); 
   };
+  // --- `handleBecomeSeller` फ़ंक्शन में बदलाव समाप्त ---
 
   // रोल-आधारित डैशबोर्ड लिंक प्राप्त करने के लिए हेल्पर फ़ंक्शन
   const getDashboardLink = () => {
@@ -340,4 +349,3 @@ const Header: React.FC<HeaderProps> = ({ categories = [] }) => {
 };
 
 export default Header;
-                  
