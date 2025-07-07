@@ -1,6 +1,6 @@
 // src/lib/firebase.ts
 
-import { initializeApp } from "firebase/app";
+import { initializeApp,setLogLevel } from "firebase/app";
 import { 
   getAuth, 
   setPersistence, 
@@ -9,7 +9,7 @@ import {
   signInWithPopup, 
   signOut as firebaseSignOut, 
   onAuthStateChanged, 
-  setLogLevel,
+  
   getRedirectResult, // ✅ Add this import
   signInWithRedirect // ✅ Add this import if you intend to use redirect later
 } from "firebase/auth";
