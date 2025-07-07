@@ -26,18 +26,42 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(null);
       setFirebaseUser(null);
       console.log("User signed out successfully.");
-      localStorage.removeItem('redirectIntent'); // ✅ सुनिश्चित करें कि लॉगआउट पर इंटेंट भी हट जाए
+      localStorage.removeItem('redirectIntent'); 
     } catch (error) {
       console.error("Error signing out:", error);
     }
   }, []);
 
+  // ✅ नया useEffect: Google रीडायरेक्ट परिणाम को हैंडल करने के लिए
   useEffect(() => {
-    // ✅ यह एक फ्लैग है यह ट्रैक करने के लिए कि क्या हमने इस सत्र में रीडायरेक्ट रिजल्ट को पहले ही प्रोसेस कर लिया है।
-    // इससे onAuthStateChanged के मल्टीपल बार फायर होने पर डुप्लीकेट प्रोसेसिंग से बचा जा सकेगा।
-    let redirectResultProcessed = false; 
+    console.log("Auth Provider: Running useEffect for Google Redirect Result.");
+    const processRedirectResult = async () => {
+      try {
+        const result = await handleGoogleRedirectResult();
+        if (result) {
+          console.log("Auth Provider: Google redirect result found and processed. User:", result.user?.uid);
+          // onAuthStateChanged listener अब इस यूजर को पिक करेगा।
+          // हमें यहां explicit state सेट करने की आवश्यकता नहीं होनी चाहिए
+          // क्योंकि onAuthStateChanged को ही इसे मैनेज करना चाहिए।
+        } else {
+          console.log("Auth Provider: No Google redirect result found.");
+        }
+      } catch (error) {
+        console.error("Auth Provider: Error processing Google redirect result:", error);
+      } finally {
+        // भले ही कोई परिणाम न हो या कोई एरर हो, सुनिश्चित करें कि लोडिंग बंद हो जाए
+        // setIsLoadingAuth(false); // इसे onAuthStateChanged में रहने दें
+      }
+    };
 
-    // Firebase Auth State Listener
+    // इसे केवल एक बार चलाएं जब कंपोनेंट माउंट हो।
+    // यह Firebase को Google से रीडायरेक्ट के बाद लॉगिन को अंतिम रूप देने का मौका देता है।
+    processRedirectResult();
+  }, []); // खाली डिपेंडेंसी एरे
+
+  // Firebase Auth State Listener (यह अभी भी मुख्य ऑथेंटिकेशन फ्लो है)
+  useEffect(() => {
+    console.log("Auth Provider: Running useEffect for onAuthStateChanged listener.");
     const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
       console.log("onAuthStateChanged listener fired. fbUser:", fbUser ? fbUser.uid : "null");
       setFirebaseUser(fbUser);
@@ -81,24 +105,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } else {
         console.log("Auth State Changed: No Firebase user detected. Setting user to null.");
         setUser(null);
-        
-        // ✅ महत्वपूर्ण: Google रीडायरेक्ट के बाद लॉगिन को पूरा करने के लिए यहाँ handleGoogleRedirectResult को कॉल करें।
-        // इसे केवल तभी कॉल करें जब यह पहला लोड हो और अभी तक प्रोसेस न किया गया हो।
-        if (!redirectResultProcessed) {
-            console.log("Checking for Google redirect result...");
-            try {
-                const result = await handleGoogleRedirectResult(); // Call the function from firebase.ts
-                if (result) {
-                    console.log("Google redirect result processed. Firebase user should now be detected in next onAuthStateChanged fire.");
-                    redirectResultProcessed = true; // इसे दोबारा प्रोसेस न करें
-                    // onAuthStateChanged फिर से फायर होगा fbUser के साथ, और ऊपर का if (fbUser) ब्लॉक चलेगा।
-                } else {
-                    console.log("No Google redirect result found this time.");
-                }
-            } catch (error) {
-                console.error("Error handling Google redirect result:", error);
-            }
-        }
+        // यहां handleGoogleRedirectResult को कॉल न करें, यह अब ऊपर वाले अलग useEffect में है।
       }
 
       setIsLoadingAuth(false);
@@ -131,5 +138,3 @@ export function useAuth() {
   }
   return context;
 }
-
-// ✅ आप बाद में useSeller हुक दिखा सकते हैं, लेकिन पहले इस ऑथेंटिकेशन लूप को तोड़ना महत्वपूर्ण है।
