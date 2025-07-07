@@ -15,87 +15,62 @@ export default function AuthPage() {
 
   const storedIntent = localStorage.getItem('redirectIntent'); 
 
-  // ✅ रेंडरिंग स्टेज को ट्रैक करने के लिए लॉग
   console.log("Auth.tsx Render Cycle Started. Auth State:", { isLoadingAuth, isAuthenticated, StoredIntent: storedIntent });
 
   useEffect(() => {
     console.log("Auth.tsx useEffect: Triggered. Current state inside effect:", { isLoadingAuth, isAuthenticated, userId: user?.uid });
-    console.log("Auth.tsx useEffect: Location:", location, "StoredIntent:", storedIntent);
+    console.log("Auth.tsx useEffect: Location:", location.pathname, "StoredIntent:", storedIntent); // ✅ location.pathname यूआरएल का पाथ देगा
 
+    // 1. ऑथेंटिकेशन स्टेट अभी लोड हो रही है तो रुकें
     if (isLoadingAuth) {
       console.log("Auth.tsx useEffect: Auth state is loading. Exiting useEffect.");
       return;
     }
 
+    // 2. यदि यूजर लॉग-इन है (isAuthenticated true है)
     if (isAuthenticated) {
       console.log("Auth.tsx useEffect: User is authenticated. Checking for redirect logic.");
       
+      // 'become-seller' इंटेंट को हैंडल करें
       if (storedIntent === "become-seller") {
         console.log("Auth.tsx useEffect: Authenticated user with 'become-seller' intent. Redirecting to seller flow.");
-        localStorage.removeItem('redirectIntent'); 
+        localStorage.removeItem('redirectIntent'); // इंटेंट को उपयोग के बाद हटा दें
         
         let sellerTargetPath: string;
+        // यूजर के रोल और सेलर अप्रूवल स्टेटस के आधार पर पाथ निर्धारित करें
         if (user?.role === "seller") { 
             const approvalStatus = user.seller?.approvalStatus;
             if (approvalStatus === "approved") {
                 sellerTargetPath = "/seller-dashboard";
             } else if (approvalStatus === "pending") {
                 sellerTargetPath = "/seller-status";
-            } else { 
+            } else { // 'rejected' या कोई अन्य स्थिति, या यदि seller ऑब्जेक्ट है लेकिन कोई approvalStatus नहीं है
                 sellerTargetPath = "/seller-apply";
             }
         } else {
+            // यदि यूजर लॉग-इन है लेकिन उसका रोल 'seller' नहीं है (जैसे 'customer'), उसे अप्लाई करने के लिए भेजें
             sellerTargetPath = "/seller-apply";
         }
         navigate(sellerTargetPath); 
-        return; 
+        console.log(`Auth.tsx useEffect: Redirected to ${sellerTargetPath}`);
+        return; // ✅ सबसे महत्वपूर्ण: रीडायरेक्ट के बाद useEffect से तुरंत बाहर निकलें
       } 
       
+      // यदि कोई विशिष्ट इंटेंट नहीं है, तो डिफ़ॉल्ट रूप से होम पेज पर रीडायरेक्ट करें
       console.log("Auth.tsx useEffect: Authenticated user with no specific intent. Redirecting to home page.");
-      navigate("/"); 
-      return; 
+      navigate("/"); // ✅ डिफ़ॉल्ट रीडायरेक्ट
+      console.log("Auth.tsx useEffect: Redirected to /");
+      return; // ✅ सबसे महत्वपूर्ण: रीडायरेक्ट के बाद useEffect से तुरंत बाहर निकलें
     }
 
+    // 3. यदि यूजर लॉग-इन नहीं है और ऑथेंटिकेशन लोड हो चुका है
     console.log("Auth.tsx useEffect: User is NOT authenticated and auth state is loaded. Login form should appear.");
 
-  }, [isAuthenticated, isLoadingAuth, navigate, storedIntent, user, location]); 
-
-  const handleGoogleSignIn = async () => {
-    try {
-      setIsSigningIn(true); 
-      console.log("Auth.tsx handleGoogleSignIn: Initiating Google Sign-In Redirect.");
-      await initiateGoogleSignInRedirect(); 
-    } catch (error) {
-      console.error("Auth.tsx handleGoogleSignIn: Error signing in:", error);
-      setIsSigningIn(false); 
-    }
-  };
-
-  // ✅ रेंडरिंग लॉजिक: कौन सा UI दिखाना है?
-  // केस 1: ऑथेंटिकेशन स्टेट अभी लोड हो रही है
-  if (isLoadingAuth) {
-    console.log("Auth.tsx Render: Case 1 - Showing loading state.");
-    return (
-      <div className="min-h-screen flex items-center justify-center p-4 bg-gray-50">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-lg text-gray-700">Loading authentication state...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // केस 2: यूजर लॉग-इन है (और isLoadingAuth false है)
-  // इस स्थिति में useEffect तुरंत रीडायरेक्ट कर देगा।
-  // इसलिए, हम यहां कोई UI नहीं दिखाना चाहते।
-  if (isAuthenticated) {
-    console.log("Auth.tsx Render: Case 2 - User is authenticated. Not rendering login form, expecting redirect.");
-    return null; 
-  }
-
-  // केस 3: यूजर लॉग-इन नहीं है (isAuthenticated false है) और ऑथेंटिकेशन लोड हो चुका है (isLoadingAuth false है)
-  // यह वह स्थिति है जहाँ हम लॉगिन फॉर्म दिखाना चाहते हैं।
-  console.log("Auth.tsx Render: Case 3 - User not authenticated, auth loaded. Displaying login form.");
+  }, [isAuthenticated, isLoadingAuth, navigate, storedIntent, user, location.pathname]); // ✅ location.pathname को dependencies में जोड़ा
+                                                                                        // ताकि URL बदलने पर useEffect फिर से चले
+// ... (बाकी AuthPage कंपोनेंट का कोड)
+  
+    
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-gray-50">
       <div className="max-w-md w-full">
