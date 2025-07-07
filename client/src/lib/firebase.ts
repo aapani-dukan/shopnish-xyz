@@ -1,7 +1,18 @@
-
 // src/lib/firebase.ts
-import { initializeApp,setLogLevel } from "firebase/app";
-import { getAuth, setPersistence, browserLocalPersistence, GoogleAuthProvider, signInWithPopup, signOut as firebaseSignOut, onAuthStateChanged } from "firebase/auth";
+
+import { initializeApp } from "firebase/app";
+import { 
+  getAuth, 
+  setPersistence, 
+  browserLocalPersistence, 
+  GoogleAuthProvider, 
+  signInWithPopup, 
+  signOut as firebaseSignOut, 
+  onAuthStateChanged, 
+  setLogLevel,
+  getRedirectResult, // ✅ Add this import
+  signInWithRedirect // ✅ Add this import if you intend to use redirect later
+} from "firebase/auth";
 import { getFirestore, doc, getDoc, setDoc } from "firebase/firestore";
 
 // ✅ Firebase Debug Logging Enable करें
@@ -36,7 +47,7 @@ setPersistence(auth, browserLocalPersistence)
 
 console.log("Firebase Init: Firebase app and auth initialized successfully.");
 
-// Function to handle Google sign-in
+// Function to handle Google sign-in (popup method)
 export const signInWithGoogle = async () => {
   try {
     const result = await signInWithPopup(auth, googleProvider);
@@ -72,6 +83,49 @@ export const signInWithGoogle = async () => {
     throw error;
   }
 };
+
+// Function to handle Google sign-in with redirect (if you plan to use this instead of popup)
+// export const signInWithGoogleRedirect = async () => {
+//   try {
+//     await signInWithRedirect(auth, googleProvider);
+//     console.log("Firebase: Redirecting for Google sign-in.");
+//   } catch (error) {
+//     console.error("Firebase: Error during Google sign-in redirect:", error);
+//   }
+// };
+
+// ✅ Function to handle Google Redirect Result (this is what useAuth.tsx expects)
+export const handleGoogleRedirectResult = async () => {
+  try {
+    const result = await getRedirectResult(auth);
+    if (result) {
+      const user = result.user;
+      console.log("Firebase: Google redirect sign-in successful. User:", user);
+      // You might want to update user doc in Firestore here as well, similar to signInWithGoogle
+      const userRef = doc(db, "users", user.uid);
+      const userSnap = await getDoc(userRef);
+      if (!userSnap.exists()) {
+        await setDoc(userRef, {
+          uid: user.uid,
+          name: user.displayName,
+          email: user.email,
+          photoURL: user.photoURL,
+          role: "customer", // Default role
+          createdAt: new Date(),
+        });
+        console.log("Firebase: User document created after redirect sign-in.");
+      }
+      return user;
+    } else {
+      console.log("Firebase: No Google redirect result found.");
+      return null;
+    }
+  } catch (error: any) {
+    console.error("Firebase: Error handling Google redirect result:", error);
+    throw error;
+  }
+};
+
 
 // Function to handle logout
 export const logout = async () => {
