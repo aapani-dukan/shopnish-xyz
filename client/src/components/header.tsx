@@ -1,4 +1,4 @@
-// src/components/header.tsx
+// src/components/headers/Header.tsx
 
 import React, { useState } from "react";
 import { Link, useLocation } from "wouter";
@@ -64,27 +64,28 @@ const Header: React.FC<HeaderProps> = ({ categories = [] }) => {
       await logout(); // Firebase logout फंक्शन को कॉल करें
       console.log("Header: User logged out successfully.");
       navigate("/"); // लॉगआउट के बाद होम पेज पर रीडायरेक्ट करें
-      // शायद localStorage से भी कोई intent हटा दें यदि कोई बचा हो
+      // localStorage से कोई भी बचा हुआ intent हटा दें
       localStorage.removeItem('redirectIntent'); 
     } catch (error) {
       console.error("Header: Error during logout:", error);
-      // लॉगआउट एरर हैंडल करें, जैसे एक टोस्ट दिखाना
+      // लॉगआउट एरर हैंडल करें
     }
   };
 
-  // --- `handleBecomeSeller` फ़ंक्शन में फाइनल बदलाव ---
+  // --- `handleBecomeSeller` फ़ंक्शन: यह अब बिल्कुल सीधा है ---
   const handleBecomeSeller = () => {
     console.log("Header: 'Become a Seller' clicked.");
     
     // ✅ 'become-seller' intent को localStorage में सेट करें।
-    // यह AuthRedirectGuard और संबंधित पेजों को बताएगा कि यूज़र सेलर फ़्लो में है।
+    // यह AuthRedirectGuard और /seller-apply पेज को बताएगा कि यूज़र सेलर फ़्लो में है।
     localStorage.setItem('redirectIntent', 'become-seller'); 
     console.log("Header: Set 'redirectIntent' to 'become-seller'.");
 
     // हमेशा /seller-apply पर भेजें।
-    // AuthRedirectGuard या /seller-apply पेज पर मौजूद लॉजिक यूज़र के
+    // AuthRedirectGuard (या /seller-apply पेज पर मौजूद लॉजिक) यूज़र के
     // ऑथेंटिकेशन और रोल के आधार पर आगे का रीडायरेक्ट संभालेगा।
-    console.log("Header: Redirecting to /seller-apply.");
+    // Header का काम केवल यहीं तक है।
+    console.log("Header: Redirecting to /seller-apply. No authentication check here.");
     navigate("/seller-apply"); 
   };
   // --- `handleBecomeSeller` फ़ंक्शन में बदलाव समाप्त ---
@@ -325,4 +326,4 @@ const Header: React.FC<HeaderProps> = ({ categories = [] }) => {
 };
 
 export default Header;
-            
+      
