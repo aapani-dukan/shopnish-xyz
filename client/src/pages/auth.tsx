@@ -1,31 +1,101 @@
-// src/pages/Auth.tsx
+// src/pages/auth.tsx
 
-import { useState } from "react";
-// सुनिश्चित करें कि आप वही साइन-इन फंक्शन इम्पोर्ट करें जिसका आप उपयोग कर रहे हैं
-// यदि आप पॉपअप का उपयोग कर रहे हैं तो signInWithGoogle
-// यदि आप रीडायरेक्ट का उपयोग कर रहे हैं तो initiateGoogleSignInRedirect
-import { signInWithGoogle, /* initiateGoogleSignInRedirect */ } from "@/lib/firebase"; 
+import { useEffect, useState } from "react";
+import { initiateGoogleSignInRedirect } from "@/lib/firebase"; 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Store } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth"; 
+import { useLocation } from "wouter"; 
 
 export default function AuthPage() {
-  const [isLoading, setIsLoading] = useState(false);
+  const [isSigningIn, setIsSigningIn] = useState(false); 
+  const { isAuthenticated, isLoadingAuth, user } = useAuth(); 
+  const [, navigate] = useLocation(); 
+
+  const storedIntent = localStorage.getItem('redirectIntent'); 
+
+  // ✅ रेंडरिंग स्टेज को ट्रैक करने के लिए लॉग
+  console.log("Auth.tsx Render Cycle Started. Auth State:", { isLoadingAuth, isAuthenticated, StoredIntent: storedIntent });
+
+  useEffect(() => {
+    console.log("Auth.tsx useEffect: Triggered. Current state inside effect:", { isLoadingAuth, isAuthenticated, userId: user?.uid });
+    console.log("Auth.tsx useEffect: Location:", location, "StoredIntent:", storedIntent);
+
+    if (isLoadingAuth) {
+      console.log("Auth.tsx useEffect: Auth state is loading. Exiting useEffect.");
+      return;
+    }
+
+    if (isAuthenticated) {
+      console.log("Auth.tsx useEffect: User is authenticated. Checking for redirect logic.");
+      
+      if (storedIntent === "become-seller") {
+        console.log("Auth.tsx useEffect: Authenticated user with 'become-seller' intent. Redirecting to seller flow.");
+        localStorage.removeItem('redirectIntent'); 
+        
+        let sellerTargetPath: string;
+        if (user?.role === "seller") { 
+            const approvalStatus = user.seller?.approvalStatus;
+            if (approvalStatus === "approved") {
+                sellerTargetPath = "/seller-dashboard";
+            } else if (approvalStatus === "pending") {
+                sellerTargetPath = "/seller-status";
+            } else { 
+                sellerTargetPath = "/seller-apply";
+            }
+        } else {
+            sellerTargetPath = "/seller-apply";
+        }
+        navigate(sellerTargetPath); 
+        return; 
+      } 
+      
+      console.log("Auth.tsx useEffect: Authenticated user with no specific intent. Redirecting to home page.");
+      navigate("/"); 
+      return; 
+    }
+
+    console.log("Auth.tsx useEffect: User is NOT authenticated and auth state is loaded. Login form should appear.");
+
+  }, [isAuthenticated, isLoadingAuth, navigate, storedIntent, user, location]); 
 
   const handleGoogleSignIn = async () => {
     try {
-      setIsLoading(true);
-      // 👇 यहाँ आपका Google साइन-इन फंक्शन कॉल होता है
-      await signInWithGoogle(); // या initiateGoogleSignInRedirect()
-      
-      // ✅ यह लाइन जोड़ें: लॉगिन सफल होने पर isLoading को false करें
-      setIsLoading(false); 
+      setIsSigningIn(true); 
+      console.log("Auth.tsx handleGoogleSignIn: Initiating Google Sign-In Redirect.");
+      await initiateGoogleSignInRedirect(); 
     } catch (error) {
-      console.error("Error signing in:", error);
-      setIsLoading(false);
+      console.error("Auth.tsx handleGoogleSignIn: Error signing in:", error);
+      setIsSigningIn(false); 
     }
   };
 
+  // ✅ रेंडरिंग लॉजिक: कौन सा UI दिखाना है?
+  // केस 1: ऑथेंटिकेशन स्टेट अभी लोड हो रही है
+  if (isLoadingAuth) {
+    console.log("Auth.tsx Render: Case 1 - Showing loading state.");
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4 bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-lg text-gray-700">Loading authentication state...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // केस 2: यूजर लॉग-इन है (और isLoadingAuth false है)
+  // इस स्थिति में useEffect तुरंत रीडायरेक्ट कर देगा।
+  // इसलिए, हम यहां कोई UI नहीं दिखाना चाहते।
+  if (isAuthenticated) {
+    console.log("Auth.tsx Render: Case 2 - User is authenticated. Not rendering login form, expecting redirect.");
+    return null; 
+  }
+
+  // केस 3: यूजर लॉग-इन नहीं है (isAuthenticated false है) और ऑथेंटिकेशन लोड हो चुका है (isLoadingAuth false है)
+  // यह वह स्थिति है जहाँ हम लॉगिन फॉर्म दिखाना चाहते हैं।
+  console.log("Auth.tsx Render: Case 3 - User not authenticated, auth loaded. Displaying login form.");
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-gray-50">
       <div className="max-w-md w-full">
@@ -36,12 +106,16 @@ export default function AuthPage() {
                 <Store className="text-white text-2xl w-8 h-8" />
               </div>
               <h1 className="text-2xl font-semibold text-gray-900 mb-2">Welcome Back</h1>
-              <p className="text-gray-600">Sign in to access your seller dashboard</p>
+              {storedIntent === "become-seller" ? (
+                <p className="text-gray-600">Please sign in to continue your seller application.</p>
+              ) : (
+                <p className="text-gray-600">Sign in to access your dashboard</p>
+              )}
             </div>
             
             <Button
               onClick={handleGoogleSignIn}
-              disabled={isLoading}
+              disabled={isSigningIn} 
               className="w-full bg-white border-2 border-gray-200 hover:border-gray-300 text-gray-700 hover:bg-gray-50 font-medium py-3 px-6 rounded-lg transition-colors duration-200"
               variant="outline"
             >
@@ -54,7 +128,7 @@ export default function AuthPage() {
               Continue with Google
             </Button>
             
-            {isLoading && (
+            {isSigningIn && ( 
               <div className="mt-4 flex items-center justify-center space-x-2 text-gray-600">
                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
                 <span className="text-sm">Signing you in...</span>
@@ -66,5 +140,3 @@ export default function AuthPage() {
     </div>
   );
 }
-
-
