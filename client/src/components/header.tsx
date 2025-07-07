@@ -1,4 +1,4 @@
-// src/components/headers/Header.tsx
+// src/components/header.tsx
 
 import React, { useState } from "react";
 import { Link, useLocation } from "wouter";
@@ -72,18 +72,18 @@ const Header: React.FC<HeaderProps> = ({ categories = [] }) => {
     }
   };
 
-  // --- `handleBecomeSeller` फ़ंक्शन में बदलाव ---
+  // --- `handleBecomeSeller` फ़ंक्शन में फाइनल बदलाव ---
   const handleBecomeSeller = () => {
     console.log("Header: 'Become a Seller' clicked.");
     
-    // ✅ 'become-seller' intent को localStorage में सेट करें, चाहे यूज़र लॉग-इन हो या न हो।
-    // इससे AuthRedirectGuard या AuthPage को पता चलेगा कि किस इंटेंट से यूज़र आया है।
+    // ✅ 'become-seller' intent को localStorage में सेट करें।
+    // यह AuthRedirectGuard और संबंधित पेजों को बताएगा कि यूज़र सेलर फ़्लो में है।
     localStorage.setItem('redirectIntent', 'become-seller'); 
     console.log("Header: Set 'redirectIntent' to 'become-seller'.");
 
     // हमेशा /seller-apply पर भेजें।
-    // AuthRedirectGuard इस इंटेंट को पढ़ेगा और यह तय करेगा कि यूज़र को लॉगिन की आवश्यकता है
-    // या सीधे सेलर फ़्लो पर जाना है (यदि वह पहले से लॉग-इन है और उसका रोल सही है)।
+    // AuthRedirectGuard या /seller-apply पेज पर मौजूद लॉजिक यूज़र के
+    // ऑथेंटिकेशन और रोल के आधार पर आगे का रीडायरेक्ट संभालेगा।
     console.log("Header: Redirecting to /seller-apply.");
     navigate("/seller-apply"); 
   };
@@ -325,4 +325,4 @@ const Header: React.FC<HeaderProps> = ({ categories = [] }) => {
 };
 
 export default Header;
-                  
+            
