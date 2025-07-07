@@ -23,13 +23,13 @@ const AUTH_SPECIFIC_PATHS = [
 export function AuthRedirectGuard() {
   const [location, navigate] = useLocation();
   const intent = localStorage.getItem('redirectIntent'); 
-  const { user, isLoadingAuth, isAuthenticated } = useAuth(); 
+  const { user, isLoadingAuth, isAuthenticated } = useAuth(); // isAuthenticated का उपयोग अब become-seller फ़्लो में नहीं होगा
 
   useEffect(() => {
     console.group("AuthRedirectGuard Log");
     console.log("AuthRedirectGuard useEffect triggered.");
     console.log("isLoadingAuth:", isLoadingAuth);
-    console.log("isAuthenticated:", isAuthenticated);
+    console.log("isAuthenticated:", isAuthenticated); // सिर्फ लॉगिंग के लिए, लॉजिक के लिए नहीं
     console.log("Current user (UUID):", user?.uuid || "null");
     console.log("Current location:", location);
     console.log("Intent from localStorage:", intent);
@@ -49,51 +49,44 @@ export function AuthRedirectGuard() {
       (path) => location === path || location.startsWith(path + '/') || location.includes(path)
     );
 
-    // --- ✅ प्राथमिकता 1: 'become-seller' इंटेंट को हैंडल करें ---
-    // यह चेक सबसे पहले और बिना किसी authentication चेक के होना चाहिए।
-    if (intent === "become-seller") {
-      console.log("AuthRedirectGuard: 'become-seller' intent found in localStorage.");
-      
-      // यदि यूज़र लॉग-इन है और उसका रोल 'seller' है
-      if (isAuthenticated && user?.role === "seller") {
-        console.log("AuthRedirectGuard: Authenticated seller with 'become-seller' intent. Determining seller path.");
-        localStorage.removeItem('redirectIntent'); // इंटेंट को उपयोग के बाद हटा दें
+    // --- ✅ प्राथमिकता 1: 'become-seller' इंटेंट को हैंडल करें (बिना लॉगिन चेक के) ---
+    // यदि यूज़र '/seller-apply' पर है और 'become-seller' इंटेंट है, तो उसे सीधे सेलर फ़्लो पर भेजें।
+    // हम मान रहे हैं कि यहां तक पहुंचने वाला यूज़र लॉग-इन है।
+    if (intent === "become-seller" && location.startsWith("/seller-apply")) {
+      console.log("AuthRedirectGuard: 'become-seller' intent found on /seller-apply. Handling directly.");
+      localStorage.removeItem('redirectIntent'); // इंटेंट को उपयोग के बाद हटा दें
 
-        const approvalStatus = user?.seller?.approvalStatus;
-        let sellerTargetPath: string;
+      const approvalStatus = user?.seller?.approvalStatus;
+      let sellerTargetPath: string;
 
+      // यदि यूज़र का रोल 'seller' है
+      if (user?.role === "seller") {
         if (approvalStatus === "approved") {
           sellerTargetPath = "/seller-dashboard";
         } else if (approvalStatus === "pending") {
           sellerTargetPath = "/seller-status";
         } else { // seller रोल है लेकिन कोई स्टेटस नहीं या approved/pending नहीं
-          sellerTargetPath = "/seller-apply";
+          sellerTargetPath = "/seller-apply"; // वापस seller-apply पर ही रखें
         }
-        
-        // यदि यूज़र पहले से ही सही सेलर पाथ पर नहीं है, तो रीडायरेक्ट करें
-        if (location !== sellerTargetPath && !location.startsWith(sellerTargetPath + '/')) {
-          console.log(`AuthRedirectGuard: Redirecting authenticated seller to seller flow: ${sellerTargetPath}`);
-          navigate(sellerTargetPath);
-          console.groupEnd();
-          return;
-        }
-        console.log("AuthRedirectGuard: Authenticated seller already on correct seller intent path. Staying put.");
-        console.groupEnd(); 
-        return;
-
       } else {
-        // यदि यूज़र लॉग-आउट है, या लॉग-इन है लेकिन उसका रोल 'seller' नहीं है,
-        // तो उसे /auth पर भेजें ताकि वह लॉगिन/साइन-अप कर सके और 'seller' बन सके।
-        console.log("AuthRedirectGuard: User is NOT a seller or NOT authenticated. Redirecting to /auth for seller onboarding.");
-        if (location !== "/auth") { 
-            navigate("/auth");
-        }
+        // यदि यूज़र 'seller' रोल में नहीं है, तो उसे 'seller-apply' पर ही रखें।
+        // यहां से वह seller बनने की प्रक्रिया शुरू कर सकता है।
+        sellerTargetPath = "/seller-apply"; 
+      }
+      
+      // यदि यूज़र पहले से ही सही सेलर पाथ पर नहीं है, तो रीडायरेक्ट करें
+      if (location !== sellerTargetPath && !location.startsWith(sellerTargetPath + '/')) {
+        console.log(`AuthRedirectGuard: Redirecting to designated seller path: ${sellerTargetPath}`);
+        navigate(sellerTargetPath);
         console.groupEnd();
         return;
       }
+      console.log("AuthRedirectGuard: User already on correct seller intent path. Staying put.");
+      console.groupEnd(); 
+      return;
     }
 
-    // --- अब सामान्य ऑथेंटिकेशन और रीडायरेक्ट लॉजिक (केवल जब कोई 'become-seller' इंटेंट न हो) ---
+    // --- अब सामान्य ऑथेंटिकेशन और रीडायरेक्ट लॉजिक (जब कोई 'become-seller' इंटेंट न हो) ---
 
     // --- 🔒 यूज़र लॉगिन नहीं है ---
     if (!isAuthenticated) {
@@ -200,4 +193,4 @@ export function AuthRedirectGuard() {
   }, [user, isLoadingAuth, isAuthenticated, location, navigate, intent]); 
 
   return null; 
-      }
+}
