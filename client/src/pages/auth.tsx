@@ -9,8 +9,6 @@ import { useAuth } from "@/hooks/useAuth";
 import { useLocation } from "wouter"; 
 
 export default function AuthPage() {
-  console.log("AuthPage: Component is being processed.");
-  return <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f0f0f0', fontSize: '24px', color: '#333' }}>Hello from Auth Page!</div>;
   const [isSigningIn, setIsSigningIn] = useState(false); 
   const { isAuthenticated, isLoadingAuth, user } = useAuth(); 
   const [, navigate] = useLocation(); 
