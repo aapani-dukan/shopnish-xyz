@@ -76,40 +76,16 @@ const Header: React.FC<HeaderProps> = ({ categories = [] }) => {
   const handleBecomeSeller = () => {
     console.log("Header: 'Become a Seller' clicked.");
     
-    // यदि ऑथ स्टेट अभी भी लोड हो रहा है, तो इंतज़ार करें
-    if (isLoadingAuth) {
-      console.log("Header: Auth state still loading, please wait for 'Become a Seller' click.");
-      return; 
-    }
+    // ✅ 'become-seller' intent को localStorage में सेट करें, चाहे यूज़र लॉग-इन हो या न हो।
+    // इससे AuthRedirectGuard या AuthPage को पता चलेगा कि किस इंटेंट से यूज़र आया है।
+    localStorage.setItem('redirectIntent', 'become-seller'); 
+    console.log("Header: Set 'redirectIntent' to 'become-seller'.");
 
-    let sellerTargetPath: string;
-    // अगर यूज़र लॉग-इन है
-    if (isAuthenticated) {
-      console.log("Header: User is authenticated. Determining seller path based on role and status.");
-      if (user?.role === "seller") { 
-        const approvalStatus = user.seller?.approvalStatus;
-        if (approvalStatus === "approved") {
-          sellerTargetPath = "/seller-dashboard";
-        } else if (approvalStatus === "pending") {
-          sellerTargetPath = "/seller-status";
-        } else { // 'rejected' या कोई अन्य स्थिति, या यदि seller ऑब्जेक्ट है लेकिन कोई approvalStatus नहीं है
-          sellerTargetPath = "/seller-apply";
-        }
-      } else {
-        // यदि यूज़र लॉग-इन है लेकिन उसका रोल 'seller' नहीं है (शायद 'customer' या 'admin')
-        sellerTargetPath = "/seller-apply";
-      }
-    } else {
-      // यदि यूज़र लॉग-आउट है, तो उसे /auth पर भेजें।
-      // AuthRedirectGuard या AuthPage उसे लॉगिन करने के लिए कहेगा
-      // और फिर उसे 'become-seller' इंटेंट के आधार पर सही जगह रीडायरेक्ट करेगा।
-      console.log("Header: User is not authenticated. Redirecting to /auth with intent.");
-      localStorage.setItem('redirectIntent', 'become-seller'); 
-      sellerTargetPath = "/auth";
-    }
-    
-    console.log(`Header: Navigating to: ${sellerTargetPath}`);
-    navigate(sellerTargetPath); 
+    // हमेशा /seller-apply पर भेजें।
+    // AuthRedirectGuard इस इंटेंट को पढ़ेगा और यह तय करेगा कि यूज़र को लॉगिन की आवश्यकता है
+    // या सीधे सेलर फ़्लो पर जाना है (यदि वह पहले से लॉग-इन है और उसका रोल सही है)।
+    console.log("Header: Redirecting to /seller-apply.");
+    navigate("/seller-apply"); 
   };
   // --- `handleBecomeSeller` फ़ंक्शन में बदलाव समाप्त ---
 
@@ -349,3 +325,4 @@ const Header: React.FC<HeaderProps> = ({ categories = [] }) => {
 };
 
 export default Header;
+                  
