@@ -18,6 +18,8 @@ import { AuthenticatedRequest } from '@/shared/types/auth';
 import { requireAuth, requireAdminAuth, requireSellerAuth } from './middleware/authMiddleware.js';
 
 import apiAuthLoginRouter from './roots/apiAuthLogin.js';
+import apiAuthLogoutRouter from './roots/apiAuthLogout.js';
+
 import adminApproveProductRoutes from './roots/admin/approve-product.js';
 import adminRejectProductRoutes from './roots/admin/reject-product.js';
 import adminProductsRoutes from './roots/admin/products.js';
@@ -369,5 +371,8 @@ router.use('/admin', adminRouter); // `/api/admin/*` को हैंडल क�
 // --- registerRoutes फ़ंक्शन ---
 // यह फ़ंक्शन server/index.ts में उपयोग किया जाएगा
 export function registerRoutes(app: express.Express) {
-  app.use("/api", router); // आपका मुख्य `/api` राउटर यहाँ जोड़ा गया है
+  app.use("/api", router); 
+  app.use('/api/auth', apiAuthLogoutRouter);
+  app.use('/api/auth',apiAuthLoginRouter);
+  // आपका मुख्य `/api` राउटर यहाँ जोड़ा गया है
   }
