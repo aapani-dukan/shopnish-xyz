@@ -1,29 +1,24 @@
-// Client/src/pages/delivery-login.tsx
 import { useEffect, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useLocation } from "wouter";
 import { Truck } from "lucide-react";
-// import { signInWithGooglePopup } from "@/lib/firebase"; // ❌ अब इसकी जरूरत नहीं है
-import { initiateGoogleSignInRedirect, handleRedirectResult } from "@/lib/firebase"; // ✅ इन नए फ़ंक्शंस को इम्पोर्ट करें
+import { initiateGoogleSignInSmart, handleRedirectResult } from "@/lib/firebase";
 
 export default function DeliveryLogin() {
   const [, navigate] = useLocation();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
 
-  // ✅ useEffect: यह रीडायरेक्ट के परिणाम को हैंडल करेगा जब यूजर वापस आएगा
   useEffect(() => {
     const handleRedirectLogin = async () => {
-      setLoading(true); // लोडिंग शुरू करें
+      setLoading(true);
       try {
-        const result = await handleRedirectResult(); // रीडायरेक्ट के परिणाम को प्राप्त करें
+        const result = await handleRedirectResult();
 
-        if (result && result.user) { // यदि परिणाम और यूजर मौजूद हैं
+        if (result && result.user) {
           const user = result.user;
-
-          // बाकी लॉजिक वैसा ही रहेगा जैसा पहले था
           const token = await user.getIdToken();
 
           const response = await fetch("/api/delivery/login", {
@@ -67,8 +62,6 @@ export default function DeliveryLogin() {
         }
       } catch (err: any) {
         console.error("Delivery login (redirect result) failed:", err);
-        // यदि कोई त्रुटि है लेकिन यह यूजर के कारण नहीं है, तो शायद पॉप-अप ब्लॉक हुआ था
-        // इस मामले में, हम कोई टोस्ट नहीं दिखाते हैं, या एक अलग संदेश दिखाते हैं
         if (err.code !== 'auth/popup-closed-by-user' && err.code !== 'auth/cancelled-popup-request') {
           toast({
             title: "Login Failed",
@@ -77,27 +70,25 @@ export default function DeliveryLogin() {
           });
         }
       } finally {
-        setLoading(false); // लोडिंग बंद करें, चाहे सफलता हो या विफलता
+        setLoading(false);
       }
     };
 
-    handleRedirectLogin(); // कंपोनेंट माउंट होने पर इसे चलाएँ
-  }, [navigate, toast]); // निर्भरताएँ जोड़ें
+    handleRedirectLogin();
+  }, [navigate, toast]);
 
-  const handleGoogleLogin = async () => { // ✅ फ़ंक्शन का नाम बदलें ताकि यह स्पष्ट हो
-    setLoading(true); // लोडिंग शुरू करें
+  const handleGoogleLogin = async () => {
+    setLoading(true);
     try {
-      await initiateGoogleSignInRedirect(); // ✅ रीडायरेक्ट-आधारित साइन-इन शुरू करें
-      // इसके बाद, यूजर को Google के प्रमाणीकरण पृष्ठ पर रीडायरेक्ट किया जाएगा।
-      // जब वे वापस आएंगे, तो useEffect में handleRedirectLogin इसे संभालेगा।
+      await initiateGoogleSignInSmart(); // ✅ Unified smart login
     } catch (err: any) {
-      console.error("Failed to initiate Google Sign-In Redirect:", err);
+      console.error("Failed to initiate Google Sign-In:", err);
       toast({
         title: "Login Failed",
         description: err.message || "Could not start Google login process.",
         variant: "destructive",
       });
-      setLoading(false); // त्रुटि होने पर लोडिंग बंद करें
+      setLoading(false);
     }
   };
 
@@ -118,7 +109,7 @@ export default function DeliveryLogin() {
           <CardContent className="space-y-4">
             <Button
               className="w-full"
-              onClick={handleGoogleLogin} // ✅ नए हैंडलर का उपयोग करें
+              onClick={handleGoogleLogin}
               disabled={loading}
             >
               {loading ? "Checking..." : "Login with Google"}
