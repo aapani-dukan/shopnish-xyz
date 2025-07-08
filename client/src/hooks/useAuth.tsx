@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useContext, createContext } from 'react';
 import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
-import { auth } from '@/firebaseConfig'; // आपकी Firebase Auth इंस्टेंस
+import { auth } from "@/lib/firebase"; // ✅ Correct path
 import { queryClient } from '@/lib/queryClient'; // आपके QueryClient का इम्पोर्ट
 import { apiRequest } from '@/lib/queryClient'; // आपके apiRequest फ़ंक्शन का इम्पोर्ट
 import { AppUser } from '@/shared/backend/schema'; // आपकी यूजर स्कीमा
