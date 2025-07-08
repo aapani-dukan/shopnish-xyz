@@ -73,7 +73,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // कुकी को भी क्लियर करें (सेशन कुकी सर्वर-साइड से क्लियर होती है, या ब्राउज़र द्वारा एक्सपायर होती है)
         // यदि आवश्यक हो तो आप एक /api/auth/logout एंडपॉइंट बना सकते हैं जो सर्वर-साइड कुकी को हटा दे।
         try {
-            await apiRequest({ method: 'POST', path: '/auth/logout' });
+           await apiRequest("POST", "/auth/logout");
             console.log("useAuth.tsx: Backend logout call successful.");
         } catch (error) {
             console.error("useAuth.tsx: Error calling backend logout:", error);
