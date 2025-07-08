@@ -1,3 +1,4 @@
+// client/src/hooks/useAuth.tsx
 import { useEffect, useState, useContext, createContext } from 'react';
 import {
   onAuthStateChanged,
@@ -41,7 +42,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.error('❌ Error handling redirect result:', error);
       }
 
-      // Set up listener (only runs if redirect result didn’t return a user)
       const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
         console.log('🔄 onAuthStateChanged triggered. User:', fbUser?.uid || 'null');
         setFirebaseUser(fbUser);
@@ -74,12 +74,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         } else {
           console.log('ℹ️ Firebase user not found. Signing out locally.');
           setUser(null);
-          try {
-            await apiRequest('POST', '/auth/logout');
-            console.log('✅ Backend logout successful.');
-          } catch (error) {
-            console.error('⚠️ Backend logout failed silently.');
-          }
+          // 🔴 यह unnecessary है क्योंकि आप Firebase यूज़ कर रहे हैं:
+          // await apiRequest('POST', '/auth/logout');
         }
 
         setIsLoadingAuth(false);
@@ -96,6 +92,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       await firebaseSignOut(auth);
       console.log('✅ User signed out.');
+      setUser(null);
+      setFirebaseUser(null);
+      queryClient.clear();
     } catch (error) {
       console.error('❌ Error signing out:', error);
     }
