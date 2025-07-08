@@ -1,7 +1,7 @@
 // src/pages/auth.tsx
 
 import { useEffect, useState } from "react";
-import { initiateGoogleSignInRedirect } from "@/lib/firebase"; 
+import { initiateGoogleSignInSmart } from "@/lib/firebase";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Store } from "lucide-react";
@@ -66,7 +66,7 @@ export default function AuthPage() {
     try {
       setIsSigningIn(true); 
       console.log("Auth.tsx handleGoogleSignIn: Initiating Google Sign-In Redirect.");
-      await initiateGoogleSignInRedirect(); 
+       await initiateGoogleSignInSmart();
     } catch (error) {
       console.error("Auth.tsx handleGoogleSignIn: Error signing in:", error);
       setIsSigningIn(false); 
