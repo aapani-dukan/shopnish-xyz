@@ -1,69 +1,95 @@
 // server/roots/apiAuthLogin.ts
 
-import { Router } from 'express';
-import * as admin from 'firebase-admin';
-import { db } from '../db.js'; // पाथ एडजस्ट करें (यह server/db.ts है)
-import { users } from '../../shared/backend/schema.js'; // पाथ एडजस्ट करें (यह ../../shared/backend/schema.ts है)
-import { eq } from 'drizzle-orm';
+import { Router, Request, Response } from 'express';
+import { db } from '../db.js'; // db को सही ढंग से इम्पोर्ट करें
+import { users, userRoleEnum, approvalStatusEnum } from '@/shared/backend/schema'; // स्कीमा इम्पोर्ट करें
+import { authAdmin } from '../lib/firebaseAdmin.js'; // Firebase Admin Auth को इम्पोर्ट करें
+import { eq } from 'drizzle-orm'; // Drizzle-orm से eq इम्पोर्ट करें
 
-const router = Router();
+const apiAuthLoginRouter = Router();
 
-// 🚀 POST /login एंडपॉइंट (यह /api/auth के बाद आएगा)
-router.post('/login', async (req, res) => {
-  console.log("Backend: POST /api/auth/login received.");
-
+apiAuthLoginRouter.post('/login', async (req: Request, res: Response) => {
+  // 1. Authorization हेडर से ID Token निकालें
   const authHeader = req.headers.authorization;
-
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    console.error("Backend Error: Authorization header missing or not starting with 'Bearer '.");
-    return res.status(400).json({ message: 'ID token is missing.' });
+    console.error('❌ Login Error: Authorization header missing or malformed.');
+    return res.status(401).json({ message: 'Authorization header (Bearer token) is required.' });
   }
 
-  const idToken = authHeader.split(' ')[1];
-  console.log("Backend: Extracted ID Token (first 30 chars):", idToken.substring(0, Math.min(idToken.length, 30)));
+  const idToken = authHeader.split(' ')[1]; // 'Bearer ' के बाद वाला हिस्सा टोकन है
 
+  if (!idToken) {
+    console.error('❌ Login Error: ID token is truly missing after splitting header.');
+    return res.status(401).json({ message: 'ID token is missing.' });
+  }
+
+  // 2. ID Token को वेरीफाई करें
+  let decodedToken;
   try {
-    const decodedToken = await admin.auth().verifyIdToken(idToken);
-    console.log("Backend: Firebase ID Token verified successfully. UID:", decodedToken.uid);
+    decodedToken = await authAdmin.verifyIdToken(idToken);
+    console.log('✅ ID Token successfully verified by Firebase Admin SDK.');
+  } catch (error: any) {
+    console.error('❌ Firebase ID Token verification failed:', error.message);
+    return res.status(401).json({ message: 'Invalid or expired ID token.', error: error.message });
+  }
 
-    const { email, name, picture } = decodedToken;
-    const firebaseUid = decodedToken.uid;
+  const firebaseUid = decodedToken.uid;
+  const email = decodedToken.email;
+  const name = decodedToken.name || decodedToken.email; // Fallback to email if name is not present
 
-    let userRecord = await db.select().from(users).where(eq(users.firebaseUid, firebaseUid)).limit(1);
+  // 3. User को डेटाबेस में चेक/क्रिएट करें
+  try {
+    let [user] = await db.select().from(users).where(eq(users.uuid, firebaseUid));
 
-    if (userRecord.length === 0) {
+    if (!user) {
+      // User doesn't exist in our DB, create them
+      console.log(`ℹ️ User with UID ${firebaseUid} not found in DB. Creating new user.`);
       const [newUser] = await db.insert(users).values({
-        firebaseUid,
-        email: email || '',
-        name: name || email || 'New User',
-        role: 'customer',
-        profilePicture: picture || null,
-        createdAt: new Date(),
+        uuid: firebaseUid,
+        email: email,
+        name: name,
+        role: userRoleEnum.enumValues[0], // Default to 'customer'
+        approvalStatus: approvalStatusEnum.enumValues[1], // Default to 'approved'
+        // आप यहां req.body से अतिरिक्त फ़ील्ड भी जोड़ सकते हैं, जैसे firstName, lastName
+        firstName: req.body.firstName || null,
+        lastName: req.body.lastName || null,
       }).returning();
-      userRecord = [newUser];
-      console.log("Backend: New user created in DB:", newUser);
+      user = newUser;
+      console.log('✅ New user created in database:', user.email);
     } else {
-      console.log("Backend: Existing user found in DB:", userRecord[0]);
+      console.log(`✅ User with UID ${firebaseUid} found in DB:`, user.email);
     }
 
+    // 4. Session Cookie बनाएं और सेट करें
+    // Firebase ID Token की अधिकतम आयु 1 घंटा है।
+    // Session cookie की अधिकतम आयु 5 दिन हो सकती है।
+    const expiresIn = 60 * 60 * 24 * 5 * 1000; // 5 days
+
+    const sessionCookie = await authAdmin.createSessionCookie(idToken, { expiresIn });
+    console.log('✅ Session cookie created by Firebase Admin SDK.');
+
+    const options = { maxAge: expiresIn, httpOnly: true, secure: process.env.NODE_ENV === 'production' || false, sameSite: 'Lax' as const };
+    res.cookie('__session', sessionCookie, options);
+    console.log('✅ Session cookie set in response.');
+
+    // 5. यूजर डेटा के साथ प्रतिक्रिया दें
+    // महत्वपूर्ण: फ्रंटएंड को संवेदनशील डेटा न भेजें।
     res.status(200).json({
-      uuid: userRecord[0].firebaseUid,
-      email: userRecord[0].email,
-      name: userRecord[0].name,
-      role: userRecord[0].role,
-      seller: userRecord[0].sellerId ? {
-        id: userRecord[0].sellerId,
-        approvalStatus: userRecord[0].sellerApprovalStatus
-      } : null
+      message: 'Login successful and session cookie set.',
+      user: {
+        uuid: user.uuid,
+        email: user.email,
+        name: user.name,
+        role: user.role,
+        approvalStatus: user.approvalStatus,
+      },
     });
 
   } catch (error: any) {
-    console.error("Backend Error: Failed to verify Firebase ID token or process user:", error);
-    if (error.code === 'auth/id-token-expired') {
-      return res.status(401).json({ message: 'Token expired. Please sign in again.' });
-    }
-    return res.status(401).json({ message: 'Unauthorized: Invalid token or verification failed.' });
+    console.error('❌ Error during /api/auth/login:', error);
+    // 500 Internal Server Error यदि डेटाबेस या कुकी निर्माण में समस्या है
+    res.status(500).json({ message: 'Internal server error during login process.', error: error.message });
   }
 });
 
-export default router;
+export default apiAuthLoginRouter;
