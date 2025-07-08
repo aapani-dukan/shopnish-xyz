@@ -2,7 +2,7 @@
 "use client";
 import React, { useState } from "react";
 // import { signInWithGoogle } from "@/lib/firebase"; // ❌ इसकी जगह अब नया फंक्शन इस्तेमाल करें
-import { initiateGoogleSignInRedirect } from "@/lib/firebase"; // ✅ इसे इम्पोर्ट करें
+import { initiateGoogleSignInSmart } from "@/lib/firebase";
 import { Button } from "@/components/ui/button";
 import GoogleIcon from "@/components/ui/GoogleIcon";
 import { useLocation } from "wouter";
@@ -16,7 +16,7 @@ export default function LoginPage() {
       setLoading(true);
 
       // ✅ यहाँ signInWithGoogle() की जगह initiateGoogleSignInRedirect() इस्तेमाल करें
-      await initiateGoogleSignInRedirect();
+      await initiateGoogleSignInSmart();
       
       // ध्यान दें: initiateGoogleSignInRedirect() ब्राउज़र को रीडायरेक्ट करेगा,
       // इसलिए इसके बाद का code (जैसे navigate("/")) तुरंत नहीं चलेगा।
