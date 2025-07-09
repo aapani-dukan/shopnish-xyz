@@ -29,7 +29,7 @@ import {
   LayoutDashboard, // डैशबोर्ड के लिए
   ListOrdered, // ऑर्डर्स के लिए
 } from "lucide-react";
-import { logout } from "@/lib/firebase"; // Firebase logout फंक्शन इम्पोर्ट करें
+
 
 // आपकी कैटेगरीज़ के लिए टाइप, यदि कोई हों
 interface Category {
