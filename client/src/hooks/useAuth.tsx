@@ -1,120 +1,50 @@
-// client/src/hooks/useAuth.tsx
-import { useEffect, useState, useContext, createContext } from 'react';
-import {
-  onAuthStateChanged,
-  getRedirectResult,
-  signOut as firebaseSignOut,
-  User as FirebaseUser,
-} from 'firebase/auth';
-import { auth } from '@/lib/firebase';
-import { queryClient, apiRequest } from '@/lib/queryClient';
-import { AppUser } from '@/shared/backend/schema';
+// client/src/hooks/useAuth.ts
+import { useEffect, useState } from "react";
+import { auth } from "@/lib/firebase";
+import { onAuthStateChanged, getRedirectResult, signOut as firebaseSignOut } from "firebase/auth";
+import axios from "axios";
 
-interface AuthContextType {
-  user: AppUser | null;
-  firebaseUser: FirebaseUser | null;
-  isLoadingAuth: boolean;
-  isAuthenticated: boolean;
-  signOut: () => Promise<void>;
-}
-
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
-
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<AppUser | null>(null);
-  const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
-  const [isLoadingAuth, setIsLoadingAuth] = useState(true);
-
-  const isAuthenticated = !!firebaseUser;
+export function useAuth() {
+  const [user, setUser] = useState(null);
+  const [seller, setSeller] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const initAuth = async () => {
+    const handleAuth = async () => {
       try {
-        console.log('🔄 Checking redirect result...');
-        const result = await getRedirectResult(auth);
-        if (result?.user) {
-          console.log('✅ Redirect result found. Firebase user:', result.user.email);
-          setFirebaseUser(result.user);
-        } else {
-          console.log('ℹ️ No redirect result user.');
-        }
-      } catch (error) {
-        console.error('❌ Error handling redirect result:', error);
+        await getRedirectResult(auth); // capture login result
+      } catch (err) {
+        console.error("Redirect error:", err);
       }
 
-      const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
-        console.log('🔄 onAuthStateChanged triggered. User:', fbUser?.uid || 'null');
-        setFirebaseUser(fbUser);
-
-        if (fbUser) {
+      onAuthStateChanged(auth, async (firebaseUser) => {
+        if (firebaseUser) {
+          setUser(firebaseUser);
           try {
-            const idToken = await fbUser.getIdToken();
-            console.log('🔐 Firebase ID token fetched, calling backend login...');
-
-            const response = await apiRequest<{ user: AppUser }>({
-              method: 'POST',
-              path: '/auth/login',
-              headers: {
-                Authorization: `Bearer ${idToken}`,
-              },
-              body: {
-                email: fbUser.email,
-                name: fbUser.displayName,
-              },
+            const res = await axios.get("/api/sellers/me", {
+              headers: { Authorization: `Bearer ${await firebaseUser.getIdToken()}` },
             });
-
-            setUser(response.user);
-            console.log('✅ User fetched/created from backend:', response.user.email);
-          } catch (error: any) {
-            console.error('❌ Error creating/fetching user:', error.message);
-            await firebaseSignOut(auth);
-            setUser(null);
-            setFirebaseUser(null);
+            setSeller(res.data.seller || null);
+          } catch (err) {
+            console.error("Seller fetch error", err);
+            setSeller(null);
           }
         } else {
-          console.log('ℹ️ Firebase user not found. Signing out locally.');
           setUser(null);
-          // 🔴 यह unnecessary है क्योंकि आप Firebase यूज़ कर रहे हैं:
-          // await apiRequest('POST', '/auth/logout');
+          setSeller(null);
         }
-
-        setIsLoadingAuth(false);
-        console.log('🔁 Auth loading state completed.');
+        setLoading(false);
       });
-
-      return () => unsubscribe();
     };
 
-    initAuth();
+    handleAuth();
   }, []);
 
   const signOut = async () => {
-    try {
-      await firebaseSignOut(auth);
-      console.log('✅ User signed out.');
-      setUser(null);
-      setFirebaseUser(null);
-      queryClient.clear();
-    } catch (error) {
-      console.error('❌ Error signing out:', error);
-    }
+    await firebaseSignOut(auth);
+    setUser(null);
+    setSeller(null);
   };
 
-  const contextValue = {
-    user,
-    firebaseUser,
-    isLoadingAuth,
-    isAuthenticated,
-    signOut,
-  };
-
-  return <AuthContext.Provider value={contextValue}>{children}</AuthContext.Provider>;
-};
-
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
-};
+  return { user, seller, loading, signOut };
+}
