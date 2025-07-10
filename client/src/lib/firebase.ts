@@ -1,7 +1,8 @@
 // client/lib/firebase.ts
 import { initializeApp, getApps, getApp } from "firebase/app";
-import { getAuth, GoogleAuthProvider } from "firebase/auth";
+import { getAuth, GoogleAuthProvider, signOut } from "firebase/auth";
 
+// 🔐 तुम्हारा Firebase config
 const firebaseConfig = {
   apiKey: "YOUR_KEY",
   authDomain: "YOUR_DOMAIN",
@@ -11,9 +12,15 @@ const firebaseConfig = {
   appId: "YOUR_APP_ID",
 };
 
+// 🔁 App initialize करो (duplicate ना हो)
 const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 
+// 🔐 Auth और Provider setup
 const auth = getAuth(app);
 const provider = new GoogleAuthProvider();
 
+// ✅ यह logout function एक्सपोर्ट करो
+export const logout = () => signOut(auth);
+
+// ✅ बाकी एक्सपोर्ट
 export { auth, provider };
