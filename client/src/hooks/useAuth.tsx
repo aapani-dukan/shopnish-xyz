@@ -2,7 +2,7 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { onAuthStateChanged, getRedirectResult } from "firebase/auth";
 import { auth } from "@/lib/firebase";
-import { apiRequest } from "@/lib/api"; // तुम्हारा custom API helper
+import { apiRequest } from "@/lib/queryClient"; // तुम्हारा custom API helper
 
 interface SellerInfo {
   id: string;
