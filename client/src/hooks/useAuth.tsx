@@ -1,50 +1,95 @@
-// client/src/hooks/useAuth.ts
-import { useEffect, useState } from "react";
+// client/src/hooks/useAuth.tsx
+import React, { createContext, useContext, useEffect, useState } from "react";
+import { onAuthStateChanged, getRedirectResult } from "firebase/auth";
 import { auth } from "@/lib/firebase";
-import { onAuthStateChanged, getRedirectResult, signOut as firebaseSignOut } from "firebase/auth";
-import axios from "axios";
+import { apiRequest } from "@/lib/api"; // तुम्हारा custom API helper
 
-export function useAuth() {
-  const [user, setUser] = useState(null);
-  const [seller, setSeller] = useState(null);
+interface SellerInfo {
+  id: string;
+  approvalStatus: "pending" | "approved" | "rejected";
+}
+
+interface User {
+  uid: string;
+  email: string | null;
+  name: string | null;
+  role: "seller" | "admin" | "delivery" | "customer";
+  seller?: SellerInfo;
+}
+
+interface AuthContextProps {
+  user: User | null;
+  isAuthenticated: boolean;
+  isLoadingAuth: boolean;
+}
+
+const AuthContext = createContext<AuthContextProps>({
+  user: null,
+  isAuthenticated: false,
+  isLoadingAuth: true,
+});
+
+export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
+  const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const handleAuth = async () => {
-      try {
-        await getRedirectResult(auth); // capture login result
-      } catch (err) {
-        console.error("Redirect error:", err);
-      }
+      setLoading(true);
 
-      onAuthStateChanged(auth, async (firebaseUser) => {
-        if (firebaseUser) {
-          setUser(firebaseUser);
-          try {
-            const res = await axios.get("/api/sellers/me", {
-              headers: { Authorization: `Bearer ${await firebaseUser.getIdToken()}` },
+      try {
+        await getRedirectResult(auth); // Firebase redirect result
+
+        onAuthStateChanged(auth, async (firebaseUser) => {
+          if (firebaseUser) {
+            const token = await firebaseUser.getIdToken();
+            const res = await apiRequest("GET", "/api/sellers/me", {
+              headers: { Authorization: `Bearer ${token}` },
             });
-            setSeller(res.data.seller || null);
-          } catch (err) {
-            console.error("Seller fetch error", err);
-            setSeller(null);
+
+            if (res.success) {
+              setUser({
+                uid: firebaseUser.uid,
+                email: firebaseUser.email,
+                name: firebaseUser.displayName,
+                role: "seller",
+                seller: res.seller,
+              });
+            } else {
+              // No seller profile, treat as customer
+              setUser({
+                uid: firebaseUser.uid,
+                email: firebaseUser.email,
+                name: firebaseUser.displayName,
+                role: "customer",
+              });
+            }
+          } else {
+            setUser(null);
           }
-        } else {
-          setUser(null);
-          setSeller(null);
-        }
+
+          setLoading(false);
+        });
+      } catch (err) {
+        console.error("AuthProvider error:", err);
         setLoading(false);
-      });
+      }
     };
 
     handleAuth();
   }, []);
 
-  const signOut = async () => {
-    await firebaseSignOut(auth);
-    setUser(null);
-    setSeller(null);
-  };
+  return (
+    <AuthContext.Provider
+      value={{
+        user,
+        isAuthenticated: !!user,
+        isLoadingAuth: loading,
+      }}
+    >
+      {children}
+    </AuthContext.Provider>
+  );
+};
 
-  return { user, seller, loading, signOut };
-}
+export const useAuth = () => useContext(AuthContext);
