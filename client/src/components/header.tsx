@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { useCartStore } from "@/lib/store";
-
+import { logout } from "@/lib/firebase"; // ✅ अब यह सही से काम करेगा
 // UI कॉम्पोनेंट्स इम्पोर्ट करें
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
