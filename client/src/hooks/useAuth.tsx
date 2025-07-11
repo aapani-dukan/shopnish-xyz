@@ -1,107 +1,41 @@
-// client/src/hooks/useAuth.tsx
-import { useEffect, useState, createContext, useContext } from "react";
-import {
-  getAuth,
-  onAuthStateChanged,
-  getIdTokenResult,
-  User as FirebaseUser,
-} from "firebase/auth";
+// client/src/pages/auth.tsx
+import { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { getRedirectResult, getAuth } from "firebase/auth";
 import { app } from "@/lib/firebase";
-import { apiRequest } from "@/lib/queryClient";
 
-interface SellerInfo {
-  approvalStatus: "pending" | "approved" | "rejected";
-  rejectionReason?: string | null;
-}
-
-interface User {
-  uid: string;
-  email: string | null;
-  name: string | null;
-  role: "seller" | "admin" | "delivery" | "customer";
-  seller?: SellerInfo;
-  idToken: string;
-  firebaseUid: string;
-}
-
-interface AuthContextType {
-  user: User | null;
-  isLoadingAuth: boolean;
-  isAuthenticated: boolean;
-  signOut: () => void;
-}
-
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
-
-export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [isLoadingAuth, setIsLoadingAuth] = useState(true);
+const AuthRedirectHandler = () => {
+  const navigate = useNavigate();
 
   useEffect(() => {
     const auth = getAuth(app);
 
-    const processUser = async (firebaseUser: FirebaseUser | null) => {
-      if (!firebaseUser) {
-        setUser(null);
-        setIsLoadingAuth(false);
-        return;
-      }
-
+    const handleRedirect = async () => {
       try {
-        const idToken = await firebaseUser.getIdToken();
-        const decodedToken = await getIdTokenResult(firebaseUser);
+        const result = await getRedirectResult(auth);
+        if (result?.user) {
+          console.log("✅ Redirect login successful:", result.user);
 
-        const role = decodedToken.claims.role || "customer";
-        const firebaseUid = firebaseUser.uid;
-        const email = firebaseUser.email;
-        const name = firebaseUser.displayName;
-
-        let seller: SellerInfo | undefined = undefined;
-        if (role === "seller") {
-          try {
-            const res = await apiRequest("GET", "/api/sellers/me", undefined, idToken);
-            seller = res.data;
-          } catch (_) {}
+          const intent = localStorage.getItem("redirectIntent");
+          if (intent === "become-seller") {
+            navigate("/seller-apply");
+          } else {
+            navigate("/");
+          }
+        } else {
+          console.log("ℹ️ No redirect result user.");
+          navigate("/");
         }
-
-        setUser({ uid: firebaseUser.uid, firebaseUid, email, name, role, seller, idToken });
       } catch (error) {
-        console.error("Auth Error:", error);
-        setUser(null);
-      } finally {
-        setIsLoadingAuth(false);
+        console.error("❌ Error during redirect login:", error);
+        navigate("/");
       }
     };
 
-    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
-      console.log("🔄 onAuthStateChanged triggered. User:", firebaseUser);
-      processUser(firebaseUser);
-    });
+    handleRedirect();
+  }, [navigate]);
 
-    return () => unsubscribe();
-  }, []);
-
-  const signOut = () => {
-    const auth = getAuth(app);
-    auth.signOut().then(() => setUser(null));
-  };
-
-  return (
-    <AuthContext.Provider
-      value={{
-        user,
-        isLoadingAuth,
-        isAuthenticated: !!user,
-        signOut,
-      }}
-    >
-      {children}
-    </AuthContext.Provider>
-  );
+  return <p className="text-center mt-10">🔄 Redirecting... Please wait.</p>;
 };
 
-export const useAuth = () => {
-  const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error("useAuth must be used within AuthProvider");
-  return ctx;
-};
+export default AuthRedirectHandler;
