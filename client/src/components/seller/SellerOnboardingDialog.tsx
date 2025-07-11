@@ -66,7 +66,7 @@ export default function SellerOnboardingDialog({ isOpen, onClose }: SellerOnboar
 
 
   const { data: existingSellerProfile, isLoading: isSellerProfileLoading } = useQuery<SellerProfile | null, Error>({
-    queryKey: ["/api/sellers/me", user?.userId],
+    queryKey: ["/api/sellers/me", user?.uid],
     queryFn: async ({ signal }) => {
       // ✅ सुनिश्चित करें कि टोकन उपलब्ध होने पर ही API कॉल करें
       if (!user?.idToken) {
