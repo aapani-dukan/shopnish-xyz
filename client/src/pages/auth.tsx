@@ -1,11 +1,12 @@
 // client/src/pages/auth.tsx
+
 import { useEffect } from "react";
-import { useRouter } from "next/router";
+import { useNavigate } from "react-router-dom";
 import { getRedirectResult, getAuth } from "firebase/auth";
 import { app } from "@/lib/firebase";
 
 const AuthRedirectHandler = () => {
-  const router = useRouter();
+  const navigate = useNavigate();
 
   useEffect(() => {
     const auth = getAuth(app);
@@ -16,26 +17,24 @@ const AuthRedirectHandler = () => {
         if (result?.user) {
           console.log("✅ Redirect login successful:", result.user);
 
-          // Store intent from localStorage
           const intent = localStorage.getItem("redirectIntent");
-
           if (intent === "become-seller") {
-            router.push("/seller-apply");
+            navigate("/seller-apply");
           } else {
-            router.push("/");
+            navigate("/");
           }
         } else {
           console.log("ℹ️ No redirect result user.");
-          router.push("/");
+          navigate("/");
         }
       } catch (error) {
         console.error("❌ Error during redirect login:", error);
-        router.push("/");
+        navigate("/");
       }
     };
 
     handleRedirect();
-  }, []);
+  }, [navigate]);
 
   return <p className="text-center mt-10">🔄 Redirecting... Please wait.</p>;
 };
