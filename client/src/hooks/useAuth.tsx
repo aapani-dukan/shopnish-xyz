@@ -1,9 +1,11 @@
 // client/src/hooks/useAuth.tsx
+
 import { useEffect, useState, createContext, useContext } from "react";
 import {
   getAuth,
   onAuthStateChanged,
   getIdTokenResult,
+  getRedirectResult,
   User as FirebaseUser,
 } from "firebase/auth";
 import { app } from "@/lib/firebase";
@@ -40,6 +42,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     const auth = getAuth(app);
 
+    // Function to process the Firebase user object
     const processUser = async (firebaseUser: FirebaseUser | null) => {
       if (!firebaseUser) {
         setUser(null);
@@ -48,33 +51,55 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }
 
       try {
+        // Get the ID token and decoded claims
         const idToken = await firebaseUser.getIdToken();
         const decodedToken = await getIdTokenResult(firebaseUser);
 
+        // Determine the role from custom claims; default to 'customer'
         const role = decodedToken.claims.role || "customer";
         const firebaseUid = firebaseUser.uid;
         const email = firebaseUser.email;
         const name = firebaseUser.displayName;
 
         let seller: SellerInfo | undefined = undefined;
+        // यदि role 'seller' है, तो backend से seller info fetch करें
         if (role === "seller") {
           try {
             const res = await apiRequest("GET", "/api/sellers/me", undefined, idToken);
             seller = res.data;
-          } catch (_) {}
+          } catch (error) {
+            console.warn("Seller info fetch failed:", error);
+          }
         }
 
         setUser({ uid: firebaseUser.uid, firebaseUid, email, name, role, seller, idToken });
       } catch (error) {
-        console.error("Auth Error:", error);
+        console.error("Auth processing error:", error);
         setUser(null);
       } finally {
         setIsLoadingAuth(false);
       }
     };
 
+    // STEP 1: Handle redirect result first
+    getRedirectResult(auth)
+      .then((result) => {
+        if (result?.user) {
+          console.log("✅ Redirect result user found:", result.user.uid);
+          processUser(result.user);
+        } else {
+          console.log("ℹ️ No redirect result user.");
+          // Fallback: Listener will handle current auth state
+          setIsLoadingAuth(false);
+        }
+      })
+      .catch((error) => {
+        console.error("getRedirectResult error:", error);
+      });
+
+    // STEP 2: Set up the onAuthStateChanged listener
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
-      console.log("🔄 onAuthStateChanged triggered. User:", firebaseUser);
+      console.log("🔄 onAuthStateChanged triggered. User:", firebaseUser?.uid || "null");
       processUser(firebaseUser);
     });
 
@@ -83,7 +108,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const signOut = () => {
     const auth = getAuth(app);
-    auth.signOut().then(() => setUser(null));
+    auth.signOut().then(() => {
+      console.log("🚪 User signed out.");
+      setUser(null);
+    });
   };
 
   return (
@@ -102,6 +130,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
 export const useAuth = () => {
   const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error("useAuth must be used within AuthProvider");
+  if (!ctx) throw new Error("useAuth must be used within an AuthProvider");
   return ctx;
 };
