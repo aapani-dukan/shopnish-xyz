@@ -1,6 +1,11 @@
-// client/src/hooks/useAuth.tsx
 import { useEffect, useState, createContext, useContext } from "react";
-import { getAuth, onAuthStateChanged, getIdTokenResult } from "firebase/auth";
+import {
+  getAuth,
+  onAuthStateChanged,
+  getIdTokenResult,
+  getRedirectResult,
+  User as FirebaseUser,
+} from "firebase/auth";
 import { app } from "@/lib/firebase";
 import { apiRequest } from "@/lib/queryClient";
 
@@ -34,7 +39,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   useEffect(() => {
     const auth = getAuth(app);
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+
+    const processUser = async (firebaseUser: FirebaseUser | null) => {
       if (!firebaseUser) {
         setUser(null);
         setIsLoadingAuth(false);
@@ -65,7 +71,25 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       } finally {
         setIsLoadingAuth(false);
       }
+    };
+
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+      processUser(firebaseUser);
     });
+
+    // ✅ Handle redirect result when user comes back from Google login
+    getRedirectResult(auth)
+      .then((result) => {
+        if (result?.user) {
+          console.log("✅ Firebase redirect result user found.");
+          processUser(result.user);
+        } else {
+          console.log("ℹ️ No redirect result user.");
+        }
+      })
+      .catch((error) => {
+        console.error("getRedirectResult Error:", error);
+      });
 
     return () => unsubscribe();
   }, []);
