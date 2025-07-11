@@ -1,101 +1,53 @@
-// src/pages/auth.tsx
+// client/src/pages/auth.tsx
 
 import { useEffect, useState } from "react";
 import { initiateGoogleSignInSmart } from "@/lib/firebase";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Store } from "lucide-react";
-import { useAuth } from "@/hooks/useAuth"; 
-import { useLocation } from "wouter"; 
+import { useAuth } from "@/hooks/useAuth";
+import { useLocation } from "wouter";
 
 export default function AuthPage() {
-  const [isSigningIn, setIsSigningIn] = useState(false); 
-  const { isAuthenticated, isLoadingAuth, user } = useAuth(); 
-  const [, navigate] = useLocation(); 
-
-  const storedIntent = localStorage.getItem('redirectIntent'); 
-
-  console.log("Auth.tsx Render Cycle Started. Auth State:", { isLoadingAuth, isAuthenticated, StoredIntent: storedIntent });
+  const [isSigningIn, setIsSigningIn] = useState(false);
+  const { isAuthenticated, isLoadingAuth, user } = useAuth();
+  const [, navigate] = useLocation();
+  const storedIntent = localStorage.getItem("redirectIntent");
 
   useEffect(() => {
-    console.log("Auth.tsx useEffect: Triggered. Current state inside effect:", { isLoadingAuth, isAuthenticated, userId: user?.uid });
-    console.log("Auth.tsx useEffect: Location:", location.pathname, "StoredIntent:", storedIntent);
-
-    if (isLoadingAuth) {
-      console.log("Auth.tsx useEffect: Auth state is loading. Exiting useEffect.");
-      return;
-    }
+    if (isLoadingAuth) return;
 
     if (isAuthenticated) {
-      console.log("Auth.tsx useEffect: User is authenticated. Checking for redirect logic.");
-      
       if (storedIntent === "become-seller") {
-        console.log("Auth.tsx useEffect: Authenticated user with 'become-seller' intent. Redirecting to seller flow.");
-        localStorage.removeItem('redirectIntent'); 
-        
-        let sellerTargetPath: string;
-        if (user?.role === "seller") { 
-            const approvalStatus = user.seller?.approvalStatus;
-            if (approvalStatus === "approved") {
-                sellerTargetPath = "/seller-dashboard";
-            } else if (approvalStatus === "pending") {
-                sellerTargetPath = "/seller-status";
-            } else { 
-                sellerTargetPath = "/seller-apply";
-            }
-        } else {
-            sellerTargetPath = "/seller-apply";
-        }
-        navigate(sellerTargetPath); 
-        console.log(`Auth.tsx useEffect: Redirected to ${sellerTargetPath}`);
-        return; 
-      } 
-      
-      console.log("Auth.tsx useEffect: Authenticated user with no specific intent. Redirecting to home page.");
-      navigate("/"); 
-      console.log("Auth.tsx useEffect: Redirected to /");
-      return; 
+        localStorage.removeItem("redirectIntent");
+
+        let target = "/seller-apply";
+        const approval = user?.seller?.approvalStatus;
+
+        if (approval === "approved") target = "/seller-dashboard";
+        else if (approval === "pending") target = "/seller-status";
+
+        navigate(target);
+        return;
+      }
+
+      navigate("/");
     }
+  }, [isAuthenticated, isLoadingAuth, storedIntent, user]);
 
-    console.log("Auth.tsx useEffect: User is NOT authenticated and auth state is loaded. Login form should appear.");
-
-  }, [isAuthenticated, isLoadingAuth, navigate, storedIntent, user, location.pathname]); 
-
-  // ✅ यह फ़ंक्शन यहाँ होना चाहिए! सुनिश्चित करें कि आपने इसे डिलीट या मिस नहीं किया है।
   const handleGoogleSignIn = async () => {
     try {
-      setIsSigningIn(true); 
-      console.log("Auth.tsx handleGoogleSignIn: Initiating Google Sign-In Redirect.");
-       await initiateGoogleSignInSmart();
+      setIsSigningIn(true);
+      await initiateGoogleSignInSmart();
     } catch (error) {
-      console.error("Auth.tsx handleGoogleSignIn: Error signing in:", error);
-      setIsSigningIn(false); 
+      console.error("Google sign-in failed:", error);
+      setIsSigningIn(false);
     }
   };
 
-  // ✅ रेंडरिंग लॉजिक: कौन सा UI दिखाना है?
-  // ... (बाकी AuthPage का रेंडरिंग लॉजिक, जो लॉगिन फॉर्म दिखाता है)
-  // सुनिश्चित करें कि यह सारा HTML कोड भी मौजूद है जो Google बटन को रेंडर करता है
-  // और जहां handleGoogleSignIn को onClick में कॉल किया गया है।
-  
-  if (isLoadingAuth) {
-    console.log("Auth.tsx Render: Case 1 - Showing loading state.");
-    return (
-      <div className="min-h-screen flex items-center justify-center p-4 bg-gray-50">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-lg text-gray-700">Loading authentication state...</p>
-        </div>
-      </div>
-    );
-  }
+  if (isLoadingAuth) return <div className="text-center p-6">Loading...</div>;
+  if (isAuthenticated) return null;
 
-  if (isAuthenticated) {
-    console.log("Auth.tsx Render: Case 2 - User is authenticated. Not rendering login form, expecting redirect.");
-    return null; 
-  }
-
-  console.log("Auth.tsx Render: Case 3 - User not authenticated, auth loaded. Displaying login form.");
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-gray-50">
       <div className="max-w-md w-full">
@@ -103,21 +55,19 @@ export default function AuthPage() {
           <CardContent className="p-8 text-center">
             <div className="mb-8">
               <div className="w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Store className="text-white text-2xl w-8 h-8" />
+                <Store className="text-white w-8 h-8" />
               </div>
-              <h1 className="text-2xl font-semibold text-gray-900 mb-2">Welcome Back</h1>
-              {storedIntent === "become-seller" ? (
-                <p className="text-gray-600">Please sign in to continue your seller application.</p>
-              ) : (
-                <p className="text-gray-600">Sign in to access your dashboard</p>
-              )}
+              <h1 className="text-2xl font-semibold mb-2">Welcome Back</h1>
+              <p className="text-gray-600">
+                {storedIntent === "become-seller"
+                  ? "Please sign in to continue your seller application."
+                  : "Sign in to access your dashboard"}
+              </p>
             </div>
-            
             <Button
-              onClick={handleGoogleSignIn} // ✅ यहीं पर एरर आ रही थी
-              disabled={isSigningIn} 
-              className="w-full bg-white border-2 border-gray-200 hover:border-gray-300 text-gray-700 hover:bg-gray-50 font-medium py-3 px-6 rounded-lg transition-colors duration-200"
-              variant="outline"
+              onClick={handleGoogleSignIn}
+              disabled={isSigningIn}
+              className="w-full bg-white border border-gray-300 text-gray-700 hover:bg-gray-100"
             >
               <svg width="20" height="20" viewBox="0 0 24 24" className="mr-3">
                 <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -127,17 +77,9 @@ export default function AuthPage() {
               </svg>
               Continue with Google
             </Button>
-            
-            {isSigningIn && ( 
-              <div className="mt-4 flex items-center justify-center space-x-2 text-gray-600">
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
-                <span className="text-sm">Signing you in...</span>
-              </div>
-            )}
           </CardContent>
         </Card>
       </div>
     </div>
   );
 }
-
