@@ -1,12 +1,12 @@
 // client/src/hooks/useAuth.tsx
-import React, { createContext, useContext, useEffect, useState } from "react";
-import { onAuthStateChanged, getRedirectResult } from "firebase/auth";
-import { auth } from "@/lib/firebase";
-import { apiRequest } from "@/lib/queryClient"; // तुम्हारा custom API helper
+import { useEffect, useState, createContext, useContext } from "react";
+import { getAuth, onAuthStateChanged, getIdTokenResult } from "firebase/auth";
+import { app } from "@/lib/firebase";
+import { apiRequest } from "@/lib/queryClient";
 
 interface SellerInfo {
-  id: string;
   approvalStatus: "pending" | "approved" | "rejected";
+  rejectionReason?: string | null;
 }
 
 interface User {
@@ -15,76 +15,73 @@ interface User {
   name: string | null;
   role: "seller" | "admin" | "delivery" | "customer";
   seller?: SellerInfo;
+  idToken: string;
+  firebaseUid: string;
 }
 
-interface AuthContextProps {
+interface AuthContextType {
   user: User | null;
-  isAuthenticated: boolean;
   isLoadingAuth: boolean;
+  isAuthenticated: boolean;
+  signOut: () => void;
 }
 
-const AuthContext = createContext<AuthContextProps>({
-  user: null,
-  isAuthenticated: false,
-  isLoadingAuth: true,
-});
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [isLoadingAuth, setIsLoadingAuth] = useState(true);
 
   useEffect(() => {
-    const handleAuth = async () => {
-      setLoading(true);
+    const auth = getAuth(app);
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (!firebaseUser) {
+        setUser(null);
+        setIsLoadingAuth(false);
+        return;
+      }
 
       try {
-        await getRedirectResult(auth); // Firebase redirect result
+        const idToken = await firebaseUser.getIdToken();
+        const decodedToken = await getIdTokenResult(firebaseUser);
 
-        onAuthStateChanged(auth, async (firebaseUser) => {
-          if (firebaseUser) {
-            const token = await firebaseUser.getIdToken();
-            const res = await apiRequest("GET", "/api/sellers/me", {
-              headers: { Authorization: `Bearer ${token}` },
-            });
+        const role = decodedToken.claims.role || "customer";
+        const firebaseUid = firebaseUser.uid;
+        const email = firebaseUser.email;
+        const name = firebaseUser.displayName;
 
-            if (res.success) {
-              setUser({
-                uid: firebaseUser.uid,
-                email: firebaseUser.email,
-                name: firebaseUser.displayName,
-                role: "seller",
-                seller: res.seller,
-              });
-            } else {
-              // No seller profile, treat as customer
-              setUser({
-                uid: firebaseUser.uid,
-                email: firebaseUser.email,
-                name: firebaseUser.displayName,
-                role: "customer",
-              });
-            }
-          } else {
-            setUser(null);
-          }
+        let seller: SellerInfo | undefined = undefined;
+        if (role === "seller") {
+          try {
+            const res = await apiRequest("GET", "/api/sellers/me", undefined, idToken);
+            seller = res.data;
+          } catch (_) {}
+        }
 
-          setLoading(false);
-        });
-      } catch (err) {
-        console.error("AuthProvider error:", err);
-        setLoading(false);
+        setUser({ uid: firebaseUser.uid, firebaseUid, email, name, role, seller, idToken });
+      } catch (error) {
+        console.error("Auth Error:", error);
+        setUser(null);
+      } finally {
+        setIsLoadingAuth(false);
       }
-    };
+    });
 
-    handleAuth();
+    return () => unsubscribe();
   }, []);
+
+  const signOut = () => {
+    const auth = getAuth(app);
+    auth.signOut().then(() => setUser(null));
+  };
 
   return (
     <AuthContext.Provider
       value={{
         user,
+        isLoadingAuth,
         isAuthenticated: !!user,
-        isLoadingAuth: loading,
+        signOut,
       }}
     >
       {children}
@@ -92,4 +89,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   );
 };
 
-export const useAuth = () => useContext(AuthContext);
+export const useAuth = () => {
+  const ctx = useContext(AuthContext);
+  if (!ctx) throw new Error("useAuth must be used within AuthProvider");
+  return ctx;
+};
