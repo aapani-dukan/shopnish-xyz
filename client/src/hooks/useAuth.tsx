@@ -1,17 +1,14 @@
+// client/src/hooks/useAuth.tsx
 import { useEffect, useState, createContext, useContext } from "react";
 import {
   getAuth,
   onAuthStateChanged,
   getIdTokenResult,
-  getRedirectResult,
   User as FirebaseUser,
 } from "firebase/auth";
 import { app } from "@/lib/firebase";
 import { apiRequest } from "@/lib/queryClient";
 
-// ----------------------
-// 👤 User + Seller Info
-// ----------------------
 interface SellerInfo {
   approvalStatus: "pending" | "approved" | "rejected";
   rejectionReason?: string | null;
@@ -34,14 +31,8 @@ interface AuthContextType {
   signOut: () => void;
 }
 
-// ----------------------
-// 🔒 Create Auth Context
-// ----------------------
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// ----------------------
-// 🔐 Auth Provider
-// ----------------------
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoadingAuth, setIsLoadingAuth] = useState(true);
@@ -70,9 +61,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           try {
             const res = await apiRequest("GET", "/api/sellers/me", undefined, idToken);
             seller = res.data;
-          } catch (error) {
-            console.warn("Seller info fetch failed:", error);
-          }
+          } catch (_) {}
         }
 
         setUser({ uid: firebaseUser.uid, firebaseUid, email, name, role, seller, idToken });
@@ -84,36 +73,17 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }
     };
 
-    // Step 1: Listen for onAuthStateChanged
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
-      console.log("🔄 onAuthStateChanged triggered. User:", firebaseUser?.uid || "null");
+      console.log("🔄 onAuthStateChanged triggered. User:", firebaseUser);
       processUser(firebaseUser);
     });
-
-    // Step 2: Handle redirect result (Google Login)
-    getRedirectResult(auth)
-      .then((result) => {
-        if (result?.user) {
-          console.log("✅ Firebase redirect result user found.");
-          processUser(result.user);
-        } else {
-          console.log("ℹ️ No redirect result user.");
-        }
-      })
-      .catch((error) => {
-        console.error("getRedirectResult Error:", error);
-      });
 
     return () => unsubscribe();
   }, []);
 
-  // Logout Function
   const signOut = () => {
     const auth = getAuth(app);
-    auth.signOut().then(() => {
-      console.log("🚪 Signed out from Firebase");
-      setUser(null);
-    });
+    auth.signOut().then(() => setUser(null));
   };
 
   return (
@@ -130,9 +100,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   );
 };
 
-// ----------------------
-// 🚀 Custom Hook to Use Auth
-// ----------------------
 export const useAuth = () => {
   const ctx = useContext(AuthContext);
   if (!ctx) throw new Error("useAuth must be used within AuthProvider");
