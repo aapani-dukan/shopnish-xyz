@@ -45,4 +45,4 @@ const logout = async () => {
   }
 };
 
-export { auth, provider, initiateGoogleSignInSmart, logout };
+export {app, auth, provider, initiateGoogleSignInSmart, logout };
