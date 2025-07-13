@@ -1,7 +1,7 @@
 // client/src/components/seller/SellerOnboardingDialog.tsx
 "use client";
 
-import { useState, useEffect } from "react"; // useEffect इम्पोर्ट करें
+import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
@@ -12,8 +12,8 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { apiRequest } from "@/lib/queryClient";
-import { useToast } from "@/hooks/use-toast";
-import { useLocation } from "wouter";
+import { useToast } from "@/components/ui/use-toast"; // ✅ Corrected import for useToast
+import { useNavigate } from "react-router-dom"; // ✅ Changed from wouter to react-router-dom
 import { Check, X, Loader2, Clock } from "lucide-react";
 
 import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
@@ -28,15 +28,22 @@ const sellerFormSchema = z.object({
   gstNumber: z.string().max(15).optional(),
   bankAccountNumber: z.string().regex(/^\d{9,18}$/, "Account number must be 9-18 digits."),
   ifscCode: z.string().regex(/^[A-Z]{4}0[A-Z0-9]{6}$/, "Invalid IFSC Code."),
-  deliveryRadius: z.string().refine(val => !isNaN(parseFloat(val)) && parseFloat(val) >= 1 && parseFloat(val) <= 100, "Delivery radius must be a number between 1 and 100"),
+  deliveryRadius: z.preprocess( // ✅ Preprocess deliveryRadius to number
+    (val) => (val === "" ? undefined : Number(val)),
+    z.number().min(1, "Delivery radius must be a positive number").max(100, "Delivery radius cannot exceed 100km") // ✅ Number type for Zod
+  ),
   businessType: z.string().min(2, "Business Type is required.").max(50),
 });
 
 type FormData = z.infer<typeof sellerFormSchema>;
 
+// ✅ Assuming SellerProfile is the same as the Seller type from your @shared schema
+// If not, you might need to create a dedicated type for the profile returned by /api/sellers/me
 interface SellerProfile {
   approvalStatus: "pending" | "approved" | "rejected";
   rejectionReason?: string | null;
+  // Add other properties that are returned by /api/sellers/me if needed for rendering
+  // e.g., id, userId, businessName, etc.
 }
 
 interface SellerOnboardingDialogProps {
@@ -47,44 +54,50 @@ interface SellerOnboardingDialogProps {
 export default function SellerOnboardingDialog({ isOpen, onClose }: SellerOnboardingDialogProps) {
   const { user, isAuthenticated, isLoadingAuth } = useAuth();
   const { toast } = useToast();
-  const queryClient = useQueryClient();
-  const [, setLocation] = useLocation();
+  const navigate = useNavigate(); // ✅ Changed from useLocation to useNavigate
   const [showSuccess, setShowSuccess] = useState(false);
 
   // यदि डायलॉग खुलते ही isAuthenticated नहीं है, तो तुरंत लॉग इन पेज पर रीडायरेक्ट करें
-  // useEffect(() => {
-  //   if (isOpen && !isLoadingAuth && !isAuthenticated) {
-  //     toast({ 
-  //       title: "Authentication Required", 
-  //       description: "Please log in to register as a seller.", 
-  //       variant: "destructive" 
-  //     });
-  //     onClose(); // डायलॉग बंद करें
-  //     setLocation("/auth"); // लॉगिन पेज पर भेजें
-  //   }
-  // }, [isOpen, isLoadingAuth, isAuthenticated, toast, onClose, setLocation]);
+  // useEffect is commented out as the Dialog logic handles it more gracefully now
+  // with explicit authentication checks in the render logic.
+  /*
+  useEffect(() => {
+    if (isOpen && !isLoadingAuth && !isAuthenticated) {
+      toast({
+        title: "Authentication Required",
+        description: "Please log in to register as a seller.",
+        variant: "destructive"
+      });
+      onClose(); // Close dialog
+      navigate("/auth"); // Redirect to login page
+    }
+  }, [isOpen, isLoadingAuth, isAuthenticated, toast, onClose, navigate]);
+  */
 
 
   const { data: existingSellerProfile, isLoading: isSellerProfileLoading } = useQuery<SellerProfile | null, Error>({
     queryKey: ["/api/sellers/me", user?.uid],
     queryFn: async ({ signal }) => {
-      // ✅ सुनिश्चित करें कि टोकन उपलब्ध होने पर ही API कॉल करें
       if (!user?.idToken) {
-        // यदि टोकन मौजूद नहीं है, तो null लौटाएँ और क्वेरी को फिर से चलाने की प्रतीक्षा करें
-        return null;
+        return null; // Return null if token is not available, query will retry when enabled
       }
       try {
         const response = await apiRequest("GET", `/api/sellers/me`, undefined, user.idToken, signal);
         return response.data as SellerProfile;
       } catch (error: any) {
-        if (error?.response?.status === 404) return null;
-        throw error;
+        // ✅ Handle 404 specifically for "seller not found"
+        if (error?.response?.status === 404) {
+          console.log("Seller profile not found (404), proceeding with registration form.");
+          return null; // Treat 404 as no existing profile
+        }
+        console.error("Error fetching seller profile:", error);
+        throw error; // Re-throw other errors
       }
     },
-    // ✅ query को तभी enable करें जब isLoadingAuth false हो, यूजर ऑथेंटिकेटेड हो और ID टोकन मौजूद हो
-    enabled: !isLoadingAuth && isAuthenticated && !!user?.idToken,
+    enabled: !isLoadingAuth && isAuthenticated && !!user?.idToken, // ✅ Enable query only when authenticated and token exists
     staleTime: 5 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
+    retry: false, // Do not retry on 404, as 404 means no existing seller.
   });
 
   const form = useForm<FormData>({
@@ -100,20 +113,18 @@ export default function SellerOnboardingDialog({ isOpen, onClose }: SellerOnboar
       gstNumber: "",
       bankAccountNumber: "",
       ifscCode: "",
-      deliveryRadius: "5",
+      deliveryRadius: 5, // ✅ Default to number
     },
   });
 
   const registerSellerMutation = useMutation<any, Error, FormData>({
     mutationFn: async (data: FormData) => {
-      // ✅ mutationFn के अंदर फिर से जांच करें, क्योंकि यह तब तक शुरू नहीं होगा जब तक onSubmit न कहा जाए
       if (!user?.idToken || !user?.firebaseUid) {
-        // यह त्रुटि तभी आएगी जब onSubmit चेक से कोई चूक हो जाए या async delay हो
         throw new Error("User not authenticated or Firebase UID/Token missing at mutation time.");
       }
       const payload = {
         ...data,
-        deliveryRadius: parseFloat(data.deliveryRadius),
+        deliveryRadius: Number(data.deliveryRadius), // ✅ Ensure this is a number when sending
         firebaseUid: user.firebaseUid,
         email: user.email,
         name: user.name,
@@ -132,10 +143,11 @@ export default function SellerOnboardingDialog({ isOpen, onClose }: SellerOnboar
         description: data.message || "Your seller application has been submitted successfully.",
       });
 
+      // Navigate after a short delay for success message to be seen
       setTimeout(() => {
         setShowSuccess(false);
         onClose();
-        setLocation("/seller-status");
+        navigate("/seller-status"); // ✅ Use navigate
       }, 2000);
     },
     onError: (error) => {
@@ -148,15 +160,14 @@ export default function SellerOnboardingDialog({ isOpen, onClose }: SellerOnboar
   });
 
   const onSubmit = (data: FormData) => {
-    // ✅ यहाँ मुख्य जांच है कि क्या फॉर्म सबमिट करने के लिए तैयार है
     if (isLoadingAuth || !isAuthenticated || !user?.firebaseUid || !user?.idToken) {
         console.error("SellerOnboardingDialog: Attempted submit while auth loading or user data incomplete.");
-        toast({ 
-            title: "Authentication Pending", 
-            description: "Please wait, confirming your login status. Try again in a moment.", 
-            variant: "warning" 
+        toast({
+            title: "Authentication Pending",
+            description: "Please wait, confirming your login status. Try again in a moment.",
+            variant: "warning"
         });
-        return; // सबमिशन रोकें
+        return;
     }
     registerSellerMutation.mutate(data);
   };
@@ -171,7 +182,7 @@ export default function SellerOnboardingDialog({ isOpen, onClose }: SellerOnboar
 
   // --- Render based on loading and authentication status ---
 
-  // यदि प्रमाणीकरण अभी भी लोड हो रहा है, तो लोडिंग डायलॉग दिखाएं
+  // If authentication is still loading
   if (isLoadingAuth) {
     return (
       <Dialog open={isOpen} onOpenChange={handleClose}>
@@ -186,7 +197,7 @@ export default function SellerOnboardingDialog({ isOpen, onClose }: SellerOnboar
     );
   }
 
-  // यदि प्रमाणीकरण समाप्त हो गया है लेकिन यूजर लॉग इन नहीं है
+  // If authentication is complete but user is not logged in
   if (!isAuthenticated) {
     return (
       <Dialog open={isOpen} onOpenChange={handleClose}>
@@ -199,14 +210,14 @@ export default function SellerOnboardingDialog({ isOpen, onClose }: SellerOnboar
             <p className="text-gray-600 mb-6">
               It seems you're not logged in or your session has expired. Please log in to your account to register as a seller.
             </p>
-            <Button onClick={() => { handleClose(); setLocation("/auth"); }}>Go to Login Page</Button>
+            <Button onClick={() => { handleClose(); navigate("/auth"); }}>Go to Login Page</Button> {/* ✅ Use navigate */}
           </div>
         </DialogContent>
       </Dialog>
     );
   }
 
-  // यदि विक्रेता प्रोफ़ाइल लोड हो रही है
+  // If seller profile is loading
   if (isSellerProfileLoading) {
     return (
       <Dialog open={isOpen} onOpenChange={handleClose}>
@@ -221,7 +232,7 @@ export default function SellerOnboardingDialog({ isOpen, onClose }: SellerOnboar
     );
   }
 
-  // यदि मौजूदा विक्रेता प्रोफ़ाइल मिल जाती है
+  // If an existing seller profile is found
   if (existingSellerProfile) {
     const statusText = existingSellerProfile.approvalStatus === "approved"
       ? "Approved"
@@ -248,7 +259,7 @@ export default function SellerOnboardingDialog({ isOpen, onClose }: SellerOnboar
                 <span className="block mt-2">Reason: {existingSellerProfile.rejectionReason || 'No specific reason provided.'}</span>
               )}
             </p>
-            <Button onClick={() => { handleClose(); setLocation("/seller-status"); }}>
+            <Button onClick={() => { handleClose(); navigate("/seller-status"); }}> {/* ✅ Use navigate */}
               View Full Status
             </Button>
           </div>
@@ -257,7 +268,7 @@ export default function SellerOnboardingDialog({ isOpen, onClose }: SellerOnboar
     );
   }
 
-  // सफलता संदेश दिखाएं
+  // Show success message (after successful form submission)
   if (showSuccess) {
     return (
       <Dialog open={isOpen} onOpenChange={handleClose}>
@@ -275,7 +286,7 @@ export default function SellerOnboardingDialog({ isOpen, onClose }: SellerOnboar
     );
   }
 
-  // मुख्य विक्रेता पंजीकरण फॉर्म
+  // Main seller registration form
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -414,7 +425,7 @@ export default function SellerOnboardingDialog({ isOpen, onClose }: SellerOnboar
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Delivery Radius (in km)</FormLabel>
-                  <FormControl><Input {...field} type="number" /></FormControl>
+                  <FormControl><Input {...field} type="number" onChange={e => field.onChange(e.target.value === '' ? undefined : Number(e.target.value))} value={field.value ?? ''} /></FormControl> {/* ✅ Handle empty string for input type number */}
                   <FormMessage />
                 </FormItem>
               )}
