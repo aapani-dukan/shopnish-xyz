@@ -1,5 +1,5 @@
 {
-  "extends": "../tsconfig.json",
+  "extends": "../tsconfig.json", // ✅ यह एक्सटेंड सही है
   "compilerOptions": {
     "composite": true,
     "tsBuildInfoFile": "../node_modules/.tsbuildinfo/tsconfig.server.tsbuildinfo",
@@ -15,12 +15,13 @@
     "types": ["node"],
     "lib": ["ES2022"],
     "outDir": "../dist",
-    "baseUrl": "..",
+    "baseUrl": "..", // ✅ यह बिल्कुल सही है (रूट फोल्डर के संदर्भ में)
     "paths": {
-    "@shared/backend/*": ["shared/backend/*"],
-    "@shared/frontend/*": ["shared/frontend/*"]
+      // ✅ ये पाथ्स सही हैं
+      "@shared/backend/*": ["shared/backend/*"],
+      "@shared/frontend/*": ["shared/frontend/*"] // ✅ यह भी रखें, भले ही सर्वर सिर्फ backend का उपयोग करे, साझा फ्रंटएंड प्रकारों के लिए उपयोगी हो सकता है।
     }
   },
-  "include": ["**/*.ts", "**/*.tsx"],
-  "exclude": ["node_modules", "dist"]
+  "include": ["**/*.ts", "**/*.tsx"], // ✅ यह सही है
+  "exclude": ["node_modules", "dist"] // ✅ यह सही है
 }
