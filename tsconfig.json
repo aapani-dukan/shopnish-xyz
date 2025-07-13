@@ -9,18 +9,20 @@
     "noEmit": true,
     "baseUrl": "./",
     "paths": {
+      // ✅ ये पाथ्स सही हैं
       "@shared/backend/*": ["shared/backend/*"],
-    "@shared/frontend/*": ["shared/frontend/*"] 
+      "@shared/frontend/*": ["shared/frontend/*"]
     }
   },
   "include": [
     "server/**/*.ts",
     "shared/**/*.ts",
-    "shared/**/*.tsx"
+    "shared/**/*.tsx",
+    "client/**/*.ts", // ✅ इसे जोड़ें ताकि रूट tsconfig क्लाइंट फ़ाइलों को भी देख सके
+    "client/**/*.tsx" // ✅ इसे जोड़ें
   ],
   "references": [
     { "path": "./client" },
     { "path": "./server" }
   ]
 }
-
