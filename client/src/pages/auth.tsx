@@ -436,4 +436,55 @@ export default function AuthPage() {
   };
 
   const handleEmailSignIn = (e: React.FormEvent) => {
-    e.preve
+    e.preventDefault();
+    toast({
+      title: "Email Sign-in",
+      description: "Email authentication is not implemented yet. Please use Google sign-in for now.",
+      variant: "default",
+    });
+    // यहां ईमेल/पासवर्ड प्रमाणीकरण लॉजिक जोड़ें
+  };
+
+  const handleRetry = () => {
+    clearError(); // एरर क्लियर करें
+    // यह पृष्ठ को रिलोड करेगा, जिससे useEffect फिर से चलेगा
+    window.location.reload(); 
+  };
+
+  const handleContinue = () => {
+    // यह उपयोगकर्ता को डैशबोर्ड या इच्छित पेज पर रीडायरेक्ट करेगा
+    const redirectIntent = localStorage.getItem("redirectIntent");
+    localStorage.removeItem("redirectIntent");
+    if (redirectIntent === "become-seller") {
+      navigate("/seller-apply", { replace: true });
+    } else {
+      navigate("/", { replace: true });
+    }
+  };
+
+  // --- UI रेंडरिंग लॉजिक ---
+  if (isLoadingAuth) {
+    return <LoadingState />; // जब प्रमाणीकरण स्थिति लोड हो रही हो तो लोडिंग स्टेट दिखाएं
+  }
+
+  if (error) {
+    return <ErrorState error={error} onRetry={handleRetry} onEmailSignIn={handleEmailSignIn} />;
+  }
+
+  if (isAuthenticated && user && showSuccessState) {
+    return <SuccessState user={user} onContinue={handleContinue} />;
+  }
+
+  // डिफ़ॉल्ट रूप से लॉगिन फॉर्म दिखाएं
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center bg-gray-100 p-4">
+      <LoginForm 
+        handleGoogleSignIn={handleGoogleSignIn} 
+        handleEmailSignIn={handleEmailSignIn} 
+        isLoading={isLoadingAuth} // isLoadingAuth से लोडिंग स्थिति नियंत्रित करें
+        showCompatibilityWarning={showCompatibilityWarning}
+        currentDomain={currentDomain}
+      />
+    </div>
+  );
+}
