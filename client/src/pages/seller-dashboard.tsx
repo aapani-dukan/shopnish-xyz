@@ -17,7 +17,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { insertProductSchema, insertSellerSchema, insertCategorySchema } from "@shared/backend/schema";
 import type { Seller, ProductWithSeller, Category, OrderWithItems } from "@shared/backend/schema";
 import { apiRequest } from "@/lib/queryClient";
-import { useToast } from "@/components/ui/use-toast"; // ✅ useToast का सही इम्पोर्ट
+import { useToast } from "@/hooks/use-toast"; // ✅ useToast का सही इम्पोर्ट
 import { Link } from "react-router-dom"; // ✅ react-router-dom से Link इम्पोर्ट करें
 import { 
   Package, 
