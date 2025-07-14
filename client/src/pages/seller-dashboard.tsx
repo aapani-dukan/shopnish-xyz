@@ -5,21 +5,20 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label"; // Label अभी भी उपयोग में नहीं है, लेकिन इसे रखा है
+import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog"; // DialogDescription को जोड़ा
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-// ✅ insertProductSchema में userId प्रॉपर्टी नहीं होनी चाहिए, क्योंकि यह सर्वर पर जुड़ेगी
-// ✅ sellerFormSchema में userId को omit करना सही है
 import { insertProductSchema, insertSellerSchema, insertCategorySchema } from "@shared/backend/schema";
 import type { Seller, ProductWithSeller, Category, OrderWithItems } from "@shared/backend/schema";
 import { apiRequest } from "@/lib/queryClient";
-import { useToast } from "@/hooks/use-toast";
+import { useToast } from "@/components/ui/use-toast"; // ✅ useToast का सही इम्पोर्ट
+import { Link } from "react-router-dom"; // ✅ react-router-dom से Link इम्पोर्ट करें
 import { 
   Package, 
   ShoppingCart, 
@@ -28,14 +27,15 @@ import {
   Plus, 
   Edit, 
   Trash2,
-  Eye,
+  Eye, // यदि आप उत्पादों को देखने का लिंक बनाना चाहते हैं
   Clock,
   CheckCircle,
   Truck,
   Settings,
-  XCircle // ✅ रद्द करने के लिए नया आइकन
+  XCircle,
+  Info // ✅ Info आइकन जोड़ा
 } from "lucide-react";
-import { useEffect, useState } from "react"; // ✅ useEffect को इम्पोर्ट करें
+import { useEffect, useState } from "react";
 import { z } from "zod";
 
 // ✅ ProductFormSchema को अपडेट किया गया: price और originalPrice अब string के बजाय number होंगे
@@ -52,7 +52,7 @@ const productFormSchema = insertProductSchema.extend({
   ),
   stock: z.preprocess(
     (val) => (val === "" ? undefined : Number(val)),
-    z.number().min(0, "Stock cannot be negative").default(0)
+    z.number().int("Stock must be an integer").min(0, "Stock cannot be negative").default(0) // ✅ stock को integer बनाया
   ),
 });
 
@@ -66,37 +66,37 @@ export default function SellerDashboard() {
   const [isProductDialogOpen, setIsProductDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<ProductWithSeller | null>(null);
   const [isCategoryDialogOpen, setIsCategoryDialogOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState("products"); // ✅ एक्टिव टैब को मैनेज करने के लिए स्टेट
+  const [activeTab, setActiveTab] = useState("products");
 
   // Fetch seller profile
-  const { data: seller, isLoading: sellerLoading, error: sellerError } = useQuery<Seller>({ // ✅ एरर हैंडलिंग के लिए error जोड़ा
+  const { data: seller, isLoading: sellerLoading, error: sellerError } = useQuery<Seller>({
     queryKey: ["/api/sellers/me"],
-    queryFn: () => apiRequest("GET", "/api/sellers/me"), // ✅ queryFn को स्पष्ट रूप से परिभाषित करें
+    queryFn: () => apiRequest("GET", "/api/sellers/me"),
     staleTime: 5 * 60 * 1000,
   });
 
   // Fetch seller's products
-  const { data: products, isLoading: productsLoading, error: productsError } = useQuery<ProductWithSeller[]>({ // ✅ एरर हैंडलिंग के लिए error जोड़ा
+  const { data: products, isLoading: productsLoading, error: productsError } = useQuery<ProductWithSeller[]>({
     queryKey: ["/api/products", { sellerId: seller?.id }],
-    queryFn: () => apiRequest("GET", "/api/products", { params: { sellerId: seller?.id } }), // ✅ queryFn और params का उपयोग करें
+    queryFn: () => apiRequest("GET", "/api/products", { params: { sellerId: seller?.id } }),
     enabled: !!seller?.id,
     staleTime: 5 * 60 * 1000,
   });
 
   // Fetch seller's orders
-  const { data: orders, isLoading: ordersLoading, error: ordersError } = useQuery<OrderWithItems[]>({ // ✅ एरर हैंडलिंग के लिए error जोड़ा
+  const { data: orders, isLoading: ordersLoading, error: ordersError } = useQuery<OrderWithItems[]>({
     queryKey: ["/api/seller/orders"],
-    queryFn: () => apiRequest("GET", "/api/seller/orders"), // ✅ queryFn को स्पष्ट रूप से परिभाषित करें
+    queryFn: () => apiRequest("GET", "/api/seller/orders"),
     enabled: !!seller?.id,
-    staleTime: 0, // ऑर्डर्स को अक्सर अपडेट किया जाना चाहिए
-    refetchInterval: 60 * 1000, // हर 1 मिनट में ऑर्डर्स को री-फ़ेच करें
+    staleTime: 0,
+    refetchInterval: 60 * 1000,
   });
 
   // Fetch categories for product form
-  const { data: categories, isLoading: categoriesLoading, error: categoriesError } = useQuery<Category[]>({ // ✅ एरर हैंडलिंग के लिए error जोड़ा
+  const { data: categories, isLoading: categoriesLoading, error: categoriesError } = useQuery<Category[]>({
     queryKey: ["/api/categories"],
-    queryFn: () => apiRequest("GET", "/api/categories"), // ✅ queryFn को स्पष्ट रूप से परिभाषित करें
-    staleTime: Infinity, // श्रेणियाँ शायद ही कभी बदलती हैं, इसलिए उन्हें हमेशा ताज़ा मानें
+    queryFn: () => apiRequest("GET", "/api/categories"),
+    staleTime: Infinity,
   });
 
   // Product form
@@ -105,8 +105,8 @@ export default function SellerDashboard() {
     defaultValues: {
       name: "",
       description: "",
-      price: undefined, // ✅ undefined default, not empty string
-      originalPrice: undefined, // ✅ undefined default
+      price: undefined,
+      originalPrice: undefined,
       categoryId: undefined,
       stock: 0,
       images: [],
@@ -128,8 +128,7 @@ export default function SellerDashboard() {
   // Seller form
   const sellerForm = useForm<z.infer<typeof sellerFormSchema>>({
     resolver: zodResolver(sellerFormSchema),
-    // ✅ seller डेटा लोड होने पर ही defaultValues सेट करें
-    values: seller ? { // ✅ `values` का उपयोग करें ताकि यह React Query डेटा के साथ सिंक में रहे
+    values: seller ? {
       businessName: seller.businessName || "",
       description: seller.description || "",
       businessAddress: seller.businessAddress || "",
@@ -137,9 +136,7 @@ export default function SellerDashboard() {
       gstNumber: seller.gstNumber || "",
       bankAccountNumber: seller.bankAccountNumber || "",
       ifscCode: seller.ifscCode || "",
-      // सुनिश्चित करें कि seller.businessType भी है और यहाँ शामिल है यदि आप इसे फॉर्म में अपडेट करना चाहते हैं
-      // businessType: seller.businessType || "individual" // अगर आपकी स्कीमा में है
-    } : { // ✅ यदि seller डेटा अभी लोड नहीं हुआ है तो खाली डिफ़ॉल्ट प्रदान करें
+    } : {
       businessName: "",
       description: "",
       businessAddress: "",
@@ -153,17 +150,23 @@ export default function SellerDashboard() {
   // Create/Update product mutation
   const productMutation = useMutation({
     mutationFn: async (data: z.infer<typeof productFormSchema>) => {
-      // ✅ प्राइस को नंबर में कन्वर्ट करें
       const payload = {
         ...data,
         price: Number(data.price),
         originalPrice: data.originalPrice ? Number(data.originalPrice) : undefined,
         stock: Number(data.stock),
+        // images को सीधे भेजें, क्योंकि हमने उन्हें पहले ही एरे के रूप में पार्स कर लिया है
       };
 
       if (editingProduct) {
         return await apiRequest("PUT", `/api/products/${editingProduct.id}`, payload);
       } else {
+        // ✅ यहाँ sellerId को payload में शामिल करने की आवश्यकता है
+        // यह बैकएंड पर user.sellerId से मिलान किया जाएगा, लेकिन फ्रंटएंड को भी यह पास करना चाहिए
+        // या बैकएंड इसे Firebase UID से खुद ही निकाल लेगा।
+        // सुरक्षा के लिए, बैकएंड को हमेशा ID Token से sellerId की पुष्टि करनी चाहिए।
+        // हम मान रहे हैं कि आपका API `sellerId` को बॉडी में उम्मीद नहीं करता है,
+        // बल्कि ID Token से इसे प्राप्त करता है।
         return await apiRequest("POST", "/api/products", payload);
       }
     },
@@ -175,9 +178,9 @@ export default function SellerDashboard() {
       });
       setIsProductDialogOpen(false);
       setEditingProduct(null);
-      productForm.reset(); // ✅ फ़ॉर्म रीसेट करें
+      productForm.reset();
     },
-    onError: (error: any) => { // ✅ error टाइप जोड़ें
+    onError: (error: any) => {
       toast({
         title: "Error",
         description: error.response?.data?.message || `Failed to ${editingProduct ? "update" : "create"} product`,
@@ -198,7 +201,7 @@ export default function SellerDashboard() {
         description: "Your seller profile has been updated successfully",
       });
     },
-    onError: (error: any) => { // ✅ error टाइप जोड़ें
+    onError: (error: any) => {
       toast({
         title: "Error",
         description: error.response?.data?.message || "Failed to update seller profile",
@@ -219,7 +222,7 @@ export default function SellerDashboard() {
         description: "Product has been deleted successfully",
       });
     },
-    onError: (error: any) => { // ✅ error टाइप जोड़ें
+    onError: (error: any) => {
       toast({
         title: "Error",
         description: error.response?.data?.message || "Failed to delete product",
@@ -242,7 +245,7 @@ export default function SellerDashboard() {
       setIsCategoryDialogOpen(false);
       categoryForm.reset();
     },
-    onError: (error: any) => { // ✅ error टाइप जोड़ें
+    onError: (error: any) => {
       toast({
         title: "Error",
         description: error.response?.data?.message || "Failed to create category",
@@ -265,12 +268,11 @@ export default function SellerDashboard() {
 
   const handleEditProduct = (product: ProductWithSeller) => {
     setEditingProduct(product);
-    // ✅ Form values को संख्या के रूप में सेट करें
     productForm.reset({
       name: product.name,
       description: product.description || "",
-      price: parseFloat(product.price as any), // ✅ सुनिश्चित करें कि यह number है
-      originalPrice: product.originalPrice ? parseFloat(product.originalPrice as any) : undefined, // ✅ सुनिश्चित करें कि यह number है
+      price: product.price, // ✅ यह पहले से ही नंबर होना चाहिए अगर DB से सही से आ रहा है
+      originalPrice: product.originalPrice, // ✅ यह पहले से ही नंबर होना चाहिए
       categoryId: product.categoryId,
       stock: product.stock || 0,
       images: product.images || [],
@@ -279,37 +281,37 @@ export default function SellerDashboard() {
   };
 
   const handleDeleteProduct = (productId: number) => {
-    // ✅ टोस्ट के साथ एक अधिक यूजर-फ्रेंडली कन्फर्मेशन डायलॉग का उपयोग करें
     toast({
       title: "Confirm Deletion",
       description: "Are you sure you want to delete this product? This action cannot be undone.",
       variant: "destructive",
       action: (
         <div className="flex gap-2">
-          <Button onClick={() => deleteProductMutation.mutate(productId)} className="bg-red-500 hover:bg-red-600 text-white">
+          <Button onClick={() => {
+            deleteProductMutation.mutate(productId);
+            toast.dismiss(); // ✅ कन्फर्मेशन टोस्ट को बंद करें
+          }} className="bg-red-500 hover:bg-red-600 text-white">
             Delete
           </Button>
-          <Button onClick={() => toast({})} variant="outline">
+          <Button onClick={() => toast.dismiss()} variant="outline"> {/* ✅ कन्फर्मेशन टोस्ट को बंद करें */}
             Cancel
           </Button>
         </div>
       ),
-      duration: 10000, // लंबे समय तक दिखाएं ताकि यूजर कार्रवाई कर सके
+      duration: 10000,
     });
   };
 
   // Calculate dashboard metrics
-  // ✅ parseFloat का उपयोग करें क्योंकि डेटा स्ट्रिंग के रूप में आ सकता है
   const totalRevenue = orders?.reduce((sum, order) => 
     sum + order.orderItems.reduce((itemSum, item) => 
-      itemSum + parseFloat(item.total), 0
+      itemSum + (typeof item.total === 'string' ? parseFloat(item.total) : item.total), 0 // ✅ parseFloat added for safety
     ), 0
   ) || 0;
 
   const totalOrders = orders?.length || 0;
   const totalProducts = products?.length || 0;
-  // ✅ seller.rating स्ट्रिंग हो सकता है, इसे number में कन्वर्ट करें
-  const averageRating = parseFloat(seller?.rating || "0"); 
+  const averageRating = parseFloat(seller?.rating?.toString() || "0"); // ✅ rating को string से number में बदला
 
   // Initial load or seller profile not found scenarios
   if (sellerLoading) {
@@ -318,39 +320,43 @@ export default function SellerDashboard() {
         <Header />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="animate-pulse space-y-6">
-            <Skeleton className="h-8 w-64 mb-6" /> {/* Title Skeleton */}
+            <Skeleton className="h-8 w-64 mb-6" />
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
               {[...Array(4)].map((_, i) => (
-                <Skeleton key={i} className="h-32 rounded-xl" /> 
+                <Skeleton key={i} className="h-32 rounded-xl" />
               ))}
             </div>
-            <Skeleton className="h-10 w-full mb-4 rounded-md" /> {/* Tabs List Skeleton */}
-            <Skeleton className="h-96 w-full rounded-xl" /> {/* Content Area Skeleton */}
+            <Skeleton className="h-10 w-full mb-4 rounded-md" />
+            <Skeleton className="h-96 w-full rounded-xl" />
           </div>
         </div>
       </div>
     );
   }
 
-  // ✅ यदि seller डेटा लोड हो गया है लेकिन कोई seller ऑब्जेक्ट नहीं है (404)
   if (sellerError || !seller) {
     return (
       <div className="min-h-screen bg-background">
         <Header />
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16 text-center">
           <div className="text-6xl mb-4">
-            {sellerError ? <XCircle className="w-20 h-20 text-red-500 mx-auto" /> : "🏪"} {/* ✅ एरर पर अलग आइकन */}
+            {sellerError ? <XCircle className="w-20 h-20 text-red-500 mx-auto" /> : "🏪"}
           </div>
           <h2 className="text-2xl font-bold mb-4">{sellerError ? "Error Loading Profile" : "Seller Profile Not Found"}</h2>
           <p className="text-muted-foreground mb-6">
             {sellerError ? "There was an issue fetching your seller profile. Please try again." : "It looks like you haven't set up your seller profile yet or it's not approved."}
           </p>
-          <Button onClick={() => window.location.href = "/seller-apply"}> {/* ✅ seller-apply पेज पर रीडायरेक्ट करें */}
-            {sellerError ? "Retry" : "Apply to be a Seller"}
-          </Button>
-          <Button variant="ghost" onClick={() => window.location.href = "/"} className="ml-4">
-            Go Back Home
-          </Button>
+          {/* ✅ react-router-dom Link का उपयोग करें */}
+          <Link to="/seller-apply">
+            <Button>
+              {sellerError ? "Retry" : "Apply to be a Seller"}
+            </Button>
+          </Link>
+          <Link to="/">
+            <Button variant="ghost" className="ml-4">
+              Go Back Home
+            </Button>
+          </Link>
         </div>
       </div>
     );
@@ -368,7 +374,7 @@ export default function SellerDashboard() {
             <p className="text-muted-foreground">Manage your products and orders</p>
           </div>
           <div className="flex items-center space-x-4 mt-4 sm:mt-0">
-            {seller.approvalStatus === "approved" ? ( // ✅ approvalStatus का उपयोग करें
+            {seller.approvalStatus === "approved" ? (
               <Badge variant="default" className="bg-green-600">
                 <CheckCircle className="h-3 w-3 mr-1" />
                 Verified Seller
@@ -388,7 +394,7 @@ export default function SellerDashboard() {
         </div>
 
         {/* Metrics Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8"> {/* ✅ ग्रिड को 2 या 4 कॉलम में एडजस्ट करें */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <Card>
             <CardContent className="p-6">
               <div className="flex items-center">
@@ -439,7 +445,6 @@ export default function SellerDashboard() {
         </div>
 
         {/* Main Content */}
-        {/* ✅ `activeTab` स्टेट का उपयोग करें और `onValueChange` जोड़ें */}
         <Tabs defaultValue="products" value={activeTab} onValueChange={setActiveTab} className="space-y-4">
           <TabsList>
             <TabsTrigger value="products">
@@ -484,7 +489,7 @@ export default function SellerDashboard() {
                                 <FormField
                                   control={categoryForm.control}
                                   name="name"
-                                render={({ field }) => (
+                                  render={({ field }) => (
                                     <FormItem>
                                       <FormLabel>Category Name</FormLabel>
                                       <FormControl>
@@ -492,6 +497,20 @@ export default function SellerDashboard() {
                                       </FormControl>
                                       <FormMessage />
                                     </FormItem>
+                                  )}
+                                />
+                                
+                                <FormField
+                                  control={categoryForm.control}
+                                  name="slug"
+                                  render={({ field }) => (
+                                    <FormItem>
+                                      <FormLabel>Category Slug</FormLabel>
+                                      <FormControl>
+                                        <Input {...field} placeholder="e.g., electronics" />
+                                      </FormControl>
+                                      <FormMessage />
+                                       </FormItem>
                                   )}
                                 />
                                 
@@ -603,7 +622,7 @@ export default function SellerDashboard() {
                                 )}
                               />
 
-                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4"> {/* ✅ ग्रिड को एडजस्ट किया */}
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <FormField
                                   control={productForm.control}
                                   name="price"
@@ -623,7 +642,7 @@ export default function SellerDashboard() {
                                   name="originalPrice"
                                   render={({ field }) => (
                                     <FormItem>
-                                        <FormLabel>Original Price (₹) (Optional)</FormLabel> {/* ✅ लेबल को ठीक किया */}
+                                        <FormLabel>Original Price (₹) (Optional)</FormLabel>
                                         <FormControl>
                                             <Input {...field} type="number" step="0.01" />
                                         </FormControl>
@@ -640,7 +659,7 @@ export default function SellerDashboard() {
                                   render={({ field }) => (
                                     <FormItem>
                                       <FormLabel>Category</FormLabel>
-                                      <Select onValueChange={field.onChange} value={field.value?.toString()}> {/* ✅ वैल्यू को स्ट्रिंग में कन्वर्ट करें */}
+                                      <Select onValueChange={field.onChange} value={field.value?.toString()}>
                                         <FormControl>
                                           <SelectTrigger>
                                             <SelectValue placeholder="Select a category" />
@@ -648,7 +667,7 @@ export default function SellerDashboard() {
                                         </FormControl>
                                         <SelectContent>
                                           {categories?.map((category) => (
-                                            <SelectItem key={category.id} value={category.id.toString()}> {/* ✅ वैल्यू को स्ट्रिंग में कन्वर्ट करें */}
+                                            <SelectItem key={category.id} value={category.id.toString()}>
                                               {category.name}
                                             </SelectItem>
                                           ))}
@@ -730,7 +749,7 @@ export default function SellerDashboard() {
                       <Skeleton key={i} className="h-48 w-full rounded-lg" />
                     ))}
                   </div>
-                ) : productsError ? ( // ✅ Error display for products
+                ) : productsError ? (
                   <p className="text-red-500">Error loading products: {productsError.message}</p>
                 ) : products && products.length === 0 ? (
                   <p className="text-muted-foreground">You haven't added any products yet.</p>
@@ -782,7 +801,7 @@ export default function SellerDashboard() {
                       <Skeleton key={i} className="h-24 w-full rounded-lg" />
                     ))}
                   </div>
-                ) : ordersError ? ( // ✅ Error display for orders
+                ) : ordersError ? (
                   <p className="text-red-500">Error loading orders: {ordersError.message}</p>
                 ) : orders && orders.length === 0 ? (
                   <p className="text-muted-foreground">No orders yet.</p>
@@ -864,7 +883,7 @@ export default function SellerDashboard() {
                         <FormItem>
                           <FormLabel>Business Address</FormLabel>
                           <FormControl>
-                            <Input {...field} />
+                            <Textarea {...field} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -888,7 +907,8 @@ export default function SellerDashboard() {
                       name="gstNumber"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>GST Number</FormLabel>
+                          <FormLabel>GST Number 
+                          (Optional)</FormLabel>
                           <FormControl>
                             <Input {...field} />
                           </FormControl>
@@ -935,8 +955,4 @@ export default function SellerDashboard() {
     </div>
   );
 }
-
-
-                    
-  
-                          
+         
