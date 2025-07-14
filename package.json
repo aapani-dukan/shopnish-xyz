@@ -15,17 +15,6 @@
 
     "db:push": "drizzle-kit push:pg --accept-data-loss"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "devDependencies": {
-    "concurrently": "^8.2.2",
-    "esbuild": "^0.23.0",
-    "nodemon": "^3.1.4",
-    "tsx": "^4.16.2", 
-    "typescript": "^5.5.3",
-    "drizzle-kit": "^0.23.0" 
-  },
   "dependencies": {
     "@faker-js/faker": "^9.8.0",
     "@google-cloud/functions-framework": "^3.4.0",
