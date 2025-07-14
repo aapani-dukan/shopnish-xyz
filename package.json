@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "dev": "concurrently \"npm run server:dev\" \"npm run client:dev\"",
-    "server:dev": "NODE_OPTIONS='-r tsconfig-paths/register' tsx server/index.ts",
+    "server:dev": "nodemon --loader tsx server/index.ts",
     "client:dev": "cd client && vite",
 
     "build": "cd client && vite build && cd .. && esbuild server/index.ts --bundle --platform=node --format=esm --outdir=dist --alias:@/shared=./shared --packages=external --external:compression --external:sirv && cp -R server/migrations dist/migrations",
