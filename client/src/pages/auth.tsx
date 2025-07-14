@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
-import { useToast } from '@/components/ui/use-toast'; // यदि आपके पास यह टोस्ट हुक है
+import { useToast } from "@/hooks/use-toast"; // यदि आपके पास यह टोस्ट हुक है
 import { ShoppingBag, ShieldQuestion, AlertTriangle, RefreshCw, Mail, ExternalLink, CheckCircle, User as UserIcon } from 'lucide-react'; // सभी आवश्यक आइकन्स इम्पोर्ट करें
 import { checkBrowserCompatibility, AuthError, User as FirebaseUserType } from '@/lib/firebase'; // firebase.ts से इम्पोर्ट करें
 
