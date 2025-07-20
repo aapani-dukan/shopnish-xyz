@@ -9,7 +9,7 @@
     "server:dev": "nodemon --watch server --ext ts,tsx --exec tsx server/index.ts",
     "client:dev": "cd client && vite",
     "build": "cd client && vite build && cd .. && esbuild server/index.ts --bundle --platform=node --format=esm --outdir=dist --alias:@shared=./shared --packages=external --external:compression --external:sirv && cp -R server/migrations dist/migrations",
-    "start": "NODE_ENV=production NODE_OPTIONS='--loader tsx --no-warnings' node -r tsconfig-paths/register dist/index.js",
+    "start": "NODE_ENV=production node --import tsx -r tsconfig-paths/register dist/index.js",
     "db:push": "drizzle-kit push:pg --accept-data-loss"
   },
   "keywords": [],
