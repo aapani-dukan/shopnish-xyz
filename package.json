@@ -14,7 +14,7 @@
   },
   "keywords": [],
   "author": "",
-  "license": "ISC"
+  "license": "ISC",
   "dependencies": {
     "@faker-js/faker": "^9.8.0",
     "@google-cloud/functions-framework": "^3.4.0",
