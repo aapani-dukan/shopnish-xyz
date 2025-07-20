@@ -29,7 +29,7 @@
     "dist" // ✅ 'dist' फोल्डर को भी बाहर करें
   ],
   "references": [
-    { "path": "./client" },
+        // "noEmit": true,,
     { "path": "./server" }
   ]
 }

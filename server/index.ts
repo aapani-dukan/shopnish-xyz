@@ -2,9 +2,9 @@
 
 import express, { type Request, type Response, type NextFunction, type Express } from "express"; // Ensure Express type is imported
 import cors from "cors";
-import { registerRoutes } from "./routes.js"; // ✅ Changed to named import for registerRoutes
-import { setupVite, log } from "./vite.js";
-import './lib/firebaseAdmin'; // Ensure Firebase Admin SDK initialization happens here (within this imported file)
+import { registerRoutes } from "./routes.ts"; // ✅ Changed to named import for registerRoutes
+import { setupVite, log } from "./vite.ts";
+import './lib/firebaseAdmin.ts'; // Ensure Firebase Admin SDK initialization happens here (within this imported file)
 import { createServer, type Server } from "http";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
@@ -90,7 +90,7 @@ async function runMigrations() {
     if (process.env.NODE_ENV !== "production") throw err;
   });
 
-  const port = process.env.PORT || 5000;
+  const port = process.env.PORT || 5001;
 
   server = createServer(app);
   server.listen({ port, host: "0.0.0.0" }, () =>

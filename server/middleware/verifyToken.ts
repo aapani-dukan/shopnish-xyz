@@ -1,11 +1,11 @@
 // server/middleware/verifyToken.ts
 import { Request, Response, NextFunction } from 'express'; // 'res' और 'next' के लिए NextFunction इम्पोर्ट करें
 // import jwt from 'jsonwebtoken'; // ❌ इस लाइन को हटा दें
-import { authAdmin } from '../lib/firebaseAdmin.js'; // ✅ firebaseAdmin इम्पोर्ट करें
-import { db } from '../db.js'; // Assuming db is relative
-import { users } from '@/shared/backend/schema';
+import { authAdmin } from '../lib/firebaseAdmin.ts'; // ✅ firebaseAdmin इम्पोर्ट करें
+import { db } from '../db.ts'; // Assuming db is relative
+import { users } from '../../shared/backend/schema.ts';
 import { eq } from 'drizzle-orm';
-import { AuthenticatedUser } from '@/shared/types/auth'; // Ensure this path is correct
+import { AuthenticatedUser } from '../../shared/types/user.ts'; // Ensure this path is correct
 // import { storage } from '../storage.js'; // ✅ आपको storage.js की अब जरूरत नहीं है, क्योंकि हम सीधे डीकोडेड टोकन से UID लेंगे
 
 

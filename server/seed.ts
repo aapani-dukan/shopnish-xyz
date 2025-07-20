@@ -1,6 +1,6 @@
 // server/seed.ts
 
-import { db } from "./db.js";
+import { db } from "./db.ts";
 import { faker } from "@faker-js/faker";
 import {
   users,
@@ -15,7 +15,7 @@ import {
   reviews,
   userRoleEnum,
   approvalStatusEnum,
-} from "@/shared/backend/schema";
+} from "../shared/backend/schema.ts";
 import { eq } from "drizzle-orm";
 
 async function seedDatabase() {

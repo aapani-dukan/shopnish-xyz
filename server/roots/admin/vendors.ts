@@ -1,9 +1,9 @@
 // server/roots/admin/vendors.ts
 import { Router, Response } from 'express';
-import { storage } from '../../storage.js'; // Correct relative path
-import { AuthenticatedRequest } from '../../middleware/verifyToken.js';
-import { requireAdminAuth } from '../../middleware/authMiddleware.js';
-import { approvalStatusEnum } from '@/shared/backend/schema'; // Import approvalStatusEnum
+import { storage } from '../../storage.ts'; // Correct relative path
+import { AuthenticatedRequest } from '../../middleware/verifyToken.ts';
+import { requireAdminAuth } from '../../middleware/authMiddleware.ts';
+import { approvalStatusEnum } from '../../../shared/backend/schema.ts'; // Import approvalStatusEnum
 
 const router = Router();
 

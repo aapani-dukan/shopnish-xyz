@@ -1,5 +1,5 @@
 // server/storage.ts
-import { db } from './db.js';
+import { db } from './db.ts';
 import {
   users,
   sellersPgTable as sellers,
@@ -20,9 +20,9 @@ import {
   insertOrderItemSchema,
   insertReviewSchema,
   insertCartItemSchema,
-} from '@/shared/backend/schema';
+} from '../shared/backend/schema.ts';
 import { eq, and, isNotNull, like } from 'drizzle-orm'; // 'like' भी इम्पोर्ट करें
-import { AuthenticatedUser } from '@/shared/types/auth';
+import { AuthenticatedUser } from '../shared/types/user.ts';
 import { z } from 'zod';
 
 class DatabaseStorage {

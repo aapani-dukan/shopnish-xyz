@@ -2,7 +2,7 @@
 
 // ✅ 'admin' के बजाय 'authAdmin' को इम्पोर्ट करें
 // सुनिश्चित करें कि पाथ सही है
-import { authAdmin } from "../lib/firebaseAdmin.js"; // .js एक्सटेंशन सही है यदि यह ESM है
+import { authAdmin } from "../lib/firebaseAdmin.ts"; // .js एक्सटेंशन सही है यदि यह ESM है
 
 export async function verifyAndDecodeToken(token: string) {
   try {

@@ -1,7 +1,7 @@
 import { Router, Response, NextFunction } from "express";
-import { db } from "../../server/db";
-import { sellersPgTable, users } from "../../shared/backend/schema";
-import { verifyToken, AuthenticatedRequest } from "../../server/middleware/verifyToken";
+import { db } from "../../server/db.ts";
+import { sellersPgTable, users } from "../../shared/backend/schema.ts";
+import { verifyToken, AuthenticatedRequest } from "../../server/middleware/verifyToken.ts";
 import { eq, desc } from "drizzle-orm";
 
 const router = Router();

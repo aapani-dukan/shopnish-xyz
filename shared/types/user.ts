@@ -6,7 +6,7 @@ import { z } from "zod";
 // आमतौर पर, ये आपके Drizzle स्कीमा फ़ाइल से या एक अलग Enum फ़ाइल से आते हैं।
 // उदाहरण: import { userRoleEnum, approvalStatusEnum } from '@/backend/db/schema'; // <-- अपने वास्तविक पाथ को यहाँ अपडेट करें!
 // यदि आप Enum को एक अलग फाइल में define कर रहे हैं: import { userRoleEnum, approvalStatusEnum } from './enums';
-import { userRoleEnum, approvalStatusEnum } from '@/shared/backend/schema'; // <-- यहाँ अपना सही पाथ डालें!
+import { userRoleEnum, approvalStatusEnum } from '../backend/schema.ts'; // <-- यहाँ अपना सही पाथ डालें!
 
 /**
  * Represents the structure of a User object used throughout the frontend.

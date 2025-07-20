@@ -1,9 +1,9 @@
 // server/roots/apiAuthLogin.ts
 
 import { Router, Request, Response } from 'express';
-import { db } from '../db.js'; // db को सही ढंग से इम्पोर्ट करें
-import { users, userRoleEnum, approvalStatusEnum } from '@/shared/backend/schema'; // स्कीमा इम्पोर्ट करें
-import { authAdmin } from '../lib/firebaseAdmin.js'; // Firebase Admin Auth को इम्पोर्ट करें
+import { db } from '../db.ts'; // db को सही ढंग से इम्पोर्ट करें
+import { users, userRoleEnum, approvalStatusEnum } from '../../shared/backend/schema.ts'; // स्कीमा इम्पोर्ट करें
+import { authAdmin } from '../lib/firebaseAdmin.ts'; // Firebase Admin Auth को इम्पोर्ट करें
 import { eq } from 'drizzle-orm'; // Drizzle-orm से eq इम्पोर्ट करें
 
 const apiAuthLoginRouter = Router();

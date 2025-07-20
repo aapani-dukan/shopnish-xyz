@@ -2,7 +2,8 @@
 import React from "react";
 import axios from "axios"; // ✅ axios इम्पोर्ट करें
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useToast } from "@/hooks/use-toast";
+import { useToast } from "@/hooks/use-toast.js";
+import { json } from "express";
 
 type Seller = {
   id: number;

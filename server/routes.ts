@@ -1,7 +1,7 @@
 // server/routes.ts
 
 import { Router, Request, Response } from 'express';
-import { db } from './db.js';
+import { db } from './db.ts';
 import { eq, like } from 'drizzle-orm';
 import {
   users,
@@ -12,19 +12,19 @@ import {
   userRoleEnum,
   approvalStatusEnum,
   insertProductSchema,
-} from '@/shared/backend/schema';
-import { AuthenticatedRequest } from '@/shared/types/auth';
+} from '../shared/backend/schema.ts';
+import { AuthenticatedRequest } from '../shared/types/auth.ts';
 
-import { requireAuth, requireAdminAuth, requireSellerAuth } from './middleware/authMiddleware.js';
+import { requireAuth, requireAdminAuth, requireSellerAuth } from './middleware/authMiddleware.ts';
 
-import apiAuthLoginRouter from './roots/apiAuthLogin.js';
+import apiAuthLoginRouter from './roots/apiAuthLogin.ts';
 
 
-import adminApproveProductRoutes from './roots/admin/approve-product.js';
-import adminRejectProductRoutes from './roots/admin/reject-product.js';
-import adminProductsRoutes from './roots/admin/products.js';
-import adminVendorsRoutes from './roots/admin/vendors.js';
-import adminPasswordRoutes from './roots/admin/admin-password.js';
+import adminApproveProductRoutes from './roots/admin/approve-product.ts';
+import adminRejectProductRoutes from './roots/admin/reject-product.ts';
+import adminProductsRoutes from './roots/admin/products.ts';
+import adminVendorsRoutes from './roots/admin/vendors.ts';
+import adminPasswordRoutes from './roots/admin/admin-password.ts';
 
 
 const router = Router(); // यह आपका मुख्य /api राउटर है

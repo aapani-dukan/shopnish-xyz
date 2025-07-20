@@ -1,6 +1,6 @@
 // routes/sellers/register.ts
-import { verifyToken } from "@/middleware/verifyToken";
-import { sql } from "@/db";
+import { verifyToken } from "../../server/middleware/verifyToken.ts";
+import { sql } from "../../server/db.ts";
 
 export default async function handler(req, res) {
   const user = await verifyToken(req, res);

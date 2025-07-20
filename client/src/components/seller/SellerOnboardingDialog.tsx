@@ -2,10 +2,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth } from "../../hooks/useAuth";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
+import { Button } from "../ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useForm } from "react-hook-form";
@@ -16,7 +16,7 @@ import { useToast } from "@/hooks/use-toast"; // ✅ Corrected import for useToa
 import { useNavigate } from "react-router-dom"; // ✅ Changed from wouter to react-router-dom
 import { Check, X, Loader2, Clock } from "lucide-react";
 
-import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
+import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form.js";
 
 const sellerFormSchema = z.object({
   businessName: z.string().min(3, "Store name must be at least 3 characters.").max(100),
@@ -56,6 +56,7 @@ export default function SellerOnboardingDialog({ isOpen, onClose }: SellerOnboar
   const { toast } = useToast();
   const navigate = useNavigate(); // ✅ Changed from useLocation to useNavigate
   const [showSuccess, setShowSuccess] = useState(false);
+  const queryClient = useQueryClient();
 
   // यदि डायलॉग खुलते ही isAuthenticated नहीं है, तो तुरंत लॉग इन पेज पर रीडायरेक्ट करें
   // useEffect is commented out as the Dialog logic handles it more gracefully now
@@ -82,8 +83,14 @@ export default function SellerOnboardingDialog({ isOpen, onClose }: SellerOnboar
         return null; // Return null if token is not available, query will retry when enabled
       }
       try {
-        const response = await apiRequest("GET", `/api/sellers/me`, undefined, user.idToken, signal);
-        return response.data as SellerProfile;
+        const response = await apiRequest("GET", `/api/sellers/me`, {
+          headers: { Authorization: `Bearer ${user.idToken}` },
+          signal,
+        });
+        if (response && typeof response === "object" && "data" in response) {
+          return (response as { data: SellerProfile }).data;
+        }
+        throw new Error("Invalid response format from /api/sellers/me");
       } catch (error: any) {
         // ✅ Handle 404 specifically for "seller not found"
         if (error?.response?.status === 404) {
@@ -119,18 +126,18 @@ export default function SellerOnboardingDialog({ isOpen, onClose }: SellerOnboar
 
   const registerSellerMutation = useMutation<any, Error, FormData>({
     mutationFn: async (data: FormData) => {
-      if (!user?.idToken || !user?.firebaseUid) {
+      if (!user?.idToken || !user?.uid) {
         throw new Error("User not authenticated or Firebase UID/Token missing at mutation time.");
       }
       const payload = {
         ...data,
         deliveryRadius: Number(data.deliveryRadius), // ✅ Ensure this is a number when sending
-        firebaseUid: user.firebaseUid,
+        firebaseUid: user.uid,
         email: user.email,
         name: user.name,
       };
-      const response = await apiRequest("POST", "/api/sellers/apply", payload, user.idToken);
-      return response.data;
+      const response = await apiRequest("POST", "/api/sellers/apply", payload);
+      return (response as { data: any }).data;
     },
     onSuccess: (data) => {
       setShowSuccess(true);
@@ -160,12 +167,12 @@ export default function SellerOnboardingDialog({ isOpen, onClose }: SellerOnboar
   });
 
   const onSubmit = (data: FormData) => {
-    if (isLoadingAuth || !isAuthenticated || !user?.firebaseUid || !user?.idToken) {
+    if (isLoadingAuth || !isAuthenticated || !user?.uid || !user?.idToken) {
         console.error("SellerOnboardingDialog: Attempted submit while auth loading or user data incomplete.");
         toast({
             title: "Authentication Pending",
             description: "Please wait, confirming your login status. Try again in a moment.",
-            variant: "warning"
+            variant: "default"
         });
         return;
     }
@@ -433,7 +440,7 @@ export default function SellerOnboardingDialog({ isOpen, onClose }: SellerOnboar
 
             <DialogFooter>
               <Button type="button" variant="outline" onClick={handleClose}>Cancel</Button>
-              <Button type="submit" disabled={registerSellerMutation.isPending || isLoadingAuth || !isAuthenticated || !user?.firebaseUid || !user?.idToken}>
+              <Button type="submit" disabled={registerSellerMutation.isPending || isLoadingAuth || !isAuthenticated || !user?.uid || !user?.idToken}>
                 {registerSellerMutation.isPending ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Submitting...
