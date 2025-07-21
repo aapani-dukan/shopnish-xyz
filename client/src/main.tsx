@@ -2,11 +2,14 @@
 
 import React from "react";
 import ReactDOM from "react-dom/client";
+import { BrowserRouter } from "react-router-dom"; // ✅ Router import
 import App from "./App.tsx";
-import "./index.css"; // ग्लोबल CSS इम्पोर्ट करें
+import "./index.css";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    <App />
+    <BrowserRouter>         {/* ✅ Router wrapper */}
+      <App />
+    </BrowserRouter>
   </React.StrictMode>
 );
