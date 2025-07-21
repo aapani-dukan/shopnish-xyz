@@ -1,125 +1,48 @@
-// server/index.ts
-
-import express, { type Request, type Response, type NextFunction, type Express } from "express"; // Ensure Express type is imported
+import express from "express";
 import cors from "cors";
-import { registerRoutes } from "./routes.ts"; // ✅ Changed to named import for registerRoutes
-import { setupVite, log } from "./vite.ts";
-import './lib/firebaseAdmin.ts'; // Ensure Firebase Admin SDK initialization happens here (within this imported file)
-import { createServer, type Server } from "http";
-import { drizzle } from "drizzle-orm/node-postgres";
-import { migrate } from "drizzle-orm/node-postgres/migrator";
-import { Pool } from "pg";
-import path from "path";
-import { fileURLToPath } from "url";
+import dotenv from "dotenv";
 import cookieParser from "cookie-parser";
+import path from "path";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+import connectDB from "./lib/db";
+import sellerRoutes from "../routes/sellerRoutes";
+import productRoutes from "../routes/productRoutes";
+import adminRoutes from "../routes/adminRoutes";
+import deliveryRoutes from "../routes/deliveryRoutes";
 
-const app: Express = express(); // Explicitly type app as Express
-let server: Server;
+dotenv.config();
 
-app.use(cors());
+const app = express();
+const PORT = process.env.PORT || 5000;
+
+app.use(cors({
+  origin: process.env.CLIENT_URL || "http://localhost:5173",
+  credentials: true
+}));
 app.use(express.json());
-app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 
-// --- Drizzle Migrations ---
-async function runMigrations() {
-  const connectionString = process.env.DATABASE_URL;
-  if (!connectionString) {
-    console.error("❌ DATABASE_URL environment variable is not set.");
-    return;
-  }
+// Routes
+app.use("/api/sellers", sellerRoutes);
+app.use("/api/products", productRoutes);
+app.use("/api/admin", adminRoutes);
+app.use("/api/delivery", deliveryRoutes);
 
-  const pool = new Pool({
-    connectionString,
-    ssl: { rejectUnauthorized: false }, // Necessary for Render's PostgreSQL
+// Serve static frontend (only for production)
+if (process.env.NODE_ENV === "production") {
+  const clientBuildPath = path.join(__dirname, "..", "client", "dist");
+  app.use(express.static(clientBuildPath));
+
+  app.get("*", (req, res) => {
+    res.sendFile(path.join(clientBuildPath, "index.html"));
   });
-
-  const db = drizzle(pool);
-
-  try {
-    const migrationsPath = path.resolve(__dirname, "migrations");
-    await migrate(db, { migrationsFolder: migrationsPath });
-    console.log("✅ Drizzle migrations completed.");
-  } catch (error: any) {
-    if (error?.code === "42P07") {
-      console.warn("⚠️ Table already exists. Skipping migration.");
-    } else {
-      console.error("❌ Migration Error:", error);
-    }
-  } finally {
-    try {
-      await pool.end();
-    } catch (poolError) {
-      console.error("❌ Failed to close pool:", poolError);
-    }
-  }
 }
 
-// --- Start Server ---
-(async () => {
-  const isProd = process.env.NODE_ENV === "production";
-
-  // Run migrations before starting the server
-  await runMigrations();
-  console.log("✅ Migrations done. Starting server...");
-
-  // Setup Vite development server or serve static assets in production
-  await setupVite(app);
-
-  // Register all API routes
-  registerRoutes(app); // ✅ Call the named export registerRoutes
-
-  // Serve production client-side assets for any unmatched routes
-  if (isProd) {
-    app.get("*", (req, res) => {
-      res.sendFile(path.resolve(__dirname, "..", "dist", "public", "index.html"));
-    });
-  }
-
-  // Global Error Handling Middleware
-  app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-    const status = err.status || err.statusCode || 500;
-    const message = err.message || "Internal Server Error";
-    console.error("❌ Server Error:", err);
-    res.status(status).json({ message });
-
-    // In development, re-throw the error for better debugging
-    if (process.env.NODE_ENV !== "production") throw err;
+// Start server after DB connection
+connectDB().then(() => {
+  app.listen(PORT, () => {
+    console.log(`✅ Server running at http://localhost:${PORT}`);
   });
-
-  const port = process.env.PORT || 5001;
-
-  server = createServer(app);
-  server.listen({ port, host: "0.0.0.0" }, () =>
-    log(`🚀 Server listening on port ${port} in ${isProd ? "production" : "development"} mode`)
-  );
-})();
-
-// --- Request Logging Middleware for /api routes (placed after routes are registered) ---
-// This middleware should ideally be placed *before* `registerRoutes(app)`
-// to capture all requests, but if you only want to log /api, keeping it here is fine.
-app.use((req, res, next) => {
-  const start = Date.now();
-  const p = req.path;
-  let captured: unknown;
-
-  // Monkey-patch res.json to capture response body for logging
-  const orig = res.json.bind(res);
-  res.json = (body, ...rest) => {
-    captured = body;
-    return orig(body, ...rest);
-  };
-
-  res.on("finish", () => {
-    if (!p.startsWith("/api")) return; // Only log API routes
-    const ms = Date.now() - start;
-    let line = `${req.method} ${p} ${res.statusCode} in ${ms}ms`;
-    if (captured) line += ` :: ${JSON.stringify(captured)}`;
-    log(line.length > 90 ? line.slice(0, 89) + "…" : line); // Truncate long logs
-  });
-
-  next();
+}).catch((err) => {
+  console.error("❌ DB connection failed:", err);
 });
