@@ -204,3 +204,4 @@ export const checkBrowserCompatibility = (): { isCompatible: boolean; warnings: 
 // पुराने export को नए से बदलें
 export { app }; 
 export { signOutUser as logout };
+export const signInWithGooglePopup = () => signInWithGoogle(true);
