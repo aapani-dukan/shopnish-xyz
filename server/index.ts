@@ -4,7 +4,7 @@ import dotenv from "dotenv";
 import cookieParser from "cookie-parser";
 import path from "path";
 
-import connectDB from "./lib/db";
+import connectDB from "./db.ts";
 import sellerRoutes from "../routes/sellerRoutes";
 import productRoutes from "../routes/productRoutes";
 import adminRoutes from "../routes/adminRoutes";
