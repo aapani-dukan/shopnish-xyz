@@ -1,37 +1,32 @@
-"use client";
-import React, { useState } from "react";
-import { signInWithGooglePopup } from "@/lib/firebase"; // ✅ Popup login function
+// client/src/pages/login.tsx
+
 import { Button } from "@/components/ui/button";
-import GoogleIcon from "@/components/ui/GoogleIcon";
-import { useLocation } from "wouter";
+import { signInWithGooglePopup } from "@/lib/firebase";
+import { useNavigate } from "react-router-dom";
+import { useEffect } from "react";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function LoginPage() {
-  const [loading, setLoading] = useState(false);
-  const [, navigate] = useLocation();
+  const { user, loading } = useAuth();
+  const navigate = useNavigate();
 
-  const handleGoogle = async () => {
-    try {
-      setLoading(true);
-
-      const userCredential = await signInWithGooglePopup();
-      console.log("User logged in:", userCredential.user);
-
-      // Optional: Navigate after login
+  useEffect(() => {
+    if (!loading && user) {
       navigate("/");
+    }
+  }, [user, loading, navigate]);
 
-    } catch (err) {
-      console.error("Customer login error:", err);
-      alert("Login failed, please try again.");
-    } finally {
-      setLoading(false);
+  const handleLogin = async () => {
+    try {
+      await signInWithGooglePopup();
+    } catch (error) {
+      console.error("Login error:", error);
     }
   };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100">
-      <Button onClick={handleGoogle} disabled={loading}>
-        <GoogleIcon /> {loading ? "Signing in…" : "Login with Google"}
-      </Button>
+    <div className="h-screen flex items-center justify-center">
+      <Button onClick={handleLogin}>Login with Google</Button>
     </div>
   );
 }
