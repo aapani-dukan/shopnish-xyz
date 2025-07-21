@@ -4,7 +4,24 @@ import { useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useLocation, useNavigate } from "react-router-dom";
 
-const PUBLIC_PATHS = ["/", "/product/", "/cart", "/checkout"];
+// Helper function for more robust path matching
+const isPathMatch = (currentPath: string, targetPath: string): boolean => {
+  // Exact match
+  if (currentPath === targetPath) {
+    return true;
+  }
+  // If targetPath ends with '/', check if currentPath starts with it
+  // e.g., /product/ should match /product/123, /product/category
+  if (targetPath.endsWith('/')) {
+    return currentPath.startsWith(targetPath);
+  }
+  // If targetPath doesn't end with '/', check if currentPath is an exact match
+  // or starts with targetPath followed by a '/' (e.g., /auth/login)
+  return currentPath.startsWith(targetPath + '/') || currentPath === targetPath;
+};
+
+
+const PUBLIC_PATHS = ["/", "/product", "/cart", "/checkout"]; // '/product/' से '/product' किया ताकि isPathMatch सही से काम करे
 const AUTH_SPECIFIC_PATHS = ["/auth", "/login", "/admin-login"];
 
 export function AuthRedirectGuard() {
@@ -14,25 +31,20 @@ export function AuthRedirectGuard() {
   const { user, isLoadingAuth, isAuthenticated } = useAuth();
 
   useEffect(() => {
-    console.group("🔐 AuthRedirectGuard");
-    console.log("📍 Path:", location.pathname);
-    console.log("⏳ isLoadingAuth:", isLoadingAuth);
-    console.log("✅ isAuthenticated:", isAuthenticated);
-    console.log("👤 UID:", user?.uid || "null");
-    console.log("🎯 Intent:", intent);
+    console.group("🔐 AuthRedirectGuard Triggered");
+    console.log("📍 Current Path:", location.pathname);
+    console.log("⏳ Is Auth Loading?:", isLoadingAuth);
+    console.log("✅ Is Authenticated?:", isAuthenticated);
+    console.log("👤 User UID:", user?.uid || "null");
+    console.log("🎯 Redirect Intent:", intent);
 
     const currentPath = location.pathname;
 
-    const isOnPublicPath = PUBLIC_PATHS.some((path) =>
-      currentPath === path || currentPath.startsWith(path)
-    );
-
-    const isOnAuthSpecificPath = AUTH_SPECIFIC_PATHS.some((path) =>
-      currentPath === path || currentPath.startsWith(path)
-    );
+    const isOnPublicPath = PUBLIC_PATHS.some((path) => isPathMatch(currentPath, path));
+    const isOnAuthSpecificPath = AUTH_SPECIFIC_PATHS.some((path) => isPathMatch(currentPath, path));
 
     if (isLoadingAuth) {
-      console.log("⏳ Still loading auth...");
+      console.log("⏳ Auth data still loading. Waiting...");
       console.groupEnd();
       return;
     }
@@ -41,8 +53,9 @@ export function AuthRedirectGuard() {
     // 📌 Priority 1: Handle redirectIntent = "become-seller"
     // ------------------------------------------
     if (intent === "become-seller") {
+      console.log("➡️ 'become-seller' intent detected.");
       if (!isAuthenticated) {
-        console.log("🔁 Redirecting to /auth to login for seller intent");
+        console.log("🔁 Not authenticated for seller intent. Redirecting to /auth for login.");
         navigate("/auth", { replace: true });
         console.groupEnd();
         return;
@@ -52,42 +65,53 @@ export function AuthRedirectGuard() {
       const approval = user?.seller?.approvalStatus;
 
       if (user?.role === "seller") {
-        if (approval === "approved") sellerTargetPath = "/seller-dashboard";
-        else if (approval === "pending") sellerTargetPath = "/seller-status";
+        if (approval === "approved") {
+          sellerTargetPath = "/seller-dashboard";
+        } else if (approval === "pending") {
+          sellerTargetPath = "/seller-status";
+        }
       }
 
-      if (!currentPath.startsWith(sellerTargetPath)) {
-        console.log(`➡️ Redirecting to intent target: ${sellerTargetPath}`);
+      // Check if current path is NOT the intended seller path
+      if (!isPathMatch(currentPath, sellerTargetPath)) {
+        console.log(`➡️ Logged in for seller intent. Redirecting to designated seller path: ${sellerTargetPath}`);
+        localStorage.removeItem("redirectIntent"); // Intent used, remove it
         navigate(sellerTargetPath, { replace: true });
-      } else {
-        console.log("✅ Already on correct seller page");
+        console.groupEnd();
+        return;
       }
 
-      localStorage.removeItem("redirectIntent");
+      console.log("✅ Already on correct seller intent page. Staying put.");
+      localStorage.removeItem("redirectIntent"); // Intent used, remove it
       console.groupEnd();
       return;
     }
 
     // ------------------------------------------
-    // 🔒 Not logged in
+    // 🔒 User is NOT logged in
     // ------------------------------------------
     if (!isAuthenticated) {
+      console.log("👤 User is NOT logged in.");
       if (isOnAuthSpecificPath || isOnPublicPath) {
-        console.log("👤 Public or auth-specific path. No redirect needed.");
+        console.log("✅ On a public or auth-specific path. No redirect needed.");
         console.groupEnd();
         return;
       }
-      console.log("🚫 Restricted path. Redirecting to /auth");
+      // If not logged in and not on a public/auth-specific path, redirect to auth
+      console.log("🚫 On a restricted path (not logged in). Redirecting to /auth.");
       navigate("/auth", { replace: true });
       console.groupEnd();
       return;
     }
 
     // ------------------------------------------
-    // 🔓 Logged in user
+    // 🔓 User IS logged in (isAuthenticated is true now)
     // ------------------------------------------
+    console.log("🔓 User IS logged in.");
+
+    // If logged in user tries to access auth-specific pages, redirect to home
     if (isOnAuthSpecificPath) {
-      console.log("✅ Logged-in user on auth page. Redirecting to /");
+      console.log("✅ Logged-in user on auth-specific page. Redirecting to /.");
       navigate("/", { replace: true });
       console.groupEnd();
       return;
@@ -98,15 +122,17 @@ export function AuthRedirectGuard() {
     switch (user?.role) {
       case "seller": {
         const approval = user.seller?.approvalStatus;
-        if (approval === "approved") targetPath = "/seller-dashboard";
-        else if (approval === "pending") targetPath = "/seller-status";
-        else targetPath = "/seller-apply";
+        if (approval === "approved") {
+          targetPath = "/seller-dashboard";
+        } else if (approval === "pending") {
+          targetPath = "/seller-status";
+        } else {
+          targetPath = "/seller-apply";
+        }
 
-        if (
-          !currentPath.startsWith("/seller-") &&
-          !currentPath.startsWith(targetPath)
-        ) {
-          console.log(`🔀 Seller redirected to ${targetPath}`);
+        // Check if current path is NOT the intended seller path
+        if (!isPathMatch(currentPath, targetPath) && !currentPath.startsWith("/seller-")) { // Keep broad /seller- check for sub-routes
+          console.log(`🔀 Seller on non-seller path. Redirecting to ${targetPath}.`);
           navigate(targetPath, { replace: true });
           console.groupEnd();
           return;
@@ -116,8 +142,8 @@ export function AuthRedirectGuard() {
 
       case "admin":
         targetPath = "/admin-dashboard";
-        if (!currentPath.startsWith(targetPath)) {
-          console.log("🔀 Admin redirected");
+        if (!isPathMatch(currentPath, targetPath) && !currentPath.startsWith("/admin-")) {
+          console.log("🔀 Admin on non-admin path. Redirecting to /admin-dashboard.");
           navigate(targetPath, { replace: true });
           console.groupEnd();
           return;
@@ -126,8 +152,8 @@ export function AuthRedirectGuard() {
 
       case "delivery":
         targetPath = "/delivery-dashboard";
-        if (!currentPath.startsWith(targetPath)) {
-          console.log("🔀 Delivery redirected");
+        if (!isPathMatch(currentPath, targetPath) && !currentPath.startsWith("/delivery-")) {
+          console.log("🔀 Delivery on non-delivery path. Redirecting to /delivery-dashboard.");
           navigate(targetPath, { replace: true });
           console.groupEnd();
           return;
@@ -136,28 +162,22 @@ export function AuthRedirectGuard() {
 
       case "customer":
       default:
+        // If customer or unknown role is on a restricted admin/seller/delivery page, redirect to home
         if (
           currentPath.startsWith("/seller-") ||
           currentPath.startsWith("/admin-") ||
           currentPath.startsWith("/delivery-")
         ) {
-          console.log("❌ Customer on restricted route, redirecting to /");
+          console.log("❌ Customer or unknown role on restricted page. Redirecting to /.");
           navigate("/", { replace: true });
           console.groupEnd();
           return;
         }
     }
 
-    console.log("✅ All clear. Staying put.");
+    console.log("✅ All clear. User on appropriate path. Staying put.");
     console.groupEnd();
-  }, [
-    user,
-    isLoadingAuth,
-    isAuthenticated,
-    location.pathname,
-    navigate,
-    intent,
-  ]);
+  }, [user, isLoadingAuth, isAuthenticated, location.pathname, navigate, intent]);
 
   return null;
 }
