@@ -1,6 +1,6 @@
 // Client/src/App.tsx
 
-import { Switch, Route } from "wouter";
+import { Routes, Route, Navigate } from "react-router-dom"; // 👈 React Router imports
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "./lib/queryClient";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -42,37 +42,49 @@ const PrivateRoute = ({ component: Component, redirectTo, ...rest }: { component
 
 function AppRouter() {
   return (
-    <Switch>
-      {/* Public and Customer Routes */}
-      <Route path="/" component={HomePage} />
-      <Route path="/product/:id" component={ProductDetail} />
-      <Route path="/cart" component={Cart} />
-      <Route path="/checkout" component={Checkout} />
-
-      {/* ✅ फिक्स यहाँ है: AuthPage को सीधे रेंडर करें, AuthRedirectGuard के अंदर नहीं।
-          AuthPage के अंदर ही ऑथेंटिकेशन स्टेट के आधार पर रीडायरेक्ट लॉजिक है।
-      */}
-      <Route path="/auth" component={AuthPage} />
+    <Routes>
+      <Route path="/" element={<HomePage />} />
+      <Route path="/product/:id" element={<ProductDetail />} />
+      <Route path="/cart" element={<Cart />} />
+      <Route path="/checkout" element={<Checkout />} />
+      <Route path="/auth" element={<AuthPage />} />
+      <Route path="/admin-login" element={<AdminLogin />} />
       
-      {/* Seller Routes - PrivateRoute का उपयोग करें */}
-      <PrivateRoute path="/seller-dashboard" component={SellerDashboard} redirectTo="/auth" />
-      <PrivateRoute path="/seller-apply" component={SellerApplyPage} redirectTo="/auth" />
-      <PrivateRoute path="/seller-status" component={SellerStatusPage} redirectTo="/auth" />
-      
-      {/* Delivery Routes - PrivateRoute का उपयोग करें */}
-      <PrivateRoute path="/delivery-dashboard" component={DeliveryDashboard} redirectTo="/auth" />
-      <PrivateRoute path="/delivery-apply" component={DeliveryApplyPage} redirectTo="/auth" />
-
-      {/* Admin Route */}
-      <Route path="/admin-login" component={AdminLogin} /> 
-      <PrivateRoute path="/admin-dashboard" component={AdminDashboard} redirectTo="/admin-login" />
-
-      {/* 404 - कोई भी अन्य पाथ */}
-      <Route component={NotFound} />
-    </Switch>
+      {/* Protected Routes */}
+      <Route path="/seller-dashboard" element={
+        <AuthRedirectGuard redirectTo="/auth">
+          <SellerDashboard />
+        </AuthRedirectGuard>
+      } />
+      <Route path="/seller-apply" element={
+        <AuthRedirectGuard redirectTo="/auth">
+          <SellerApplyPage />
+        </AuthRedirectGuard>
+      } />
+      <Route path="/seller-status" element={
+        <AuthRedirectGuard redirectTo="/auth">
+          <SellerStatusPage />
+        </AuthRedirectGuard>
+      } />
+      <Route path="/delivery-dashboard" element={
+        <AuthRedirectGuard redirectTo="/auth">
+          <DeliveryDashboard />
+        </AuthRedirectGuard>
+      } />
+      <Route path="/delivery-apply" element={
+        <AuthRedirectGuard redirectTo="/auth">
+          <DeliveryApplyPage />
+        </AuthRedirectGuard>
+      } />
+      <Route path="/admin-dashboard" element={
+        <AuthRedirectGuard redirectTo="/admin-login">
+          <AdminDashboard />
+        </AuthRedirectGuard>
+      } />
+      <Route path="*" element={<NotFound />} />
+    </Routes>
   );
 }
-
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
