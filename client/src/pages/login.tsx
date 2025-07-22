@@ -1,43 +1,50 @@
 // client/src/pages/login.tsx
 "use client";
+
 import React, { useState } from "react";
-// import { signInWithGoogle } from "@/lib/firebase"; // ❌ इसकी जगह अब नया फंक्शन इस्तेमाल करें
-import { initiateGoogleSignInSmart } from "@/lib/firebase";
+// ✅ signInWithPopup के लिए नया फंक्शन इम्पोर्ट करें
+import { signInWithGooglePopup } from "@/lib/firebase"; 
 import { Button } from "@/components/ui/button";
 import GoogleIcon from "@/components/ui/GoogleIcon";
-import { useLocation } from "wouter";
+import { useLocation } from "wouter"; // ✅ नेविगेशन के लिए useLocation वापस लाएं
 
 export default function LoginPage() {
-const [loading, setLoading] = useState(false);
-const [, navigate] = useLocation();
+  const [loading, setLoading] = useState(false);
+  const [, navigate] = useLocation(); // ✅ साइन-इन के बाद नेविगेट करने के लिए
 
-const handleGoogle = async () => {
-try {
-setLoading(true);
-
-// ✅ यहाँ signInWithGoogle() की जगह initiateGoogleSignInRedirect() इस्तेमाल करें  
-  await initiateGoogleSignInSmart();  
+  const handleGoogleSignIn = async () => {
+    if (loading) return;
     
-  // ध्यान दें: initiateGoogleSignInRedirect() ब्राउज़र को रीडायरेक्ट करेगा,  
-  // इसलिए इसके बाद का code (जैसे navigate("/")) तुरंत नहीं चलेगा।  
-  // AuthRedirectGuard और useAuth.tsx का onAuthStateChanged/handleRedirectResult  
-  // यूजर को सही पेज पर भेज देंगे जब वे वापस आएंगे।  
+    setLoading(true);
+    try {
+      // ✅ पॉप-अप फ्लो का उपयोग करें
+      const userCredential = await signInWithGooglePopup();
+      
+      // ✅ सफल साइन-इन के बाद, उपयोगकर्ता को डैशबोर्ड या होम पेज पर भेजें
+      if (userCredential.user) {
+        console.log("Sign-in successful, navigating...");
+        navigate("/"); // या '/dashboard'
+      }
 
-} catch (err) {  
-  console.error("Customer login error:", err);  
-  alert("Login failed, please try again.");  
-} finally {  
-  setLoading(false); // यह सुनिश्चित करता है कि लोडिंग बंद हो जाए  
+    } catch (error) {
+      console.error("Google Popup Sign-In Error:", error);
+      alert("Login failed. Please try again.");
+    } finally {
+      // ✅ पॉप-अप बंद होने के बाद यह हमेशा चलेगा
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100">
+      <div className="p-8 bg-white rounded-lg shadow-md text-center">
+        <h1 className="text-2xl font-bold mb-4">Welcome</h1>
+        <p className="mb-6 text-gray-600">Sign in to continue</p>
+        <Button onClick={handleGoogleSignIn} disabled={loading} className="w-full">
+          <GoogleIcon className="mr-2" />
+          {loading ? "Signing in..." : "Login with Google"}
+        </Button>
+      </div>
+    </div>
+  );
 }
-
-};
-
-return (
-<div className="flex flex-col items-center justify-center min-h-screen bg-gray-100">
-<Button onClick={handleGoogle} disabled={loading}>
-<GoogleIcon /> {loading ? "Signing in…" : "Login with Google"}
-</Button>
-</div>
-);
-}
-
