@@ -279,18 +279,14 @@ router.post('/delivery-boys/register', async (req: Request, res: Response) => {
 });
 
 // Admin Routes
-// यह एडमिन-विशिष्ट रूट्स के लिए एक समर्पित सब-राउटर है।
-// हमने adminRouter.use(requireAdminAuth); का उपयोग करके सभी एडमिन रूट्स पर requireAdminAuth मिडलवेयर लागू कर दिया है।
 const adminRouter = Router();
-adminRouter.use(requireAdminAuth); // सभी एडमिन रूट्स पर requireAdminAuth लागू करें
+adminRouter.use(requireAdminAuth); 
 
-// adminRouter में एडमिन-विशिष्ट रूट्स जोड़ें
-// ये रूट्स /api/admin/* के तहत एक्सेस किए जाएंगे
 adminRouter.use('/products/approve', adminApproveProductRoutes);
 adminRouter.use('/products/reject', adminRejectProductRoutes);
-adminRouter.use('/products', adminProductsRoutes); // यह /api/admin/products को हैंडल करेगा
-adminRouter.use('/vendors', adminVendorsRoutes);   // यह /api/admin/vendors को हैंडल करेगा
-adminRouter.use('/password', adminPasswordRoutes); // यह /api/admin/password को हैंडल करेगा
+adminRouter.use('/products', adminProductsRoutes); 
+adminRouter.use('/vendors', adminVendorsRoutes);   
+adminRouter.use('/password', adminPasswordRoutes); 
 
 // एडमिन रूट: विक्रेताओं को देखना
 adminRouter.get('/sellers', async (req: AuthenticatedRequest, res: Response) => {
@@ -373,6 +369,6 @@ router.use('/admin', adminRouter); // `/api/admin/*` को हैंडल क�
 export function registerRoutes(app: express.Express) {
   app.use("/api", router); 
 
-  app.use('/api/auth',apiAuthLoginRouter);
-  // आपका मुख्य `/api` राउटर यहाँ जोड़ा गया है
-  }
+  // ❌ इस लाइन को हटा दें, यह डुप्लीकेट है और समस्या पैदा कर रही है
+  // app.use('/api/auth',apiAuthLoginRouter); 
+        }
