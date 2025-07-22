@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Link } from "wouter";
+// import { Link } from "wouter"; // Removed wouter Link
+import { Link } from "react-router-dom"; // ✅ Changed to react-router-dom Link
 import { Trash2, Plus, Minus, ShoppingBag, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,6 +9,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useCartStore } from "@/lib/store";
 import Header from "@/components/header";
 import Footer from "@/components/footer";
+import axios from 'axios'; // ✅ Import axios for API requests
 
 interface Category {
   id: number;
@@ -15,11 +17,23 @@ interface Category {
   slug: string;
 }
 
+// ✅ Function to fetch categories - Re-defined here, or import from a shared utility if available
+const fetchCategories = async (): Promise<Category[]> => {
+  const response = await axios.get('/api/categories');
+  return response.data;
+};
+
 export default function Cart() {
   const { items, updateQuantity, removeItem, clearCart, getTotalPrice } = useCartStore();
 
-  const { data: categories = [] } = useQuery<Category[]>({
-    queryKey: ['/api/categories'],
+  // ✅ Added queryFn for categories
+  const { 
+    data: categories = [], 
+    isLoading: categoriesLoading, // ✅ Added loading state
+    error: categoriesError      // ✅ Added error state
+  } = useQuery<Category[]>({
+    queryKey: ['categories'], // Consistent queryKey with Home component
+    queryFn: fetchCategories, 
   });
 
   const subtotal = getTotalPrice();
@@ -27,10 +41,29 @@ export default function Cart() {
   const tax = subtotal * 0.08; // 8% tax
   const total = subtotal + shipping + tax;
 
+  // ✅ Handle loading state for categories
+  if (categoriesLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-neutral-50">
+        <p>Loading categories...</p>
+      </div>
+    );
+  }
+
+  // ✅ Handle error state for categories
+  if (categoriesError) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-neutral-50 text-red-600">
+        <p>Error loading categories: {categoriesError.message}</p>
+      </div>
+    );
+  }
+
+  // Original empty cart logic
   if (items.length === 0) {
     return (
       <div className="min-h-screen bg-neutral-50">
-        <Header categories={categories} />
+        <Header categories={categories} /> {/* Pass categories */}
         
         <main className="max-w-4xl mx-auto px-4 py-16">
           <Card className="text-center py-16">
@@ -42,7 +75,7 @@ export default function Cart() {
               <p className="text-gray-600 mb-8">
                 Looks like you haven't added anything to your cart yet.
               </p>
-              <Link href="/">
+              <Link to="/"> {/* ✅ Changed href to to for react-router-dom Link */}
                 <Button size="lg" className="bg-primary hover:bg-primary/90">
                   Continue Shopping
                 </Button>
@@ -58,13 +91,13 @@ export default function Cart() {
 
   return (
     <div className="min-h-screen bg-neutral-50">
-      <Header categories={categories} />
+      <Header categories={categories} /> {/* Pass categories */}
 
       <main className="max-w-6xl mx-auto px-4 py-8">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center space-x-4">
-            <Link href="/">
+            <Link to="/"> {/* ✅ Changed href to to for react-router-dom Link */}
               <Button variant="ghost" size="sm">
                 <ArrowLeft className="h-4 w-4 mr-2" />
                 Continue Shopping
@@ -197,7 +230,7 @@ export default function Cart() {
                   </p>
                 )}
 
-                <Link href="/checkout">
+                <Link to="/checkout"> {/* ✅ Changed href to to for react-router-dom Link */}
                   <Button 
                     className="w-full bg-primary hover:bg-primary/90 text-white"
                     size="lg"
@@ -206,7 +239,7 @@ export default function Cart() {
                   </Button>
                 </Link>
 
-                <Link href="/">
+                <Link to="/"> {/* ✅ Changed href to to for react-router-dom Link */}
                   <Button variant="outline" className="w-full">
                     Continue Shopping
                   </Button>
