@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useLocation } from "wouter";
+import { useLocation, URLSearchParams } from "react-router-dom"; 
 import { Filter, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -10,7 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import Header from "@/components/header";
 import ProductCard from "@/components/product-card";
 import Footer from "@/components/footer";
-
+import axios from 'axios'; 
 interface Category {
   id: number;
   name: string;
@@ -31,8 +31,15 @@ interface Product {
   reviewCount: number | null;
 }
 
+// Function to fetch categories
+const fetchCategories = async (): Promise<Category[]> => {
+  const response = await axios.get('/api/categories');
+  return response.data;
+};
+
+
 export default function Home() {
-  const [location] = useLocation();
+  const [location] = useLocation(); // Assuming this is how useLocation works in your setup
   const urlParams = new URLSearchParams(location.split('?')[1] || '');
   const categoryParam = urlParams.get('category');
   const searchParam = urlParams.get('search');
@@ -46,19 +53,28 @@ export default function Home() {
 
   // Update filters when URL changes
   useEffect(() => {
-    const newCategoryParam = urlParams.get('category');
-    const newSearchParam = urlParams.get('search');
+    // Note: urlParams needs to be re-created or derived from the latest location.
+    // If 'location' state changes, this useEffect will re-run.
+    const currentUrlParams = new URLSearchParams(location.split('?')[1] || '');
+    const newCategoryParam = currentUrlParams.get('category');
+    const newSearchParam = currentUrlParams.get('search');
     
     setSelectedCategory(newCategoryParam ? parseInt(newCategoryParam) : null);
     setSearchQuery(newSearchParam || "");
   }, [location]);
 
-  const { data: categories = [], isLoading: categoriesLoading } = useQuery<Category[]>({
-    queryKey: ['/api/categories'],
+  // --- PROBLEM AREA FIXED: Added queryFn for categories ---
+  const { 
+    data: categories = [], 
+    isLoading: categoriesLoading,
+    error: categoriesError // Good to have error state for categories too
+  } = useQuery<Category[]>({
+    queryKey: ['categories'], // Changed to 'categories' for consistency, but '/api/categories' also works
+    queryFn: fetchCategories, // <--- This is the crucial addition!
   });
 
-  const { data: products = [], isLoading: productsLoading } = useQuery<Product[]>({
-    queryKey: ['/api/products', selectedCategory, searchQuery],
+  const { data: products = [], isLoading: productsLoading, error: productsError } = useQuery<Product[]>({
+    queryKey: ['products', selectedCategory, searchQuery], // Use a distinct key like 'products'
     queryFn: async () => {
       const params = new URLSearchParams();
       if (selectedCategory) params.append('categoryId', selectedCategory.toString());
@@ -70,14 +86,31 @@ export default function Home() {
     },
   });
 
-  const { data: featuredProducts = [] } = useQuery<Product[]>({
-    queryKey: ['/api/products', 'featured'],
+  const { data: featuredProducts = [], isLoading: featuredProductsLoading, error: featuredProductsError } = useQuery<Product[]>({
+    queryKey: ['featuredProducts'], // Use a distinct key like 'featuredProducts'
     queryFn: async () => {
       const response = await fetch('/api/products?featured=true');
       if (!response.ok) throw new Error('Failed to fetch featured products');
       return response.json();
     },
   });
+
+  // Handle loading and error states at the top level for a better UX
+  if (categoriesLoading || productsLoading || featuredProductsLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p>Loading your shop...</p>
+      </div>
+    );
+  }
+
+  if (categoriesError || productsError || featuredProductsError) {
+    return (
+      <div className="min-h-screen flex items-center justify-center text-red-600">
+        <p>Error loading content: {(categoriesError || productsError || featuredProductsError)?.message}</p>
+      </div>
+    );
+  }
 
   const filteredProducts = products.filter(product => {
     if (priceFilter.length === 0) return true;
@@ -93,6 +126,29 @@ export default function Home() {
       }
     });
   });
+
+  // ... (Rest of your Home component logic and JSX)
+  // Remember to pass 'categories' to Header if it needs it.
+  // Example placeholder return:
+  return (
+    <div className="min-h-screen bg-neutral-50">
+      {/* Assuming Header, Footer, HeroSection, ProductGrid, etc. are imported */}
+      {/* Pass categories to Header if it takes a categories prop */}
+      {/* <Header categories={categories} /> */}
+      <main>
+        {/* <HeroSection /> */}
+        {/* <ProductGrid products={filteredProducts} /> */}
+        <h2>Welcome to Home Page!</h2>
+        <p>Categories loaded: {categories.length}</p>
+        <p>Products loaded: {products.length}</p>
+        <p>Featured Products loaded: {featuredProducts.length}</p>
+        {/* Add your actual JSX content here */}
+      </main>
+      {/* <Footer /> */}
+    </div>
+  );
+}
+
 
   const handlePriceFilterChange = (range: string, checked: boolean) => {
     if (checked) {
