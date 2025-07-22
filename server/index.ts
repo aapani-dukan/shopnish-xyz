@@ -64,11 +64,16 @@ async function runMigrations() {
   await runMigrations();
   console.log("✅ Migrations done. Starting server...");
 
-  // Register all API routes
+  // Register all API routes - इसे यहाँ पहले रखें
   registerRoutes(app);
 
-  // Serve static client files in production
+  // Serve static client files (जैसे index.html) - इसे API राउट्स के बाद रखें
+  // यह केवल उन रिक्वेस्ट्स को पकड़ेगा जो किसी भी API रूट से मैच नहीं खाते
   if (isProd) {
+    // अगर आप क्लाइंट-साइड बिल्ड को /dist/public में रख रहे हैं
+    // तो यहाँ से स्टैटिक फाइलों को सर्व करें
+    app.use(express.static(path.resolve(__dirname, "..", "dist", "public"))); // ✅ ADD THIS LINE
+
     app.get("*", (req, res) => {
       res.sendFile(path.resolve(__dirname, "..", "dist", "public", "index.html"));
     });
@@ -93,6 +98,14 @@ async function runMigrations() {
 })();
 
 // --- Request Logging Middleware ---
+// सुनिश्चित करें कि यह भी API राउट्स के बाद और स्टैटिक फाइल सर्विंग से पहले हो
+// मैंने इसे आपके कोड में नीचे रखा था, इसे यहां से हटाकर राउट्स के ऊपर ला रहा हूँ
+// ताकि यह सभी रिक्वेस्ट्स को लॉग कर सके।
+// लेकिन अगर आप केवल API रिक्वेस्ट्स को लॉग करना चाहते हैं (जैसा कि आपके कोड में था)
+// तो इसे रजिस्टरRoutes के बाद ही रहने दें, लेकिन app.get("*") से पहले।
+// आपके मौजूदा कोड के हिसाब से, इसे वहीं रहने दें जहाँ यह है,
+// बशर्ते यह API राउट्स के बाद ही आए।
+// इसका क्रम आपकी मुख्य समस्या नहीं है, इसलिए मैं इसे छेड़ नहीं रहा।
 app.use((req, res, next) => {
   const start = Date.now();
   const p = req.path;
@@ -105,7 +118,7 @@ app.use((req, res, next) => {
   };
 
   res.on("finish", () => {
-    if (!p.startsWith("/api")) return;
+    if (!p.startsWith("/api")) return; // यह लॉगिंग केवल /api राउट्स के लिए है
     const ms = Date.now() - start;
     let line = `${req.method} ${p} ${res.statusCode} in ${ms}ms`;
     if (captured) line += ` :: ${JSON.stringify(captured)}`;
