@@ -39,8 +39,9 @@ const fetchCategories = async (): Promise<Category[]> => {
 };
 
 export default function Home() {
-  const [location] = useLocation(); 
-  const urlParams = new URLSearchParams(location.split('?')[1] || '');
+  const location = useLocation(); 
+  const urlParams = new 
+  URLSearchParams(location.search);
   const categoryParam = urlParams.get('category');
   const searchParam = urlParams.get('search');
 
@@ -53,13 +54,13 @@ export default function Home() {
 
   // Update filters when URL changes
   useEffect(() => {
-    const currentUrlParams = new URLSearchParams(location.split('?')[1] || '');
+    const currentUrlParams = new URLSearchParams(location.search);
     const newCategoryParam = currentUrlParams.get('category');
     const newSearchParam = currentUrlParams.get('search');
     
     setSelectedCategory(newCategoryParam ? parseInt(newCategoryParam) : null);
     setSearchQuery(newSearchParam || "");
-  }, [location]);
+  }, [location.search]);
 
   const { 
     data: categories = [], 
