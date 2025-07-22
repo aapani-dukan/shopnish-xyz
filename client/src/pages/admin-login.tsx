@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { useLocation } from "wouter";
+// ✅ useNavigate हुक को इंपोर्ट करें
+import { useNavigate } from "react-router-dom"; 
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,7 +8,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Shield } from "lucide-react";
 
 export default function AdminLogin() {
-  const [, setLocation] = useLocation();
+  // ✅ navigate हुक का उपयोग करें
+  const navigate = useNavigate(); 
   const { toast } = useToast();
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -31,7 +33,8 @@ export default function AdminLogin() {
         title: "Login Successful",
         description: "Welcome Admin!",
       });
-      setLocation("/admin-dashboard");
+      // ✅ navigate फंक्शन का उपयोग करें
+      navigate("/admin-dashboard");
     } catch (err: any) {
       toast({
         title: "Login Failed",
@@ -46,9 +49,10 @@ export default function AdminLogin() {
   useEffect(() => {
     const isAdmin = localStorage.getItem("isAdmin");
     if (isAdmin === "true") {
-      setLocation("/admin-dashboard");
+      // ✅ navigate फंक्शन का उपयोग करें
+      navigate("/admin-dashboard");
     }
-  }, [setLocation]);
+  }, [navigate]); // ✅ डिपेंडेंसी एरे में navigate को जोड़ें
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-700 flex items-center justify-center p-4">
@@ -87,4 +91,3 @@ export default function AdminLogin() {
     </div>
   );
 }
-
