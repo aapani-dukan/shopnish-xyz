@@ -11,6 +11,7 @@ import Header from "@/components/header";
 import ProductCard from "@/components/product-card";
 import Footer from "@/components/footer";
 import axios from 'axios'; 
+
 interface Category {
   id: number;
   name: string;
@@ -37,9 +38,8 @@ const fetchCategories = async (): Promise<Category[]> => {
   return response.data;
 };
 
-
 export default function Home() {
-  const [location] = useLocation(); // Assuming this is how useLocation works in your setup
+  const [location] = useLocation(); 
   const urlParams = new URLSearchParams(location.split('?')[1] || '');
   const categoryParam = urlParams.get('category');
   const searchParam = urlParams.get('search');
@@ -53,8 +53,6 @@ export default function Home() {
 
   // Update filters when URL changes
   useEffect(() => {
-    // Note: urlParams needs to be re-created or derived from the latest location.
-    // If 'location' state changes, this useEffect will re-run.
     const currentUrlParams = new URLSearchParams(location.split('?')[1] || '');
     const newCategoryParam = currentUrlParams.get('category');
     const newSearchParam = currentUrlParams.get('search');
@@ -63,18 +61,17 @@ export default function Home() {
     setSearchQuery(newSearchParam || "");
   }, [location]);
 
-  // --- PROBLEM AREA FIXED: Added queryFn for categories ---
   const { 
     data: categories = [], 
     isLoading: categoriesLoading,
-    error: categoriesError // Good to have error state for categories too
+    error: categoriesError 
   } = useQuery<Category[]>({
-    queryKey: ['categories'], // Changed to 'categories' for consistency, but '/api/categories' also works
-    queryFn: fetchCategories, // <--- This is the crucial addition!
+    queryKey: ['categories'], 
+    queryFn: fetchCategories, 
   });
 
   const { data: products = [], isLoading: productsLoading, error: productsError } = useQuery<Product[]>({
-    queryKey: ['products', selectedCategory, searchQuery], // Use a distinct key like 'products'
+    queryKey: ['products', selectedCategory, searchQuery], 
     queryFn: async () => {
       const params = new URLSearchParams();
       if (selectedCategory) params.append('categoryId', selectedCategory.toString());
@@ -87,7 +84,7 @@ export default function Home() {
   });
 
   const { data: featuredProducts = [], isLoading: featuredProductsLoading, error: featuredProductsError } = useQuery<Product[]>({
-    queryKey: ['featuredProducts'], // Use a distinct key like 'featuredProducts'
+    queryKey: ['featuredProducts'], 
     queryFn: async () => {
       const response = await fetch('/api/products?featured=true');
       if (!response.ok) throw new Error('Failed to fetch featured products');
@@ -96,14 +93,23 @@ export default function Home() {
   });
 
   // Handle loading and error states at the top level for a better UX
+  // ✅ Consolidated loading checks here
   if (categoriesLoading || productsLoading || featuredProductsLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p>Loading your shop...</p>
+      <div className="min-h-screen bg-neutral-50">
+        <div className="max-w-7xl mx-auto px-4 py-8">
+          <Skeleton className="h-16 w-full mb-8" />
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+            {[...Array(8)].map((_, i) => (
+              <Skeleton key={i} className="h-80 w-full" />
+            ))}
+          </div>
+        </div>
       </div>
     );
   }
 
+  // ✅ Consolidated error checks here
   if (categoriesError || productsError || featuredProductsError) {
     return (
       <div className="min-h-screen flex items-center justify-center text-red-600">
@@ -127,29 +133,6 @@ export default function Home() {
     });
   });
 
-  // ... (Rest of your Home component logic and JSX)
-  // Remember to pass 'categories' to Header if it needs it.
-  // Example placeholder return:
-  return (
-    <div className="min-h-screen bg-neutral-50">
-      {/* Assuming Header, Footer, HeroSection, ProductGrid, etc. are imported */}
-      {/* Pass categories to Header if it takes a categories prop */}
-      {/* <Header categories={categories} /> */}
-      <main>
-        {/* <HeroSection /> */}
-        {/* <ProductGrid products={filteredProducts} /> */}
-        <h2>Welcome to Home Page!</h2>
-        <p>Categories loaded: {categories.length}</p>
-        <p>Products loaded: {products.length}</p>
-        <p>Featured Products loaded: {featuredProducts.length}</p>
-        {/* Add your actual JSX content here */}
-      </main>
-      {/* <Footer /> */}
-    </div>
-  );
-}
-
-
   const handlePriceFilterChange = (range: string, checked: boolean) => {
     if (checked) {
       setPriceFilter(prev => [...prev, range]);
@@ -161,21 +144,8 @@ export default function Home() {
   const scrollToProducts = () => {
     document.getElementById('products-section')?.scrollIntoView({ behavior: 'smooth' });
   };
-
-  if (categoriesLoading) {
-    return (
-      <div className="min-h-screen bg-neutral-50">
-        <div className="max-w-7xl mx-auto px-4 py-8">
-          <Skeleton className="h-16 w-full mb-8" />
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-            {[...Array(8)].map((_, i) => (
-              <Skeleton key={i} className="h-80 w-full" />
-            ))}
-          </div>
-        </div>
-      </div>
-    );
-  }
+  
+  // ✅ Removed the duplicate if (categoriesLoading) block that caused the error
 
   return (
     <div className="min-h-screen bg-neutral-50">
@@ -377,4 +347,4 @@ export default function Home() {
       <Footer />
     </div>
   );
-                    }
+}
