@@ -215,6 +215,3 @@ console.groupEnd();
 
 return null;
 }
-
-Isko karo update
-
