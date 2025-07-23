@@ -49,7 +49,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     if (!firebaseUser) {
       setUser(null);
       setError(null);
-      setIsLoadingAuth(false); // ✅ यहाँ लोडिंग समाप्त करें
+      setIsLoadingAuth(false);
       return;
     }
 
@@ -64,14 +64,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       let seller: SellerInfo | undefined = undefined;
       if (role === "seller") {
         try {
+          // ✅ सर्वर से seller info fetch करें
           const res = await apiRequest("GET", "/api/sellers/me", undefined, idToken);
-          // ✅ यहाँ पर response से डेटा निकालने का तरीका API पर निर्भर करेगा।
-          // मान लीजिए कि यह सीधे डेटा लौटाता है, JSON.parse की आवश्यकता नहीं।
-          const responseData = res as SellerInfo; 
-          seller = responseData;
+          const responseData = await res.json();
+          seller = responseData as SellerInfo;
           console.log("Seller info fetched:", seller);
-        } catch (apiError) {
-          console.warn("Seller info fetch failed:", apiError);
+        } catch (apiError: any) {
+          console.warn("Seller info fetch failed:", apiError.message || apiError);
           setError({ code: "seller/info-fetch-failed", message: "Failed to fetch seller info." });
         }
       }
@@ -89,8 +88,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   }, []);
 
-
-  // useEffect 1: Handle Google Redirect Result (on page load after redirect)
   useEffect(() => {
     console.log("🔄 Checking for redirect result...");
     const checkRedirect = async () => {
@@ -110,13 +107,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     checkRedirect();
   }, [processAndSetUser]);
 
-
-  // useEffect 2: Set up the onAuthStateChanged listener
+  // ✅ यह useEffect लूप को रोकने के लिए सही किया गया है
   useEffect(() => {
     console.log("🔄 Setting up onAuthStateChanged listener.");
     const unsubscribe = onAuthStateChange(async (fbUser) => {
       console.log("🔄 onAuthStateChanged listener fired. fbUser:", fbUser?.uid || "null");
-      // यह लिसनर अब हमेशा चलेगा, और processAndSetUser लोडिंग स्थिति को संभालेगा।
       await processAndSetUser(fbUser);
     });
 
@@ -124,8 +119,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       console.log("Auth Provider: Cleaning up onAuthStateChanged listener.");
       unsubscribe();
     };
-  }, [processAndSetUser]); // ✅ सही डिपेंडेंसी एरे
-
+  }, [processAndSetUser]); // ✅ अब यह केवल processAndSetUser पर निर्भर करता है
 
   const signIn = useCallback(async (usePopup: boolean = false): Promise<FirebaseUser | null> => {
     setIsLoadingAuth(true);
@@ -133,7 +127,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     try {
       const fbUser = await firebaseSignInWithGoogle(usePopup);
       if (fbUser) {
-        // पॉपअप सफल होने पर, processAndSetUser लोडिंग को बंद कर देगा।
         await processAndSetUser(fbUser);
       }
       return fbUser; 
@@ -146,13 +139,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   }, [processAndSetUser]);
 
-
   const signOut = useCallback(async () => {
     try {
       console.log("Auth Provider: Attempting to sign out...");
       await signOutUser();
-      // setUser(null) और setIsLoadingAuth(false) को onAuthStateChanged listener संभालेगा।
-      // यह अधिक विश्वसनीय है।
       setError(null);
       console.log("✅ Signed out successfully. State reset.");
     } catch (err: any) {
@@ -161,7 +151,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       throw err;
     }
   }, []);
-
 
   const clearError = useCallback(() => {
     setError(null);
