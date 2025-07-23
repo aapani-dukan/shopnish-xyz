@@ -29,7 +29,7 @@ import {
   ListOrdered,
 } from "lucide-react";
 // ✅ SellerOnboardingDialog को इम्पोर्ट करें
-import SellerOnboardingDialog from "../seller/SellerOnboardingDialog";
+import SellerOnboardingDialog from "./seller/SellerOnboardingDialog";
 
 interface Category {
   id: string;
