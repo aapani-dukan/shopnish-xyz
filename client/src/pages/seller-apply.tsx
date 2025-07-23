@@ -4,11 +4,13 @@ import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Store, ArrowLeft, Rocket, Percent, Zap, Headphones, Globe } from "lucide-react";
 import { Link } from "wouter";
-import SellerOnboardingDialog from "@/components/seller/SellerOnboardingDialog"; // ✅ SellerOnboardingDialog इम्पोर्टेड है
+// ✅ SellerOnboardingDialog का अब यहाँ उपयोग नहीं हो रहा है
+// import SellerOnboardingDialog from "@/components/seller/SellerOnboardingDialog"; 
 
 export default function SellerApplyPage() {
   const { signOut } = useAuth();
-  const [isModalOpen, setIsModalOpen] = useState(false); // ✅ `SellerOnboardingDialog` को नियंत्रित करने के लिए स्टेट
+  // ✅ अब इस स्टेट की जरूरत नहीं है
+  // const [isModalOpen, setIsModalOpen] = useState(false); 
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -45,14 +47,8 @@ export default function SellerApplyPage() {
           <h1 className="text-3xl font-bold text-gray-900 mb-4">The way is here</h1>
           <p className="text-lg text-gray-600 mb-8">Start your selling journey with us. Complete your application to get approved as a seller.</p>
           
-          {/* ✅ बटन जो `SellerOnboardingDialog` मॉडल को खोलेगा */}
-          <Button 
-            onClick={() => setIsModalOpen(true)}
-            className="inline-flex items-center px-8 py-4 bg-amber-600 hover:bg-amber-700 text-white font-medium rounded-xl transition-colors duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 text-lg"
-          >
-            <Store className="mr-3 w-5 h-5" />
-            Click here
-          </Button>
+          {/* ✅ अब यहाँ डायलॉग खोलने के लिए बटन नहीं है */}
+          {/* यहाँ आप एक लिंक जोड़ सकते हैं जो यूज़र को होमपेज पर ले जाए जहाँ से वे डायलॉग खोल सकते हैं */}
         </div>
 
         {/* Benefits Section */}
@@ -91,11 +87,7 @@ export default function SellerApplyPage() {
         </div>
       </main>
 
-      {/* ✅ SellerOnboardingDialog को `isOpen` और `onClose` props के साथ रेंडर करें */}
-      <SellerOnboardingDialog 
-        isOpen={isModalOpen} 
-        onClose={() => setIsModalOpen(false)} 
-      />
+      {/* ✅ अब यहाँ डायलॉग रेंडर नहीं हो रहा है */}
     </div>
   );
 }
