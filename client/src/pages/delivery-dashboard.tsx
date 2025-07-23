@@ -492,9 +492,9 @@ export default function DeliveryDashboard() {
             <DialogTitle>Complete Delivery</DialogTitle>
           </DialogHeader>
 
-          <p className="text-sm text-gray-600 mb-4">
-            Ask the customer for the 4-digit OTP to confirm delivery.
-          </p>
+          <DialogDescription className="text-sm text-gray-600 mb-4">
+      Ask the customer for the 4-digit OTP to confirm delivery.
+    </DialogDescription>
 
           {selectedOrder && (
             <div className="p-4 bg-blue-50 rounded-lg mb-4">
