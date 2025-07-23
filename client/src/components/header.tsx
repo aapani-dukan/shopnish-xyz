@@ -1,10 +1,9 @@
 // src/components/headers/Header.tsx
-
 import React, { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { useCartStore } from "@/lib/store";
-import { logout } from "@/lib/firebase"; // ✅ अब यह सही से काम करेगा
+import { logout } from "@/lib/firebase";
 // UI कॉम्पोनेंट्स इम्पोर्ट करें
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,15 +22,15 @@ import {
   Search,
   User,
   Heart,
-  Store, // Store आइकन, 'Become a Seller' के लिए
-  LogOut, // लॉगआउट के लिए
-  LogIn, // लॉगिन के लिए
-  LayoutDashboard, // डैशबोर्ड के लिए
-  ListOrdered, // ऑर्डर्स के लिए
+  Store,
+  LogOut,
+  LogIn,
+  LayoutDashboard,
+  ListOrdered,
 } from "lucide-react";
+// ✅ SellerOnboardingDialog को इम्पोर्ट करें
+import SellerOnboardingDialog from "../seller/SellerOnboardingDialog";
 
-
-// आपकी कैटेगरीज़ के लिए टाइप, यदि कोई हों
 interface Category {
   id: string;
   name: string;
@@ -39,58 +38,44 @@ interface Category {
 }
 
 interface HeaderProps {
-  categories: Category[]; // यदि कैटेगरीज़ API से आ रही हैं, तो यह प्रोप होगा
+  categories: Category[];
 }
 
 const Header: React.FC<HeaderProps> = ({ categories = [] }) => {
   const { items, isCartOpen, toggleCart } = useCartStore();
   const [searchValue, setSearchValue] = useState("");
-  const [, navigate] = useLocation(); // wouter से navigate फंक्शन
-  const { user, isAuthenticated, isLoadingAuth } = useAuth(); // useAuth हुक से यूज़र और ऑथ स्थिति प्राप्त करें
+  const [, navigate] = useLocation();
+  const { user, isAuthenticated, isLoadingAuth } = useAuth();
+  // ✅ नया स्टेट: डायलॉग को नियंत्रित करने के लिए
+  const [isSellerDialogOpen, setIsSellerDialogOpen] = useState(false);
 
-  // कार्ट में आइटम की कुल संख्या
   const totalItemsInCart = items.reduce((sum, item) => sum + item.quantity, 0);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchValue.trim()) {
       navigate(`/search?q=${encodeURIComponent(searchValue.trim())}`);
-      setSearchValue(""); // सर्च करने के बाद इनपुट क्लियर करें
+      setSearchValue("");
     }
   };
 
   const handleLogout = async () => {
     try {
-      await logout(); // Firebase logout फंक्शन को कॉल करें
+      await logout();
       console.log("Header: User logged out successfully.");
-      navigate("/"); // लॉगआउट के बाद होम पेज पर रीडायरेक्ट करें
-      // localStorage से कोई भी बचा हुआ intent हटा दें
-      localStorage.removeItem('redirectIntent'); 
+      navigate("/");
+      localStorage.removeItem('redirectIntent');
     } catch (error) {
       console.error("Header: Error during logout:", error);
-      // लॉगआउट एरर हैंडल करें
     }
   };
 
-  // --- `handleBecomeSeller` फ़ंक्शन: यह अब बिल्कुल सीधा है ---
+  // ✅ 'Become a Seller' बटन का नया लॉजिक
   const handleBecomeSeller = () => {
-    console.log("Header: 'Become a Seller' clicked.");
-    
-    // ✅ 'become-seller' intent को localStorage में सेट करें।
-    // यह AuthRedirectGuard और /seller-apply पेज को बताएगा कि यूज़र सेलर फ़्लो में है।
-    localStorage.setItem('redirectIntent', 'become-seller'); 
-    console.log("Header: Set 'redirectIntent' to 'become-seller'.");
-
-    // हमेशा /seller-apply पर भेजें।
-    // AuthRedirectGuard (या /seller-apply पेज पर मौजूद लॉजिक) यूज़र के
-    // ऑथेंटिकेशन और रोल के आधार पर आगे का रीडायरेक्ट संभालेगा।
-    // Header का काम केवल यहीं तक है।
-    console.log("Header: Redirecting to /seller-apply. No authentication check here.");
-    navigate("/seller-apply"); 
+    // सीधे डायलॉग खोलने के लिए स्टेट को अपडेट करें
+    setIsSellerDialogOpen(true);
   };
-  // --- `handleBecomeSeller` फ़ंक्शन में बदलाव समाप्त ---
 
-  // रोल-आधारित डैशबोर्ड लिंक प्राप्त करने के लिए हेल्पर फ़ंक्शन
   const getDashboardLink = () => {
     if (!isAuthenticated || !user) return null;
 
@@ -108,7 +93,7 @@ const Header: React.FC<HeaderProps> = ({ categories = [] }) => {
       case "delivery":
         return { label: "Delivery Dashboard", path: "/delivery-dashboard" };
       case "customer":
-        return { label: "My Orders", path: "/customer/orders" }; // उदाहरण के लिए
+        return { label: "My Orders", path: "/customer/orders" };
       default:
         return null;
     }
@@ -141,7 +126,7 @@ const Header: React.FC<HeaderProps> = ({ categories = [] }) => {
 
         {/* डेस्कटॉप नेविगेशन और एक्शन बटन */}
         <nav className="hidden md:flex items-center space-x-4">
-          {/* Become a Seller बटन */}
+          {/* ✅ अब यह सीधे डायलॉग खोलता है */}
           <Button onClick={handleBecomeSeller} variant="ghost" className="text-blue-600 hover:bg-blue-50">
             <Store className="mr-2 h-4 w-4" />
             Become a Seller
@@ -188,7 +173,7 @@ const Header: React.FC<HeaderProps> = ({ categories = [] }) => {
                       </Link>
                     </DropdownMenuItem>
                   )}
-                  {user?.role === "customer" && ( // यदि ग्राहक, तो ऑर्डर्स दिखाएं
+                  {user?.role === "customer" && (
                     <DropdownMenuItem asChild>
                       <Link href="/customer/orders">
                         <ListOrdered className="mr-2 h-4 w-4" />
@@ -209,7 +194,6 @@ const Header: React.FC<HeaderProps> = ({ categories = [] }) => {
                       Login / Sign Up
                     </Link>
                   </DropdownMenuItem>
-                  {/* आप यहां अन्य पब्लिक लिंक जोड़ सकते हैं */}
                 </>
               )}
             </DropdownMenuContent>
@@ -292,7 +276,7 @@ const Header: React.FC<HeaderProps> = ({ categories = [] }) => {
                   </Button>
                 </Link>
                 
-                {/* मोबाइल 'Become a Seller' बटन */}
+                {/* ✅ मोबाइल 'Become a Seller' बटन */}
                 <Button onClick={handleBecomeSeller} variant="ghost" className="w-full justify-start text-blue-600 hover:bg-blue-50">
                   <Store className="mr-2 h-4 w-4" />
                   Become a Seller
@@ -321,6 +305,11 @@ const Header: React.FC<HeaderProps> = ({ categories = [] }) => {
           </Sheet>
         </div>
       </div>
+      {/* ✅ SellerOnboardingDialog को यहाँ रेंडर करें */}
+      <SellerOnboardingDialog
+        isOpen={isSellerDialogOpen}
+        onClose={() => setIsSellerDialogOpen(false)}
+      />
     </header>
   );
 };
