@@ -33,13 +33,15 @@ export const verifyToken = async (req: AuthenticatedRequest, res: Response, next
     const firebaseUid = decodedToken.uid;
     const email = decodedToken.email; // ईमेल भी यहीं से मिलेगा
     const displayName = decodedToken.name || null; // नाम
-
+console.log("VerifyToken: Decoded Firebase UID:", firebaseUid); // ✅ इसे लॉग करें
+    console.log("VerifyToken: Decoded Email:", email); // ✅ इसे भी लॉग करें
     // डेटाबेस से यूजर को Fetch करें ताकि उसकी भूमिका और अन्य अपडेटेड जानकारी मिल सके
     // यदि आपकी `users` टेबल में `uuid` कॉलम `firebaseUid` को स्टोर करता है
     const [userRecord] = await db.select().from(users).where(eq(users.uuid, firebaseUid));
-
+console.log("VerifyToken: User record from DB:", userRecord); // ✅ इसे भी लॉग करें
     if (!userRecord) {
       // यह स्थिति तब आ सकती है जब Firebase Auth में यूजर है लेकिन हमारे DB में नहीं (जो नहीं होना चाहिए अगर login /auth/login सही है)
+      console.error("VerifyToken: User not found in DB for UID:", firebaseUid);
       return res.status(401).json({ message: 'User not found in database or not fully onboarded' });
     }
 
