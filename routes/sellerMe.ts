@@ -27,8 +27,9 @@ router.get("/me", verifyToken, async (req: AuthenticatedRequest, res: Response) 
     if (!seller) {
       return res.status(404).json({ message: "Seller profile not found for this user." });
     }
+   return res.status(200).json(seller); // सीधे विक्रेता ऑब्जेक्ट लौटाएं
 
-    return res.status(200).json({ data: seller });
+    
   } catch (error) {
     console.error("❌ Error fetching seller info:", error);
     return res.status(500).json({
