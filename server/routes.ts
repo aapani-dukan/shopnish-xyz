@@ -11,15 +11,15 @@ import {
   deliveryBoys,
   userRoleEnum,
   approvalStatusEnum,
-  insertProductSchema,
+  // insertProductSchema, // यह इम्पोर्ट कहीं उपयोग नहीं किया गया है, इसे हटाया जा सकता है यदि आवश्यक न हो
 } from '../shared/backend/schema.ts';
-import { AuthenticatedRequest } from '../shared/types/auth.ts';
+import { AuthenticatedRequest } from '../shared/types/auth.ts'; // सुनिश्चित करें कि यह AuthenticatedRequest का सही स्रोत है
 
 import { requireAuth, requireAdminAuth, requireSellerAuth } from './middleware/authMiddleware.ts';
+import { authAdmin } from './lib/firebaseAdmin.ts'; // Firebase Admin SDK को logout के लिए इम्पोर्ट करें
 
-import apiAuthLoginRouter from './roots/apiAuthLogin.ts';
-
-import sellerMeRouter from './routes/sellerMe.ts';
+// राउटर्स जो इस फ़ाइल में सीधे परिभाषित नहीं हैं
+import apiAuthLoginRouter from './roots/apiAuthLogin.ts'; // यह /api/auth को हैंडल करता है
 
 import adminApproveProductRoutes from './roots/admin/approve-product.ts';
 import adminRejectProductRoutes from './roots/admin/reject-product.ts';
@@ -28,7 +28,7 @@ import adminVendorsRoutes from './roots/admin/vendors.ts';
 import adminPasswordRoutes from './roots/admin/admin-password.ts';
 
 
-const router = Router(); // यह आपका मुख्य /api राउटर है
+const router = Router(); // यह आपका मुख्य /api राउटर है, जो server/index.ts में /api के तहत माउंट किया जाएगा
 
 // --- Test Route ---
 router.get('/', (req: Request, res: Response) => {
@@ -71,6 +71,7 @@ router.use('/auth', apiAuthLoginRouter);
 
 
 // --- User Profile (Authentication Required) ---
+// यह एंडपॉइंट /api/me पर उपयोगकर्ता का सामान्य प्रोफ़ाइल लौटाता है।
 router.get('/me', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     if (!req.user?.uuid) {
@@ -80,15 +81,24 @@ router.get('/me', requireAuth, async (req: AuthenticatedRequest, res: Response) 
     if (!user) {
       return res.status(404).json({ error: 'User not found in database.' });
     }
+    // विक्रेता की स्थिति को शामिल करें यदि उपयोगकर्ता विक्रेता है
+    let sellerInfo = undefined;
+    if (user.role === 'seller') {
+        const [sellerRecord] = await db.select({ approvalStatus: sellersPgTable.approvalStatus }).from(sellersPgTable).where(eq(sellersPgTable.userId, user.id));
+        if (sellerRecord) {
+            sellerInfo = { approvalStatus: sellerRecord.approvalStatus };
+        }
+    }
+
     res.status(200).json({
       uuid: user.uuid,
       email: user.email,
       name: user.name,
       role: user.role,
-      seller: user.role === 'seller' ? { approvalStatus: user.approvalStatus } : undefined,
+      seller: sellerInfo, // अब विक्रेता की जानकारी शामिल है
     });
   } catch (error: any) {
-    console.error('Failed to fetch user profile:', error);
+    console.error('Failed to fetch user profile (api/me):', error);
     res.status(500).json({ error: 'Internal server error.' });
   }
 });
@@ -101,9 +111,9 @@ router.post('/auth/logout', async (req, res) => {
 
   try {
     if (sessionCookie) {
-      const admin = await import('firebase-admin'); 
-      const decodedClaims = await admin.auth().verifySessionCookie(sessionCookie);
-      await admin.auth().revokeRefreshTokens(decodedClaims.sub);
+      // authAdmin सीधे उपयोग करें, इम्पोर्ट('firebase-admin') की आवश्यकता नहीं है
+      const decodedClaims = await authAdmin.auth().verifySessionCookie(sessionCookie);
+      await authAdmin.auth().revokeRefreshTokens(decodedClaims.sub);
     }
     res.status(200).json({ message: 'Logged out successfully!' });
   } catch (error: any) {
@@ -113,6 +123,8 @@ router.post('/auth/logout', async (req, res) => {
 });
 
 // --- Seller Routes ---
+
+// POST /api/sellers/apply
 router.post('/sellers/apply', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const userUuid = req.user?.uuid; 
@@ -130,6 +142,7 @@ router.post('/sellers/apply', requireAuth, async (req: AuthenticatedRequest, res
 
     const [existingSeller] = await db.select().from(sellersPgTable).where(eq(sellersPgTable.userId, dbUser.id));
     if (existingSeller) {
+      // यदि उपयोगकर्ता पहले से ही एक विक्रेता है, या आवेदन लंबित/अस्वीकृत है
       return res.status(409).json({ error: 'Seller application already exists for this user.' });
     }
 
@@ -141,6 +154,7 @@ router.post('/sellers/apply', requireAuth, async (req: AuthenticatedRequest, res
 
     const [newSeller] = await db.insert(sellersPgTable).values(sellerData).returning();
 
+    // उपयोगकर्ता की भूमिका और अनुमोदन स्थिति को अपडेट करें
     await db.update(users).set({ 
       role: userRoleEnum.enumValues[1], // 'seller'
       approvalStatus: approvalStatusEnum.enumValues[0], // 'pending'
@@ -153,10 +167,12 @@ router.post('/sellers/apply', requireAuth, async (req: AuthenticatedRequest, res
   }
 });
 
+// GET /api/seller/me (केवल विक्रेताओं के लिए)
 router.get('/seller/me', requireSellerAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const userUuid = req.user?.uuid;
     if (!userUuid) {
+      // यह requireSellerAuth के कारण शायद ही कभी होगा, लेकिन सुरक्षा के लिए
       return res.status(401).json({ error: 'User not authenticated or UUID missing.' });
     }
 
@@ -167,14 +183,21 @@ router.get('/seller/me', requireSellerAuth, async (req: AuthenticatedRequest, re
 
     const [seller] = await db.select().from(sellersPgTable).where(eq(sellersPgTable.userId, dbUser.id));
     if (!seller) {
-      return res.status(404).json({ error: 'Seller profile not found.' });
+      // यह स्थिति तब हो सकती है जब उपयोगकर्ता की भूमिका 'seller' हो लेकिन sellersPgTable में कोई एंट्री न हो (डेटा असंगति)
+      return res.status(404).json({ error: 'Seller profile not found in seller records.' });
     }
+    // यदि विक्रेता नहीं मिलता है, तो 200 OK के साथ null भेजें जैसा कि क्लाइंट उम्मीद कर सकता है।
+    // यदि 404 पर ही फेंकना है, तो सुनिश्चित करें कि क्लाइंट इसे संभालता है।
+    // आपके apiRequest फंक्शन में 404 को एरर के रूप में संभाला जाएगा।
+    // यदि क्लाइंट null/empty data की उम्मीद करता है जब कोई विक्रेता नहीं होता है,
+    // तो यहाँ res.status(200).json(null) होना चाहिए था। लेकिन अब 404 सही है अगर यह "न पाया गया" है।
     res.status(200).json(seller);
   } catch (error: any) {
-    console.error('Failed to fetch seller profile:', error);
+    console.error('Failed to fetch seller profile (api/seller/me):', error);
     res.status(500).json({ error: 'Internal server error.' });
   }
 });
+
 
 // --- Categories Routes ---
 router.get('/categories', async (req: Request, res: Response) => {
@@ -250,6 +273,9 @@ router.post('/seller/products', requireSellerAuth, async (req: AuthenticatedRequ
       categoryId: req.body.categoryId || (await db.select().from(categories).limit(1))[0].id,
     };
 
+    // यहां आप insertProductSchema का उपयोग करके productData को वैलिडेट कर सकते हैं
+    // const parsedProductData = insertProductSchema.parse(productData);
+
     const [newProduct] = await db.insert(products).values(productData).returning();
     res.status(201).json(newProduct);
   } catch (error: any) {
@@ -279,9 +305,9 @@ router.post('/delivery-boys/register', async (req: Request, res: Response) => {
   }
 });
 
-// Admin Routes
+// --- Admin Routes ---
 const adminRouter = Router();
-adminRouter.use(requireAdminAuth); 
+adminRouter.use(requireAdminAuth); // एडमिन राउट्स के लिए एडमिन प्रमाणीकरण लागू करें
 
 adminRouter.use('/products/approve', adminApproveProductRoutes);
 adminRouter.use('/products/reject', adminRejectProductRoutes);
@@ -289,7 +315,7 @@ adminRouter.use('/products', adminProductsRoutes);
 adminRouter.use('/vendors', adminVendorsRoutes);   
 adminRouter.use('/password', adminPasswordRoutes); 
 
-// एडमिन रूट: विक्रेताओं को देखना
+// एडमिन रूट: विक्रेताओं को देखना (लंबित)
 adminRouter.get('/sellers', async (req: AuthenticatedRequest, res: Response) => {
   try {
     const pendingSellers = await db.select().from(sellersPgTable).where(eq(sellersPgTable.approvalStatus, approvalStatusEnum.enumValues[0]));
@@ -369,7 +395,4 @@ router.use('/admin', adminRouter); // `/api/admin/*` को हैंडल क�
 // यह फ़ंक्शन server/index.ts में उपयोग किया जाएगा
 export function registerRoutes(app: express.Express) {
   app.use("/api", router); 
-
-  // ❌ इस लाइन को हटा दें, यह डुप्लीकेट है और समस्या पैदा कर रही है
-  // app.use('/api/auth',apiAuthLoginRouter); 
-        }
+    }
