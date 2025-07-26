@@ -18,7 +18,11 @@ const __dirname = path.dirname(__filename);
 const app: Express = express();
 let server: Server;
 
-app.use(cors());
+app.use(cors({
+  origin: 'https://shopnish-9vlk.onrender.com', 
+  methods: ['GET', 'POST', 'PUT', 'DELETE'], // जिन HTTP मेथड्स की आप अनुमति देते हैं
+  credentials: true, // यह बहुत महत्वपूर्ण है जब आप ऑथराइजेशन हेडर भेजते हैं
+}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
