@@ -19,6 +19,7 @@ import { requireAuth, requireAdminAuth, requireSellerAuth } from './middleware/a
 
 import apiAuthLoginRouter from './roots/apiAuthLogin.ts';
 
+import sellerMeRouter from './routes/sellerMe.ts';
 
 import adminApproveProductRoutes from './roots/admin/approve-product.ts';
 import adminRejectProductRoutes from './roots/admin/reject-product.ts';
