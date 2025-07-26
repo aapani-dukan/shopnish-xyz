@@ -21,5 +21,6 @@ export default defineConfig({
   // कनेक्शन क्रेडेन्शियल्स
   dbCredentials: {
     url: process.env.DATABASE_URL,
+    ssl: { rejectUnauthorized: false }
   },
 });
