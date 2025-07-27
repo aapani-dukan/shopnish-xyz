@@ -55,7 +55,7 @@ export default function SellerOnboardingDialog({ isOpen, onClose }: SellerOnboar
   const { user, isAuthenticated, isLoadingAuth } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate(); // ✅ Changed from useLocation to useNavigate
-  const [showSuccess, setShowSuccess] = useState(false);
+//  const [showSuccess, setShowSuccess] = useState(false);
   const queryClient = useQueryClient();
 
   // यदि डायलॉग खुलते ही isAuthenticated नहीं है, तो तुरंत लॉग इन पेज पर रीडायरेक्ट करें
@@ -140,7 +140,8 @@ export default function SellerOnboardingDialog({ isOpen, onClose }: SellerOnboar
       return (response as { data: any }).data;
     },
     onSuccess: (data) => {
-      setShowSuccess(true);
+      onClose();
+     // setShowSuccess(true);
       form.reset();
       queryClient.invalidateQueries({ queryKey: ["/api/sellers/me"] });
       queryClient.invalidateQueries({ queryKey: ["user"] });
@@ -152,7 +153,7 @@ export default function SellerOnboardingDialog({ isOpen, onClose }: SellerOnboar
 
       // Navigate after a short delay for success message to be seen
       setTimeout(() => {
-        setShowSuccess(false);
+      //  setShowSuccess(false);
         onClose();
         navigate("/seller-status"); // ✅ Use navigate
       }, 2000);
