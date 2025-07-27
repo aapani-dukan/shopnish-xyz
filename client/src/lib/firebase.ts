@@ -5,69 +5,57 @@ import {
   getAuth,
   GoogleAuthProvider,
   signInWithRedirect,
-  signInWithPopup, // ✅ signInWithPopup को इम्पोर्ट करें
-  getRedirectResult, // ✅ getRedirectResult को इम्पोर्ट करें
+  signInWithPopup,
+  getRedirectResult,
   signOut,
   onAuthStateChanged, // ✅ onAuthStateChanged को इम्पोर्ट करें
-  User // ✅ User टाइप को इम्पोर्ट करें
+  User
 } from "firebase/auth";
 
-// ✅ Import config from env.ts
 import { firebaseConfig } from "./env";
 
-// ✅ Initialize Firebase app (safe init)
 const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 
-// ✅ Get Firebase Auth instance and Google Provider
-export const auth = getAuth(app); // auth को सीधे एक्सपोर्ट करें
+export const auth = getAuth(app);
 const provider = new GoogleAuthProvider();
 
-// Add scopes for additional user information
 provider.addScope('profile');
 provider.addScope('email');
 
-// Replit के AuthError इंटरफ़ेस को यहां परिभाषित करें
 export interface AuthError {
   code: string;
   message: string;
   details?: string;
 }
 
-// Replit के AuthResult इंटरफ़ेस को यहां परिभाषित करें
 export interface AuthResult {
   user: User | null;
   error: AuthError | null;
 }
 
-// ✅ Replit से signInWithGoogle लॉजिक
-// Sign in with Google using redirect flow with popup fallback
 export const signInWithGoogle = async (usePopup: boolean = false): Promise<User | null> => {
   try {
     console.log(`Attempting Google sign-in using ${usePopup ? 'popup' : 'redirect'} flow...`);
     
     if (usePopup) {
-      // Use popup for better compatibility with browsers blocking third-party storage
       console.log('Starting popup authentication...');
       const result = await signInWithPopup(auth, provider);
       console.log('Popup authentication successful:', result.user.email);
       return result.user;
     } else {
-      // Use redirect flow
       console.log('Starting redirect authentication...');
       await signInWithRedirect(auth, provider);
       console.log('Redirect initiated, page will reload...');
-      return null; // Redirect flow returns user after page reload
+      return null;
     }
   } catch (error: any) {
     console.error('Authentication error:', error);
     
-    // If redirect fails due to third-party storage blocking, fallback to popup
     if (error.code === 'auth/web-storage-unsupported' && !usePopup) {
       console.log('Storage unsupported, trying popup fallback...');
-      return await signInWithGoogle(true); // खुद को रिकर्सिवली कॉल करें, popup के साथ
+      return await signInWithGoogle(true);
     }
     
-    // Handle unauthorized domain error specifically
     if (error.code === 'auth/unauthorized-domain') {
       throw {
         code: error.code,
@@ -84,8 +72,6 @@ export const signInWithGoogle = async (usePopup: boolean = false): Promise<User 
   }
 };
 
-// ✅ Replit से handleRedirectResult लॉजिक
-// Handle redirect result after user returns from Google
 export const handleRedirectResult = async (): Promise<AuthResult> => {
   try {
     const result = await getRedirectResult(auth);
@@ -94,7 +80,6 @@ export const handleRedirectResult = async (): Promise<AuthResult> => {
       const user = result.user;
       const credential = GoogleAuthProvider.credentialFromResult(result);
       
-      // Store the access token if needed
       if (credential?.accessToken) {
         sessionStorage.setItem('google_access_token', credential.accessToken);
       }
@@ -147,8 +132,6 @@ export const handleRedirectResult = async (): Promise<AuthResult> => {
   }
 };
 
-// ✅ Replit से signOutUser लॉजिक (आपके मौजूदा logout को बदल देगा)
-// Sign out the current user
 export const signOutUser = async (): Promise<void> => {
   try {
     await signOut(auth);
@@ -164,14 +147,16 @@ export const signOutUser = async (): Promise<void> => {
   }
 };
 
-// ✅ Replit से onAuthStateChange लॉजिक (आपके useAuth हुक में उपयोग होगा)
-// Listen to authentication state changes
+// ✅ onAuthStateChanged फ़ंक्शन को सीधे निर्यात करें
+export { onAuthStateChanged };
+
+// ✅ onAuthStateChange को हटाने की आवश्यकता नहीं है, यदि अन्य फ़ाइलें इसका उपयोग कर रही हैं तो इसे रखें।
+// लेकिन useAuth.tsx अब सीधे onAuthStateChanged को आयात करेगा।
 export const onAuthStateChange = (callback: (user: User | null) => void) => {
   return onAuthStateChanged(auth, callback);
 };
 
-// ✅ Replit से checkBrowserCompatibility लॉजिक
-// Check if third-party storage is likely blocked
+
 export const checkBrowserCompatibility = (): { isCompatible: boolean; warnings: string[] } => {
   const warnings: string[] = [];
   let isCompatible = true;
@@ -181,7 +166,6 @@ export const checkBrowserCompatibility = (): { isCompatible: boolean; warnings: 
   const isFirefox = userAgent.includes('Firefox');
   const isSafari = userAgent.includes('Safari') && !userAgent.includes('Chrome');
   
-  // Check for browsers that might block third-party storage
   if (isChrome) {
     warnings.push('Chrome 115+ may block third-party storage access. Ensure cookies are enabled.');
   }
@@ -192,7 +176,6 @@ export const checkBrowserCompatibility = (): { isCompatible: boolean; warnings: 
     warnings.push('Safari 16.1+ may block third-party storage access. Disable "Prevent cross-site tracking" for this site.');
   }
   
-  // Check if cookies are enabled
   if (!navigator.cookieEnabled) {
     warnings.push('Cookies are disabled. Please enable cookies for authentication to work.');
     isCompatible = false;
@@ -201,7 +184,6 @@ export const checkBrowserCompatibility = (): { isCompatible: boolean; warnings: 
   return { isCompatible, warnings };
 };
 
-// पुराने export को नए से बदलें
 export { app }; 
 export { signOutUser as logout };
 export const signInWithGooglePopup = () => signInWithGoogle(true);
