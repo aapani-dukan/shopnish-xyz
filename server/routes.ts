@@ -262,9 +262,12 @@ router.post('/seller/products', requireSellerAuth, async (req: AuthenticatedRequ
     }
 
     const [seller] = await db.select().from(sellersPgTable).where(eq(sellersPgTable.userId, dbUser.id));
-    if (!seller) {
-      return res.status(404).json({ error: 'Seller profile not found for this user.' });
-    }
+    
+if (!seller) {
+  return res.status(404).json({ message: 'Seller profile not found for this user.' });
+}
+
+      
 
     const productData = {
       ...req.body,
