@@ -21,8 +21,8 @@ export const users = pgTable("users", {
 
   email: text("email").notNull().unique(),
   name: text("name"),
-  firstName: text("first_name").nullable(), 
-  lastName: text("last_name").nullable(),
+ firstName: text("first_name").default(null),
+  lastName: text("last_name").default(null),
   phone: text("phone"),
   // Drizzle pgEnum का उपयोग करें
   role: userRoleEnum("role").notNull().default("customer"),
