@@ -126,70 +126,89 @@ router.post('/auth/logout', async (req, res) => {
 
 // POST /api/sellers/apply
 
-
+// server/routes.ts (या संबंधित फाइल)
 
 router.post('/sellers/apply', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+  // ✅ यहाँ लॉग जोड़ें
+  console.log('--- POST /sellers/apply request received ---');
+  console.log('Request Body:', req.body); // देखें कि रिक्वेस्ट बॉडी क्या है
+  
   try {
     const userUuid = req.user?.uuid; 
 
     if (!userUuid) {
+      console.log('Error: User not authenticated or UUID missing.');
       return res.status(401).json({ error: 'User not authenticated or UUID missing.' });
     }
+    console.log('Authenticated user UUID:', userUuid);
 
     const [dbUser] = await db.select({ id: users.id, role: users.role, approvalStatus: users.approvalStatus })
                                .from(users).where(eq(users.uuid, userUuid));
 
     if (!dbUser) {
+        console.log('Error: User not found in database for application.');
         return res.status(404).json({ error: 'User not found in database for application.' });
     }
+    console.log('DB User found:', dbUser.id, dbUser.role);
 
     const [existingSeller] = await db.select().from(sellersPgTable).where(eq(sellersPgTable.userId, dbUser.id));
     if (existingSeller) {
-      // ✅ यदि आवेदन पहले से मौजूद है, तो उसकी वर्तमान स्थिति के आधार पर प्रतिक्रिया दें।
-      // यह क्लाइंट को बताएगा कि क्या आवेदन लंबित है, स्वीकृत है, या अस्वीकृत है।
+      console.log('Existing seller application found:', existingSeller.approvalStatus);
       let message = 'Seller application already exists for this user.';
       let statusCode = 409; // Conflict
 
       if (existingSeller.approvalStatus === approvalStatusEnum.enumValues[0]) { // 'pending'
           message = 'You have already submitted your seller application. It is currently pending review.';
-          statusCode = 200; // 200 OK लौटाएं क्योंकि यह एक वैध स्थिति है
+          statusCode = 200;
       } else if (existingSeller.approvalStatus === approvalStatusEnum.enumValues[1]) { // 'approved'
           message = 'You are already an approved seller.';
-          statusCode = 200; // 200 OK लौटाएं
+          statusCode = 200;
       } else if (existingSeller.approvalStatus === approvalStatusEnum.enumValues[2]) { // 'rejected'
           message = 'Your previous seller application was rejected. Please contact support for re-application.';
-          statusCode = 200; // 200 OK लौटाएं
+          statusCode = 200;
       }
+      // ✅ यहाँ लॉग जोड़ें
+      console.log('Sending existing seller response:', { message: message, sellerProfile: existingSeller });
       return res.status(statusCode).json({ message: message, sellerProfile: existingSeller });
     }
+    console.log('No existing seller application found, proceeding with new application.');
 
-    // ✅ sellerData में approvalStatus को 'pending' पर सेट करें
     const sellerData = {
       ...req.body,
       userId: dbUser.id,
       approvalStatus: approvalStatusEnum.enumValues[0], // 'pending'
-      applicationDate: new Date(), // आवेदन की तारीख जोड़ना महत्वपूर्ण है
+      applicationDate: new Date(),
     };
+    console.log('Seller data to insert:', sellerData);
 
     const [newSeller] = await db.insert(sellersPgTable).values(sellerData).returning();
+    console.log("Seller data inserted into DB:", newSeller);
 
-    // ✅ उपयोगकर्ता की भूमिका को 'seller' और अनुमोदन स्थिति को 'pending' पर अपडेट करें
     await db.update(users).set({ 
-      role: userRoleEnum.enumValues[1], // 'seller'
-      approvalStatus: approvalStatusEnum.enumValues[0], // 'pending'
+      role: userRoleEnum.enumValues[1],
+      approvalStatus: approvalStatusEnum.enumValues[0],
     }).where(eq(users.id, dbUser.id));
+    console.log("User role updated successfully.");
 
-    // ✅ सफल होने पर 201 Created लौटाएं और नया विक्रेता प्रोफ़ाइल भेजें
+    // ✅ यहाँ लॉग जोड़ें
+    console.log("Sending successful new seller application response:", {
+        message: 'Seller application submitted successfully! It is pending review.',
+        sellerProfile: newSeller
+    });
+
     res.status(201).json({
         message: 'Seller application submitted successfully! It is pending review.',
         sellerProfile: newSeller
     });
   } catch (error: any) {
-    console.error('Seller application failed:', error);
-    // ✅ सुनिश्चित करें कि आप JSON एरर रिस्पॉन्स भेजें
+    console.error('Seller application failed with error:', error);
+    // ✅ यहाँ लॉग जोड़ें
+    console.log('Sending error response for seller application:', error.message);
     res.status(500).json({ error: 'Internal server error during seller application.' });
   }
 });
+
+
 
 // GET /api/seller/me (केवल विक्रेताओं के लिए)
 router.get('/seller/me', requireSellerAuth, async (req: AuthenticatedRequest, res: Response) => {
