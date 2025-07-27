@@ -55,43 +55,34 @@ export default function SellerOnboardingDialog({ isOpen, onClose }: SellerOnboar
   // ✅ Removed: const [showSuccess, setShowSuccess] = useState(false);
   const queryClient = useQueryClient();
 
-  const { data: existingSellerProfile, isLoading: isSellerProfileLoading } = useQuery<SellerProfile | null, Error>({
-    queryKey: ["/api/sellers/me", user?.uid],
-    queryFn: async ({ signal }) => {
-      if (!user?.idToken) {
-        return null;
+const { data: existingSellerProfile, isLoading: isSellerProfileLoading } = useQuery<SellerProfile | null, Error>({
+  queryKey: ["/api/sellers/me", user?.uid],
+  queryFn: async ({ signal }) => {
+    if (!user?.idToken) {
+      return null;
+    }
+    try {
+      // सीधे apiRequest का उपयोग करें
+      const responseData = await apiRequest("GET", `/api/sellers/me`, undefined, { signal });
+      // apiRequest या तो T (SellerProfile) या null (यदि 204/खाली/null JSON) लौटाता है, या एरर फेंकता है
+      return responseData as SellerProfile | null;
+    } catch (error: any) {
+      // अगर apiRequest ने 404 (या कोई अन्य HTTP एरर) फेंकी है, तो उसे यहाँ पकड़ा जाएगा।
+      // हमें इसे null के रूप में मानने की आवश्यकता हो सकती है यदि कोई विक्रेता नहीं मिला है
+      if (error.message.includes('404')) { // एरर मैसेज में 404 देखें
+        console.log("Seller profile not found (404), proceeding with registration form.");
+        return null; // 404 को मौजूदा प्रोफाइल न होने के रूप में मानें
       }
-      try {
-        const response = await apiRequest("GET", `/api/sellers/me`, {
-          headers: { Authorization: `Bearer ${user.idToken}` },
-          signal,
-        });
-        // ✅ यह लॉजिक client/src/lib/queryClient.ts से आने वाली प्रतिक्रिया पर निर्भर करता है।
-        // यदि apiRequest सीधे null लौटाता है (जैसा कि हम चाहते हैं), तो response.data की आवश्यकता नहीं होगी।
-        // इस लाइन को सुरक्षित रखने के लिए, apiRequest को टाइप T लौटाना चाहिए।
-        // यदि apiRequest सीधे null लौटाता है, तो आपको बस 'return response;' कहना होगा।
-        // यदि apiRequest एक { data: T } ऑब्जेक्ट लौटाता है, तो यह ठीक है।
-        // अभी के लिए, मैं इसे जैसा है वैसा ही छोड़ रहा हूँ, क्योंकि मुख्य समस्या apiRequest के अंदर है।
-        if (response && typeof response === "object" && "data" in response) {
-          return (response as { data: SellerProfile }).data;
-        }
-        // यदि response सीधे SellerProfile या null है, तो इसे सीधे लौटाएं
-        return response as SellerProfile | null; // सुनिश्चित करें कि apiRequest सही टाइप लौटा रहा है
+      console.error("Error fetching seller profile:", error);
+      throw error; // अन्य एरर को फिर से फेंकें
+    }
+  },
+  enabled: !isLoadingAuth && isAuthenticated && !!user?.idToken,
+  staleTime: 5 * 60 * 1000,
+  gcTime: 10 * 60 * 1000,
+  retry: false,
+});
 
-      } catch (error: any) {
-        if (error?.response?.status === 404) {
-          console.log("Seller profile not found (404), proceeding with registration form.");
-          return null;
-        }
-        console.error("Error fetching seller profile:", error);
-        throw error;
-      }
-    },
-    enabled: !isLoadingAuth && isAuthenticated && !!user?.idToken,
-    staleTime: 5 * 60 * 1000,
-    gcTime: 10 * 60 * 1000,
-    retry: false,
-  });
 
   const form = useForm<FormData>({
     resolver: zodResolver(sellerFormSchema),
