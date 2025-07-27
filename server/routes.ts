@@ -184,7 +184,7 @@ router.get('/seller/me', requireSellerAuth, async (req: AuthenticatedRequest, re
     const [seller] = await db.select().from(sellersPgTable).where(eq(sellersPgTable.userId, dbUser.id));
     if (!seller) {
       // यह स्थिति तब हो सकती है जब उपयोगकर्ता की भूमिका 'seller' हो लेकिन sellersPgTable में कोई एंट्री न हो (डेटा असंगति)
-      return res.status(404).json({ error: 'Seller profile not found in seller records.' });
+      return res.status(200).json(null);
     }
     // यदि विक्रेता नहीं मिलता है, तो 200 OK के साथ null भेजें जैसा कि क्लाइंट उम्मीद कर सकता है।
     // यदि 404 पर ही फेंकना है, तो सुनिश्चित करें कि क्लाइंट इसे संभालता है।
