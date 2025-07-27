@@ -2,7 +2,7 @@
 
 import { QueryClient } from '@tanstack/react-query';
 import { auth } from './firebase.ts'; // Firebase auth इंस्टेंस इम्पोर्ट करें
-import { getAuth } from "firebase/auth"; /
+import { getAuth } from "firebase/auth"; 
 export const queryClient = new QueryClient();
 
 // एक जेनेरिक API रिक्वेस्ट फ़ंक्शन
