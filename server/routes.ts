@@ -125,6 +125,9 @@ router.post('/auth/logout', async (req, res) => {
 // --- Seller Routes ---
 
 // POST /api/sellers/apply
+
+
+
 router.post('/sellers/apply', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const userUuid = req.user?.uuid; 
@@ -142,59 +145,49 @@ router.post('/sellers/apply', requireAuth, async (req: AuthenticatedRequest, res
 
     const [existingSeller] = await db.select().from(sellersPgTable).where(eq(sellersPgTable.userId, dbUser.id));
     if (existingSeller) {
-      // यदि उपयोगकर्ता पहले से ही एक विक्रेता है, या आवेदन लंबित/अस्वीकृत है
-      return res.status(409).json({ error: 'Seller application already exists for this user.' });
+      // ✅ यदि आवेदन पहले से मौजूद है, तो उसकी वर्तमान स्थिति के आधार पर प्रतिक्रिया दें।
+      // यह क्लाइंट को बताएगा कि क्या आवेदन लंबित है, स्वीकृत है, या अस्वीकृत है।
+      let message = 'Seller application already exists for this user.';
+      let statusCode = 409; // Conflict
+
+      if (existingSeller.approvalStatus === approvalStatusEnum.enumValues[0]) { // 'pending'
+          message = 'You have already submitted your seller application. It is currently pending review.';
+          statusCode = 200; // 200 OK लौटाएं क्योंकि यह एक वैध स्थिति है
+      } else if (existingSeller.approvalStatus === approvalStatusEnum.enumValues[1]) { // 'approved'
+          message = 'You are already an approved seller.';
+          statusCode = 200; // 200 OK लौटाएं
+      } else if (existingSeller.approvalStatus === approvalStatusEnum.enumValues[2]) { // 'rejected'
+          message = 'Your previous seller application was rejected. Please contact support for re-application.';
+          statusCode = 200; // 200 OK लौटाएं
+      }
+      return res.status(statusCode).json({ message: message, sellerProfile: existingSeller });
     }
 
+    // ✅ sellerData में approvalStatus को 'pending' पर सेट करें
     const sellerData = {
       ...req.body,
       userId: dbUser.id,
       approvalStatus: approvalStatusEnum.enumValues[0], // 'pending'
+      applicationDate: new Date(), // आवेदन की तारीख जोड़ना महत्वपूर्ण है
     };
 
     const [newSeller] = await db.insert(sellersPgTable).values(sellerData).returning();
 
-    // उपयोगकर्ता की भूमिका और अनुमोदन स्थिति को अपडेट करें
+    // ✅ उपयोगकर्ता की भूमिका को 'seller' और अनुमोदन स्थिति को 'pending' पर अपडेट करें
     await db.update(users).set({ 
       role: userRoleEnum.enumValues[1], // 'seller'
       approvalStatus: approvalStatusEnum.enumValues[0], // 'pending'
     }).where(eq(users.id, dbUser.id));
 
-    res.status(201).json(newSeller);
+    // ✅ सफल होने पर 201 Created लौटाएं और नया विक्रेता प्रोफ़ाइल भेजें
+    res.status(201).json({
+        message: 'Seller application submitted successfully! It is pending review.',
+        sellerProfile: newSeller
+    });
   } catch (error: any) {
     console.error('Seller application failed:', error);
-    res.status(400).json({ error: error.message });
-  }
-});
-
-// GET /api/seller/me (केवल विक्रेताओं के लिए)
-router.get('/seller/me', requireSellerAuth, async (req: AuthenticatedRequest, res: Response) => {
-  try {
-    const userUuid = req.user?.uuid;
-    if (!userUuid) {
-      // यह requireSellerAuth के कारण शायद ही कभी होगा, लेकिन सुरक्षा के लिए
-      return res.status(401).json({ error: 'User not authenticated or UUID missing.' });
-    }
-
-    const [dbUser] = await db.select({ id: users.id }).from(users).where(eq(users.uuid, userUuid));
-    if (!dbUser) {
-      return res.status(404).json({ error: 'User not found in database for seller profile.' });
-    }
-
-    const [seller] = await db.select().from(sellersPgTable).where(eq(sellersPgTable.userId, dbUser.id));
-    if (!seller) {
-      // यह स्थिति तब हो सकती है जब उपयोगकर्ता की भूमिका 'seller' हो लेकिन sellersPgTable में कोई एंट्री न हो (डेटा असंगति)
-      return res.status(200).json({});
-    }
-    // यदि विक्रेता नहीं मिलता है, तो 200 OK के साथ null भेजें जैसा कि क्लाइंट उम्मीद कर सकता है।
-    // यदि 404 पर ही फेंकना है, तो सुनिश्चित करें कि क्लाइंट इसे संभालता है।
-    // आपके apiRequest फंक्शन में 404 को एरर के रूप में संभाला जाएगा।
-    // यदि क्लाइंट null/empty data की उम्मीद करता है जब कोई विक्रेता नहीं होता है,
-    // तो यहाँ res.status(200).json(null) होना चाहिए था। लेकिन अब 404 सही है अगर यह "न पाया गया" है।
-    res.status(200).json(seller);
-  } catch (error: any) {
-    console.error('Failed to fetch seller profile (api/seller/me):', error);
-    res.status(500).json({ error: 'Internal server error.' });
+    // ✅ सुनिश्चित करें कि आप JSON एरर रिस्पॉन्स भेजें
+    res.status(500).json({ error: 'Internal server error during seller application.' });
   }
 });
 
