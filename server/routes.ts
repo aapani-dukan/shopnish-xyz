@@ -191,6 +191,35 @@ router.post('/sellers/apply', requireAuth, async (req: AuthenticatedRequest, res
   }
 });
 
+// GET /api/seller/me (केवल विक्रेताओं के लिए)
+router.get('/seller/me', requireSellerAuth, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const userUuid = req.user?.uuid;
+    if (!userUuid) {
+      return res.status(401).json({ error: 'User not authenticated or UUID missing.' });
+    }
+
+    const [dbUser] = await db.select({ id: users.id }).from(users).where(eq(users.uuid, userUuid));
+    if (!dbUser) {
+      return res.status(404).json({ error: 'User not found in database for seller profile.' });
+    }
+
+    const [seller] = await db.select().from(sellersPgTable).where(eq(sellersPgTable.userId, dbUser.id));
+    if (!seller) {
+      // ✅ महत्वपूर्ण बदलाव: 404 Not Found के साथ एक स्पष्ट JSON एरर रिस्पॉन्स भेजें।
+      // यह क्लाइंट-साइड apiRequest के 404 हैंडलिंग के साथ सही ढंग से संरेखित होता है।
+      return res.status(404).json({ message: 'Seller profile not found for this user.' });
+    }
+
+    // विक्रेता मिलने पर 200 OK के साथ विक्रेता डेटा भेजें
+    res.status(200).json(seller);
+  } catch (error: any) {
+    console.error('Failed to fetch seller profile (api/seller/me):', error);
+    // सुनिश्चित करें कि आप हमेशा एक JSON एरर रिस्पॉन्स भेजते हैं
+    res.status(500).json({ error: 'Internal server error fetching seller profile.' });
+  }
+});
+
 
 // --- Categories Routes ---
 router.get('/categories', async (req: Request, res: Response) => {
