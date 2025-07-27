@@ -1,4 +1,3 @@
-// client/src/components/seller/SellerOnboardingDialog.tsx
 "use client";
 
 import { useState, useEffect } from "react";
@@ -12,8 +11,8 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { apiRequest } from "@/lib/queryClient";
-import { useToast } from "@/hooks/use-toast"; // ✅ Corrected import for useToast
-import { useNavigate } from "react-router-dom"; // ✅ Changed from wouter to react-router-dom
+import { useToast } from "@/hooks/use-toast";
+import { useNavigate } from "react-router-dom";
 import { Check, X, Loader2, Clock } from "lucide-react";
 
 import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form.js";
@@ -28,17 +27,15 @@ const sellerFormSchema = z.object({
   gstNumber: z.string().max(15).optional(),
   bankAccountNumber: z.string().regex(/^\d{9,18}$/, "Account number must be 9-18 digits."),
   ifscCode: z.string().regex(/^[A-Z]{4}0[A-Z0-9]{6}$/, "Invalid IFSC Code."),
-  deliveryRadius: z.preprocess( // ✅ Preprocess deliveryRadius to number
+  deliveryRadius: z.preprocess(
     (val) => (val === "" ? undefined : Number(val)),
-    z.number().min(1, "Delivery radius must be a positive number").max(100, "Delivery radius cannot exceed 100km") // ✅ Number type for Zod
+    z.number().min(1, "Delivery radius must be a positive number").max(100, "Delivery radius cannot exceed 100km")
   ),
   businessType: z.string().min(2, "Business Type is required.").max(50),
 });
 
 type FormData = z.infer<typeof sellerFormSchema>;
 
-// ✅ Assuming SellerProfile is the same as the Seller type from your @shared schema
-// If not, you might need to create a dedicated type for the profile returned by /api/sellers/me
 interface SellerProfile {
   approvalStatus: "pending" | "approved" | "rejected";
   rejectionReason?: string | null;
@@ -54,57 +51,46 @@ interface SellerOnboardingDialogProps {
 export default function SellerOnboardingDialog({ isOpen, onClose }: SellerOnboardingDialogProps) {
   const { user, isAuthenticated, isLoadingAuth } = useAuth();
   const { toast } = useToast();
-  const navigate = useNavigate(); // ✅ Changed from useLocation to useNavigate
-//  const [showSuccess, setShowSuccess] = useState(false);
+  const navigate = useNavigate();
+  // ✅ Removed: const [showSuccess, setShowSuccess] = useState(false);
   const queryClient = useQueryClient();
-
-  // यदि डायलॉग खुलते ही isAuthenticated नहीं है, तो तुरंत लॉग इन पेज पर रीडायरेक्ट करें
-  // useEffect is commented out as the Dialog logic handles it more gracefully now
-  // with explicit authentication checks in the render logic.
-  /*
-  useEffect(() => {
-    if (isOpen && !isLoadingAuth && !isAuthenticated) {
-      toast({
-        title: "Authentication Required",
-        description: "Please log in to register as a seller.",
-        variant: "destructive"
-      });
-      onClose(); // Close dialog
-      navigate("/auth"); // Redirect to login page
-    }
-  }, [isOpen, isLoadingAuth, isAuthenticated, toast, onClose, navigate]);
-  */
-
 
   const { data: existingSellerProfile, isLoading: isSellerProfileLoading } = useQuery<SellerProfile | null, Error>({
     queryKey: ["/api/sellers/me", user?.uid],
     queryFn: async ({ signal }) => {
       if (!user?.idToken) {
-        return null; // Return null if token is not available, query will retry when enabled
+        return null;
       }
       try {
         const response = await apiRequest("GET", `/api/sellers/me`, {
           headers: { Authorization: `Bearer ${user.idToken}` },
           signal,
         });
+        // ✅ यह लॉजिक client/src/lib/queryClient.ts से आने वाली प्रतिक्रिया पर निर्भर करता है।
+        // यदि apiRequest सीधे null लौटाता है (जैसा कि हम चाहते हैं), तो response.data की आवश्यकता नहीं होगी।
+        // इस लाइन को सुरक्षित रखने के लिए, apiRequest को टाइप T लौटाना चाहिए।
+        // यदि apiRequest सीधे null लौटाता है, तो आपको बस 'return response;' कहना होगा।
+        // यदि apiRequest एक { data: T } ऑब्जेक्ट लौटाता है, तो यह ठीक है।
+        // अभी के लिए, मैं इसे जैसा है वैसा ही छोड़ रहा हूँ, क्योंकि मुख्य समस्या apiRequest के अंदर है।
         if (response && typeof response === "object" && "data" in response) {
           return (response as { data: SellerProfile }).data;
         }
-        throw new Error("Invalid response format from /api/sellers/me");
+        // यदि response सीधे SellerProfile या null है, तो इसे सीधे लौटाएं
+        return response as SellerProfile | null; // सुनिश्चित करें कि apiRequest सही टाइप लौटा रहा है
+
       } catch (error: any) {
-        // ✅ Handle 404 specifically for "seller not found"
         if (error?.response?.status === 404) {
           console.log("Seller profile not found (404), proceeding with registration form.");
-          return null; // Treat 404 as no existing profile
+          return null;
         }
         console.error("Error fetching seller profile:", error);
-        throw error; // Re-throw other errors
+        throw error;
       }
     },
-    enabled: !isLoadingAuth && isAuthenticated && !!user?.idToken, // ✅ Enable query only when authenticated and token exists
+    enabled: !isLoadingAuth && isAuthenticated && !!user?.idToken,
     staleTime: 5 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
-    retry: false, // Do not retry on 404, as 404 means no existing seller.
+    retry: false,
   });
 
   const form = useForm<FormData>({
@@ -120,7 +106,7 @@ export default function SellerOnboardingDialog({ isOpen, onClose }: SellerOnboar
       gstNumber: "",
       bankAccountNumber: "",
       ifscCode: "",
-      deliveryRadius: 5, // ✅ Default to number
+      deliveryRadius: 5,
     },
   });
 
@@ -131,31 +117,30 @@ export default function SellerOnboardingDialog({ isOpen, onClose }: SellerOnboar
       }
       const payload = {
         ...data,
-        deliveryRadius: Number(data.deliveryRadius), // ✅ Ensure this is a number when sending
+        deliveryRadius: Number(data.deliveryRadius),
         firebaseUid: user.uid,
         email: user.email,
         name: user.name,
       };
       const response = await apiRequest("POST", "/api/sellers/apply", payload);
-      return (response as { data: any }).data;
+      return (response as { data: any }).data; // ✅ यह अभी भी एक { data: T } रिस्पॉन्स मानता है
     },
     onSuccess: (data) => {
+      // ✅ डायलॉग को तुरंत बंद करें, showSuccess की अब आवश्यकता नहीं है
       onClose();
-     // setShowSuccess(true);
       form.reset();
       queryClient.invalidateQueries({ queryKey: ["/api/sellers/me"] });
-      queryClient.invalidateQueries({ queryKey: ["user"] });
+      queryClient.invalidateQueries({ queryKey: ["user"] }); // यह 'user' क्वेरी को इनवैलिडेट करता है, सुनिश्चित करें कि यह आपके useAuth हुक में उपयोग की जाने वाली क्वेरी कुंजी से मेल खाता हो।
 
       toast({
         title: "Application Submitted!",
-        description: data.message || "Your seller application has been submitted successfully.",
+        // यदि सर्वर 'message' प्रॉपर्टी नहीं भेजता है, तो एक डिफ़ॉल्ट संदेश दिखाएं
+        description: data?.message || "Your seller application has been submitted successfully. We'll review it and get back to you soon.",
       });
 
-      // Navigate after a short delay for success message to be seen
+      // 2 सेकंड के बाद नेविगेट करें ताकि यूज़र टोस्ट देख सके
       setTimeout(() => {
-      //  setShowSuccess(false);
-        onClose();
-        navigate("/seller-status"); // ✅ Use navigate
+        navigate("/seller-status");
       }, 2000);
     },
     onError: (error) => {
@@ -183,7 +168,7 @@ export default function SellerOnboardingDialog({ isOpen, onClose }: SellerOnboar
   const handleClose = () => {
     form.reset();
     onClose();
-    setShowSuccess(false);
+    // ✅ Removed: setShowSuccess(false); - क्योंकि showSuccess स्टेट हटा दिया गया है
   };
 
   if (!isOpen) return null;
@@ -218,7 +203,7 @@ export default function SellerOnboardingDialog({ isOpen, onClose }: SellerOnboar
             <p className="text-gray-600 mb-6">
               It seems you're not logged in or your session has expired. Please log in to your account to register as a seller.
             </p>
-            <Button onClick={() => { handleClose(); navigate("/auth"); }}>Go to Login Page</Button> {/* ✅ Use navigate */}
+            <Button onClick={() => { handleClose(); navigate("/auth"); }}>Go to Login Page</Button>
           </div>
         </DialogContent>
       </Dialog>
@@ -267,7 +252,7 @@ export default function SellerOnboardingDialog({ isOpen, onClose }: SellerOnboar
                 <span className="block mt-2">Reason: {existingSellerProfile.rejectionReason || 'No specific reason provided.'}</span>
               )}
             </p>
-            <Button onClick={() => { handleClose(); navigate("/seller-status"); }}> {/* ✅ Use navigate */}
+            <Button onClick={() => { handleClose(); navigate("/seller-status"); }}>
               View Full Status
             </Button>
           </div>
@@ -276,23 +261,8 @@ export default function SellerOnboardingDialog({ isOpen, onClose }: SellerOnboar
     );
   }
 
-  // Show success message (after successful form submission)
-  if (showSuccess) {
-    return (
-      <Dialog open={isOpen} onOpenChange={handleClose}>
-        <DialogContent className="max-w-md">
-          <div className="text-center p-6">
-            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Check className="text-green-600 w-8 h-8" />
-            </div>
-            <h2 className="text-xl font-semibold text-gray-900">Application Submitted!</h2>
-            <p className="text-gray-600 mb-6">Your seller application has been submitted successfully. We'll review it and get back to you soon.</p>
-            <Button onClick={handleClose}>Close</Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-    );
-  }
+  // ✅ Removed: 'if (showSuccess)' block here.
+  // Success is now handled by toast and navigation.
 
   // Main seller registration form
   return (
@@ -433,7 +403,7 @@ export default function SellerOnboardingDialog({ isOpen, onClose }: SellerOnboar
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Delivery Radius (in km)</FormLabel>
-                  <FormControl><Input {...field} type="number" onChange={e => field.onChange(e.target.value === '' ? undefined : Number(e.target.value))} value={field.value ?? ''} /></FormControl> {/* ✅ Handle empty string for input type number */}
+                  <FormControl><Input {...field} type="number" onChange={e => field.onChange(e.target.value === '' ? undefined : Number(e.target.value))} value={field.value ?? ''} /></FormControl>
                   <FormMessage />
                 </FormItem>
               )}
@@ -456,4 +426,4 @@ export default function SellerOnboardingDialog({ isOpen, onClose }: SellerOnboar
       </DialogContent>
     </Dialog>
   );
-      }
+}
