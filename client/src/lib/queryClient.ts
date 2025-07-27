@@ -6,40 +6,49 @@ import { auth } from './firebase.ts'; // Firebase auth इंस्टेंस 
 export const queryClient = new QueryClient();
 
 // एक जेनेरिक API रिक्वेस्ट फ़ंक्शन
+
 export async function apiRequest<T>(
   method: 'GET' | 'POST' | 'PUT' | 'DELETE',
-  path: string, // API पाथ (जैसे "/api/auth/login")
-  data?: unknown // POST/PUT/DELETE के लिए बॉडी डेटा
+  path: string,
+  data?: unknown,
+  options?: RequestInit // Add options parameter for more flexibility
 ): Promise<T> {
-  // ✅ baseUrl को वापस लाएं और इसे अनिवार्य बनाएं
   const baseUrl = import.meta.env.VITE_BACKEND_URL;
   if (!baseUrl) {
-    throw new Error('VITE_BACKEND_URL is not defined in environment variables.');
+    throw new Error('VITE_BACKEND_URL पर्यावरण वैरिएबल में परिभाषित नहीं है।');
   }
 
-  const url = `${baseUrl}${path}`; // ✅ baseUrl का उपयोग करके पूर्ण URL बनाएं
+  const url = `${baseUrl}${path}`;
 
   const headers: HeadersInit = {
     'Content-Type': 'application/json',
+    ...(options?.headers || {}), // Merge any additional headers
   };
 
-  // Firebase ID टोकन प्राप्त करें और इसे Authorization हेडर में जोड़ें
-  try {
-    const currentUser = auth.currentUser;
-    if (currentUser) {
-      const idToken = await currentUser.getIdToken();
-      headers['Authorization'] = `Bearer ${idToken}`;
-      console.log(`apiRequest: Adding Authorization header with token (length: ${idToken.length}) for path: ${path}`);
-    } else {
-      console.log(`apiRequest: No current Firebase user for path: ${path}, not adding Authorization header.`);
+  // Firebase ID टोकन अधिग्रहण (यह खंड आपकी मूल फ़ाइल से अपरिवर्तित रहेगा)
+  const auth = getAuth();
+  const user = auth.currentUser;
+  if (user) {
+    try {
+      const token = await user.getIdToken();
+      headers['Authorization'] = `Bearer ${token}`;
+    } catch (error) {
+      console.error("Firebase ID टोकन प्राप्त करने में त्रुटि:", error);
+      throw new Error("प्रमाणीकरण टोकन प्राप्त करने में विफल। कृपया पुनः प्रयास करें।");
     }
-  } catch (error) {
-    console.error("Error getting Firebase ID token in apiRequest:", error);
+  } else if (path !== '/api/auth/login' && path !== '/api/auth/signup') {
+    // केवल उन पथों के लिए एरर फेंकें जिन्हें प्रमाणीकरण की आवश्यकता होती है
+    // उन पथों को छोड़ दें जिन्हें प्रमाणीकरण की आवश्यकता नहीं होती है (जैसे /api/products, /api/categories)
+    // यदि आपकी API बिना टोकन के कुछ सार्वजनिक डेटा प्रदान करती है
+    console.warn(`प्रमाणीकरण टोकन के बिना API अनुरोध ${path} पर किया गया।`);
   }
+  // ----------------------------------------------------------------------
+
 
   const config: RequestInit = {
     method,
     headers,
+    ...options, // Merge any additional request options
   };
 
   if (data && (method === 'POST' || method === 'PUT')) {
@@ -49,44 +58,64 @@ export async function apiRequest<T>(
   try {
     const response = await fetch(url, config);
 
-    // ✅ त्रुटि रिस्पॉन्स को बेहतर ढंग से संभालें
     if (!response.ok) {
-      let errorDetail = 'Unknown error';
-      // यदि रिस्पॉन्स JSON है, तो एरर डिटेल पार्स करने की कोशिश करें
-      const contentType = response.headers.get('content-type');
-      if (contentType && contentType.includes('application/json')) {
-        try {
-          const errorData = await response.json();
-          errorDetail = errorData.message || JSON.stringify(errorData);
-        } catch (jsonError) {
-          console.error("Failed to parse error response JSON:", jsonError);
-          errorDetail = await response.text(); // JSON न होने पर टेक्स्ट के रूप में पढ़ें
+      let errorDetail = 'अज्ञात त्रुटि';
+      let responseText = ''; // रिस्पॉन्स टेक्स्ट को स्टोर करने के लिए
+
+      try {
+        responseText = await response.text(); // पहले टेक्स्ट के रूप में पढ़ें
+        const contentType = response.headers.get('content-type');
+
+        if (contentType && contentType.includes('application/json')) {
+          // यदि JSON है, तो इसे पार्स करने का प्रयास करें
+          const errorData = JSON.parse(responseText);
+          errorDetail = errorData.message || errorData.error || JSON.stringify(errorData);
+        } else {
+          // यदि JSON नहीं है, तो सादे टेक्स्ट को एरर के रूप में उपयोग करें
+          errorDetail = responseText || `स्थिति: ${response.status} ${response.statusText}`;
         }
-      } else {
-        errorDetail = await response.text(); // JSON न होने पर टेक्स्ट के रूप में पढ़ें
+      } catch (parseError) {
+        // यदि JSON.parse या response.text() में कोई एरर आती है
+        console.error(`एरर प्रतिक्रिया को पार्स करने में विफल रहा (स्थिति: ${response.status}, सामग्री: "${responseText.substring(0, 100)}"):`, parseError);
+        errorDetail = `प्रतिक्रिया पढ़ने में त्रुटि। स्थिति: ${response.status} ${response.statusText}. सामग्री का एक हिस्सा: ${responseText.substring(0, 50)}...`;
       }
-      throw new Error(`API request failed: ${response.status} ${response.statusText} - ${errorDetail} for path: ${path}`);
+      throw new Error(`API अनुरोध विफल: ${response.status} - ${errorDetail} पथ के लिए: ${path}`);
     }
 
-    // ✅ 204 No Content को हैंडल करें
-    if (response.status === 204) {
-      return null as T; // 204 के लिए null रिटर्न करें
+    if (response.status === 204) { // No Content
+      return null as T;
     }
 
-    // ✅ सुनिश्चित करें कि रिस्पॉन्स में JSON कंटेंट है
     const contentType = response.headers.get('content-type');
     if (contentType && contentType.includes('application/json')) {
-      return await response.json() as T;
+      const responseText = await response.text(); // ✅ पहले टेक्स्ट के रूप में पढ़ें
+      if (responseText.trim() === 'null' || responseText.trim() === '') {
+        console.warn(`खाली या 'null' JSON प्रतिक्रिया के साथ 200 OK प्राप्त हुआ ${path} के लिए। इसे null माना जा रहा है।`);
+        return null as T;
+      }
+      try {
+        return JSON.parse(responseText) as T; // ✅ टेक्स्ट को JSON के रूप में पार्स करें
+      } catch (parseError) {
+        console.error(`"${path}" के लिए JSON पार्सिंग त्रुटि (सामग्री: "${responseText.substring(0, 100)}"):`, parseError);
+        throw new Error(`अमान्य JSON प्रतिक्रिया पथ के लिए: ${path}. प्राप्त सामग्री: ${responseText}`);
+      }
     } else {
-      // यदि अपेक्षित JSON नहीं है, तो एक एरर फेंकें या खाली ऑब्जेक्ट/टेक्स्ट रिटर्न करें
-      // सुरक्षा के लिए, हम यहां एरर फेंकना पसंद करेंगे यदि हम हमेशा JSON की उम्मीद करते हैं
-      throw new Error(`Expected JSON response, but received content type: ${contentType} for path: ${path}`);
+      const responseText = await response.text();
+      if (responseText.trim() === "") {
+         console.warn(`गैर-JSON खाली प्रतिक्रिया के साथ 200 OK प्राप्त हुआ ${path} के लिए। इसे null माना जा रहा है।`);
+         return null as T;
+      }
+      throw new Error(`अपेक्षित JSON प्रतिक्रिया, लेकिन प्राप्त content type: ${contentType || 'कोई नहीं'} और पथ के लिए गैर-खाली टेक्स्ट: ${path}। प्रतिक्रिया: ${responseText.substring(0, 200)}`);
     }
 
   } catch (error) {
-    console.error(`Error during API request to ${url}:`, error);
-    // एरर को आगे बढ़ाएं ताकि कॉलिंग कोड इसे पकड़ सके
-    throw error;
+    // सुनिश्चित करें कि हम एक मानक Error ऑब्जेक्ट फेंकते हैं
+    if (error instanceof Error) {
+        console.error(`API अनुरोध के दौरान त्रुटि ${url} पर:`, error);
+        throw error;
+    } else {
+        console.error(`API अनुरोध के दौरान एक अज्ञात त्रुटि ${url} पर:`, error);
+        throw new Error(`API अनुरोध के दौरान एक अज्ञात त्रुटि: ${JSON.stringify(error)}`);
+    }
   }
 }
-
