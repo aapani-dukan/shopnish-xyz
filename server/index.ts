@@ -3,7 +3,7 @@
 import express, { type Request, type Response, type NextFunction, type Express } from "express";
 import cors from "cors";
 import { registerRoutes } from "./routes.ts";
-import './lib/firebaseAdmin.ts'; // Firebase Admin SDK init
+import './lib/firebaseAdmin.ts';
 import { createServer, type Server } from "http";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
@@ -20,8 +20,9 @@ let server: Server;
 
 app.use(cors({
   origin: 'https://shopnish-9vlk.onrender.com', 
-  methods: ['GET', 'POST', 'PUT', 'DELETE'], // जिन HTTP मेथड्स की आप अनुमति देते हैं
-  credentials: true, // यह बहुत महत्वपूर्ण है जब आप ऑथराइजेशन हेडर भेजते हैं
+  // ✅ OPTIONS मेथड को जोड़ें
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'], // ✨ यह महत्वपूर्ण बदलाव है ✨
+  credentials: true, 
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
@@ -102,14 +103,7 @@ async function runMigrations() {
 })();
 
 // --- Request Logging Middleware ---
-// सुनिश्चित करें कि यह भी API राउट्स के बाद और स्टैटिक फाइल सर्विंग से पहले हो
-// मैंने इसे आपके कोड में नीचे रखा था, इसे यहां से हटाकर राउट्स के ऊपर ला रहा हूँ
-// ताकि यह सभी रिक्वेस्ट्स को लॉग कर सके।
-// लेकिन अगर आप केवल API रिक्वेस्ट्स को लॉग करना चाहते हैं (जैसा कि आपके कोड में था)
-// तो इसे रजिस्टरRoutes के बाद ही रहने दें, लेकिन app.get("*") से पहले।
-// आपके मौजूदा कोड के हिसाब से, इसे वहीं रहने दें जहाँ यह है,
-// बशर्ते यह API राउट्स के बाद ही आए।
-// इसका क्रम आपकी मुख्य समस्या नहीं है, इसलिए मैं इसे छेड़ नहीं रहा।
+// यह यहाँ ठीक है, क्योंकि यह registerRoutes के बाद आता है
 app.use((req, res, next) => {
   const start = Date.now();
   const p = req.path;
@@ -122,7 +116,7 @@ app.use((req, res, next) => {
   };
 
   res.on("finish", () => {
-    if (!p.startsWith("/api")) return; // यह लॉगिंग केवल /api राउट्स के लिए है
+    if (!p.startsWith("/api")) return;
     const ms = Date.now() - start;
     let line = `${req.method} ${p} ${res.statusCode} in ${ms}ms`;
     if (captured) line += ` :: ${JSON.stringify(captured)}`;
