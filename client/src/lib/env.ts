@@ -9,4 +9,4 @@ export const firebaseConfig = {
   appId: "1:352463214204:web:a3adc9ef1d8af0de1fdbf9"
 };
 
-export const API_BASE = "https://shopnish-9vlk.onrender.com"; // ✅ Safe
+export const API_BACKEND_URL = "https://shopnish-9vlk.onrender.com"; // ✅ Safe
