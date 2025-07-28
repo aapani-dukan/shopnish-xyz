@@ -2,6 +2,7 @@
 
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
 import { auth } from './firebase.ts'; // Firebase auth इंस्टेंस इम्पोर्ट करें
+import { API_BACKEND_URL } from './env.ts'; // ✅ API_BACKEND_URL को इम्पोर्ट करें
 
 // यह फ़ंक्शन जांचता है कि HTTP रिस्पॉन्स सफल है या नहीं।
 // यदि नहीं, तो यह एक एरर फेंकता है जिसमें स्टेटस और रिस्पॉन्स टेक्स्ट शामिल होता है।
@@ -40,12 +41,19 @@ export async function apiRequest(
   data?: unknown | undefined,
   requestOptions?: RequestInit // अतिरिक्त fetch options के लिए
 ): Promise<Response> {
-  const baseUrl = import.meta.env.VITE_BACKEND_URL;
+  // ✅ अब सीधे इम्पोर्टेड API_BACKEND_URL का उपयोग करें
+  const baseUrl = API_BACKEND_URL; // 'import.meta.env.VITE_BACKEND_URL' की जगह इसे इस्तेमाल करें
+
+  // यह if कंडीशन अब उतनी आवश्यक नहीं है यदि API_BACKEND_URL env.ts में हमेशा सेट होता है
+  // लेकिन इसे सुरक्षित रखने के लिए रख सकते हैं यदि आप चाहें
   if (!baseUrl) {
-    throw new Error('VITE_BACKEND_URL पर्यावरण वैरिएबल में परिभाषित नहीं है।');
+    throw new Error('API_BACKEND_URL पर्यावरण वैरिएबल में परिभाषित नहीं है।');
   }
 
   const url = `${baseUrl}${path}`;
+
+  // ✅ यह console.log अब आपको बताएगा कि रिक्वेस्ट किस URL पर भेजा जा रहा है
+  console.log(`[API Request] Sending ${method} request to: ${url}`);
 
   const headers: HeadersInit = {
     'Content-Type': 'application/json',
