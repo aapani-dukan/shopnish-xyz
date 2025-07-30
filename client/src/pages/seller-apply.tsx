@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react"; 
 import { useAuth } from "@/hooks/useAuth";
-import SellerOnboardingDialog from "@/components/headers/seller/SellerOnboardingDialog"; 
+import SellerOnboardingDialog from "@/components/seller/SellerOnboardingDialog"; 
 import { useNavigate } from "react-router-dom";
 
 const SellerApply = () => { 
