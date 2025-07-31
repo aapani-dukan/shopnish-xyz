@@ -11,11 +11,6 @@ import { Pool } from "pg";
 import path from "path";
 import { fileURLToPath } from "url";
 import cookieParser from "cookie-parser";
-// Seller routes
-import sellerApplyRoute from '../routes/sellers/apply.ts';
-import sellerApproveRoute from '../routes/sellers/approve.ts';
-import sellerRejectRoute from '../routes/sellers/reject.ts';
-import sellerPendingRoute from '../routes/sellers/pending.ts';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -130,9 +125,3 @@ app.use((req, res, next) => {
 
   next();
 });
-
-// Mount seller routes
-app.use('/sellers/apply', sellerApplyRoute);
-app.use('/sellers/approve', sellerApproveRoute);
-app.use('/sellers/reject', sellerRejectRoute);
-app.use('/sellers/pending', sellerPendingRoute);
