@@ -3,7 +3,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useAuth, authenticatedApiRequest} from "../../hooks/useAuth";
+import { useAuth, authenticatedApiRequest } from "../../hooks/useAuth";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "../ui/button";
@@ -77,7 +77,6 @@ export default function SellerOnboardingDialog({ isOpen, onClose }: SellerOnboar
     },
   });
 
-
   const registerSellerMutation = useMutation<any, Error, FormData>({
     mutationFn: async (data: FormData) => {
       // ✅ सुनिश्चित करें कि token और uid मौजूद हैं
@@ -92,14 +91,13 @@ export default function SellerOnboardingDialog({ isOpen, onClose }: SellerOnboar
         name: user.name,
       };
 
-      // ✅ अब authenticatedApiRequest का उपयोग करें
-      const response = await authenticatedApiRequest("/api/sellers/apply", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
-      }, user.idToken);
+      // ✅ अब authenticatedApiRequest का उपयोग सही तरीके से करें
+      const response = await authenticatedApiRequest(
+        "POST",
+        "/api/sellers/apply",
+        payload,
+        user.idToken
+      );
 
       const responseData = await response.json(); 
       return responseData;
@@ -128,8 +126,6 @@ export default function SellerOnboardingDialog({ isOpen, onClose }: SellerOnboar
       });
     },
   });
-
-
 
   const onSubmit = (data: FormData) => {
     if (isLoadingAuth || !isAuthenticated || !user?.uid || !user?.idToken) {
@@ -394,4 +390,4 @@ export default function SellerOnboardingDialog({ isOpen, onClose }: SellerOnboar
       </DialogContent>
     </Dialog>
   );
-                    }
+}
