@@ -69,18 +69,48 @@ async function runMigrations() {
   await runMigrations();
   console.log("✅ Migrations done. Starting server...");
 
-  // Register all API routes - इसे यहाँ पहले रखें
+  // --- Request Logging Middleware ---
+  // Move this before registerRoutes to catch all requests
+  app.use((req, res, next) => {
+    const start = Date.now();
+    const p = req.path;
+    let captured: unknown;
+
+    const orig = res.json.bind(res);
+    res.json = (body, ...rest) => {
+      captured = body;
+      return orig(body, ...rest);
+    };
+
+    res.on("finish", () => {
+      if (!p.startsWith("/api")) return;
+      const ms = Date.now() - start;
+      let line = `${req.method} ${p} ${res.statusCode} in ${ms}ms`;
+      if (captured) line += ` :: ${JSON.stringify(captured)}`;
+      console.log(line.length > 90 ? line.slice(0, 89) + "…" : line);
+    });
+
+    next();
+  });
+
+  // Register all API routes
   registerRoutes(app);
 
-  // Serve static client files (जैसे index.html) - इसे API राउट्स के बाद रखें
-  // यह केवल उन रिक्वेस्ट्स को पकड़ेगा जो किसी भी API रूट से मैच नहीं खाते
+  // Serve static client files in production
   if (isProd) {
-    // अगर आप क्लाइंट-साइड बिल्ड को /dist/public में रख रहे हैं
-    // तो यहाँ से स्टैटिक फाइलों को सर्व करें
-    app.use(express.static(path.resolve(__dirname, "..", "dist", "public"))); // ✅ ADD THIS LINE
+    app.use(express.static(path.resolve(__dirname, "..", "dist", "public")));
 
     app.get("*", (req, res) => {
       res.sendFile(path.resolve(__dirname, "..", "dist", "public", "index.html"));
+    });
+  } else {
+    // Development mode: proxy non-API routes to Vite dev server
+    app.get("*", (req, res) => {
+      if (!req.path.startsWith("/api")) {
+        res.redirect(`http://localhost:5173${req.path}`);
+      } else {
+        res.status(404).json({ error: "API route not found" });
+      }
     });
   }
 
@@ -101,27 +131,3 @@ async function runMigrations() {
     console.log(`🚀 Server listening on port ${port} in ${isProd ? "production" : "development"} mode`)
   );
 })();
-
-// --- Request Logging Middleware ---
-// यह यहाँ ठीक है, क्योंकि यह registerRoutes के बाद आता है
-app.use((req, res, next) => {
-  const start = Date.now();
-  const p = req.path;
-  let captured: unknown;
-
-  const orig = res.json.bind(res);
-  res.json = (body, ...rest) => {
-    captured = body;
-    return orig(body, ...rest);
-  };
-
-  res.on("finish", () => {
-    if (!p.startsWith("/api")) return;
-    const ms = Date.now() - start;
-    let line = `${req.method} ${p} ${res.statusCode} in ${ms}ms`;
-    if (captured) line += ` :: ${JSON.stringify(captured)}`;
-    console.log(line.length > 90 ? line.slice(0, 89) + "…" : line);
-  });
-
-  next();
-});

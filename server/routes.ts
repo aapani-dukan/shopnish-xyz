@@ -35,6 +35,11 @@ router.get('/', (req: Request, res: Response) => {
   res.status(200).json({ message: 'API is running' });
 });
 
+// --- Health Check Route ---
+router.get('/health', (req: Request, res: Response) => {
+  res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
 // --- User Registration ---
 router.post('/register', async (req: Request, res: Response) => {
   try {
