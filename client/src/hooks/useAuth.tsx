@@ -47,6 +47,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 // ✅ apiRequest को एक नए Wrapper फंक्शन के साथ अपडेट किया गया है जो Authorization हेडर जोड़ता है
 // यह सुनिश्चित करता है कि जब भी हम API को कॉल करें, टोकन मौजूद हो
+
 export async function authenticatedApiRequest(method: 'GET' | 'POST' | 'PUT' | 'DELETE', url: string, data?: any, idToken?: string) {
   if (!idToken) {
     throw new Error("Authentication token is missing for API request.");
@@ -63,7 +64,15 @@ export async function authenticatedApiRequest(method: 'GET' | 'POST' | 'PUT' | '
     body: data ? JSON.stringify(data) : undefined,
   };
 
-  const response = await fetch(url, options);
+  // ✅ response वेरिएबल को यहाँ परिभाषित करें
+  let response;
+  
+  try {
+    response = await fetch(url, options);
+  } catch (e) {
+    // नेटवर्क एरर होने पर यहाँ एक स्पष्ट एरर थ्रो करें
+    throw new Error(`Network Error: ${e.message || 'Failed to fetch'}`);
+  }
 
   if (!response.ok) {
     let errorData = null;
@@ -78,6 +87,7 @@ export async function authenticatedApiRequest(method: 'GET' | 'POST' | 'PUT' | '
 
   return response;
 }
+
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
