@@ -93,7 +93,14 @@ export default function SellerOnboardingDialog({ isOpen, onClose }: SellerOnboar
       };
 
       // ✅ अब authenticatedApiRequest का उपयोग करें
-      
+      const response = await authenticatedApiRequest("/api/sellers/apply", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      }, user.idToken);
+
       const responseData = await response.json(); 
       return responseData;
     },

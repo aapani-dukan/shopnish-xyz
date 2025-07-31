@@ -34,11 +34,24 @@ router.post("/", verifyToken, async (req: AuthenticatedRequest, res: Response, n
       return res.status(400).json({ message: "Missing required seller details." });
     }
 
+    // Get user from database first
+    const userResult = await db
+      .select()
+      .from(users)
+      .where(eq(users.firebaseUid, firebaseUid))
+      .limit(1);
+
+    if (userResult.length === 0) {
+      return res.status(404).json({ message: "User not found in database." });
+    }
+
+    const dbUser = userResult[0];
+
     // Check if seller already exists
     const existingSellerResult = await db
       .select()
       .from(sellersPgTable)
-      .where(eq(sellersPgTable.userId, firebaseUid))
+      .where(eq(sellersPgTable.userId, dbUser.id))
       .limit(1);
 
     if (existingSellerResult.length > 0) {
@@ -50,7 +63,7 @@ router.post("/", verifyToken, async (req: AuthenticatedRequest, res: Response, n
 
     // Prepare insert data
     const insertData = {
-      userId: firebaseUid,
+      userId: dbUser.id,
       businessName,
       businessAddress,
       businessPhone,
@@ -72,11 +85,11 @@ router.post("/", verifyToken, async (req: AuthenticatedRequest, res: Response, n
 
     const newSeller = newSellerResult[0];
 
-    // 🔄 Instead of "pending_seller", just keep the role as "seller" (system will decide based on approvalStatus)
+    // Update user role to seller
     const updatedUserResult = await db
       .update(users)
       .set({ role: "seller" })
-      .where(eq(users.firebaseUid, firebaseUid)) // 🧠 Confirm field name in your schema
+      .where(eq(users.firebaseUid, firebaseUid))
       .returning();
 
     const updatedUser = updatedUserResult[0];
