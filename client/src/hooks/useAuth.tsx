@@ -47,7 +47,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 // ✅ apiRequest को एक नए Wrapper फंक्शन के साथ अपडेट किया गया है जो Authorization हेडर जोड़ता है
 // यह सुनिश्चित करता है कि जब भी हम API को कॉल करें, टोकन मौजूद हो
-async function authenticatedApiRequest(method: 'GET' | 'POST' | 'PUT' | 'DELETE', url: string, data?: any, idToken?: string) {
+export async function authenticatedApiRequest(method: 'GET' | 'POST' | 'PUT' | 'DELETE', url: string, data?: any, idToken?: string) {
   if (!idToken) {
     throw new Error("Authentication token is missing for API request.");
   }
