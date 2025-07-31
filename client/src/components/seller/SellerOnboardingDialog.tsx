@@ -3,7 +3,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useAuth } from "../../hooks/useAuth";
+import { useAuth, authenticatedApiRequest} from "../../hooks/useAuth";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "../ui/button";
@@ -93,7 +93,7 @@ export default function SellerOnboardingDialog({ isOpen, onClose }: SellerOnboar
       };
 
       // ✅ अब authenticatedApiRequest का उपयोग करें
-      const response = await authenticatedApiRequest("POST", "/api/sellers/apply", payload, user.idToken);
+      
       const responseData = await response.json(); 
       return responseData;
     },
