@@ -16,6 +16,12 @@ export default defineConfig(({ command }) => {
 
     plugins: [react()],
 
+    server: {
+      host: '0.0.0.0',
+      port: 5173,
+      strictPort: true,
+    },
+
     define: {
       'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV ?? 'development'),
       global: 'window'

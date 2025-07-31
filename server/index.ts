@@ -104,10 +104,24 @@ async function runMigrations() {
       res.sendFile(path.resolve(__dirname, "..", "dist", "public", "index.html"));
     });
   } else {
-    // Development mode: proxy non-API routes to Vite dev server
+    // Development mode: serve a simple HTML page that redirects to Vite dev server
     app.get("*", (req, res) => {
       if (!req.path.startsWith("/api")) {
-        res.redirect(`http://localhost:5173${req.path}`);
+        res.send(`
+          <!DOCTYPE html>
+          <html>
+            <head>
+              <title>Redirecting...</title>
+              <meta http-equiv="refresh" content="0; url=http://0.0.0.0:5173${req.path}">
+            </head>
+            <body>
+              <p>Redirecting to development server...</p>
+              <script>
+                window.location.href = 'http://0.0.0.0:5173${req.path}';
+              </script>
+            </body>
+          </html>
+        `);
       } else {
         res.status(404).json({ error: "API route not found" });
       }
