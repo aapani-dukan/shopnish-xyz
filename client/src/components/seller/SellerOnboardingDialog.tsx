@@ -4,7 +4,7 @@
 
 import { useState, useEffect } from "react";
 import { useAuth } from "../../hooks/useAuth";
-import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query"; // ✅ useQuery को हटा दिया जाएगा
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "../ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,7 +12,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 import { Check, X, Loader2, Clock } from "lucide-react";
@@ -38,14 +37,12 @@ const sellerFormSchema = z.object({
 
 type FormData = z.infer<typeof sellerFormSchema>;
 
-// ✅ SellerInfo इंटरफ़ेस को useAuth.tsx से कॉपी किया गया है
 interface SellerInfo {
   approvalStatus: "pending" | "approved" | "rejected";
   rejectionReason?: string | null;
   id?: string;
   userId?: string;
   businessName?: string;
-  // अन्य seller properties यहाँ जोड़ें जो /api/sellers/me द्वारा लौटाई जाती हैं
 }
 
 interface SellerOnboardingDialogProps {
@@ -54,18 +51,14 @@ interface SellerOnboardingDialogProps {
 }
 
 export default function SellerOnboardingDialog({ isOpen, onClose }: SellerOnboardingDialogProps) {
-  const { user, isAuthenticated, isLoadingAuth } = useAuth(); // useAuth से user, isAuthenticated, isLoadingAuth प्राप्त करें
+  const { user, isAuthenticated, isLoadingAuth } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
-  // ✅ useQuery को हटा दिया गया है
-  // existingSellerProfile अब सीधे user.seller से आएगा जो useAuth हुक प्रदान करता है
-  const existingSellerProfile: SellerInfo | null | undefined = user?.seller; // ✅ user.seller का उपयोग करें
-  // isLoadingSellerProfile को isLoadingAuth या एक अलग फ्लैग से प्राप्त किया जा सकता है
-  // यदि useAuth में sellerProfile fetching के लिए एक समर्पित लोडिंग स्टेट है
-  const isSellerProfileLoading = isLoadingAuth; // सरलीकरण के लिए, इसे isLoadingAuth के बराबर मानें
-
+  // ✅ user?.sellerProfile का उपयोग करें, जैसा कि useAuth में सेट किया गया है
+  const existingSellerProfile: SellerInfo | null | undefined = user?.sellerProfile;
+  const isSellerProfileLoading = isLoadingAuth;
 
   const form = useForm<FormData>({
     resolver: zodResolver(sellerFormSchema),
@@ -86,8 +79,9 @@ export default function SellerOnboardingDialog({ isOpen, onClose }: SellerOnboar
 
   const registerSellerMutation = useMutation<any, Error, FormData>({
     mutationFn: async (data: FormData) => {
+      // ✅ सुनिश्चित करें कि token और uid मौजूद हैं
       if (!user?.idToken || !user?.uid) {
-        throw new new Error("User not authenticated or Firebase UID/Token missing at mutation time.");
+        throw new Error("User not authenticated or Firebase UID/Token missing at mutation time.");
       }
       const payload = {
         ...data,
@@ -96,17 +90,17 @@ export default function SellerOnboardingDialog({ isOpen, onClose }: SellerOnboar
         email: user.email,
         name: user.name,
       };
-      const response = await apiRequest("POST", "/api/sellers/apply", payload);
-      // ✅ apiRequest अब एक Response ऑब्जेक्ट लौटाता है, इसलिए .json() को कॉल करें
+
+      // ✅ authenticatedApiRequest का उपयोग करें, जो Authorization हेडर जोड़ता है
+      const response = await authenticatedApiRequest("POST", "/api/sellers/apply", payload, user.idToken);
       const responseData = await response.json(); 
-      return responseData; // यह { message: string, sellerProfile: SellerInfo } जैसा कुछ होना चाहिए
+      return responseData;
     },
     onSuccess: (data) => {
       onClose();
       form.reset();
-      // ✅ sellerProfile क्वेरी को इनवैलिडेट करें ताकि useAuth में अपडेटेड डेटा प्राप्त हो
-      queryClient.invalidateQueries({ queryKey: ["sellerProfile", user?.uid] }); 
-      queryClient.invalidateQueries({ queryKey: ["/api/users/me"] }); // सुनिश्चित करें कि /api/users/me भी अपडेट हो
+      queryClient.invalidateQueries({ queryKey: ["sellerProfile", user?.uid] });
+      queryClient.invalidateQueries({ queryKey: ["/api/users/me"] });
 
       toast({
         title: "Application Submitted!",
@@ -145,12 +139,8 @@ export default function SellerOnboardingDialog({ isOpen, onClose }: SellerOnboar
     onClose();
   };
 
-  // यदि डायलॉग खुला नहीं है, तो कुछ भी रेंडर न करें
   if (!isOpen) return null;
 
-  // --- Render based on loading and authentication status ---
-
-  // यदि प्रमाणीकरण अभी भी लोड हो रहा है
   if (isLoadingAuth) {
     return (
       <Dialog open={isOpen} onOpenChange={handleClose}>
@@ -165,7 +155,6 @@ export default function SellerOnboardingDialog({ isOpen, onClose }: SellerOnboar
     );
   }
 
-  // यदि प्रमाणीकरण पूर्ण है लेकिन उपयोगकर्ता लॉग इन नहीं है
   if (!isAuthenticated) {
     return (
       <Dialog open={isOpen} onOpenChange={handleClose}>
@@ -185,8 +174,7 @@ export default function SellerOnboardingDialog({ isOpen, onClose }: SellerOnboar
     );
   }
 
-  // यदि विक्रेता प्रोफ़ाइल लोड हो रही है (यह तब हो सकता है जब useAuth अभी भी विक्रेता डेटा फ़ेच कर रहा हो)
-  if (isSellerProfileLoading) { // यह isLoadingAuth के बराबर है, इसलिए यह ऊपर के ब्लॉक के समान हो सकता है
+  if (isSellerProfileLoading) {
     return (
       <Dialog open={isOpen} onOpenChange={handleClose}>
         <DialogContent className="max-w-md">
@@ -200,8 +188,6 @@ export default function SellerOnboardingDialog({ isOpen, onClose }: SellerOnboar
     );
   }
 
-  // यदि एक मौजूदा विक्रेता प्रोफ़ाइल मिली है (user.seller अब पॉपुलेटेड है)
-  // यह तब चलेगा जब user.seller null या undefined नहीं है।
   if (existingSellerProfile) {
     const statusText = existingSellerProfile.approvalStatus === "approved"
       ? "Approved"
@@ -237,7 +223,6 @@ export default function SellerOnboardingDialog({ isOpen, onClose }: SellerOnboar
     );
   }
 
-  // मुख्य विक्रेता पंजीकरण फॉर्म
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -399,4 +384,4 @@ export default function SellerOnboardingDialog({ isOpen, onClose }: SellerOnboar
       </DialogContent>
     </Dialog>
   );
-}
+                    }
