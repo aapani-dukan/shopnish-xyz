@@ -12,10 +12,10 @@ import path from "path";
 import { fileURLToPath } from "url";
 import cookieParser from "cookie-parser";
 // Seller routes
-import sellerApplyRoute from './routes/sellers/apply.ts';
-import sellerApproveRoute from './routes/sellers/approve.ts';
-import sellerRejectRoute from './routes/sellers/reject.ts';
-import sellerPendingRoute from './routes/sellers/pending.ts';
+import sellerApplyRoute from '../routes/sellers/apply.ts';
+import sellerApproveRoute from '../routes/sellers/approve.ts';
+import sellerRejectRoute from '../routes/sellers/reject.ts';
+import sellerPendingRoute from '../routes/sellers/pending.ts';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
