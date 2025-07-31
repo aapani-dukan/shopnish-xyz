@@ -45,8 +45,6 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// ✅ apiRequest को एक नए Wrapper फंक्शन के साथ अपडेट किया गया है जो Authorization हेडर जोड़ता है
-// यह सुनिश्चित करता है कि जब भी हम API को कॉल करें, टोकन मौजूद हो
 
 export async function authenticatedApiRequest(method: 'GET' | 'POST' | 'PUT' | 'DELETE', url: string, data?: any, idToken?: string) {
   if (!idToken) {
@@ -64,29 +62,28 @@ export async function authenticatedApiRequest(method: 'GET' | 'POST' | 'PUT' | '
     body: data ? JSON.stringify(data) : undefined,
   };
 
-  // ✅ response वेरिएबल को यहाँ परिभाषित करें
-  let response;
-  
   try {
-    response = await fetch(url, options);
-  } catch (e) {
-    // नेटवर्क एरर होने पर यहाँ एक स्पष्ट एरर थ्रो करें
-    throw new Error(`Network Error: ${e.message || 'Failed to fetch'}`);
-  }
+    const response = await fetch(url, options); // ✅ response को try ब्लॉक के अंदर परिभाषित करें
 
-  if (!response.ok) {
-    let errorData = null;
-    try {
-      errorData = await response.json();
-    } catch (e) {
-      // JSON पार्सिंग विफल होने पर भी आगे बढ़ें
+    if (!response.ok) {
+      let errorData = null;
+      try {
+        errorData = await response.json();
+      } catch (e) {
+        // JSON पार्सिंग विफल होने पर भी आगे बढ़ें
+      }
+      const errorMessage = errorData?.error || `API Error: ${response.status} ${response.statusText}`;
+      throw new Error(errorMessage);
     }
-    const errorMessage = errorData?.error || `API Error: ${response.status} ${response.statusText}`;
-    throw new Error(errorMessage);
-  }
 
-  return response;
+    return response;
+  } catch (e) {
+    // ✅ किसी भी नेटवर्क या fetch-संबंधित एरर को यहाँ हैंडल करें
+    console.error("API Request Failed:", e);
+    throw new Error(`Failed to perform API request: ${e.message || 'Unknown error'}`);
+  }
 }
+
 
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
