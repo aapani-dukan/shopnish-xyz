@@ -77,6 +77,7 @@ export default function SellerOnboardingDialog({ isOpen, onClose }: SellerOnboar
     },
   });
 
+
   const registerSellerMutation = useMutation<any, Error, FormData>({
     mutationFn: async (data: FormData) => {
       // ✅ सुनिश्चित करें कि token और uid मौजूद हैं
@@ -91,7 +92,7 @@ export default function SellerOnboardingDialog({ isOpen, onClose }: SellerOnboar
         name: user.name,
       };
 
-      // ✅ authenticatedApiRequest का उपयोग करें, जो Authorization हेडर जोड़ता है
+      // ✅ अब authenticatedApiRequest का उपयोग करें
       const response = await authenticatedApiRequest("POST", "/api/sellers/apply", payload, user.idToken);
       const responseData = await response.json(); 
       return responseData;
@@ -120,6 +121,8 @@ export default function SellerOnboardingDialog({ isOpen, onClose }: SellerOnboar
       });
     },
   });
+
+
 
   const onSubmit = (data: FormData) => {
     if (isLoadingAuth || !isAuthenticated || !user?.uid || !user?.idToken) {
