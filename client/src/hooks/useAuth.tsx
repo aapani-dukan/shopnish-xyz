@@ -45,7 +45,8 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-
+// ✅ यहाँ authenticatedApiRequest फ़ंक्शन में कोई बदलाव नहीं किया है,
+// क्योंकि यह लॉजिकली सही है। समस्या कहीं और है।
 export async function authenticatedApiRequest(method: 'GET' | 'POST' | 'PUT' | 'DELETE', url: string, data?: any, idToken?: string) {
   if (!idToken) {
     throw new Error("Authentication token is missing for API request.");
@@ -63,28 +64,25 @@ export async function authenticatedApiRequest(method: 'GET' | 'POST' | 'PUT' | '
   };
 
   try {
-    const response = await fetch(url, options); // ✅ response को try ब्लॉक के अंदर परिभाषित करें
+    const response = await fetch(url, options);
 
     if (!response.ok) {
       let errorData = null;
       try {
         errorData = await response.json();
       } catch (e) {
-        // JSON पार्सिंग विफल होने पर भी आगे बढ़ें
+        console.error("Failed to parse JSON response:", e);
       }
       const errorMessage = errorData?.error || `API Error: ${response.status} ${response.statusText}`;
       throw new Error(errorMessage);
     }
 
     return response;
-  } catch (e) {
-    // ✅ किसी भी नेटवर्क या fetch-संबंधित एरर को यहाँ हैंडल करें
+  } catch (e: any) {
     console.error("API Request Failed:", e);
     throw new Error(`Failed to perform API request: ${e.message || 'Unknown error'}`);
   }
 }
-
-
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -96,8 +94,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setUser(null);
       setError(null);
       setIsLoadingAuth(false);
-      // Firebase उपयोगकर्ता नहीं होने पर सभी प्रासंगिक क्वेरीज़ को हटा दें
-      queryClient.removeQueries(); // ✅ सभी क्वेरीज़ को एक साथ हटाएँ
+      queryClient.removeQueries();
       return;
     }
 
@@ -111,8 +108,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
       let dbUserData: User | null = null;
       let sellerProfileData: SellerInfo | null = null;
-
-      // 1. अपने DB से मुख्य उपयोगकर्ता डेटा (जिसमें DB रोल और approvalStatus है) प्राप्त करें
+      
+      // ✅ Fetch user data from your DB
       try {
         const res = await authenticatedApiRequest("GET", `/api/users/me?firebaseUid=${firebaseUser.uid}`, undefined, idToken);
         const data = await res.json();
@@ -122,12 +119,19 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         setError({ code: "db/user-fetch-failed", message: "Failed to fetch full user info from database." });
       }
 
-      // 2. विक्रेता प्रोफ़ाइल डेटा फ़ेच करें (यदि लागू हो)
+      // ✅ Fetch seller profile data (if applicable)
       if (firebaseRole === "seller" || dbUserData?.role === "seller") {
         try {
           const res = await authenticatedApiRequest("GET", "/api/sellers/me", undefined, idToken);
-          sellerProfileData = await res.json() as SellerInfo;
-          console.log("Seller info fetched:", sellerProfileData);
+          // ✅ यहाँ डेटा को JSON में बदलने से पहले जांच करें
+          const textData = await res.text();
+          if (textData) {
+            sellerProfileData = JSON.parse(textData) as SellerInfo;
+            console.log("Seller info fetched:", sellerProfileData);
+          } else {
+            console.log("Seller profile not found for user (empty response).");
+            sellerProfileData = null;
+          }
         } catch (apiError: any) {
           if (apiError.message && apiError.message.includes('404')) {
             console.log("Seller profile not found for user (404).");
@@ -193,7 +197,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     console.log("🔄 Setting up onAuthStateChanged listener.");
     const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
       console.log("🔄 onAuthStateChanged listener fired. fbUser:", fbUser?.uid || "null");
-      // यदि fbUser बदल गया है या user अभी भी null है, तो processAndSetUser को कॉल करें
       if (fbUser && fbUser.uid !== user?.uid || (!fbUser && user)) {
         await processAndSetUser(fbUser);
       } else {
