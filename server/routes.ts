@@ -13,7 +13,7 @@ import {
   sellersPgTable,
 } from '../shared/backend/schema.ts';
 
-import { AuthenticatedRequest } from '../shared/types/auth.ts';
+import { AuthenticatedRequest } from './middleware/verifyToken.ts';
 import { requireAuth, requireAdminAuth } from './middleware/authMiddleware.ts';
 import { authAdmin } from './lib/firebaseAdmin.ts';
 
@@ -24,7 +24,7 @@ import adminRejectProductRoutes from './roots/admin/reject-product.ts';
 import adminProductsRoutes from './roots/admin/products.ts';
 import adminVendorsRoutes from './roots/admin/vendors.ts';
 import adminPasswordRoutes from './roots/admin/admin-password.ts';
-import sellerRoutes from './sellerRoutes.ts'; // ✅ नया जोड़ा गया
+import sellerRoutes from '../routes/sellers/sellerRoutes.ts'; // ✅ नया जोड़ा गया
 
 const router = Router();
 
