@@ -28,7 +28,7 @@ import adminProductsRoutes from './roots/admin/products.ts';
 import adminVendorsRoutes from './roots/admin/vendors.ts';
 import adminPasswordRoutes from './roots/admin/admin-password.ts';
 
-import sellerRoutes from '../routes/sellers/apply'; // ✅ Import करो
+//import sellerRoutes from '../routes/sellers/apply'; // ✅ Import करो
 
 
 
@@ -444,7 +444,7 @@ router.use('/admin', adminRouter); // `/api/admin/*` को हैंडल क�
 
 
 export function registerRoutes(app: Express) {
-  app.use('/api/sellers', sellerRoutes);
+//  app.use('/api/sellers', sellerRoutes);
   //app.use('/api/admin', adminRoutes);
   //app.use('/api/delivery', deliveryRoutes);
  // app.use('/api/products', productRoutes);
