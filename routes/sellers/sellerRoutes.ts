@@ -3,7 +3,7 @@
 import { Router, Request, Response } from 'express';
 import { eq } from 'drizzle-orm';
 import { db } from '../../server/db.ts';
-import { sellersPgTable, users, approvalStatusEnum, userRoleEnum } from '../../../shared/backend/schema.ts';
+import { sellersPgTable, users, approvalStatusEnum, userRoleEnum } from '../../shared/backend/schema.ts';
 import { requireAuth, requireSellerAuth } from '../../server/middleware/authMiddleware.ts';
 import { AuthenticatedRequest } from '../../server/middleware/verifyToken.ts ';
 
