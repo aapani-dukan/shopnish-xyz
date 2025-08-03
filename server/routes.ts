@@ -28,7 +28,7 @@ import adminProductsRoutes from './roots/admin/products.ts';
 import adminVendorsRoutes from './roots/admin/vendors.ts';
 import adminPasswordRoutes from './roots/admin/admin-password.ts';
 
-import sellerRoutes from './routes/sellers/apply'; // ✅ Import करो
+import sellerRoutes from '../routes/sellers/apply'; // ✅ Import करो
 
 
 
