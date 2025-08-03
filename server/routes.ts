@@ -1,6 +1,5 @@
 // server/routes.ts
 
-import { Express } from 'express';
 import { Router, Request, Response } from 'express';
 import { db } from './db.ts';
 import { eq, like } from 'drizzle-orm';
@@ -27,9 +26,6 @@ import adminRejectProductRoutes from './roots/admin/reject-product.ts';
 import adminProductsRoutes from './roots/admin/products.ts';
 import adminVendorsRoutes from './roots/admin/vendors.ts';
 import adminPasswordRoutes from './roots/admin/admin-password.ts';
-
-import sellerRoutes from '../routes/sellers/apply.ts'; // ✅ Import करो
-
 
 
 const router = Router(); // यह आपका मुख्य /api राउटर है, जो server/index.ts में /api के तहत माउंट किया जाएगा
@@ -131,7 +127,11 @@ router.post('/auth/logout', async (req, res) => {
   }
 });
 
+// --- Seller Routes ---
 
+// POST /api/sellers/apply
+
+// server/routes.ts (या संबंधित फाइल)
 
 router.post('/sellers/apply', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   // ✅ यहाँ लॉग जोड़ें
@@ -441,12 +441,8 @@ router.use('/admin', adminRouter); // `/api/admin/*` को हैंडल क�
 
 
 // --- registerRoutes फ़ंक्शन ---
+// यह फ़ंक्शन server/index.ts में उपयोग किया जाएगा
+export function registerRoutes(app: express.Express) {
+  app.use("/api", router); 
+                      }
 
-
-export function registerRoutes(app: Express) {
-  app.use('/api/sellers', sellerRoutes);
-  app.use('/api/admin', adminRoutes);
-  app.use('/api/delivery', deliveryRoutes);
-  app.use('/api/products', productRoutes);
-  // और भी जितने modules हैं, उन्हें यहीं bind करें
-}
