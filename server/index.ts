@@ -95,7 +95,7 @@ async function runMigrations() {
   });
 
   // Register all routes
-  registerRoutes(app);
+    app.use("/api", apiRouter);
 
   // Serve static files (production only)
   if (isProd) {
