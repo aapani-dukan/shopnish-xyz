@@ -2,7 +2,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "./useAuth";
 import axios from "axios";
-import { getAuth } from "firebase/auth"; // Token लेने के लिए
+import { getAuth } from "firebase/auth";
 
 interface Seller {
   id: string;
@@ -20,9 +20,16 @@ export function useSeller() {
       const auth = getAuth();
       const firebaseUser = auth.currentUser;
 
-      if (!firebaseUser) throw new Error("No Firebase user found.");
+      if (!firebaseUser) {
+        console.warn("🚫 useSeller: No Firebase user found.");
+        return null;
+      }
 
       const idToken = await firebaseUser.getIdToken();
+      if (!idToken) {
+        console.warn("🚫 useSeller: Failed to get ID token.");
+        return null;
+      }
 
       const response = await axios.get("/api/sellers/me", {
         headers: {
@@ -48,4 +55,3 @@ export function useSeller() {
     isAuthenticated,
   };
 }
-
