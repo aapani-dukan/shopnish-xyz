@@ -241,5 +241,5 @@ router.use('/admin', adminRouter);
 
 // --- Final route registration for Express app ---
 export function registerRoutes(app: express.Express) {
-  app.use("/api", router);
+  app.use('/api/sellers', sellerRouter);
 }
