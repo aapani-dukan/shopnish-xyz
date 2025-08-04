@@ -18,7 +18,6 @@ const __dirname = path.dirname(__filename);
 const app: Express = express();
 let server: Server;
 
-// --------------------- Middlewares ---------------------
 app.use(
   cors({
     origin: "https://shopnish-9vlk.onrender.com",
@@ -26,11 +25,12 @@ app.use(
     credentials: true,
   })
 );
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 
-// --------------------- Drizzle Migration ---------------------
+// --- Drizzle Migrations ---
 async function runMigrations() {
   const connectionString = process.env.DATABASE_URL;
   if (!connectionString) {
@@ -64,14 +64,14 @@ async function runMigrations() {
   }
 }
 
-// --------------------- Start Server ---------------------
+// --- Start Server ---
 (async () => {
   const isProd = process.env.NODE_ENV === "production";
 
   await runMigrations();
   console.log("✅ Migrations done. Starting server...");
 
-  // Request Logging Middleware (for API)
+  // --- Request Logging Middleware ---
   app.use((req, res, next) => {
     const start = Date.now();
     const p = req.path;
@@ -94,36 +94,31 @@ async function runMigrations() {
     next();
   });
 
-  // Register All Routes
+  // Register all routes
   registerRoutes(app);
 
-  // Serve static + SPA
+  // Serve static files (production only)
   if (isProd) {
-    const staticPath = path.resolve(__dirname, "..", "dist", "public");
-    app.use(express.static(staticPath));
-
-    app.get("*", (req, res) => {
-      if (!req.path.startsWith("/api")) {
-        res.sendFile(path.join(staticPath, "index.html"));
-      } else {
-        res.status(404).json({ error: "API route not found" });
-      }
+    app.use(express.static(path.resolve(__dirname, "..", "dist", "public")));
+    app.get("", (req, res) => {
+      res.sendFile(path.resolve(__dirname, "..", "dist", "public", "index.html"));
     });
   } else {
-    // Dev mode SPA redirect
-    app.get("*", (req, res) => {
+    // Dev mode redirect
+    app.get("", (req, res) => {
       if (!req.path.startsWith("/api")) {
-        const target = `http://0.0.0.0:5173${req.path}`;
-        res.send(`<!DOCTYPE html>
-<html>
-  <head>
-    <title>Redirecting...</title>
-    <meta http-equiv="refresh" content="0; url=${target}">
-  </head>
-  <body>
-    <script>window.location.href = '${target}'</script>
-  </body>
-</html>`);
+        res.send(`
+          <!DOCTYPE html>
+          <html>
+            <head>
+              <title>Redirecting...</title>
+              <meta http-equiv="refresh" content="0; url=http://0.0.0.0:5173${req.path}">
+            </head>
+            <body>
+              <script>window.location.href = 'http://0.0.0.0:5173${req.path}'</script>
+            </body>
+          </html>
+        `);
       } else {
         res.status(404).json({ error: "API route not found" });
       }
@@ -132,7 +127,7 @@ async function runMigrations() {
 
   // Global Error Handler
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-    const status = err.status || 500;
+    const status = err.status || err.statusCode || 500;
     const message = err.message || "Internal Server Error";
     console.error("❌ Server Error:", err);
     res.status(status).json({ message });
