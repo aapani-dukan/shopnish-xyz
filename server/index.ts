@@ -2,7 +2,7 @@
 
 import express, { type Request, type Response, type NextFunction, type Express } from "express";
 import cors from "cors";
-import { registerRoutes } from "./routes.ts";
+import apiRouter from "./routes.ts";
 import "./lib/firebaseAdmin.ts";
 import { createServer, type Server } from "http";
 import { drizzle } from "drizzle-orm/node-postgres";
