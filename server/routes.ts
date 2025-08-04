@@ -238,8 +238,10 @@ adminRouter.post('/sellers/:sellerId/reject', async (req: AuthenticatedRequest, 
 });
 
 router.use('/admin', adminRouter);
+// पुरानी लाइन हटा दें
+// export function registerRoutes(app: express.Express) {
+//   app.use('/api/sellers', sellerRouter);
+// }
 
-// --- Final route registration for Express app ---
-export function registerRoutes(app: express.Express) {
-  app.use('/api/sellers', sellerRouter);
-}
+// ✅ यह नई लाइन जोड़ें:
+export default router;
