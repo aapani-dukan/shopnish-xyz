@@ -147,16 +147,25 @@ export default function SellerOnboardingDialog({
   const registerSellerMutation = useRegisterSeller(onClose, form.reset);
 
   const onSubmit = (data: FormData) => {
-    if (isLoadingAuth || !isAuthenticated || !user?.uid || !user?.idToken) {
-      toast({
-        title: "Please wait...",
-        description: "Authenticating user...",
-      });
-      return;
-    }
-
-    registerSellerMutation.mutate(data);
-  };
+  // ✅ सुनिश्चित करें कि सभी आवश्यक डेटा उपलब्ध हैं
+  if (
+    !isAuthenticated || 
+    isLoadingAuth || 
+    !user?.uid || 
+    !user?.idToken
+  ) {
+    toast({
+      title: "Please wait...",
+      description: "Authenticating user. Please try again.",
+      variant: "default",
+    });
+    return;
+  }
+  
+  // ✅ अब mutate को कॉल करें
+  registerSellerMutation.mutate(data);
+};
+  
 
   const handleClose = () => {
     form.reset();
