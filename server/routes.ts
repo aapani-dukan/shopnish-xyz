@@ -109,7 +109,7 @@ router.post('/auth/logout', async (req, res) => {
 });
 
 // ✅ Seller Routes moved to separate file
-router.use('/sellers', sellerRoutes); // ✅ यह सही है
+router.use('/sellers', sellerRouter); // ✅ यह सही है
 
 // Categories
 router.get('/categories', async (req: Request, res: Response) => {
