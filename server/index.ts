@@ -18,7 +18,7 @@ let server: Server;
 
 // --------------------- Middlewares ---------------------
 app.use(cors({
-  origin: 'https://shopnish-9vlk.onrender.com', 
+  origin: 'https://shopnish-9vlk.onrender.com',
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   credentials: true,
 }));
@@ -89,21 +89,24 @@ async function runMigrations() {
     next();
   });
 
-  // ----------------- Register Routes -----------------
+  // ----------------- Register API Routes -----------------
   registerRoutes(app);
 
-  // ----------------- Serve Static + SPA -----------------
+  // ----------------- Static + SPA fallback -----------------
   if (isProd) {
     const staticPath = path.resolve(__dirname, "..", "dist", "public");
-    app.use(express.static(staticPath));
+    app.use(express.static(staticPath)); // serve static files
 
     app.get("*", (req, res) => {
+      // serve index.html for non-API routes
       if (!req.path.startsWith("/api")) {
         res.sendFile(path.join(staticPath, "index.html"));
+      } else {
+        res.status(404).json({ error: "API route not found." });
       }
     });
   } else {
-    // 🧪 Dev redirect only for non-API routes
+    // Dev: Redirect non-API requests to Vite dev server
     app.get("*", (req, res, next) => {
       if (!req.path.startsWith("/api")) {
         const target = `http://0.0.0.0:5173${req.path}`;
@@ -120,7 +123,7 @@ async function runMigrations() {
           </html>
         `);
       } else {
-        next(); // let 404 or other middlewares handle it
+        next(); // allow API 404 or error handler
       }
     });
   }
