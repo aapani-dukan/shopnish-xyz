@@ -20,10 +20,10 @@ let server: Server;
 
 app.use(cors({
   origin: 'https://shopnish-9vlk.onrender.com', 
-  // ✅ OPTIONS मेथड को जोड़ें
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'], // ✨ यह महत्वपूर्ण बदलाव है ✨
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   credentials: true, 
 }));
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
@@ -32,7 +32,7 @@ app.use(cookieParser());
 async function runMigrations() {
   const connectionString = process.env.DATABASE_URL;
   if (!connectionString) {
-    console.error("❌ DATABASE_URL environment variable is not set.");
+    console.error("❌ DATABASE_URL is not set.");
     return;
   }
 
@@ -70,7 +70,6 @@ async function runMigrations() {
   console.log("✅ Migrations done. Starting server...");
 
   // --- Request Logging Middleware ---
-  // Move this before registerRoutes to catch all requests
   app.use((req, res, next) => {
     const start = Date.now();
     const p = req.path;
@@ -93,18 +92,17 @@ async function runMigrations() {
     next();
   });
 
-  // Register all API routes
+  // Register all routes
   registerRoutes(app);
 
-  // Serve static client files in production
+  // Serve static files (production only)
   if (isProd) {
     app.use(express.static(path.resolve(__dirname, "..", "dist", "public")));
-
     app.get("*", (req, res) => {
       res.sendFile(path.resolve(__dirname, "..", "dist", "public", "index.html"));
     });
   } else {
-    // Development mode: serve a simple HTML page that redirects to Vite dev server
+    // Dev mode redirect
     app.get("*", (req, res) => {
       if (!req.path.startsWith("/api")) {
         res.send(`
@@ -115,10 +113,7 @@ async function runMigrations() {
               <meta http-equiv="refresh" content="0; url=http://0.0.0.0:5173${req.path}">
             </head>
             <body>
-              <p>Redirecting to development server...</p>
-              <script>
-                window.location.href = 'http://0.0.0.0:5173${req.path}';
-              </script>
+              <script>window.location.href = 'http://0.0.0.0:5173${req.path}'</script>
             </body>
           </html>
         `);
@@ -139,7 +134,6 @@ async function runMigrations() {
   });
 
   const port = process.env.PORT || 5001;
-
   server = createServer(app);
   server.listen({ port, host: "0.0.0.0" }, () =>
     console.log(`🚀 Server listening on port ${port} in ${isProd ? "production" : "development"} mode`)
