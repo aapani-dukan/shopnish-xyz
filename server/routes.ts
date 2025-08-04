@@ -24,7 +24,7 @@ import adminRejectProductRoutes from './roots/admin/reject-product.ts';
 import adminProductsRoutes from './roots/admin/products.ts';
 import adminVendorsRoutes from './roots/admin/vendors.ts';
 import adminPasswordRoutes from './roots/admin/admin-password.ts';
-import sellerRoutes from '../routes/sellers/sellerRoutes.ts'; // ✅ नया जोड़ा गया
+import sellerRouter from '../routes/sellers/sellerRoutes.ts'; // ✅ नया जोड़ा गया
 
 const router = Router();
 
