@@ -1,4 +1,3 @@
-// routes/sellers/sellerRoutes.ts
 import { Router, Response } from 'express';
 import { db } from '../../server/db.ts';
 import { sellersPgTable, users } from '../../shared/backend/schema.ts';
@@ -8,22 +7,81 @@ import { eq } from 'drizzle-orm';
 
 const sellerRouter = Router();
 
-// ✅ GET /api/sellers/me
+/**
+ * ✅ GET /api/sellers/me
+ * Authenticated route to get the current seller profile
+ */
 sellerRouter.get('/me', requireSellerAuth, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const userUuid = req.user?.uuid;
+    if (!userUuid) {
+      return res.status(401).json({ error: 'Unauthorized: Missing user UUID' });
+    }
+
+    const [dbUser] = await db
+      .select({ id: users.id })
+      .from(users)
+      .where(eq(users.uuid, userUuid));
+
+    if (!dbUser) {
+      return res.status(404).json({ error: 'User not found.' });
+    }
+
+    const [seller] = await db
+      .select()
+      .from(sellersPgTable)
+      .where(eq(sellersPgTable.userId, dbUser.id));
+
+    if (!seller) {
+      return res.status(404).json({ message: 'Seller profile not found.' });
+    }
+
+    return res.status(200).json(seller);
+  } catch (error: any) {
+    console.error('❌ Error in GET /api/sellers/me:', error);
+    return res.status(500).json({ error: 'Internal server error.' });
+  }
+});
+
+/**
+ * ✅ POST /api/sellers/apply
+ * Apply as a seller (requires auth)
+ */
+sellerRouter.post('/apply', requireSellerAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const userUuid = req.user?.uuid;
     if (!userUuid) return res.status(401).json({ error: 'Unauthorized' });
 
-    const [dbUser] = await db.select({ id: users.id }).from(users).where(eq(users.uuid, userUuid));
-    if (!dbUser) return res.status(404).json({ error: 'User not found.' });
+    const [dbUser] = await db
+      .select({ id: users.id })
+      .from(users)
+      .where(eq(users.uuid, userUuid));
 
-    const [seller] = await db.select().from(sellersPgTable).where(eq(sellersPgTable.userId, dbUser.id));
-    if (!seller) return res.status(404).json({ message: 'Seller profile not found.' });
+    if (!dbUser) {
+      return res.status(404).json({ error: 'User not found.' });
+    }
 
-    res.status(200).json(seller);
+    const [existing] = await db
+      .select()
+      .from(sellersPgTable)
+      .where(eq(sellersPgTable.userId, dbUser.id));
+
+    if (existing) {
+      return res.status(400).json({ error: 'Seller already exists.' });
+    }
+
+    await db.insert(sellersPgTable).values({
+      userId: dbUser.id,
+      businessName: req.body.businessName,
+      address: req.body.address,
+      phone: req.body.phone,
+      approvalStatus: 'pending',
+    });
+
+    return res.status(200).json({ message: 'Seller application submitted.' });
   } catch (error: any) {
-    console.error('❌ Error in /me:', error);
-    res.status(500).json({ error: 'Internal server error.' });
+    console.error('❌ Error in POST /api/sellers/apply:', error);
+    return res.status(500).json({ error: 'Internal server error.' });
   }
 });
 
