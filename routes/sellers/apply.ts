@@ -1,8 +1,7 @@
 // routes/sellers/apply.ts
-
 import { Router, Response, NextFunction } from "express";
 import { db } from "../../server/db.ts";
-import { sellersPgTable, users } from "../../shared/backend/schema.ts";
+import { sellersPgTable, users, approvalStatusEnum, userRoleEnum } from "../../shared/backend/schema.ts";
 import { verifyToken, AuthenticatedRequest } from "../../server/middleware/verifyToken.ts";
 import { eq } from "drizzle-orm";
 
@@ -11,10 +10,7 @@ const router = Router();
 router.post("/", verifyToken, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const firebaseUid = req.user?.userId;
-
-    if (!firebaseUid) {
-      return res.status(401).json({ message: "Unauthorized: User not authenticated." });
-    }
+    if (!firebaseUid) return res.status(401).json({ message: "Unauthorized" });
 
     const {
       businessName,
@@ -31,43 +27,25 @@ router.post("/", verifyToken, async (req: AuthenticatedRequest, res: Response, n
     } = req.body;
 
     if (!businessName || !businessPhone || !city || !pincode || !businessAddress || !businessType) {
-      return res.status(400).json({ message: "Missing required seller details." });
+      return res.status(400).json({ message: "Missing required fields." });
     }
 
-    // Get user from database first
-    const userResult = await db
-      .select()
-      .from(users)
-      .where(eq(users.firebaseUid, firebaseUid))
-      .limit(1);
+    const [dbUser] = await db.select().from(users).where(eq(users.firebaseUid, firebaseUid)).limit(1);
+    if (!dbUser) return res.status(404).json({ message: "User not found." });
 
-    if (userResult.length === 0) {
-      return res.status(404).json({ message: "User not found in database." });
-    }
-
-    const dbUser = userResult[0];
-
-    // Check if seller already exists
-    const existingSellerResult = await db
-      .select()
-      .from(sellersPgTable)
-      .where(eq(sellersPgTable.userId, dbUser.id))
-      .limit(1);
-
-    if (existingSellerResult.length > 0) {
+    const [existing] = await db.select().from(sellersPgTable).where(eq(sellersPgTable.userId, dbUser.id));
+    if (existing) {
       return res.status(400).json({
-        message: "Seller application already exists or approved.",
-        status: existingSellerResult[0].approvalStatus,
+        message: "Application already submitted.",
+        status: existing.approvalStatus,
       });
     }
 
-    // Prepare insert data
-    const insertData = {
+    const newSeller = await db.insert(sellersPgTable).values({
       userId: dbUser.id,
       businessName,
       businessAddress,
       businessPhone,
-      businessType,
       description: description || null,
       city,
       pincode,
@@ -75,42 +53,31 @@ router.post("/", verifyToken, async (req: AuthenticatedRequest, res: Response, n
       bankAccountNumber: bankAccountNumber || null,
       ifscCode: ifscCode || null,
       deliveryRadius: deliveryRadius ? parseInt(String(deliveryRadius)) : null,
-      approvalStatus: "pending" as const,
-    };
+      businessType,
+      approvalStatus: approvalStatusEnum.enumValues[0],
+      applicationDate: new Date(),
+    }).returning();
 
-    const newSellerResult = await db
-      .insert(sellersPgTable)
-      .values(insertData)
+    const [updatedUser] = await db.update(users)
+      .set({
+        role: userRoleEnum.enumValues[1],
+        approvalStatus: approvalStatusEnum.enumValues[0],
+      })
+      .where(eq(users.id, dbUser.id))
       .returning();
-
-    const newSeller = newSellerResult[0];
-
-    // Update user role to seller
-    const updatedUserResult = await db
-      .update(users)
-      .set({ role: "seller" })
-      .where(eq(users.firebaseUid, firebaseUid))
-      .returning();
-
-    const updatedUser = updatedUserResult[0];
-
-    if (!updatedUser) {
-      console.error("❌ Could not update user role for firebaseUid:", firebaseUid);
-      return res.status(500).json({ message: "Failed to update user role." });
-    }
 
     return res.status(201).json({
-      message: "Seller application submitted",
-      seller: newSeller,
+      message: "Application submitted.",
+      seller: newSeller[0],
       user: {
-        uuid: updatedUser.firebaseUid,
+        uuid: updatedUser.uuid,
         role: updatedUser.role,
         email: updatedUser.email,
         name: updatedUser.name,
       },
     });
   } catch (error) {
-    console.error("❌ Error in seller apply route:", error);
+    console.error("❌ Error in apply.ts:", error);
     next(error);
   }
 });
