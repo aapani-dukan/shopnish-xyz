@@ -106,7 +106,20 @@ res.sendFile(path.resolve(__dirname, "..", "dist", "public", "index.html"));
 // Dev mode redirect
 app.get("", (req, res) => {
 if (!req.path.startsWith("/api")) {
-res.send(  <!DOCTYPE html>   <html>   <head>   <title>Redirecting...</title>   <meta http-equiv="refresh" content="0; url=http://0.0.0.0:5173${req.path}">   </head>   <body>   <script>window.location.href = 'http://0.0.0.0:5173${req.path}'</script>   </body>   </html>  );
+res.send(  '<!DOCTYPE html> 
+         <html> 
+         <head> 
+         <title>Redirecting...</title> 
+         <meta http-equiv="refresh"
+         content="0; 
+  url=http://0.0.0.0:5173${req.path}"> 
+  </head> 
+    <body>  
+    <script>
+    window.location.href = 'http://0.0.0.0:5173${req.path}'
+    </script> 
+    </body> 
+    </html>'  );
 } else {
 res.status(404).json({ error: "API route not found" });
 }
@@ -130,6 +143,4 @@ server.listen({ port, host: "0.0.0.0" }, () =>
 console.log(🚀 Server listening on port ${port} in ${isProd ? "production" : "development"} mode)
 );
 })();
-
-Dekho or jaruri ho to badal do
 
