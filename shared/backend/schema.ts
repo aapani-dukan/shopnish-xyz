@@ -16,7 +16,7 @@ export const approvalStatusEnum = pgEnum("approval_status", ["pending", "approve
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   
-  uuid: text("uuid").notNull().unique(), 
+  firebaseUid: text("firebase_uid").notNull().unique(), 
   // uuid: uuid("uuid").defaultRandom().notNull().unique(), // इसके लिए ऊपर 'uuid' को इम्पोर्ट करना होगा
 
   email: text("email").notNull().unique(),
