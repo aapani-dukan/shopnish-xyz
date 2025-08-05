@@ -161,7 +161,7 @@ router.post('/delivery-boys/register', async (req: Request, res: Response) => {
     const { email, firebaseUid, name, vehicleType } = req.body;
 
     const [newDeliveryBoy] = await db.insert(deliveryBoys).values({
-      uuid: firebaseUid,
+      firebaseUid: firebaseUid,
       email,
       name: name || 'Delivery Boy',
       vehicleType,
