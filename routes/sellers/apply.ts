@@ -9,7 +9,8 @@ const router = Router();
 
 router.post("/", verifyToken, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
-    const firebaseUid = req.user?.userId;
+    // ✅ यहाँ req.user?.userId की जगह req.user?.firebaseUid का उपयोग करें
+    const firebaseUid = req.user?.firebaseUid; 
     if (!firebaseUid) return res.status(401).json({ message: "Unauthorized" });
 
     const {
@@ -70,7 +71,8 @@ router.post("/", verifyToken, async (req: AuthenticatedRequest, res: Response, n
       message: "Application submitted.",
       seller: newSeller[0],
       user: {
-        uuid: updatedUser.uuid,
+        // ✅ यहाँ uuid की जगह firebaseUid का उपयोग करें
+        firebaseUid: updatedUser.firebaseUid,
         role: updatedUser.role,
         email: updatedUser.email,
         name: updatedUser.name,
