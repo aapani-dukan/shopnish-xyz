@@ -45,7 +45,7 @@ router.post('/register', async (req: Request, res: Response) => {
     }
 
     const [newUser] = await db.insert(users).values({
-      uuid: userData.firebaseUid,
+      firebaseUid: userData.firebaseUid,
       email: userData.email,
       name: userData.name || null,
       role: userRoleEnum.enumValues[0],
@@ -69,12 +69,12 @@ router.use('/auth', apiAuthLoginRouter);
 
 router.get('/me', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const userUuid = req.user?.uuid;
+    const userUuid = req.user?.firebaseUid;
     if (!userUuid) {
       return res.status(401).json({ error: 'Not authenticated.' });
     }
 
-    const [user] = await db.select().from(users).where(eq(users.uuid, userUuid));
+    const [user] = await db.select().from(users).where(eq(users.firebase_uid, userUuid));
     if (!user) {
       return res.status(404).json({ error: 'User not found.' });
     }
@@ -85,7 +85,7 @@ router.get('/me', requireAuth, async (req: AuthenticatedRequest, res: Response) 
       if (record) sellerInfo = { approvalStatus: record.approvalStatus };
     }
 
-    res.status(200).json({ uuid: user.uuid, email: user.email, name: user.name, role: user.role, seller: sellerInfo });
+    res.status(200).json({ firebaseUid: user.firebaseUid, email: user.email, name: user.name, role: user.role, seller: sellerInfo });
   } catch (error: any) {
     console.error(error);
     res.status(500).json({ error: 'Internal error.' });
