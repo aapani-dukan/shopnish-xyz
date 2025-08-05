@@ -72,7 +72,7 @@ router.get('/users/me', requireAuth, async (req: AuthenticatedRequest, res: Resp
       return res.status(401).json({ error: 'Not authenticated.' });
     }
 
-    const [user] = await db.select().from(users).where(eq(users.firebase_uid, userUuid));
+    const [user] = await db.select().from(users).where(eq(users.firebaseUid, userUuid));
     if (!user) {
       return res.status(404).json({ error: 'User not found.' });
     }
