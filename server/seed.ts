@@ -46,15 +46,22 @@ async function seedDatabase() {
     console.log(`✅ Inserted ${insertedCategories.length} categories.`);
 
 
-    // 3️⃣ Insert Users
-    console.log("➕ Inserting users...");
-    const userInputs = [
-      { firebaseUid: faker.string.uuid(), email: "admin@example.com", name: "Admin", role: userRoleEnum.enumValues[2], approvalStatus: approvalStatusEnum.enumValues[1] }, // "admin", "approved"
-      { firebaseUid: faker.string.uuid(), email: "customer@example.com", name: "Customer", role: userRoleEnum.enumValues[0], approvalStatus: approvalStatusEnum.enumValues[1] }, // "customer", "approved"
-      { firebaseUid: faker.string.uuid(), email: "seller@example.com", name: "Seller", role: userRoleEnum.enumValues[1], approvalStatus: approvalStatusEnum.enumValues[1] }, // "seller", "approved"
-      { firebaseUid: faker.string.uuid(), email: "delivery@example.com", name: "Delivery", role: userRoleEnum.enumValues[3], approvalStatus: approvalStatusEnum.enumValues[1] }, // "delivery_boy", "approved"
-    ];
-    const insertedUsers = await db.insert(users).values(userInputs).returning();
+  
+
+// 3️⃣ Insert Users
+console.log("➕ Inserting users...");
+const userInputs = [
+  // ✅ यहाँ password, firstName, lastName, phone फ़ील्ड्स जोड़े गए हैं
+  { firebaseUid: faker.string.uuid(), email: "admin@example.com", password: "password123", firstName: "Admin", lastName: "User", phone: "9876543210", role: userRoleEnum.enumValues[2], approvalStatus: approvalStatusEnum.enumValues[1] }, // "admin", "approved"
+  { firebaseUid: faker.string.uuid(), email: "customer@example.com", password: "password123", firstName: "Customer", lastName: "User", phone: "9876543210", role: userRoleEnum.enumValues[0], approvalStatus: approvalStatusEnum.enumValues[1] }, // "customer", "approved"
+  { firebaseUid: faker.string.uuid(), email: "seller@example.com", password: "password123", firstName: "Seller", lastName: "User", phone: "9876543210", role: userRoleEnum.enumValues[1], approvalStatus: approvalStatusEnum.enumValues[1] }, // "seller", "approved"
+  { firebaseUid: faker.string.uuid(), email: "delivery@example.com", password: "password123", firstName: "Delivery", lastName: "User", phone: "9876543210", role: userRoleEnum.enumValues[3], approvalStatus: approvalStatusEnum.enumValues[1] }, // "delivery_boy", "approved"
+];
+
+const insertedUsers = await db.insert(users).values(userInputs).returning();
+
+
+    
 
     // implicit any type errors for 'u' parameter:
     const sellerUser = insertedUsers.find((u: any) => u.role === userRoleEnum.enumValues[1]); // Type 'any'
