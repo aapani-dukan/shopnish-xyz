@@ -6,30 +6,41 @@ import { users } from '../../shared/backend/schema.ts';
 import { eq } from 'drizzle-orm';
 import { AuthenticatedUser } from '../../shared/types/user.ts';
 
+export interface AuthenticatedRequest extends Request {
+  user?: AuthenticatedUser;
+}
+
 export const verifyToken = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
-  // ... अन्य कोड
+  const authHeader = req.headers.authorization;
+
+  // ✅ 1. Authorization हेडर की जांच करें
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ message: 'No valid token provided' });
+  }
+
+  // ✅ 2. टोकन को हेडर से निकालें
+  const token = authHeader.split(' ')[1];
 
   try {
     const decodedToken = await authAdmin.verifyIdToken(token);
-    console.log("VerifyToken: Token successfully verified. UID:", decodedToken.uid);
-
-    // ✅ Fetch user from DB and merge with decoded token data
+    
+    // ✅ 3. डेटाबेस से user की जानकारी fetch करें
     const [dbUser] = await db.select().from(users).where(eq(users.uuid, decodedToken.uid));
     if (!dbUser) {
       return res.status(404).json({ message: 'User not found in database' });
     }
 
-    // ✅ req.user को पूरी जानकारी के साथ अपडेट करें
+    // ✅ 4. req.user ऑब्जेक्ट को पूरी जानकारी से अपडेट करें
     req.user = {
       id: dbUser.id,
       uuid: decodedToken.uid,
-      email: decodedToken.email,
+      email: dbUser.email,
       name: dbUser.name,
-      role: dbUser.role, // ✅ यहाँ role जोड़ें
-      approvalStatus: dbUser.approvalStatus, // ✅ यहाँ approvalStatus जोड़ें
+      role: dbUser.role,
+      approvalStatus: dbUser.approvalStatus,
     };
 
-    next(); // ✅ All good
+    next();
   } catch (error: any) {
     console.error('VerifyToken: टोकन सत्यापन विफल रहा:', error.message);
     if (error.code === 'auth/id-token-expired') {
