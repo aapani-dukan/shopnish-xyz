@@ -99,6 +99,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
 
     try {
+      // ✅ प्रोसेस शुरू होने पर इसे true करें
+      setIsLoadingAuth(true);
+
       const idToken = await firebaseUser.getIdToken();
       const decodedToken = await firebaseUser.getIdTokenResult();
       const firebaseRole: User['role'] = (decodedToken.claims.role as User['role']) || "customer";
@@ -165,7 +168,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     } catch (err: any) {
       console.error("Auth processing error:", err);
       setUser(null);
-      setIsLoadingAuth(false);
+      setIsLoadingAuth(false); // ✅ एरर होने पर इसे false करें
       setError({ code: err.code || "auth/processing-error", message: err.message || "Failed to process user data." });
     }
   }, []);
@@ -265,3 +268,4 @@ export const useAuth = () => {
   if (!ctx) throw new Error("useAuth must be used within an AuthProvider");
   return ctx;
 };
+    
