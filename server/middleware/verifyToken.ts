@@ -25,7 +25,7 @@ export const verifyToken = async (req: AuthenticatedRequest, res: Response, next
     const decodedToken = await authAdmin.verifyIdToken(token);
     
     // ✅ 3. डेटाबेस से user की जानकारी fetch करें
-    const [dbUser] = await db.select().from(users).where(eq(users.uuid, decodedToken.uid));
+    const [dbUser] = await db.select().from(users).where(eq(users.firebase_uid, decodedToken.uid));
     if (!dbUser) {
       return res.status(404).json({ message: 'User not found in database' });
     }
