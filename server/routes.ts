@@ -67,7 +67,7 @@ router.post('/register', async (req: Request, res: Response) => {
 
 router.use('/auth', apiAuthLoginRouter);
 
-router.get('/me', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+router.get('/users/me', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const userUuid = req.user?.firebaseUid;
     if (!userUuid) {
