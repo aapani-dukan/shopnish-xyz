@@ -92,6 +92,20 @@ router.get('/users/me', requireAuth, async (req: AuthenticatedRequest, res: Resp
   }
 });
 
+
+    let sellerInfo;
+    if (user.role === 'seller') {
+      const [record] = await db.select({ approvalStatus: sellersPgTable.approvalStatus }).from(sellersPgTable).where(eq(sellersPgTable.userId, user.id));
+      if (record) sellerInfo = { approvalStatus: record.approvalStatus };
+    }
+
+    res.status(200).json({ firebaseUid: user.firebaseUid, email: user.email, name: user.name, role: user.role, seller: sellerInfo });
+  } catch (error: any) {
+    console.error(error);
+    res.status(500).json({ error: 'Internal error.' });
+  }
+});
+
 router.post('/auth/logout', async (req, res) => {
   const sessionCookie = req.cookies?.__session || '';
   res.clearCookie('__session');
