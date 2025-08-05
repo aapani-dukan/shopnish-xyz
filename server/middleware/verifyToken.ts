@@ -13,19 +13,20 @@ export interface AuthenticatedRequest extends Request {
 export const verifyToken = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   const authHeader = req.headers.authorization;
 
-  // ✅ 1. Authorization हेडर की जांच करें
+  // 1. Authorization हेडर की जांच करें
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return res.status(401).json({ message: 'No valid token provided' });
   }
 
-  // ✅ 2. टोकन को हेडर से निकालें
+  // 2. टोकन को हेडर से निकालें
   const token = authHeader.split(' ')[1];
 
   try {
     const decodedToken = await authAdmin.verifyIdToken(token);
     
     // ✅ 3. डेटाबेस से user की जानकारी fetch करें
-    const [dbUser] = await db.select().from(users).where(eq(users.firebase_uid, decodedToken.uid));
+    // firebase_uid की जगह firebaseUid का उपयोग करें
+    const [dbUser] = await db.select().from(users).where(eq(users.firebaseUid, decodedToken.uid));
     if (!dbUser) {
       return res.status(404).json({ message: 'User not found in database' });
     }
@@ -33,7 +34,8 @@ export const verifyToken = async (req: AuthenticatedRequest, res: Response, next
     // ✅ 4. req.user ऑब्जेक्ट को पूरी जानकारी से अपडेट करें
     req.user = {
       id: dbUser.id,
-      uuid: decodedToken.uid,
+      // ✅ uuid की जगह firebaseUid का उपयोग करें
+      firebaseUid: decodedToken.uid, 
       email: dbUser.email,
       name: dbUser.name,
       role: dbUser.role,
