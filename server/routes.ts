@@ -1,5 +1,3 @@
-// server/routes.ts
-
 import express, { Router, Request, Response } from 'express';
 import { db } from './db.ts';
 import { eq, like } from 'drizzle-orm';
@@ -78,20 +76,6 @@ router.get('/users/me', requireAuth, async (req: AuthenticatedRequest, res: Resp
     if (!user) {
       return res.status(404).json({ error: 'User not found.' });
     }
-
-    let sellerInfo;
-    if (user.role === 'seller') {
-      const [record] = await db.select({ approvalStatus: sellersPgTable.approvalStatus }).from(sellersPgTable).where(eq(sellersPgTable.userId, user.id));
-      if (record) sellerInfo = { approvalStatus: record.approvalStatus };
-    }
-
-    res.status(200).json({ firebaseUid: user.firebaseUid, email: user.email, name: user.name, role: user.role, seller: sellerInfo });
-  } catch (error: any) {
-    console.error(error);
-    res.status(500).json({ error: 'Internal error.' });
-  }
-});
-
 
     let sellerInfo;
     if (user.role === 'seller') {
@@ -252,10 +236,6 @@ adminRouter.post('/sellers/:sellerId/reject', async (req: AuthenticatedRequest, 
 });
 
 router.use('/admin', adminRouter);
-// पुरानी लाइन हटा दें
-// export function registerRoutes(app: express.Express) {
-//   app.use('/api/sellers', sellerRouter);
-// }
 
 // ✅ यह नई लाइन जोड़ें:
 export default router;
