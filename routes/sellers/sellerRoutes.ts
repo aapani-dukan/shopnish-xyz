@@ -1,3 +1,4 @@
+// routes/sellers/sellerRoutes.ts
 import { Router, Response } from 'express';
 import { db } from '../../server/db.ts';
 import { sellersPgTable, users } from '../../shared/backend/schema.ts';
@@ -13,15 +14,17 @@ const sellerRouter = Router();
  */
 sellerRouter.get('/me', requireSellerAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const userUuid = req.user?.uuid;
-    if (!userUuid) {
+    // ✅ यहाँ uuid की जगह firebaseUid का उपयोग करें
+    const firebaseUid = req.user?.firebaseUid;
+    if (!firebaseUid) {
       return res.status(401).json({ error: 'Unauthorized: Missing user UUID' });
     }
 
     const [dbUser] = await db
       .select({ id: users.id })
       .from(users)
-      .where(eq(users.uuid, userUuid));
+      // ✅ यहाँ users.uuid की जगह users.firebaseUid का उपयोग करें
+      .where(eq(users.firebaseUid, firebaseUid));
 
     if (!dbUser) {
       return res.status(404).json({ error: 'User not found.' });
@@ -49,13 +52,15 @@ sellerRouter.get('/me', requireSellerAuth, async (req: AuthenticatedRequest, res
  */
 sellerRouter.post('/apply', requireSellerAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const userUuid = req.user?.uuid;
-    if (!userUuid) return res.status(401).json({ error: 'Unauthorized' });
+    // ✅ यहाँ userUuid की जगह firebaseUid का उपयोग करें
+    const firebaseUid = req.user?.firebaseUid;
+    if (!firebaseUid) return res.status(401).json({ error: 'Unauthorized' });
 
     const [dbUser] = await db
       .select({ id: users.id })
       .from(users)
-      .where(eq(users.uuid, userUuid));
+      // ✅ यहाँ users.uuid की जगह users.firebaseUid का उपयोग करें
+      .where(eq(users.firebaseUid, firebaseUid));
 
     if (!dbUser) {
       return res.status(404).json({ error: 'User not found.' });
