@@ -1,30 +1,24 @@
 // @shared/backend/schema.ts
-import { pgTable, text, serial, uuid, integer, decimal, boolean, timestamp, json, varchar, pgEnum } from "drizzle-orm/pg-core"; // pgEnum को इम्पोर्ट करें
+
+import { pgTable, text, serial, integer, decimal, boolean, timestamp, json, pgEnum } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
-import { userRoleEnum, approvalStatusEnum } from './your-enum-file'; 
+
 // --- Drizzle ORM Table Definitions ---
 
-// Drizzle PG Enums - ये अब सीधे डेटाबेस में ENUM प्रकार बनाएंगे
+// Drizzle PG Enums - ये सीधे डेटाबेस में ENUM प्रकार बनाएंगे
 export const userRoleEnum = pgEnum("user_role", ["customer", "seller", "admin", "delivery_boy"]);
 export const approvalStatusEnum = pgEnum("approval_status", ["pending", "approved", "rejected"]);
-// यदि आपके पास products के लिए कोई status है तो यहाँ जोड़ें, उदा.
-// export const productStatusEnum = pgEnum("product_status", ["active", "inactive", "draft"]);
 
-
-// User roles: customer, seller, admin, delivery_boy
+// ✅ यूजर्स टेबल का सही स्कीमा: Neon DB से मेल खाता हुआ
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
-  
-  firebaseUid: text("firebase_uid").notNull().unique(), 
-  // uuid: uuid("uuid").defaultRandom().notNull().unique(), // इसके लिए ऊपर 'uuid' को इम्पोर्ट करना होगा
-
+  firebaseUid: text("firebase_uid").unique(), // ✅ firebaseUid को यहाँ जोड़ा गया
   email: text("email").notNull().unique(),
-  name: text("name"),
- firstName: text("first_name").default(null),
-  lastName: text("last_name").default(null),
-  phone: text("phone"),
-  // Drizzle pgEnum का उपयोग करें
+  password: text("password").notNull(),
+  firstName: text("first_name").notNull(),
+  lastName: text("last_name").notNull(),
+  phone: text("phone").notNull(),
   role: userRoleEnum("role").notNull().default("customer"),
   approvalStatus: approvalStatusEnum("approval_status").notNull().default("approved"),
   address: text("address"),
@@ -34,7 +28,6 @@ export const users = pgTable("users", {
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
-
 
 export const sellersPgTable = pgTable("sellers", {
   id: serial("id").primaryKey(),
@@ -53,7 +46,6 @@ export const sellersPgTable = pgTable("sellers", {
   email: text("email"),
   phone: text("phone"),
   address: text("address"),
-  // Drizzle pgEnum का उपयोग करें
   approvalStatus: approvalStatusEnum("approval_status").notNull().default("pending"),
   approvedAt: timestamp("approved_at"),
   rejectionReason: text("rejection_reason"),
@@ -106,8 +98,6 @@ export const products = pgTable("products", {
   minOrderQty: integer("min_order_qty").default(1),
   maxOrderQty: integer("max_order_qty").default(100),
   isActive: boolean("is_active").default(true),
-  // यदि आपको 'status' फ़ील्ड चाहिए तो इसे यहाँ जोड़ें:
-  // status: productStatusEnum("status").notNull().default("active"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -128,7 +118,6 @@ export const deliveryBoys = pgTable("delivery_boys", {
   userId: integer("user_id").unique().notNull().references(() => users.id),
   email: text("email").unique().notNull(),
   name: text("name"),
-  // Drizzle pgEnum का उपयोग करें
   approvalStatus: approvalStatusEnum("approval_status").notNull().default("pending"),
   vehicleType: text("vehicle_type").notNull(),
   vehicleNumber: text("vehicle_number"),
@@ -149,8 +138,6 @@ export const cartItems = pgTable("cart_items", {
   quantity: integer("quantity").notNull().default(1),
   sessionId: text("session_id"),
   createdAt: timestamp("created_at").defaultNow(),
-  // updatedAt को हटा दें यदि यह स्कीमा में नहीं है
-  // updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 export const orders = pgTable("orders", {
@@ -277,11 +264,10 @@ export const insertUserSchema = createInsertSchema(users).omit({
 });
 
 export const insertSellerSchema = createInsertSchema(sellersPgTable, {
-  userId: z.number().int(), // userId now integer
+  userId: z.number().int(),
   businessPhone: z.string().regex(/^\d{10}$/, "Phone number must be 10 digits"),
   pincode: z.string().regex(/^\d{6}$/, "Pincode must be 6 digits"),
   deliveryRadius: z.number().int().min(1, "Delivery Radius must be at least 1 km").optional(),
-  // Drizzle pgEnum से इन्फर किया जाएगा, इसलिए सीधे enum().default() की आवश्यकता नहीं है
 }).omit({
   id: true,
   createdAt: true,
@@ -300,8 +286,6 @@ export const insertCategorySchema = createInsertSchema(categories).omit({
 export const insertProductSchema = createInsertSchema(products, {
   price: z.string(),
   originalPrice: z.string().optional(),
-  // यदि productStatusEnum जोड़ा गया है तो यहाँ इसे भी जोड़ें
-  // status: productStatusEnum.enumValues // Drizzle pgEnum के लिए, इसका Zod type text होता है
 }).omit({
   id: true,
   createdAt: true,
@@ -316,10 +300,9 @@ export const insertDeliveryAreaSchema = createInsertSchema(deliveryAreas, {
 });
 
 export const insertDeliveryBoySchema = createInsertSchema(deliveryBoys, {
-  userId: z.number().int(), // userId now integer
+  userId: z.number().int(),
   email: z.string().email(),
   name: z.string().min(1, "Name is required"),
-  // Drizzle pgEnum से इन्फर किया जाएगा
   rating: z.string().optional().default("5.0"),
 }).omit({
   id: true,
@@ -336,7 +319,7 @@ export const insertOrderSchema = createInsertSchema(orders, {
   deliveryCharge: z.string().optional(),
   discount: z.string().optional(),
   total: z.string(),
-  deliveryAddress: z.any(), // JSON type can be z.any() or more specific object
+  deliveryAddress: z.any(),
 }).omit({
   id: true,
   createdAt: true,
@@ -383,7 +366,7 @@ export const insertServiceProviderSchema = createInsertSchema(serviceProviders, 
 
 export const insertServiceBookingSchema = createInsertSchema(serviceBookings, {
   price: z.string(),
-  address: z.any(), // JSON type
+  address: z.any(),
 }).omit({
   id: true,
   createdAt: true,
@@ -445,5 +428,4 @@ export type InsertServiceBooking = z.infer<typeof insertServiceBookingSchema>;
 
 export type Review = typeof reviews.$inferSelect;
 export type InsertReview = z.infer<typeof insertReviewSchema>;
-export type seller = z.infer<typeof seller>;
-  
+
