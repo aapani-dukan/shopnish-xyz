@@ -100,7 +100,9 @@ async function runMigrations() {
   // Serve static files (production only)
   if (isProd) {
     app.use(express.static(path.resolve(__dirname, "..", "dist", "public")));
-    app.get("", (req, res) => {
+    
+    // ✅ यह लाइन 'app.get("")' की जगह पर लगाएं
+    app.get('*', (req, res) => {
       res.sendFile(path.resolve(__dirname, "..", "dist", "public", "index.html"));
     });
   } else {
