@@ -122,6 +122,7 @@ const insertedUsers = await db.insert(users).values(userInputs).returning();
       email: deliveryUser.email!,
       name: deliveryUser.name!,
       vehicleType: "bike",
+      name: "Delivery Boy",
       approvalStatus: approvalStatusEnum.enumValues[1], // "approved"
       firebaseUid: deliveryUser.firebaseUid, // Firebase UID भी डालें
     });
