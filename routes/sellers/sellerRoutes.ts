@@ -54,6 +54,8 @@ sellerRouter.get('/me', requireSellerAuth, async (req: AuthenticatedRequest, res
 sellerRouter.post('/apply', verifyToken, async (req: AuthenticatedRequest, res: Response) => {
   try {
     // ✅ यहाँ userUuid की जगह firebaseUid का उपयोग करें
+    console.log('Received seller apply data:', req.body);
+    
     const firebaseUid = req.user?.firebaseUid;
     if (!firebaseUid) return res.status(401).json({ error: 'Unauthorized' });
 
