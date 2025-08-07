@@ -47,50 +47,85 @@ sellerRouter.get('/me', requireSellerAuth, async (req: AuthenticatedRequest, res
   }
 });
 
-/**
- * ✅ POST /api/sellers/apply
- * Apply as a seller (requires auth)
- */
-sellerRouter.post('/apply', verifyToken, async (req: AuthenticatedRequest, res: Response) => {
+
+ // ✅ POST /api/sellers/apply
+ 
+router.post("/", verifyToken, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
-    // ✅ यहाँ userUuid की जगह firebaseUid का उपयोग करें
     console.log('Received seller apply data:', req.body);
     
-    const firebaseUid = req.user?.firebaseUid;
-    if (!firebaseUid) return res.status(401).json({ error: 'Unauthorized' });
+    const firebaseUid = req.user?.firebaseUid; 
+    if (!firebaseUid) return res.status(401).json({ message: "Unauthorized" });
 
-    const [dbUser] = await db
-      .select({ id: users.id })
-      .from(users)
-      // ✅ यहाँ users.uuid की जगह users.firebaseUid का उपयोग करें
-      .where(eq(users.firebaseUid, firebaseUid));
+    const {
+      businessName,
+      businessAddress,
+      businessPhone,
+      description,
+      city,
+      pincode,
+      gstNumber,
+      bankAccountNumber,
+      ifscCode,
+      deliveryRadius,
+      businessType,
+    } = req.body;
 
-    if (!dbUser) {
-      return res.status(404).json({ error: 'User not found.' });
+    if (!businessName || !businessPhone || !city || !pincode || !businessAddress || !businessType) {
+      return res.status(400).json({ message: "Missing required fields." });
     }
 
-    const [existing] = await db
-      .select()
-      .from(sellersPgTable)
-      .where(eq(sellersPgTable.userId, dbUser.id));
+    const [dbUser] = await db.select().from(users).where(eq(users.firebaseUid, firebaseUid)).limit(1);
+    if (!dbUser) return res.status(404).json({ message: "User not found." });
 
+    const [existing] = await db.select().from(sellersPgTable).where(eq(sellersPgTable.userId, dbUser.id));
     if (existing) {
-      return res.status(400).json({ error: 'Seller already exists.' });
+      return res.status(400).json({
+        message: "Application already submitted.",
+        status: existing.approvalStatus,
+      });
     }
 
-    await db.insert(sellersPgTable).values({
+    const newSeller = await db.insert(sellersPgTable).values({
       userId: dbUser.id,
-      businessName: req.body.businessName,
-      address: req.body.address,
-      phone: req.body.phone,
-      approvalStatus: 'pending',
-    });
+      businessName,
+      businessAddress,
+      businessPhone,
+      description: description || null,
+      city,
+      pincode,
+      gstNumber: gstNumber || null,
+      bankAccountNumber: bankAccountNumber || null,
+      ifscCode: ifscCode || null,
+      deliveryRadius: deliveryRadius ? parseInt(String(deliveryRadius)) : null,
+      businessType,
+      approvalStatus: approvalStatusEnum.enumValues[0],
+      applicationDate: new Date(),
+    }).returning();
 
-    return res.status(200).json({ message: 'Seller application submitted.' });
-  } catch (error: any) {
-    console.error('❌ Error in POST /api/sellers/apply:', error);
-    return res.status(500).json({ error: 'Internal server error.' });
+    const [updatedUser] = await db.update(users)
+      .set({
+        role: userRoleEnum.enumValues[1],
+        approvalStatus: approvalStatusEnum.enumValues[0],
+      })
+      .where(eq(users.id, dbUser.id))
+      .returning();
+
+    return res.status(201).json({
+      message: "Application submitted.",
+      seller: newSeller[0],
+      user: {
+        firebaseUid: updatedUser.firebaseUid,
+        role: updatedUser.role,
+        email: updatedUser.email,
+        name: updatedUser.name,
+      },
+    });
+  } catch (error) {
+    console.error("❌ Error in apply.ts:", error);
+    next(error);
   }
 });
+
 
 export default sellerRouter;
