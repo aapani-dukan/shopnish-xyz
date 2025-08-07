@@ -50,7 +50,7 @@ sellerRouter.get('/me', requireSellerAuth, async (req: AuthenticatedRequest, res
  * ✅ POST /api/sellers/apply
  * Apply as a seller (requires auth)
  */
-sellerRouter.post('/apply', requireSellerAuth, async (req: AuthenticatedRequest, res: Response) => {
+sellerRouter.post('/apply', verifyToken, async (req: AuthenticatedRequest, res: Response) => {
   try {
     // ✅ यहाँ userUuid की जगह firebaseUid का उपयोग करें
     const firebaseUid = req.user?.firebaseUid;
