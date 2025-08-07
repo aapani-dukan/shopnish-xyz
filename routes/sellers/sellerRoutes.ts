@@ -3,8 +3,9 @@ import { Router, Response } from 'express';
 import { db } from '../../server/db.ts';
 import { sellersPgTable, users } from '../../shared/backend/schema.ts';
 import { requireSellerAuth } from '../../server/middleware/authMiddleware.ts';
-import { AuthenticatedRequest } from '../../server/middleware/verifyToken.ts';
+import { AuthenticatedRequest,verifyToken } from '../../server/middleware/verifyToken.ts';
 import { eq } from 'drizzle-orm';
+
 
 const sellerRouter = Router();
 
