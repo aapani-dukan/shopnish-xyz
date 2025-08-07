@@ -48,7 +48,7 @@ sellerRouter.get('/me', requireSellerAuth, async (req: AuthenticatedRequest, res
 /**
  * ✅ POST /api/sellers (Apply as a seller)
  */
-sellerRouter.post("/", verifyToken, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+sellerRouter.post("/apply", verifyToken, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     console.log('Received seller apply data:', req.body);
 
