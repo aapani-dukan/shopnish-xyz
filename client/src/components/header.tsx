@@ -1,6 +1,6 @@
-// src/components/headers/Header.tsx
+// src/components/Header.tsx
 import React, { useState } from "react";
-import { Link, useNavigate } from "react-router-dom"; // ✅ react-router-dom से इंपोर्ट करें
+import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useCartStore } from "@/lib/store";
 import { logout } from "@/lib/firebase";
@@ -44,7 +44,7 @@ interface HeaderProps {
 const Header: React.FC<HeaderProps> = ({ categories = [] }) => {
   const { items, isCartOpen, toggleCart } = useCartStore();
   const [searchValue, setSearchValue] = useState("");
-  const navigate = useNavigate(); // ✅ useNavigate हुक का उपयोग करें
+  const navigate = useNavigate();
   const { user, isAuthenticated, isLoadingAuth } = useAuth();
   // ✅ नया स्टेट: डायलॉग को नियंत्रित करने के लिए
   const [isSellerDialogOpen, setIsSellerDialogOpen] = useState(false);
@@ -64,6 +64,7 @@ const Header: React.FC<HeaderProps> = ({ categories = [] }) => {
       await logout();
       console.log("Header: User logged out successfully.");
       navigate("/");
+      localStorage.removeItem('redirectIntent');
     } catch (error) {
       console.error("Header: Error during logout:", error);
     }
@@ -72,16 +73,22 @@ const Header: React.FC<HeaderProps> = ({ categories = [] }) => {
   // ✅ 'Become a Seller' बटन का नया, सशर्त लॉजिक
   const handleSellerButtonClick = () => {
     if (!isAuthenticated) {
-      // ✅ react-router-dom में navigate के साथ state का उपयोग करें
-      navigate("/auth", { state: { redirectIntent: "become-seller" } });
+      localStorage.setItem('redirectIntent', 'become-seller');
+      navigate("/auth");
     } else {
-      // अगर लॉग इन है, तो स्टेटस के आधार पर कार्रवाई करें
-      const approvalStatus = user?.sellerProfile?.approvalStatus;
-      if (user?.role === "seller" && approvalStatus === "pending") {
-        navigate("/seller-status");
-      } else if (user?.role === "seller" && approvalStatus === "approved") {
-        navigate("/seller-dashboard");
+      // ✅ यहां पर हमने लॉजिक को और भी स्पष्ट कर दिया है
+      if (user?.role === "seller") {
+        const approvalStatus = user.sellerProfile?.approvalStatus;
+        if (approvalStatus === "approved") {
+          navigate("/seller-dashboard");
+        } else if (approvalStatus === "pending") {
+          navigate("/seller-status");
+        } else {
+          // अगर स्टेटस 'rejected' या 'null' है, तो डायलॉग खोलें
+          setIsSellerDialogOpen(true);
+        }
       } else {
+        // अगर उपयोगकर्ता 'customer' है, तो डायलॉग खोलें
         setIsSellerDialogOpen(true);
       }
     }
@@ -112,7 +119,6 @@ const Header: React.FC<HeaderProps> = ({ categories = [] }) => {
 
   const dashboardLink = getDashboardLink();
   
-  // ✅ बटन को सशर्त रूप से रेंडर करने के लिए फ़ंक्शन
   const renderSellerButton = () => {
     if (isLoadingAuth) {
       return null;
@@ -355,3 +361,4 @@ const Header: React.FC<HeaderProps> = ({ categories = [] }) => {
 };
 
 export default Header;
+                                      
