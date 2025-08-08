@@ -71,12 +71,13 @@ const Header: React.FC<HeaderProps> = ({ categories = [] }) => {
   };
 
   // ✅ 'Become a Seller' बटन का नया, सशर्त लॉजिक
-  const handleSellerButtonClick = () => {
+  
+
+const handleSellerButtonClick = () => {
     if (!isAuthenticated) {
       localStorage.setItem('redirectIntent', 'become-seller');
       navigate("/auth");
     } else {
-      // ✅ यहां पर हमने लॉजिक को और भी स्पष्ट कर दिया है
       if (user?.role === "seller") {
         const approvalStatus = user.sellerProfile?.approvalStatus;
         if (approvalStatus === "approved") {
@@ -84,15 +85,18 @@ const Header: React.FC<HeaderProps> = ({ categories = [] }) => {
         } else if (approvalStatus === "pending") {
           navigate("/seller-status");
         } else {
-          // अगर स्टेटस 'rejected' या 'null' है, तो डायलॉग खोलें
-          setIsSellerDialogOpen(true);
+          // ✅ अगर स्टेटस 'rejected' या 'null' है, तो सीधे seller-apply पेज पर जाएं।
+          navigate("/seller-apply");
         }
       } else {
-        // अगर उपयोगकर्ता 'customer' है, तो डायलॉग खोलें
-        setIsSellerDialogOpen(true);
+        // ✅ अगर उपयोगकर्ता 'customer' है, तो सीधे seller-apply पेज पर जाएं।
+        navigate("/seller-apply");
       }
     }
-  };
+};
+
+
+
 
   const getDashboardLink = () => {
     if (!isAuthenticated || !user) return null;
