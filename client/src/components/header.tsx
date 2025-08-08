@@ -70,10 +70,23 @@ const Header: React.FC<HeaderProps> = ({ categories = [] }) => {
     }
   };
 
-  // ✅ 'Become a Seller' बटन का नया लॉजिक
-  const handleBecomeSeller = () => {
-    // सीधे डायलॉग खोलने के लिए स्टेट को अपडेट करें
-    setIsSellerDialogOpen(true);
+  // ✅ 'Become a Seller' बटन का नया, सशर्त लॉजिक
+  const handleSellerButtonClick = () => {
+    if (!isAuthenticated) {
+      // अगर लॉग इन नहीं है, तो auth पेज पर जाएं
+      navigate("/auth", { state: { redirectIntent: "become-seller" } });
+    } else {
+      // अगर लॉग इन है, तो स्टेटस के आधार पर कार्रवाई करें
+      const approvalStatus = user?.sellerProfile?.approvalStatus;
+      if (user?.role === "seller" && approvalStatus === "pending") {
+        navigate("/seller-status");
+      } else if (user?.role === "seller" && approvalStatus === "approved") {
+        navigate("/seller-dashboard");
+      } else {
+        // अगर रोल 'customer' है, या सेलर है लेकिन स्टेटस 'rejected' या 'null' है
+        setIsSellerDialogOpen(true);
+      }
+    }
   };
 
   const getDashboardLink = () => {
@@ -81,11 +94,13 @@ const Header: React.FC<HeaderProps> = ({ categories = [] }) => {
 
     switch (user.role) {
       case "seller":
-        if (user.seller?.approvalStatus === "approved") {
+        // ✅ user.sellerProfile का उपयोग करें
+        if (user.sellerProfile?.approvalStatus === "approved") {
           return { label: "Seller Dashboard", path: "/seller-dashboard" };
-        } else if (user.seller?.approvalStatus === "pending") {
+        } else if (user.sellerProfile?.approvalStatus === "pending") {
           return { label: "Seller Status", path: "/seller-status" };
         } else {
+          // 'rejected' या 'null' होने पर
           return { label: "Seller Application", path: "/seller-apply" };
         }
       case "admin":
@@ -100,7 +115,53 @@ const Header: React.FC<HeaderProps> = ({ categories = [] }) => {
   };
 
   const dashboardLink = getDashboardLink();
-
+  
+  // ✅ बटन को सशर्त रूप से रेंडर करने के लिए फ़ंक्शन
+  const renderSellerButton = () => {
+    if (isLoadingAuth) {
+      return null;
+    }
+    
+    // अगर उपयोगकर्ता authenticated नहीं है
+    if (!isAuthenticated) {
+      return (
+        <Button onClick={handleSellerButtonClick} variant="ghost" className="w-full justify-start text-blue-600 hover:bg-blue-50">
+          <Store className="mr-2 h-4 w-4" />
+          Become a Seller
+        </Button>
+      );
+    }
+    
+    // अगर उपयोगकर्ता authenticated है
+    const approvalStatus = user?.sellerProfile?.approvalStatus;
+    
+    if (user?.role === "seller" && approvalStatus === "pending") {
+      return (
+        <Button onClick={handleSellerButtonClick} variant="ghost" className="w-full justify-start text-blue-600 hover:bg-blue-50">
+          <Store className="mr-2 h-4 w-4" />
+          View Seller Status
+        </Button>
+      );
+    }
+    
+    if (user?.role === "seller" && approvalStatus === "approved") {
+      return (
+        <Button onClick={handleSellerButtonClick} variant="ghost" className="w-full justify-start text-blue-600 hover:bg-blue-50">
+          <Store className="mr-2 h-4 w-4" />
+          Go to Seller Dashboard
+        </Button>
+      );
+    }
+    
+    // डिफ़ॉल्ट रूप से, 'Become a Seller' बटन दिखाएं
+    return (
+      <Button onClick={handleSellerButtonClick} variant="ghost" className="w-full justify-start text-blue-600 hover:bg-blue-50">
+        <Store className="mr-2 h-4 w-4" />
+        Become a Seller
+      </Button>
+    );
+  };
+  
   return (
     <header className="sticky top-0 z-50 bg-white shadow-sm">
       <div className="container mx-auto flex h-16 items-center justify-between px-4 md:px-6">
@@ -126,11 +187,8 @@ const Header: React.FC<HeaderProps> = ({ categories = [] }) => {
 
         {/* डेस्कटॉप नेविगेशन और एक्शन बटन */}
         <nav className="hidden md:flex items-center space-x-4">
-          {/* ✅ अब यह सीधे डायलॉग खोलता है */}
-          <Button onClick={handleBecomeSeller} variant="ghost" className="text-blue-600 hover:bg-blue-50">
-            <Store className="mr-2 h-4 w-4" />
-            Become a Seller
-          </Button>
+          {/* ✅ डेस्कटॉप बटन को यहां से बदलें */}
+          {renderSellerButton()}
 
           <Link href="/wishlist">
             <Button variant="ghost" size="icon">
@@ -276,11 +334,8 @@ const Header: React.FC<HeaderProps> = ({ categories = [] }) => {
                   </Button>
                 </Link>
                 
-                {/* ✅ मोबाइल 'Become a Seller' बटन */}
-                <Button onClick={handleBecomeSeller} variant="ghost" className="w-full justify-start text-blue-600 hover:bg-blue-50">
-                  <Store className="mr-2 h-4 w-4" />
-                  Become a Seller
-                </Button>
+                {/* ✅ यहाँ मोबाइल 'Become a Seller' बटन को अपडेट करें */}
+                {renderSellerButton()}
 
                 <div className="w-full border-t pt-4">
                   <p className="font-semibold mb-2">Categories</p>
@@ -306,13 +361,14 @@ const Header: React.FC<HeaderProps> = ({ categories = [] }) => {
         </div>
       </div>
       {/* ✅ SellerOnboardingDialog को यहाँ रेंडर करें */}
-      <SellerOnboardingDialog
-        isOpen={isSellerDialogOpen}
-        onClose={() => setIsSellerDialogOpen(false)}
-      />
+      {isAuthenticated && (
+        <SellerOnboardingDialog
+          isOpen={isSellerDialogOpen}
+          onClose={() => setIsSellerDialogOpen(false)}
+        />
+      )}
     </header>
   );
 };
 
 export default Header;
-      
