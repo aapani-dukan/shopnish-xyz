@@ -1,4 +1,4 @@
-// client/src/pages/SellerApply.tsx
+// client/src/pages/seller-apply.tsx
 import React, { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import SellerOnboardingDialog from "@/components/seller/SellerOnboardingDialog";
@@ -16,14 +16,15 @@ const SellerApply = () => {
       } else if (user?.role === "seller") {
         // ✅ यहाँ `user.sellerProfile` का उपयोग करें
         if (user.sellerProfile?.approvalStatus === "approved") {
-          navigate("/seller-dashboard");
+          navigate("/seller-dashboard", { replace: true });
         } else if (user.sellerProfile?.approvalStatus === "pending") {
-          navigate("/seller-status");
+          navigate("/seller-status", { replace: true });
         } else {
+          // अगर स्टेटस 'rejected' या 'null' है
           setIsDialogOpen(true);
         }
       } else {
-        // ✅ यह लॉजिक customer role के लिए है
+        // अगर रोल 'customer' है
         setIsDialogOpen(true);
       }
     }
@@ -34,7 +35,7 @@ const SellerApply = () => {
       {!isLoadingAuth && (
         <SellerOnboardingDialog
           isOpen={isDialogOpen}
-          onClose={() => navigate("/")}
+          onClose={() => navigate("/", { replace: true })}
         />
       )}
     </div>
