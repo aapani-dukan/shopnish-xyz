@@ -74,7 +74,8 @@ const Header: React.FC<HeaderProps> = ({ categories = [] }) => {
   const handleSellerButtonClick = () => {
     if (!isAuthenticated) {
       // अगर लॉग इन नहीं है, तो auth पेज पर जाएं
-      navigate("/auth", { state: { redirectIntent: "become-seller" } });
+      // wouter में navigate के साथ state को सीधे URL में pass करते हैं, जैसे:
+      navigate(`/auth?redirectIntent=become-seller`);
     } else {
       // अगर लॉग इन है, तो स्टेटस के आधार पर कार्रवाई करें
       const approvalStatus = user?.sellerProfile?.approvalStatus;
@@ -94,13 +95,11 @@ const Header: React.FC<HeaderProps> = ({ categories = [] }) => {
 
     switch (user.role) {
       case "seller":
-        // ✅ user.sellerProfile का उपयोग करें
         if (user.sellerProfile?.approvalStatus === "approved") {
           return { label: "Seller Dashboard", path: "/seller-dashboard" };
         } else if (user.sellerProfile?.approvalStatus === "pending") {
           return { label: "Seller Status", path: "/seller-status" };
         } else {
-          // 'rejected' या 'null' होने पर
           return { label: "Seller Application", path: "/seller-apply" };
         }
       case "admin":
@@ -122,7 +121,6 @@ const Header: React.FC<HeaderProps> = ({ categories = [] }) => {
       return null;
     }
     
-    // अगर उपयोगकर्ता authenticated नहीं है
     if (!isAuthenticated) {
       return (
         <Button onClick={handleSellerButtonClick} variant="ghost" className="w-full justify-start text-blue-600 hover:bg-blue-50">
@@ -132,7 +130,6 @@ const Header: React.FC<HeaderProps> = ({ categories = [] }) => {
       );
     }
     
-    // अगर उपयोगकर्ता authenticated है
     const approvalStatus = user?.sellerProfile?.approvalStatus;
     
     if (user?.role === "seller" && approvalStatus === "pending") {
@@ -153,7 +150,6 @@ const Header: React.FC<HeaderProps> = ({ categories = [] }) => {
       );
     }
     
-    // डिफ़ॉल्ट रूप से, 'Become a Seller' बटन दिखाएं
     return (
       <Button onClick={handleSellerButtonClick} variant="ghost" className="w-full justify-start text-blue-600 hover:bg-blue-50">
         <Store className="mr-2 h-4 w-4" />
@@ -165,13 +161,11 @@ const Header: React.FC<HeaderProps> = ({ categories = [] }) => {
   return (
     <header className="sticky top-0 z-50 bg-white shadow-sm">
       <div className="container mx-auto flex h-16 items-center justify-between px-4 md:px-6">
-        {/* लोगो */}
         <Link href="/" className="flex items-center text-xl font-bold text-blue-600">
           <Store className="mr-2 h-6 w-6" />
           Shopnish
         </Link>
 
-        {/* डेस्कटॉप सर्च बार */}
         <form onSubmit={handleSearch} className="hidden md:flex flex-grow max-w-md mx-4">
           <Input
             type="search"
@@ -185,9 +179,7 @@ const Header: React.FC<HeaderProps> = ({ categories = [] }) => {
           </Button>
         </form>
 
-        {/* डेस्कटॉप नेविगेशन और एक्शन बटन */}
         <nav className="hidden md:flex items-center space-x-4">
-          {/* ✅ डेस्कटॉप बटन को यहां से बदलें */}
           {renderSellerButton()}
 
           <Link href="/wishlist">
@@ -197,7 +189,6 @@ const Header: React.FC<HeaderProps> = ({ categories = [] }) => {
             </Button>
           </Link>
 
-          {/* कार्ट बटन */}
           <Button onClick={toggleCart} variant="ghost" size="icon" className="relative">
             <ShoppingCart className="h-5 w-5" />
             {totalItemsInCart > 0 && (
@@ -208,7 +199,6 @@ const Header: React.FC<HeaderProps> = ({ categories = [] }) => {
             <span className="sr-only">Shopping Cart</span>
           </Button>
 
-          {/* यूज़र ड्रॉपडाउन मेनू */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon">
@@ -258,7 +248,6 @@ const Header: React.FC<HeaderProps> = ({ categories = [] }) => {
           </DropdownMenu>
         </nav>
 
-        {/* मोबाइल मेनू और सर्च (Sheet) */}
         <div className="flex items-center md:hidden">
           <Button onClick={toggleCart} variant="ghost" size="icon" className="relative mr-2">
             <ShoppingCart className="h-5 w-5" />
@@ -291,7 +280,6 @@ const Header: React.FC<HeaderProps> = ({ categories = [] }) => {
                   </Button>
                 </form>
 
-                {/* मोबाइल यूज़र मेनू */}
                 {isLoadingAuth ? (
                   <p className="text-gray-700">Loading user...</p>
                 ) : isAuthenticated ? (
@@ -334,7 +322,6 @@ const Header: React.FC<HeaderProps> = ({ categories = [] }) => {
                   </Button>
                 </Link>
                 
-                {/* ✅ यहाँ मोबाइल 'Become a Seller' बटन को अपडेट करें */}
                 {renderSellerButton()}
 
                 <div className="w-full border-t pt-4">
@@ -360,7 +347,6 @@ const Header: React.FC<HeaderProps> = ({ categories = [] }) => {
           </Sheet>
         </div>
       </div>
-      {/* ✅ SellerOnboardingDialog को यहाँ रेंडर करें */}
       {isAuthenticated && (
         <SellerOnboardingDialog
           isOpen={isSellerDialogOpen}
@@ -372,3 +358,4 @@ const Header: React.FC<HeaderProps> = ({ categories = [] }) => {
 };
 
 export default Header;
+      
