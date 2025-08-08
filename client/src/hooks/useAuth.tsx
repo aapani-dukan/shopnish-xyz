@@ -2,6 +2,7 @@
 
 import { useEffect, useState, createContext, useContext, useCallback } from "react";
 import { User as FirebaseUser } from "firebase/auth";
+import { useQuery } from '@tanstack/react-query'; // ✅ यहाँ useQuery को इंपोर्ट करें
 import { 
   auth,
   onAuthStateChanged,
@@ -41,12 +42,11 @@ interface AuthContextType {
   clearError: () => void;
   signIn: (usePopup?: boolean) => Promise<FirebaseUser | null>;
   signOut: () => Promise<void>;
+  refetchUser: () => void; // ✅ refetchUser फ़ंक्शन जोड़ें
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// ✅ यहाँ authenticatedApiRequest फ़ंक्शन में कोई बदलाव नहीं किया है,
-// क्योंकि यह लॉजिकली सही है। समस्या कहीं और है।
 export async function authenticatedApiRequest(method: 'GET' | 'POST' | 'PUT' | 'DELETE', url: string, data?: any, idToken?: string) {
   if (!idToken) {
     throw new Error("Authentication token is missing for API request.");
@@ -85,125 +85,64 @@ export async function authenticatedApiRequest(method: 'GET' | 'POST' | 'PUT' | '
 }
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [isLoadingAuth, setIsLoadingAuth] = useState(true);
-  const [error, setError] = useState<AuthError | null>(null);
+  const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
+  const [isLoadingFirebase, setIsLoadingFirebase] = useState(true);
+  const [authError, setAuthError] = useState<AuthError | null>(null);
+  const [idToken, setIdToken] = useState<string | null>(null);
 
-  const processAndSetUser = useCallback(async (firebaseUser: FirebaseUser | null) => {
-    if (!firebaseUser) {
-      setUser(null);
-      setError(null);
-      setIsLoadingAuth(false);
-      queryClient.removeQueries();
-      return;
-    }
+  // ✅ React Query का उपयोग करके user data fetch करें
+  const { data: user, isLoading: isLoadingUser, error: queryError, refetch } = useQuery({
+    queryKey: ['/api/users/me'],
+    queryFn: async () => {
+      if (!firebaseUser || !idToken) return null;
 
-    try {
-      // ✅ प्रोसेस शुरू होने पर इसे true करें
-      setIsLoadingAuth(true);
-
-      const idToken = await firebaseUser.getIdToken();
-      const decodedToken = await firebaseUser.getIdTokenResult();
-      const firebaseRole: User['role'] = (decodedToken.claims.role as User['role']) || "customer";
-
-      const email = firebaseUser.email;
-      const name = firebaseUser.displayName;
-
-      let dbUserData: User | null = null;
-      let sellerProfileData: SellerInfo | null = null;
-      
-      // ✅ Fetch user data from your DB
       try {
         const res = await authenticatedApiRequest("GET", `/api/users/me?firebaseUid=${firebaseUser.uid}`, undefined, idToken);
         const data = await res.json();
-        dbUserData = data.user;
-      } catch (apiError: any) {
-        console.warn("DB User info fetch failed, using Firebase data:", apiError.message || apiError);
-        setError({ code: "db/user-fetch-failed", message: "Failed to fetch full user info from database." });
-      }
+        const dbUserData = data.user;
+        const firebaseRole: User['role'] = (await firebaseUser.getIdTokenResult()).claims.role as User['role'] || "customer";
 
-      // ✅ Fetch seller profile data (if applicable)
-      if (firebaseRole === "seller" || dbUserData?.role === "seller") {
-        try {
+        let sellerProfileData: SellerInfo | null = null;
+        if (dbUserData?.role === "seller") {
           const res = await authenticatedApiRequest("GET", "/api/sellers/me", undefined, idToken);
-          // ✅ यहाँ डेटा को JSON में बदलने से पहले जांच करें
           const textData = await res.text();
-          if (textData) {
-            sellerProfileData = JSON.parse(textData) as SellerInfo;
-            console.log("Seller info fetched:", sellerProfileData);
-          } else {
-            console.log("Seller profile not found for user (empty response).");
-            sellerProfileData = null;
-          }
-        } catch (apiError: any) {
-          if (apiError.message && apiError.message.includes('404')) {
-            console.log("Seller profile not found for user (404).");
-            sellerProfileData = null;
-          } else {
-            console.warn("Seller profile fetch failed:", apiError.message || apiError);
-            setError({ code: "seller/profile-fetch-failed", message: "Failed to fetch seller profile." });
-          }
+          sellerProfileData = textData ? JSON.parse(textData) as SellerInfo : null;
         }
+
+        const currentUser: User = {
+          uid: firebaseUser.uid,
+          id: dbUserData?.id,
+          email: firebaseUser.email || dbUserData?.email,
+          name: firebaseUser.displayName || dbUserData?.name,
+          role: dbUserData?.role || firebaseRole,
+          idToken: idToken,
+          sellerProfile: sellerProfileData, 
+          approvalStatus: dbUserData?.approvalStatus || sellerProfileData?.approvalStatus, 
+        };
+        return currentUser;
+      } catch (e) {
+        console.error("Failed to fetch user data from DB:", e);
+        throw e;
       }
+    },
+    enabled: !!firebaseUser && !!idToken,
+    staleTime: 1000 * 60 * 5, // 5 मिनट तक डेटा को stale ना मानें
+    retry: false,
+  });
 
-      const finalRole: User['role'] = dbUserData?.role || firebaseRole;
-      const finalApprovalStatus = dbUserData?.approvalStatus || sellerProfileData?.approvalStatus || undefined;
-
-      const currentUser: User = {
-        uid: firebaseUser.uid,
-        id: dbUserData?.id,
-        email: email || dbUserData?.email,
-        name: name || dbUserData?.name,
-        role: finalRole,
-        idToken: idToken,
-        sellerProfile: sellerProfileData, 
-        approvalStatus: finalApprovalStatus, 
-      };
-
-      setUser(currentUser);
-      setIsLoadingAuth(false);
-      setError(null);
-      console.log("User processed and set:", currentUser.uid, "Role:", currentUser.role, "Approval Status:", currentUser.approvalStatus);
-
-    } catch (err: any) {
-      console.error("Auth processing error:", err);
-      setUser(null);
-      setIsLoadingAuth(false); // ✅ एरर होने पर इसे false करें
-      setError({ code: err.code || "auth/processing-error", message: err.message || "Failed to process user data." });
-    }
-  }, []);
-
-  useEffect(() => {
-    let isMounted = true;
-    const checkRedirect = async () => {
-      if (user || !isMounted) return;
-      console.log("🔄 Checking for redirect result...");
-      const { user: fbUser, error: redirectError } = await firebaseHandleRedirectResult();
-      
-      if (fbUser) {
-        console.log("✅ Redirect result user found:", fbUser.uid);
-        await processAndSetUser(fbUser);
-      } else if (redirectError) {
-        console.log("❌ Redirect error found:", redirectError);
-        setError(redirectError);
-        setIsLoadingAuth(false);
-      } else {
-        console.log("ℹ️ No redirect result user or error. Waiting for onAuthStateChanged.");
-        setIsLoadingAuth(false);
-      }
-    };
-    checkRedirect();
-    return () => { isMounted = false; };
-  }, [user, processAndSetUser]);
-
+  // ✅ onAuthStateChanged listener को FirebaseUser सेट करने के लिए उपयोग करें
   useEffect(() => {
     console.log("🔄 Setting up onAuthStateChanged listener.");
     const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
       console.log("🔄 onAuthStateChanged listener fired. fbUser:", fbUser?.uid || "null");
-      if (fbUser && fbUser.uid !== user?.uid || (!fbUser && user)) {
-        await processAndSetUser(fbUser);
+      setFirebaseUser(fbUser);
+      setIsLoadingFirebase(false);
+      if (fbUser) {
+        const idToken = await fbUser.getIdToken();
+        setIdToken(idToken);
       } else {
-        setIsLoadingAuth(false);
+        setIdToken(null);
+        queryClient.clear();
       }
     });
 
@@ -211,19 +150,21 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       console.log("Auth Provider: Cleaning up onAuthStateChanged listener.");
       unsubscribe();
     };
-  }, [user, processAndSetUser]);
+  }, []);
+
+  const isLoadingAuth = isLoadingFirebase || isLoadingUser;
+  const isAuthenticated = !!user;
 
   const signIn = useCallback(async (usePopup: boolean = false): Promise<FirebaseUser | null> => {
-    setIsLoadingAuth(true);
-    setError(null);
+    setIsLoadingFirebase(true);
+    setAuthError(null);
     try {
       const fbUser = await firebaseSignInWithGoogle(usePopup);
       return fbUser; 
     } catch (err: any) {
       console.error("Auth Provider: Error during signIn:", err);
-      setError(err as AuthError);
-      setUser(null);
-      setIsLoadingAuth(false);
+      setAuthError(err as AuthError);
+      setIsLoadingFirebase(false);
       throw err;
     }
   }, []);
@@ -232,28 +173,31 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     try {
       console.log("Auth Provider: Attempting to sign out...");
       await signOutUser();
-      setError(null);
-      console.log("✅ Signed out successfully. State reset.");
+      setAuthError(null);
+      setFirebaseUser(null);
+      setIdToken(null);
       queryClient.clear();
+      console.log("✅ Signed out successfully. State reset.");
     } catch (err: any) {
       console.error("❌ Error during sign out:", err);
-      setError(err as AuthError);
+      setAuthError(err as AuthError);
       throw err;
     }
   }, []);
 
   const clearError = useCallback(() => {
-    setError(null);
+    setAuthError(null);
   }, []);
 
   const authContextValue = {
     user,
     isLoadingAuth,
-    isAuthenticated: !!user,
-    error,
+    isAuthenticated,
+    error: authError || queryError,
     clearError,
     signIn,
     signOut,
+    refetchUser: refetch, // ✅ refetch फ़ंक्शन को context में expose करें
   };
 
   return (
@@ -268,4 +212,3 @@ export const useAuth = () => {
   if (!ctx) throw new Error("useAuth must be used within an AuthProvider");
   return ctx;
 };
-    
