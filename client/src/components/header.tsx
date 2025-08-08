@@ -1,6 +1,6 @@
 // src/components/headers/Header.tsx
 import React, { useState } from "react";
-import { Link, useLocation } from "wouter";
+import { Link, useNavigate } from "react-router-dom"; // ✅ react-router-dom से इंपोर्ट करें
 import { useAuth } from "@/hooks/useAuth";
 import { useCartStore } from "@/lib/store";
 import { logout } from "@/lib/firebase";
@@ -44,7 +44,7 @@ interface HeaderProps {
 const Header: React.FC<HeaderProps> = ({ categories = [] }) => {
   const { items, isCartOpen, toggleCart } = useCartStore();
   const [searchValue, setSearchValue] = useState("");
-  const [, navigate] = useLocation();
+  const navigate = useNavigate(); // ✅ useNavigate हुक का उपयोग करें
   const { user, isAuthenticated, isLoadingAuth } = useAuth();
   // ✅ नया स्टेट: डायलॉग को नियंत्रित करने के लिए
   const [isSellerDialogOpen, setIsSellerDialogOpen] = useState(false);
@@ -64,7 +64,6 @@ const Header: React.FC<HeaderProps> = ({ categories = [] }) => {
       await logout();
       console.log("Header: User logged out successfully.");
       navigate("/");
-      localStorage.removeItem('redirectIntent');
     } catch (error) {
       console.error("Header: Error during logout:", error);
     }
@@ -73,9 +72,8 @@ const Header: React.FC<HeaderProps> = ({ categories = [] }) => {
   // ✅ 'Become a Seller' बटन का नया, सशर्त लॉजिक
   const handleSellerButtonClick = () => {
     if (!isAuthenticated) {
-      // अगर लॉग इन नहीं है, तो auth पेज पर जाएं
-      // wouter में navigate के साथ state को सीधे URL में pass करते हैं, जैसे:
-      navigate(`/auth?redirectIntent=become-seller`);
+      // ✅ react-router-dom में navigate के साथ state का उपयोग करें
+      navigate("/auth", { state: { redirectIntent: "become-seller" } });
     } else {
       // अगर लॉग इन है, तो स्टेटस के आधार पर कार्रवाई करें
       const approvalStatus = user?.sellerProfile?.approvalStatus;
@@ -84,7 +82,6 @@ const Header: React.FC<HeaderProps> = ({ categories = [] }) => {
       } else if (user?.role === "seller" && approvalStatus === "approved") {
         navigate("/seller-dashboard");
       } else {
-        // अगर रोल 'customer' है, या सेलर है लेकिन स्टेटस 'rejected' या 'null' है
         setIsSellerDialogOpen(true);
       }
     }
@@ -161,7 +158,7 @@ const Header: React.FC<HeaderProps> = ({ categories = [] }) => {
   return (
     <header className="sticky top-0 z-50 bg-white shadow-sm">
       <div className="container mx-auto flex h-16 items-center justify-between px-4 md:px-6">
-        <Link href="/" className="flex items-center text-xl font-bold text-blue-600">
+        <Link to="/" className="flex items-center text-xl font-bold text-blue-600">
           <Store className="mr-2 h-6 w-6" />
           Shopnish
         </Link>
@@ -182,7 +179,7 @@ const Header: React.FC<HeaderProps> = ({ categories = [] }) => {
         <nav className="hidden md:flex items-center space-x-4">
           {renderSellerButton()}
 
-          <Link href="/wishlist">
+          <Link to="/wishlist">
             <Button variant="ghost" size="icon">
               <Heart className="h-5 w-5" />
               <span className="sr-only">Wishlist</span>
@@ -215,7 +212,7 @@ const Header: React.FC<HeaderProps> = ({ categories = [] }) => {
                   <DropdownMenuSeparator />
                   {dashboardLink && (
                     <DropdownMenuItem asChild>
-                      <Link href={dashboardLink.path}>
+                      <Link to={dashboardLink.path}>
                         <LayoutDashboard className="mr-2 h-4 w-4" />
                         {dashboardLink.label}
                       </Link>
@@ -223,7 +220,7 @@ const Header: React.FC<HeaderProps> = ({ categories = [] }) => {
                   )}
                   {user?.role === "customer" && (
                     <DropdownMenuItem asChild>
-                      <Link href="/customer/orders">
+                      <Link to="/customer/orders">
                         <ListOrdered className="mr-2 h-4 w-4" />
                         My Orders
                       </Link>
@@ -237,7 +234,7 @@ const Header: React.FC<HeaderProps> = ({ categories = [] }) => {
               ) : (
                 <>
                   <DropdownMenuItem asChild>
-                    <Link href="/auth">
+                    <Link to="/auth">
                       <LogIn className="mr-2 h-4 w-4" />
                       Login / Sign Up
                     </Link>
@@ -286,7 +283,7 @@ const Header: React.FC<HeaderProps> = ({ categories = [] }) => {
                   <>
                     <span className="font-semibold text-gray-900">Hello, {user?.name || user?.email?.split('@')[0] || "User"}</span>
                     {dashboardLink && (
-                      <Link href={dashboardLink.path} className="w-full">
+                      <Link to={dashboardLink.path} className="w-full">
                         <Button variant="ghost" className="w-full justify-start">
                           <LayoutDashboard className="mr-2 h-4 w-4" />
                           {dashboardLink.label}
@@ -294,7 +291,7 @@ const Header: React.FC<HeaderProps> = ({ categories = [] }) => {
                       </Link>
                     )}
                      {user?.role === "customer" && (
-                       <Link href="/customer/orders" className="w-full">
+                       <Link to="/customer/orders" className="w-full">
                          <Button variant="ghost" className="w-full justify-start">
                            <ListOrdered className="mr-2 h-4 w-4" />
                            My Orders
@@ -307,7 +304,7 @@ const Header: React.FC<HeaderProps> = ({ categories = [] }) => {
                     </Button>
                   </>
                 ) : (
-                  <Link href="/auth" className="w-full">
+                  <Link to="/auth" className="w-full">
                     <Button variant="ghost" className="w-full justify-start">
                       <LogIn className="mr-2 h-4 w-4" />
                       Login / Sign Up
@@ -315,7 +312,7 @@ const Header: React.FC<HeaderProps> = ({ categories = [] }) => {
                   </Link>
                 )}
 
-                <Link href="/wishlist" className="w-full">
+                <Link to="/wishlist" className="w-full">
                   <Button variant="ghost" className="w-full justify-start">
                     <Heart className="mr-2 h-4 w-4" />
                     Wishlist
@@ -330,7 +327,7 @@ const Header: React.FC<HeaderProps> = ({ categories = [] }) => {
                     <ul className="space-y-2">
                       {categories.map((category) => (
                         <li key={category.id}>
-                          <Link href={`/category/${category.slug}`}>
+                          <Link to={`/category/${category.slug}`}>
                             <Button variant="ghost" className="w-full justify-start">
                               {category.name}
                             </Button>
@@ -358,4 +355,3 @@ const Header: React.FC<HeaderProps> = ({ categories = [] }) => {
 };
 
 export default Header;
-      
