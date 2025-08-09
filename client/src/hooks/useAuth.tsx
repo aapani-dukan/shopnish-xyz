@@ -94,7 +94,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [idToken, setIdToken] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
-  // ✅ useQuery में एक छोटा लेकिन महत्वपूर्ण बदलाव किया गया है
+  // ✅ useQuery को अपडेट किया गया है
   const { data: user, isLoading: isLoadingUser, error: queryError, refetch } = useQuery({
     queryKey: ['userProfile', firebaseUser?.uid],
     queryFn: async () => {
@@ -104,7 +104,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         const res = await authenticatedApiRequest("GET", `/api/users/me`, undefined, idToken);
         const { user: dbUserData } = await res.json();
         
-        // back-end से प्राप्त डेटा के आधार पर role निर्धारित करें
         const role = dbUserData?.role || 'customer'; 
         
         const currentUser: User = {
@@ -120,16 +119,26 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         return currentUser;
       } catch (e: any) {
         if (e.message.includes('404')) {
+          // ✅ यहाँ नया लॉजिक जोड़ा गया है: 404 पर नया उपयोगकर्ता बनाएं
+          console.warn("User profile not found in DB. Creating a new user.");
+          const newUserProfile = await authenticatedApiRequest("POST", `/api/users`, {
+            uid: firebaseUser.uid,
+            email: firebaseUser.email,
+            name: firebaseUser.displayName,
+            role: "customer", // डिफ़ॉल्ट रोल
+          }, idToken);
+
+          const { user: newDbUserData } = await newUserProfile.json();
+
           const newUser: User = {
             uid: firebaseUser.uid,
-            id: firebaseUser.uid, 
+            id: newDbUserData?.id, 
             email: firebaseUser.email,
             name: firebaseUser.displayName,
             role: "customer",
             idToken: idToken,
             sellerProfile: null,
           };
-          console.warn("User profile not found in DB. Treating as a new customer.");
           return newUser;
         }
         console.error("Failed to fetch user data from DB:", e);
@@ -141,7 +150,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     retry: false,
   });
 
-  // ✅ useEffect को Firebase Auth state को manage करने के लिए
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
       setFirebaseUser(fbUser);
@@ -157,7 +165,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     return () => unsubscribe();
   }, [queryClient]);
 
-  // ✅ isLoadingAuth की गणना को और भी स्पष्ट किया गया है
   const isLoadingAuth = isLoadingFirebase || (!!firebaseUser && isLoadingUser);
   const isAuthenticated = !!user && !!idToken;
 
