@@ -71,24 +71,24 @@ const Header: React.FC<HeaderProps> = ({ categories = [] }) => {
   const handleSellerButtonClick = () => {
     console.log("Seller button clicked! isAuthenticated:", isAuthenticated, "user:", user);
 
+    if (isLoadingAuth) {
+      return; // ✅ लोडिंग के दौरान कुछ न करें
+    }
+
     if (!isAuthenticated) {
       localStorage.setItem('redirectIntent', 'become-seller');
       navigate("/auth");
-    } else if (user) { // ✅ user को चेक करें
-      const approvalStatus = user.sellerProfile?.approvalStatus;
-
-      // ✅ लॉजिक को सरल और सीधा किया गया है
+    } else if (user) {
       if (user.role === "seller") {
+        const approvalStatus = user.sellerProfile?.approvalStatus;
         if (approvalStatus === "approved") {
           navigate("/seller-dashboard");
         } else if (approvalStatus === "pending") {
           navigate("/seller-status");
         } else {
-          // 'rejected' या 'null' स्टेटस के लिए
           navigate("/seller-apply");
         }
       } else {
-        // अगर रोल 'customer' है
         navigate("/seller-apply");
       }
     }
@@ -119,46 +119,15 @@ const Header: React.FC<HeaderProps> = ({ categories = [] }) => {
 
   const dashboardLink = getDashboardLink();
   
-  // ✅ इस फ़ंक्शन को हटाया गया और सीधे रेंडर लॉजिक को यहाँ जोड़ा गया
-  const renderSellerButton = () => {
-    // जब auth लोड हो रहा हो, तो null रिटर्न करें
-    if (isLoadingAuth) {
-      return null;
+  // ✅ रेंडर लॉजिक को यहाँ से हटाकर JSX में सीधे लिखा गया है।
+  const getSellerButtonLabel = () => {
+    if (user?.role === "seller") {
+      const status = user.sellerProfile?.approvalStatus;
+      if (status === "pending") return "View Seller Status";
+      if (status === "approved") return "Go to Seller Dashboard";
+      return "Become a Seller";
     }
-
-    // जब user पूरी तरह से लोड हो जाए, तो बटन रेंडर करें
-    if (user) {
-      if (user.role === "seller" && user.sellerProfile?.approvalStatus === "pending") {
-        return (
-          <Button onClick={handleSellerButtonClick} variant="ghost" className="w-full justify-start text-blue-600 hover:bg-blue-50">
-            <Store className="mr-2 h-4 w-4" />
-            View Seller Status
-          </Button>
-        );
-      }
-      
-      if (user.role === "seller" && user.sellerProfile?.approvalStatus === "approved") {
-        return (
-          <Button onClick={handleSellerButtonClick} variant="ghost" className="w-full justify-start text-blue-600 hover:bg-blue-50">
-            <Store className="mr-2 h-4 w-4" />
-            Go to Seller Dashboard
-          </Button>
-        );
-      }
-    }
-
-    // डिफ़ॉल्ट बटन या जब उपयोगकर्ता लॉग इन न हो
-    return (
-      <Button
-        onClick={handleSellerButtonClick}
-        disabled={isLoadingAuth}
-        variant="ghost"
-        className="w-full justify-start text-blue-600 hover:bg-blue-50"
-      >
-        <Store className="mr-2 h-4 w-4" />
-        Become a Seller
-      </Button>
-    );
+    return "Become a Seller";
   };
   
   return (
@@ -183,7 +152,15 @@ const Header: React.FC<HeaderProps> = ({ categories = [] }) => {
         </form>
 
         <nav className="hidden md:flex items-center space-x-4">
-          {renderSellerButton()}
+          <Button
+            onClick={handleSellerButtonClick}
+            disabled={isLoadingAuth} // ✅ यहाँ isLoadingAuth के आधार पर अक्षम किया गया है
+            variant="ghost"
+            className="w-full justify-start text-blue-600 hover:bg-blue-50"
+          >
+            <Store className="mr-2 h-4 w-4" />
+            {getSellerButtonLabel()}
+          </Button>
 
           <Link to="/wishlist">
             <Button variant="ghost" size="icon">
@@ -326,7 +303,15 @@ const Header: React.FC<HeaderProps> = ({ categories = [] }) => {
                 </Link>
                 
                 {/* ✅ यहाँ सीधे फ़ंक्शन को कॉल किया गया है */}
-                {renderSellerButton()}
+                <Button
+                  onClick={handleSellerButtonClick}
+                  disabled={isLoadingAuth}
+                  variant="ghost"
+                  className="w-full justify-start text-blue-600 hover:bg-blue-50"
+                >
+                  <Store className="mr-2 h-4 w-4" />
+                  {getSellerButtonLabel()}
+                </Button>
 
                 <div className="w-full border-t pt-4">
                   <p className="font-semibold mb-2">Categories</p>
