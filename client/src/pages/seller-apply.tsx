@@ -10,35 +10,21 @@ const SellerApply = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // अगर auth अभी लोड हो रहा है, तो कुछ न करें
-    if (isLoadingAuth) {
-      return;
-    }
-    
-    // अगर user लॉग इन नहीं है, तो लॉगिन पेज पर भेजें
-    if (!isAuthenticated) {
-      navigate("/auth", { replace: true });
-      return;
-    }
-    
-    // अगर user डेटा उपलब्ध है, तो आगे बढ़ें
-    if (user) {
-      if (user.role === "seller") {
-        const approvalStatus = user.sellerProfile?.approvalStatus;
-        if (approvalStatus === "approved") {
+    if (!isLoadingAuth) {
+      if (!isAuthenticated) {
+        navigate("/auth");
+      } else if (user?.role === "seller") {
+        if (user.sellerProfile?.approvalStatus === "approved") {
           navigate("/seller-dashboard", { replace: true });
-        } else if (approvalStatus === "pending") {
+        } else if (user.sellerProfile?.approvalStatus === "pending") {
           navigate("/seller-status", { replace: true });
         } else {
-          // अगर स्टेटस 'rejected' या 'null' है, तो डायलॉग खोलें
           setIsDialogOpen(true);
         }
       } else {
-        // अगर रोल 'customer' है, तो डायलॉग खोलें
         setIsDialogOpen(true);
       }
     }
-    
   }, [isAuthenticated, isLoadingAuth, user, navigate]);
 
   return (
