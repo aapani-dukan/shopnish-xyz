@@ -151,7 +151,9 @@ const Header: React.FC<HeaderProps> = ({ categories = [] }) => {
     }
     
     return (
-      <Button onClick={handleSellerButtonClick} variant="ghost" className="w-full justify-start text-blue-600 hover:bg-blue-50">
+      <Button onClick={handleSellerButtonClick}
+        disabled={isLoadingAuth}
+        variant="ghost" className="w-full justify-start text-blue-600 hover:bg-blue-50">
         <Store className="mr-2 h-4 w-4" />
         Become a Seller
       </Button>
