@@ -1,106 +1,224 @@
-// src/hooks/useAuth.tsx
-import { useState, useEffect, createContext, useContext } from 'react';
-import { onAuthStateChanged, User, getIdTokenResult } from 'firebase/auth';
-import { auth } from '@/lib/firebase';
-import { authenticatedApiRequest } from '@/lib/api';
+// client/src/hooks/useAuth.tsx
 
-// डेटा स्ट्रक्चर को परिभाषित करें
-interface SellerProfile {
-  approvalStatus: 'pending' | 'approved' | 'rejected';
-  rejectionReason?: string;
+import { useEffect, useState, createContext, useContext, useCallback } from "react";
+import { User as FirebaseUser } from "firebase/auth";
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { 
+  auth,
+  onAuthStateChanged,
+  handleRedirectResult as firebaseHandleRedirectResult,
+  signInWithGoogle as firebaseSignInWithGoogle,
+  signOutUser,
+  AuthError,
+} from "@/lib/firebase";
+
+// --- आपके प्रकारों को ठीक करें ---
+export interface SellerInfo {
+  id: string;
+  userId: string;
+  businessName: string;
+  approvalStatus: "pending" | "approved" | "rejected";
+  rejectionReason?: string | null;
+  [key: string]: any;
 }
 
-interface UserData extends User {
+export interface User {
+  id: string;
+  uid: string;
+  email: string | null;
+  name: string | null;
+  role: "customer" | "seller" | "admin" | "delivery";
+  sellerProfile?: SellerInfo | null;
   idToken: string;
-  role: 'customer' | 'seller' | 'admin' | 'delivery';
-  sellerProfile?: SellerProfile | null;
-  name?: string;
 }
 
-// AuthContext को परिभाषित करें
 interface AuthContextType {
-  user: UserData | null;
-  isAuthenticated: boolean;
+  user: User | null;
   isLoadingAuth: boolean;
+  isAuthenticated: boolean;
+  error: AuthError | null;
+  clearError: () => void;
+  signIn: (usePopup?: boolean) => Promise<FirebaseUser | null>;
+  signOut: () => Promise<void>;
+  refetchUser: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// यह फंक्शन उपयोगकर्ता डेटा को फ़ेच करेगा
-async function fetchUserData(user: User, idToken: string) {
-  try {
-    const response = await authenticatedApiRequest('GET', '/api/users/me', null, idToken);
-    
-    if (response.status === 404) {
-      console.warn("User profile not found, treating as a new customer.");
-      return {
-        ...user,
-        idToken,
-        role: "customer",
-        sellerProfile: null
-      };
-    }
-
-    if (!response.ok) {
-      throw new Error(`API error: ${response.status} ${response.statusText}`);
-    }
-
-    const userData = await response.json();
-    return {
-      ...user,
-      ...userData.user,
-      idToken,
-      sellerProfile: userData.user.sellerProfile || null
-    };
-
-  } catch (error) {
-    console.error("Failed to fetch user data from backend:", error);
-    return null;
+// --- authenticatedApiRequest को ठीक करें ---
+export async function authenticatedApiRequest(method: 'GET' | 'POST' | 'PUT' | 'DELETE', url: string, data?: any, idToken?: string) {
+  if (!idToken) {
+    throw new Error("Authentication token is missing for API request.");
   }
-}
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<UserData | null>(null);
-  const [isLoadingAuth, setIsLoadingAuth] = useState(true);
-
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      if (firebaseUser) {
-        try {
-          const tokenResult = await getIdTokenResult(firebaseUser);
-          const idToken = tokenResult.token;
-          const userWithProfile = await fetchUserData(firebaseUser, idToken);
-          if (userWithProfile) {
-            setUser(userWithProfile as UserData);
-          } else {
-            setUser(null);
-          }
-        } catch (error) {
-          console.error("Error fetching user data:", error);
-          setUser(null);
-        }
-      } else {
-        setUser(null);
-      }
-      setIsLoadingAuth(false);
-    });
-
-    return () => unsubscribe();
-  }, []);
-
-  const value = {
-    user,
-    isAuthenticated: !!user,
-    isLoadingAuth,
+  const headers = {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${idToken}`,
   };
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  const options: RequestInit = {
+    method,
+    headers,
+    body: data ? JSON.stringify(data) : undefined,
+  };
+
+  try {
+    const response = await fetch(url, options);
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      let errorData = null;
+      try {
+        errorData = JSON.parse(errorText);
+      } catch (e) {
+        // अगर JSON parsing विफल हो जाए, तो plain text का उपयोग करें
+        console.error("Failed to parse JSON response:", e);
+      }
+      const errorMessage = errorData?.error || errorData?.message || errorText || `API Error: ${response.status} ${response.statusText}`;
+      throw new Error(errorMessage);
+    }
+    
+    // यदि प्रतिक्रिया में सामग्री नहीं है, तो एक खाली ऑब्जेक्ट वापस करें
+    if (response.status === 204) {
+      return { ok: true, json: () => Promise.resolve({}) };
+    }
+
+    return response;
+  } catch (e: any) {
+    console.error("API Request Failed:", e);
+    throw new Error(`Failed to perform API request: ${e.message || 'Unknown error'}`);
+  }
 }
 
+export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
+  const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
+  const [isLoadingFirebase, setIsLoadingFirebase] = useState(true);
+  const [authError, setAuthError] = useState<AuthError | null>(null);
+  const [idToken, setIdToken] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+
+  const { data: user, isLoading: isLoadingUser, error: queryError, refetch } = useQuery({
+    queryKey: ['userProfile', firebaseUser?.uid],
+    queryFn: async () => {
+      if (!firebaseUser || !idToken) return null;
+
+      try {
+        const res = await authenticatedApiRequest("GET", `/api/users/me`, undefined, idToken);
+        const { user: dbUserData } = await res.json();
+        
+        // back-end से प्राप्त डेटा के आधार पर role निर्धारित करें
+        const role = dbUserData?.role || 'customer'; 
+        
+        const currentUser: User = {
+          uid: firebaseUser.uid,
+          id: dbUserData?.id,
+          email: firebaseUser.email || dbUserData?.email,
+          name: firebaseUser.displayName || dbUserData?.name,
+          role: role,
+          idToken: idToken,
+          sellerProfile: dbUserData?.sellerProfile || null,
+        };
+        
+        // Firebase claims को sync करें (यदि आवश्यक हो)
+        if (firebaseUser.customClaims?.role !== role) {
+          // इस लॉजिक को सर्वर पर ही होना चाहिए, लेकिन सुनिश्चित करने के लिए
+          console.log(`Updating Firebase role claim from ${firebaseUser.customClaims?.role} to ${role}`);
+          // यहाँ एक सर्वर-साइड कॉल की आवश्यकता होगी, जिसे हम अभी छोड़ रहे हैं
+        }
+        
+        return currentUser;
+      } catch (e: any) {
+        // अगर यूजर डेटा नहीं मिला (जैसे 404), तो उसे एक नए यूजर के रूप में मानें
+        if (e.message.includes('404')) {
+          const newUser: User = {
+            uid: firebaseUser.uid,
+            id: firebaseUser.uid, 
+            email: firebaseUser.email,
+            name: firebaseUser.displayName,
+            role: "customer", // डिफ़ॉल्ट रोल
+            idToken: idToken,
+            sellerProfile: null,
+          };
+          console.warn("User profile not found in DB. Treating as a new customer.");
+          return newUser;
+        }
+        console.error("Failed to fetch user data from DB:", e);
+        throw e;
+      }
+    },
+    enabled: !!firebaseUser && !!idToken,
+    staleTime: 1000 * 60 * 5,
+    retry: false,
+  });
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
+      setFirebaseUser(fbUser);
+      setIsLoadingFirebase(false);
+      if (fbUser) {
+        const idToken = await fbUser.getIdToken();
+        setIdToken(idToken);
+      } else {
+        setIdToken(null);
+        queryClient.clear();
+      }
+    });
+    return () => unsubscribe();
+  }, [queryClient]);
+
+  const isLoadingAuth = isLoadingFirebase || (!!firebaseUser && isLoadingUser);
+  const isAuthenticated = !!user;
+
+  const signIn = useCallback(async (usePopup: boolean = false): Promise<FirebaseUser | null> => {
+    setIsLoadingFirebase(true);
+    setAuthError(null);
+    try {
+      const fbUser = await firebaseSignInWithGoogle(usePopup);
+      return fbUser;
+    } catch (err: any) {
+      setAuthError(err as AuthError);
+      setIsLoadingFirebase(false);
+      throw err;
+    }
+  }, []);
+
+  const signOut = useCallback(async () => {
+    try {
+      await signOutUser();
+      setAuthError(null);
+      setFirebaseUser(null);
+      setIdToken(null);
+      queryClient.clear();
+    } catch (err: any) {
+      setAuthError(err as AuthError);
+      throw err;
+    }
+  }, [queryClient]);
+
+  const clearError = useCallback(() => {
+    setAuthError(null);
+  }, []);
+
+  const authContextValue = {
+    user,
+    isLoadingAuth,
+    isAuthenticated,
+    error: authError || queryError,
+    clearError,
+    signIn,
+    signOut,
+    refetchUser: refetch,
+  };
+
+  return (
+    <AuthContext.Provider value={authContextValue}>
+      {children}
+    </AuthContext.Provider>
+  );
+};
+
 export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
+  const ctx = useContext(AuthContext);
+  if (!ctx) throw new Error("useAuth must be used within an AuthProvider");
+  return ctx;
 };
