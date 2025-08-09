@@ -119,7 +119,6 @@ const Header: React.FC<HeaderProps> = ({ categories = [] }) => {
 
   const dashboardLink = getDashboardLink();
   
-  // ✅ रेंडर लॉजिक को यहाँ से हटाकर JSX में सीधे लिखा गया है।
   const getSellerButtonLabel = () => {
     if (user?.role === "seller") {
       const status = user.sellerProfile?.approvalStatus;
@@ -302,7 +301,6 @@ const Header: React.FC<HeaderProps> = ({ categories = [] }) => {
                   </Button>
                 </Link>
                 
-                {/* ✅ यहाँ सीधे फ़ंक्शन को कॉल किया गया है */}
                 <Button
                   onClick={handleSellerButtonClick}
                   disabled={isLoadingAuth}
