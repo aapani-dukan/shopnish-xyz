@@ -45,7 +45,6 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// --- authenticatedApiRequest को ठीक करें ---
 export async function authenticatedApiRequest(method: 'GET' | 'POST' | 'PUT' | 'DELETE', url: string, data?: any, idToken?: string) {
   if (!idToken) {
     throw new Error("Authentication token is missing for API request.");
@@ -71,14 +70,12 @@ export async function authenticatedApiRequest(method: 'GET' | 'POST' | 'PUT' | '
       try {
         errorData = JSON.parse(errorText);
       } catch (e) {
-        // अगर JSON parsing विफल हो जाए, तो plain text का उपयोग करें
         console.error("Failed to parse JSON response:", e);
       }
       const errorMessage = errorData?.error || errorData?.message || errorText || `API Error: ${response.status} ${response.statusText}`;
       throw new Error(errorMessage);
     }
     
-    // यदि प्रतिक्रिया में सामग्री नहीं है, तो एक खाली ऑब्जेक्ट वापस करें
     if (response.status === 204) {
       return { ok: true, json: () => Promise.resolve({}) };
     }
@@ -97,6 +94,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [idToken, setIdToken] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
+  // ✅ useQuery में एक छोटा लेकिन महत्वपूर्ण बदलाव किया गया है
   const { data: user, isLoading: isLoadingUser, error: queryError, refetch } = useQuery({
     queryKey: ['userProfile', firebaseUser?.uid],
     queryFn: async () => {
@@ -119,23 +117,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           sellerProfile: dbUserData?.sellerProfile || null,
         };
         
-        // Firebase claims को sync करें (यदि आवश्यक हो)
-        if (firebaseUser.customClaims?.role !== role) {
-          // इस लॉजिक को सर्वर पर ही होना चाहिए, लेकिन सुनिश्चित करने के लिए
-          console.log(`Updating Firebase role claim from ${firebaseUser.customClaims?.role} to ${role}`);
-          // यहाँ एक सर्वर-साइड कॉल की आवश्यकता होगी, जिसे हम अभी छोड़ रहे हैं
-        }
-        
         return currentUser;
       } catch (e: any) {
-        // अगर यूजर डेटा नहीं मिला (जैसे 404), तो उसे एक नए यूजर के रूप में मानें
         if (e.message.includes('404')) {
           const newUser: User = {
             uid: firebaseUser.uid,
             id: firebaseUser.uid, 
             email: firebaseUser.email,
             name: firebaseUser.displayName,
-            role: "customer", // डिफ़ॉल्ट रोल
+            role: "customer",
             idToken: idToken,
             sellerProfile: null,
           };
@@ -151,6 +141,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     retry: false,
   });
 
+  // ✅ useEffect को Firebase Auth state को manage करने के लिए
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
       setFirebaseUser(fbUser);
@@ -166,8 +157,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     return () => unsubscribe();
   }, [queryClient]);
 
+  // ✅ isLoadingAuth की गणना को और भी स्पष्ट किया गया है
   const isLoadingAuth = isLoadingFirebase || (!!firebaseUser && isLoadingUser);
-  const isAuthenticated = !!user;
+  const isAuthenticated = !!user && !!idToken;
 
   const signIn = useCallback(async (usePopup: boolean = false): Promise<FirebaseUser | null> => {
     setIsLoadingFirebase(true);
@@ -222,4 +214,3 @@ export const useAuth = () => {
   if (!ctx) throw new Error("useAuth must be used within an AuthProvider");
   return ctx;
 };
-        
