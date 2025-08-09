@@ -50,7 +50,6 @@ export function AuthRedirectGuard({ children }: { children: React.ReactNode }) {
 
     if (isAuthenticated && user) {
       const redirectIntent = localStorage.getItem('redirectIntent');
-
       if (redirectIntent === "become-seller") {
         localStorage.removeItem('redirectIntent');
         if (user.role === "seller") {
@@ -74,31 +73,36 @@ export function AuthRedirectGuard({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      // ✅ यह नया लॉजिक है जो सेलर को सही पेज पर रखेगा
+      // ✅ सेलर के लिए नया और बेहतर रीडायरेक्ट लॉजिक
       if (user.role === "seller") {
         const approvalStatus = user.sellerProfile?.approvalStatus;
         
-        if (approvalStatus === "pending" && currentPath !== SELLER_SPECIFIC_PATHS.status) {
-          navigate(SELLER_SPECIFIC_PATHS.status, { replace: true });
+        if (approvalStatus === "approved") {
+          if (currentPath !== SELLER_SPECIFIC_PATHS.dashboard) {
+            navigate(SELLER_SPECIFIC_PATHS.dashboard, { replace: true });
+          }
           return;
         } 
         
-        if (approvalStatus === "approved" && currentPath !== SELLER_SPECIFIC_PATHS.dashboard) {
-          navigate(SELLER_SPECIFIC_PATHS.dashboard, { replace: true });
+        if (approvalStatus === "pending") {
+          if (currentPath !== SELLER_SPECIFIC_PATHS.status) {
+            navigate(SELLER_SPECIFIC_PATHS.status, { replace: true });
+          }
           return;
         }
         
-        if ((!approvalStatus || approvalStatus === "rejected") && currentPath !== SELLER_SPECIFIC_PATHS.apply) {
-          navigate(SELLER_SPECIFIC_PATHS.apply, { replace: true });
+        // अगर status 'rejected', 'null' या 'undefined' है
+        if ((!approvalStatus || approvalStatus === "rejected")) {
+          if (currentPath !== SELLER_SPECIFIC_PATHS.apply) {
+            navigate(SELLER_SPECIFIC_PATHS.apply, { replace: true });
+          }
           return;
         }
       }
       
-      // ग्राहक को प्रतिबंधित पेजों से रीडायरेक्ट करें
       if (user.role === "customer" && (currentPath.startsWith("/seller-") || currentPath.startsWith("/admin-") || currentPath.startsWith("/delivery-"))) {
         navigate("/", { replace: true });
       }
-      
     }
   }, [user, isLoadingAuth, isAuthenticated, location.pathname, navigate, currentPath]);
 
