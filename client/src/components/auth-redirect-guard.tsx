@@ -1,5 +1,5 @@
 // src/guards/AuthRedirectGuard.tsx
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useLocation, useNavigate } from "react-router-dom";
 
@@ -7,12 +7,7 @@ const PUBLIC_PATHS = [
   "/",
   "/auth",
   "/admin-login",
-  "/products",
-  "/product",
-  "/search",
-  "/cart",
-  "/checkout",
-  "/seller-apply",
+  // यहाँ अन्य सार्वजनिक रास्तों को जोड़ें
 ];
 
 const ROLE_DASHBOARD_PATHS = {
@@ -32,71 +27,67 @@ export function AuthRedirectGuard({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, isLoadingAuth, isAuthenticated } = useAuth();
-  
-  const currentPath = location.pathname;
-  
-  useEffect(() => {
-    // अगर auth अभी लोड हो रहा है, तो कुछ न करें।
-    if (isLoadingAuth) {
-      return;
-    }
-    
-    // अगर user डेटा उपलब्ध नहीं है (और हम लॉग इन नहीं हैं), तो कुछ न करें।
-    if (!isAuthenticated) {
-      // अगर हम किसी प्रतिबंधित रास्ते पर हैं, तो लॉगिन पेज पर भेजें।
-      if (!PUBLIC_PATHS.some(path => currentPath.startsWith(path))) {
-        navigate("/auth", { replace: true });
-      }
-      return;
-    }
-    
-    // अगर user डेटा उपलब्ध है
-    if (user) {
-      const redirectIntent = localStorage.getItem('redirectIntent');
 
-      // 1. 'become-seller' इंटेंट को प्राथमिकता दें
-      if (redirectIntent === "become-seller") {
-        localStorage.removeItem('redirectIntent');
-        if (user.role === "seller") {
-          const approvalStatus = user.sellerProfile?.approvalStatus;
-          if (approvalStatus === "pending") {
-            navigate(SELLER_SPECIFIC_PATHS.status, { replace: true });
-          } else if (approvalStatus === "approved") {
-            navigate(SELLER_SPECIFIC_PATHS.dashboard, { replace: true });
-          } else {
-            navigate(SELLER_SPECIFIC_PATHS.apply, { replace: true });
-          }
+  useEffect(() => {
+    if (isLoadingAuth || !isAuthenticated || !user) {
+      return;
+    }
+
+    const currentPath = location.pathname;
+    const redirectIntent = localStorage.getItem('redirectIntent');
+
+    if (redirectIntent === "become-seller") {
+      localStorage.removeItem('redirectIntent');
+      if (user.role === "seller") {
+        const approvalStatus = user.sellerProfile?.approvalStatus;
+        if (approvalStatus === "pending") {
+          navigate(SELLER_SPECIFIC_PATHS.status, { replace: true });
+          return;
+        } else if (approvalStatus === "approved") {
+          navigate(SELLER_SPECIFIC_PATHS.dashboard, { replace: true });
+          return;
         } else {
           navigate(SELLER_SPECIFIC_PATHS.apply, { replace: true });
+          return;
         }
+      } else {
+        navigate(SELLER_SPECIFIC_PATHS.apply, { replace: true });
         return;
       }
+    }
+    
+    // अगर उपयोगकर्ता authenticated है और /auth या /admin-login पर है, तो उसे उसके डैशबोर्ड पर भेजें।
+    if (currentPath === "/auth" || currentPath === "/admin-login") {
+      const targetDashboard = ROLE_DASHBOARD_PATHS[user.role];
+      navigate(targetDashboard, { replace: true });
+      return;
+    }
+    
+    // अगर उपयोगकर्ता 'customer' है और किसी सेलर/एडमिन पेज पर है, तो उसे '/' पर भेजें।
+    if (user.role === "customer" && (currentPath.startsWith("/seller-") || currentPath.startsWith("/admin-") || currentPath.startsWith("/delivery-"))) {
+      navigate("/", { replace: true });
+      return;
+    }
+    
+    // अगर उपयोगकर्ता 'seller' है, तो उसके स्टेटस के आधार पर रीडायरेक्ट करें।
+    if (user.role === "seller") {
+      const approvalStatus = user.sellerProfile?.approvalStatus;
       
-      // 2. पब्लिक ऑथ पेज से रीडायरेक्ट
-      if (currentPath === "/auth" || currentPath === "/admin-login") {
-        const targetDashboard = ROLE_DASHBOARD_PATHS[user.role];
-        navigate(targetDashboard, { replace: true });
+      if (approvalStatus === "pending" && currentPath !== SELLER_SPECIFIC_PATHS.status) {
+        navigate(SELLER_SPECIFIC_PATHS.status, { replace: true });
         return;
       }
-      
-      // 3. रोल-आधारित पहुँच नियंत्रण
-      if (user.role === "customer") {
-        if (currentPath.startsWith("/seller-") || currentPath.startsWith("/admin-") || currentPath.startsWith("/delivery-")) {
-          navigate("/", { replace: true });
-        }
-      } else if (user.role === "seller") {
-        const approvalStatus = user.sellerProfile?.approvalStatus;
-        if (approvalStatus === "pending" && currentPath !== SELLER_SPECIFIC_PATHS.status) {
-          navigate(SELLER_SPECIFIC_PATHS.status, { replace: true });
-        } else if (approvalStatus === "approved" && currentPath !== SELLER_SPECIFIC_PATHS.dashboard) {
-          navigate(SELLER_SPECIFIC_PATHS.dashboard, { replace: true });
-        } else if ((!approvalStatus || approvalStatus === "rejected") && currentPath !== SELLER_SPECIFIC_PATHS.apply) {
-          navigate(SELLER_SPECIFIC_PATHS.apply, { replace: true });
-        }
+      if (approvalStatus === "approved" && currentPath !== SELLER_SPECIFIC_PATHS.dashboard) {
+        navigate(SELLER_SPECIFIC_PATHS.dashboard, { replace: true });
+        return;
+      }
+      if (!approvalStatus && currentPath !== SELLER_SPECIFIC_PATHS.apply) {
+        navigate(SELLER_SPECIFIC_PATHS.apply, { replace: true });
+        return;
       }
     }
 
-  }, [user, isLoadingAuth, isAuthenticated, currentPath, navigate]);
+  }, [user, isLoadingAuth, isAuthenticated, location.pathname, navigate]);
   
   if (isLoadingAuth) {
     return <div>Loading...</div>;
