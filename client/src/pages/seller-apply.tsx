@@ -54,4 +54,3 @@ const SellerApply = () => {
 };
 
 export default SellerApply;
-
