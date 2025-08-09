@@ -2,7 +2,7 @@
 
 import { useEffect, useState, createContext, useContext, useCallback } from "react";
 import { User as FirebaseUser } from "firebase/auth";
-import { useQuery } from '@tanstack/react-query'; // ✅ यहाँ useQuery को इंपोर्ट करें
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { 
   auth,
   onAuthStateChanged,
@@ -11,10 +11,9 @@ import {
   signOutUser,
   AuthError,
 } from "@/lib/firebase";
-import { queryClient } from '@/lib/queryClient';
 
 // --- आपके प्रकारों को ठीक करें ---
-interface SellerInfo {
+export interface SellerInfo {
   id: string;
   userId: string;
   businessName: string;
@@ -23,15 +22,14 @@ interface SellerInfo {
   [key: string]: any;
 }
 
-interface User {
+export interface User {
+  id: string;
   uid: string;
   email: string | null;
   name: string | null;
   role: "customer" | "seller" | "admin" | "delivery";
   sellerProfile?: SellerInfo | null;
   idToken: string;
-  id?: string;
-  approvalStatus?: "pending" | "approved" | "rejected";
 }
 
 interface AuthContextType {
@@ -42,11 +40,12 @@ interface AuthContextType {
   clearError: () => void;
   signIn: (usePopup?: boolean) => Promise<FirebaseUser | null>;
   signOut: () => Promise<void>;
-  refetchUser: () => void; // ✅ refetchUser फ़ंक्शन जोड़ें
+  refetchUser: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// --- authenticatedApiRequest को ठीक करें ---
 export async function authenticatedApiRequest(method: 'GET' | 'POST' | 'PUT' | 'DELETE', url: string, data?: any, idToken?: string) {
   if (!idToken) {
     throw new Error("Authentication token is missing for API request.");
@@ -67,14 +66,21 @@ export async function authenticatedApiRequest(method: 'GET' | 'POST' | 'PUT' | '
     const response = await fetch(url, options);
 
     if (!response.ok) {
+      const errorText = await response.text();
       let errorData = null;
       try {
-        errorData = await response.json();
+        errorData = JSON.parse(errorText);
       } catch (e) {
+        // अगर JSON parsing विफल हो जाए, तो plain text का उपयोग करें
         console.error("Failed to parse JSON response:", e);
       }
-      const errorMessage = errorData?.error || `API Error: ${response.status} ${response.statusText}`;
+      const errorMessage = errorData?.error || errorData?.message || errorText || `API Error: ${response.status} ${response.statusText}`;
       throw new Error(errorMessage);
+    }
+    
+    // यदि प्रतिक्रिया में सामग्री नहीं है, तो एक खाली ऑब्जेक्ट वापस करें
+    if (response.status === 204) {
+      return { ok: true, json: () => Promise.resolve({}) };
     }
 
     return response;
@@ -89,52 +95,64 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [isLoadingFirebase, setIsLoadingFirebase] = useState(true);
   const [authError, setAuthError] = useState<AuthError | null>(null);
   const [idToken, setIdToken] = useState<string | null>(null);
+  const queryClient = useQueryClient();
 
-  // ✅ React Query का उपयोग करके user data fetch करें
   const { data: user, isLoading: isLoadingUser, error: queryError, refetch } = useQuery({
-    queryKey: ['/api/users/me'],
+    queryKey: ['userProfile', firebaseUser?.uid],
     queryFn: async () => {
       if (!firebaseUser || !idToken) return null;
 
       try {
-        const res = await authenticatedApiRequest("GET", `/api/users/me?firebaseUid=${firebaseUser.uid}`, undefined, idToken);
-        const data = await res.json();
-        const dbUserData = data.user;
-        const firebaseRole: User['role'] = (await firebaseUser.getIdTokenResult()).claims.role as User['role'] || "customer";
-
-        let sellerProfileData: SellerInfo | null = null;
-        if (dbUserData?.role === "seller") {
-          const res = await authenticatedApiRequest("GET", "/api/sellers/me", undefined, idToken);
-          const textData = await res.text();
-          sellerProfileData = textData ? JSON.parse(textData) as SellerInfo : null;
-        }
-
+        const res = await authenticatedApiRequest("GET", `/api/users/me`, undefined, idToken);
+        const { user: dbUserData } = await res.json();
+        
+        // back-end से प्राप्त डेटा के आधार पर role निर्धारित करें
+        const role = dbUserData?.role || 'customer'; 
+        
         const currentUser: User = {
           uid: firebaseUser.uid,
           id: dbUserData?.id,
           email: firebaseUser.email || dbUserData?.email,
           name: firebaseUser.displayName || dbUserData?.name,
-          role: dbUserData?.role || firebaseRole,
+          role: role,
           idToken: idToken,
-          sellerProfile: sellerProfileData, 
-          approvalStatus: dbUserData?.approvalStatus || sellerProfileData?.approvalStatus, 
+          sellerProfile: dbUserData?.sellerProfile || null,
         };
+        
+        // Firebase claims को sync करें (यदि आवश्यक हो)
+        if (firebaseUser.customClaims?.role !== role) {
+          // इस लॉजिक को सर्वर पर ही होना चाहिए, लेकिन सुनिश्चित करने के लिए
+          console.log(`Updating Firebase role claim from ${firebaseUser.customClaims?.role} to ${role}`);
+          // यहाँ एक सर्वर-साइड कॉल की आवश्यकता होगी, जिसे हम अभी छोड़ रहे हैं
+        }
+        
         return currentUser;
-      } catch (e) {
+      } catch (e: any) {
+        // अगर यूजर डेटा नहीं मिला (जैसे 404), तो उसे एक नए यूजर के रूप में मानें
+        if (e.message.includes('404')) {
+          const newUser: User = {
+            uid: firebaseUser.uid,
+            id: firebaseUser.uid, 
+            email: firebaseUser.email,
+            name: firebaseUser.displayName,
+            role: "customer", // डिफ़ॉल्ट रोल
+            idToken: idToken,
+            sellerProfile: null,
+          };
+          console.warn("User profile not found in DB. Treating as a new customer.");
+          return newUser;
+        }
         console.error("Failed to fetch user data from DB:", e);
         throw e;
       }
     },
     enabled: !!firebaseUser && !!idToken,
-    staleTime: 1000 * 60 * 5, // 5 मिनट तक डेटा को stale ना मानें
+    staleTime: 1000 * 60 * 5,
     retry: false,
   });
 
-  // ✅ onAuthStateChanged listener को FirebaseUser सेट करने के लिए उपयोग करें
   useEffect(() => {
-    console.log("🔄 Setting up onAuthStateChanged listener.");
     const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
-      console.log("🔄 onAuthStateChanged listener fired. fbUser:", fbUser?.uid || "null");
       setFirebaseUser(fbUser);
       setIsLoadingFirebase(false);
       if (fbUser) {
@@ -145,14 +163,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         queryClient.clear();
       }
     });
+    return () => unsubscribe();
+  }, [queryClient]);
 
-    return () => {
-      console.log("Auth Provider: Cleaning up onAuthStateChanged listener.");
-      unsubscribe();
-    };
-  }, []);
-
-  const isLoadingAuth = isLoadingFirebase || isLoadingUser;
+  const isLoadingAuth = isLoadingFirebase || (!!firebaseUser && isLoadingUser);
   const isAuthenticated = !!user;
 
   const signIn = useCallback(async (usePopup: boolean = false): Promise<FirebaseUser | null> => {
@@ -160,9 +174,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     setAuthError(null);
     try {
       const fbUser = await firebaseSignInWithGoogle(usePopup);
-      return fbUser; 
+      return fbUser;
     } catch (err: any) {
-      console.error("Auth Provider: Error during signIn:", err);
       setAuthError(err as AuthError);
       setIsLoadingFirebase(false);
       throw err;
@@ -171,19 +184,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const signOut = useCallback(async () => {
     try {
-      console.log("Auth Provider: Attempting to sign out...");
       await signOutUser();
       setAuthError(null);
       setFirebaseUser(null);
       setIdToken(null);
       queryClient.clear();
-      console.log("✅ Signed out successfully. State reset.");
     } catch (err: any) {
-      console.error("❌ Error during sign out:", err);
       setAuthError(err as AuthError);
       throw err;
     }
-  }, []);
+  }, [queryClient]);
 
   const clearError = useCallback(() => {
     setAuthError(null);
@@ -197,7 +207,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     clearError,
     signIn,
     signOut,
-    refetchUser: refetch, // ✅ refetch फ़ंक्शन को context में expose करें
+    refetchUser: refetch,
   };
 
   return (
@@ -212,4 +222,4 @@ export const useAuth = () => {
   if (!ctx) throw new Error("useAuth must be used within an AuthProvider");
   return ctx;
 };
-
+        
