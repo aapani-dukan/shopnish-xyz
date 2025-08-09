@@ -69,11 +69,13 @@ const Header: React.FC<HeaderProps> = ({ categories = [] }) => {
   };
 
   const handleSellerButtonClick = () => {
+    console.log("Seller button clicked! isAuthenticated:", isAuthenticated, "user:", user);
     if (!isAuthenticated) {
       localStorage.setItem('redirectIntent', 'become-seller');
       navigate("/auth");
     } else {
       if (user?.role === "seller") {
+        console.log("User is a seller. Checking status...");
         const approvalStatus = user.sellerProfile?.approvalStatus;
         if (approvalStatus === "approved") {
           navigate("/seller-dashboard");
@@ -83,6 +85,7 @@ const Header: React.FC<HeaderProps> = ({ categories = [] }) => {
           navigate("/seller-apply");
         }
       } else {
+        console.log("User is a customer. Redirecting to apply page.");
         navigate("/seller-apply");
       }
     }
