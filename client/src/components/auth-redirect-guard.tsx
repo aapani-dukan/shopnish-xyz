@@ -1,8 +1,10 @@
 // src/guards/AuthRedirectGuard.tsx
-import { useEffect, useState } from "react";
+
+import { useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useLocation, useNavigate } from "react-router-dom";
 
+// ✅ इन रास्तों को स्पष्ट करें
 const PUBLIC_PATHS = [
   "/",
   "/auth",
@@ -32,31 +34,30 @@ export function AuthRedirectGuard({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, isLoadingAuth, isAuthenticated } = useAuth();
-  
+
   const currentPath = location.pathname;
-  
+
   useEffect(() => {
-    // अगर auth अभी लोड हो रहा है, तो कुछ न करें।
+    // जब तक ऑथेंटिकेशन डेटा लोड हो रहा है, तब तक कोई कार्रवाई न करें
     if (isLoadingAuth) {
       return;
     }
-    
-    // अगर user डेटा उपलब्ध नहीं है (और हम लॉग इन नहीं हैं), तो कुछ न करें।
-    if (!isAuthenticated) {
-      // अगर हम किसी प्रतिबंधित रास्ते पर हैं, तो लॉगिन पेज पर भेजें।
-      if (!PUBLIC_PATHS.some(path => currentPath.startsWith(path))) {
-        navigate("/auth", { replace: true });
-      }
+
+    // अगर उपयोगकर्ता लॉग इन नहीं है और किसी प्रतिबंधित पेज पर है, तो उसे लॉग इन पेज पर भेजें
+    const isPublicPath = PUBLIC_PATHS.includes(currentPath);
+    if (!isAuthenticated && !isPublicPath) {
+      navigate("/auth", { replace: true });
       return;
     }
-    
-    // अगर user डेटा उपलब्ध है
-    if (user) {
-      const redirectIntent = localStorage.getItem('redirectIntent');
 
-      // 1. 'become-seller' इंटेंट को प्राथमिकता दें
+    // अगर उपयोगकर्ता लॉग इन है, तो रीडायरेक्ट लॉजिक चलाएं
+    if (isAuthenticated && user) {
+
+      // ✅ 1. 'redirectIntent' को प्राथमिकता दें
+      const redirectIntent = localStorage.getItem('redirectIntent');
       if (redirectIntent === "become-seller") {
         localStorage.removeItem('redirectIntent');
+
         if (user.role === "seller") {
           const approvalStatus = user.sellerProfile?.approvalStatus;
           if (approvalStatus === "pending") {
@@ -71,36 +72,42 @@ export function AuthRedirectGuard({ children }: { children: React.ReactNode }) {
         }
         return;
       }
-      
-      // 2. पब्लिक ऑथ पेज से रीडायरेक्ट
+
+      // ✅ 2. अगर उपयोगकर्ता लॉग इन है और पब्लिक ऑथ पेज पर है, तो उसे डैशबोर्ड पर भेजें
       if (currentPath === "/auth" || currentPath === "/admin-login") {
         const targetDashboard = ROLE_DASHBOARD_PATHS[user.role];
         navigate(targetDashboard, { replace: true });
         return;
       }
+
+      // ✅ 3. रोल-आधारित पहुँच नियंत्रण
+      if (user.role === "customer" && (currentPath.startsWith("/seller-") || currentPath.startsWith("/admin-") || currentPath.startsWith("/delivery-"))) {
+        navigate("/", { replace: true });
+        return;
+      }
+
+      // ✅ 4. अगर उपयोगकर्ता 'seller' है, तो उसके स्टेटस के आधार पर रीडायरेक्ट करें।
+      // यह लॉजिक केवल उन रास्तों के लिए चलेगा जहाँ सेलर का स्टेटस चेक करना जरूरी है
+      const approvalStatus = user.sellerProfile?.approvalStatus;
       
-      // 3. रोल-आधारित पहुँच नियंत्रण
-      if (user.role === "customer") {
-        if (currentPath.startsWith("/seller-") || currentPath.startsWith("/admin-") || currentPath.startsWith("/delivery-")) {
-          navigate("/", { replace: true });
-        }
-      } else if (user.role === "seller") {
-        const approvalStatus = user.sellerProfile?.approvalStatus;
-        if (approvalStatus === "pending" && currentPath !== SELLER_SPECIFIC_PATHS.status) {
+      if (user.role === "seller" && currentPath !== SELLER_SPECIFIC_PATHS.status && currentPath !== SELLER_SPECIFIC_PATHS.dashboard && currentPath !== SELLER_SPECIFIC_PATHS.apply) {
+        if (approvalStatus === "pending") {
           navigate(SELLER_SPECIFIC_PATHS.status, { replace: true });
-        } else if (approvalStatus === "approved" && currentPath !== SELLER_SPECIFIC_PATHS.dashboard) {
+          return;
+        } else if (approvalStatus === "approved") {
           navigate(SELLER_SPECIFIC_PATHS.dashboard, { replace: true });
-        } else if ((!approvalStatus || approvalStatus === "rejected") && currentPath !== SELLER_SPECIFIC_PATHS.apply) {
+          return;
+        } else if (!approvalStatus || approvalStatus === "rejected") {
           navigate(SELLER_SPECIFIC_PATHS.apply, { replace: true });
+          return;
         }
       }
     }
+  }, [user, isLoadingAuth, isAuthenticated, location.pathname, navigate, currentPath]);
 
-  }, [user, isLoadingAuth, isAuthenticated, currentPath, navigate]);
-  
   if (isLoadingAuth) {
     return <div>Loading...</div>;
   }
-  
+
   return <>{children}</>;
 }
