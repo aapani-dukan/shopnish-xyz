@@ -70,22 +70,25 @@ const Header: React.FC<HeaderProps> = ({ categories = [] }) => {
 
   const handleSellerButtonClick = () => {
     console.log("Seller button clicked! isAuthenticated:", isAuthenticated, "user:", user);
+
     if (!isAuthenticated) {
       localStorage.setItem('redirectIntent', 'become-seller');
       navigate("/auth");
-    } else {
-      if (user?.role === "seller") {
-        console.log("User is a seller. Checking status...");
-        const approvalStatus = user.sellerProfile?.approvalStatus;
+    } else if (user) { // ✅ user को चेक करें
+      const approvalStatus = user.sellerProfile?.approvalStatus;
+
+      // ✅ लॉजिक को सरल और सीधा किया गया है
+      if (user.role === "seller") {
         if (approvalStatus === "approved") {
           navigate("/seller-dashboard");
         } else if (approvalStatus === "pending") {
           navigate("/seller-status");
         } else {
+          // 'rejected' या 'null' स्टेटस के लिए
           navigate("/seller-apply");
         }
       } else {
-        console.log("User is a customer. Redirecting to apply page.");
+        // अगर रोल 'customer' है
         navigate("/seller-apply");
       }
     }
@@ -116,44 +119,42 @@ const Header: React.FC<HeaderProps> = ({ categories = [] }) => {
 
   const dashboardLink = getDashboardLink();
   
+  // ✅ इस फ़ंक्शन को हटाया गया और सीधे रेंडर लॉजिक को यहाँ जोड़ा गया
   const renderSellerButton = () => {
+    // जब auth लोड हो रहा हो, तो null रिटर्न करें
     if (isLoadingAuth) {
       return null;
     }
-    
-    if (!isAuthenticated) {
-      return (
-        <Button onClick={handleSellerButtonClick} variant="ghost" className="w-full justify-start text-blue-600 hover:bg-blue-50">
-          <Store className="mr-2 h-4 w-4" />
-          Become a Seller
-        </Button>
-      );
+
+    // जब user पूरी तरह से लोड हो जाए, तो बटन रेंडर करें
+    if (user) {
+      if (user.role === "seller" && user.sellerProfile?.approvalStatus === "pending") {
+        return (
+          <Button onClick={handleSellerButtonClick} variant="ghost" className="w-full justify-start text-blue-600 hover:bg-blue-50">
+            <Store className="mr-2 h-4 w-4" />
+            View Seller Status
+          </Button>
+        );
+      }
+      
+      if (user.role === "seller" && user.sellerProfile?.approvalStatus === "approved") {
+        return (
+          <Button onClick={handleSellerButtonClick} variant="ghost" className="w-full justify-start text-blue-600 hover:bg-blue-50">
+            <Store className="mr-2 h-4 w-4" />
+            Go to Seller Dashboard
+          </Button>
+        );
+      }
     }
-    
-    const approvalStatus = user?.sellerProfile?.approvalStatus;
-    
-    if (user?.role === "seller" && approvalStatus === "pending") {
-      return (
-        <Button onClick={handleSellerButtonClick} variant="ghost" className="w-full justify-start text-blue-600 hover:bg-blue-50">
-          <Store className="mr-2 h-4 w-4" />
-          View Seller Status
-        </Button>
-      );
-    }
-    
-    if (user?.role === "seller" && approvalStatus === "approved") {
-      return (
-        <Button onClick={handleSellerButtonClick} variant="ghost" className="w-full justify-start text-blue-600 hover:bg-blue-50">
-          <Store className="mr-2 h-4 w-4" />
-          Go to Seller Dashboard
-        </Button>
-      );
-    }
-    
+
+    // डिफ़ॉल्ट बटन या जब उपयोगकर्ता लॉग इन न हो
     return (
-      <Button onClick={handleSellerButtonClick}
+      <Button
+        onClick={handleSellerButtonClick}
         disabled={isLoadingAuth}
-        variant="ghost" className="w-full justify-start text-blue-600 hover:bg-blue-50">
+        variant="ghost"
+        className="w-full justify-start text-blue-600 hover:bg-blue-50"
+      >
         <Store className="mr-2 h-4 w-4" />
         Become a Seller
       </Button>
@@ -324,6 +325,7 @@ const Header: React.FC<HeaderProps> = ({ categories = [] }) => {
                   </Button>
                 </Link>
                 
+                {/* ✅ यहाँ सीधे फ़ंक्शन को कॉल किया गया है */}
                 {renderSellerButton()}
 
                 <div className="w-full border-t pt-4">
