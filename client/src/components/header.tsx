@@ -28,7 +28,6 @@ import {
   LayoutDashboard,
   ListOrdered,
 } from "lucide-react";
-// ✅ SellerOnboardingDialog को इम्पोर्ट करें
 import SellerOnboardingDialog from "./seller/SellerOnboardingDialog";
 
 interface Category {
@@ -46,7 +45,6 @@ const Header: React.FC<HeaderProps> = ({ categories = [] }) => {
   const [searchValue, setSearchValue] = useState("");
   const navigate = useNavigate();
   const { user, isAuthenticated, isLoadingAuth } = useAuth();
-  // ✅ नया स्टेट: डायलॉग को नियंत्रित करने के लिए
   const [isSellerDialogOpen, setIsSellerDialogOpen] = useState(false);
 
   const totalItemsInCart = items.reduce((sum, item) => sum + item.quantity, 0);
@@ -70,10 +68,7 @@ const Header: React.FC<HeaderProps> = ({ categories = [] }) => {
     }
   };
 
-  // ✅ 'Become a Seller' बटन का नया, सशर्त लॉजिक
-  
-
-const handleSellerButtonClick = () => {
+  const handleSellerButtonClick = () => {
     if (!isAuthenticated) {
       localStorage.setItem('redirectIntent', 'become-seller');
       navigate("/auth");
@@ -85,18 +80,13 @@ const handleSellerButtonClick = () => {
         } else if (approvalStatus === "pending") {
           navigate("/seller-status");
         } else {
-          // ✅ अगर स्टेटस 'rejected' या 'null' है, तो सीधे seller-apply पेज पर जाएं।
           navigate("/seller-apply");
         }
       } else {
-        // ✅ अगर उपयोगकर्ता 'customer' है, तो सीधे seller-apply पेज पर जाएं।
         navigate("/seller-apply");
       }
     }
-};
-
-
-
+  };
 
   const getDashboardLink = () => {
     if (!isAuthenticated || !user) return null;
@@ -365,4 +355,3 @@ const handleSellerButtonClick = () => {
 };
 
 export default Header;
-                                      
