@@ -1,4 +1,5 @@
 // client/src/pages/SellerApply.tsx
+
 import React, { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import SellerOnboardingDialog from "@/components/seller/SellerOnboardingDialog";
@@ -10,18 +11,17 @@ const SellerApply = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // अगर auth अभी लोड हो रहा है, तो कुछ न करें
+    // ✅ Wait until ALL auth data has loaded.
     if (isLoadingAuth) {
       return;
     }
     
-    // अगर user लॉग इन नहीं है, तो लॉगिन पेज पर भेजें
     if (!isAuthenticated) {
       navigate("/auth", { replace: true });
       return;
     }
     
-    // अगर user डेटा उपलब्ध है, तो आगे बढ़ें
+    // ✅ Ensure user data exists before proceeding.
     if (user) {
       if (user.role === "seller") {
         const approvalStatus = user.sellerProfile?.approvalStatus;
@@ -30,11 +30,10 @@ const SellerApply = () => {
         } else if (approvalStatus === "pending") {
           navigate("/seller-status", { replace: true });
         } else {
-          // अगर स्टेटस 'rejected' या 'null' है, तो डायलॉग खोलें
           setIsDialogOpen(true);
         }
       } else {
-        // अगर रोल 'customer' है, तो डायलॉग खोलें
+        // The user role is not 'seller', so they are a 'customer'
         setIsDialogOpen(true);
       }
     }
@@ -43,6 +42,7 @@ const SellerApply = () => {
 
   return (
     <div className="min-h-screen bg-white flex items-center justify-center">
+      {/* ✅ Wait until loading is complete before rendering the dialog */}
       {!isLoadingAuth && (
         <SellerOnboardingDialog
           isOpen={isDialogOpen}
