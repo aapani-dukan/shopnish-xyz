@@ -24,7 +24,7 @@ import adminRejectProductRoutes from './roots/admin/reject-product.ts';
 import adminProductsRoutes from './roots/admin/products.ts';
 import adminVendorsRoutes from './roots/admin/vendors.ts';
 import adminPasswordRoutes from './roots/admin/admin-password.ts';
-import sellerRouter from '../routes/sellers/sellerRoutes.ts'; // ✅ नया जोड़ा गया
+import sellerRouter from '../routes/sellers/sellerRoutes.ts';
 
 const router = Router();
 
@@ -36,7 +36,6 @@ router.get('/health', (req: Request, res: Response) => {
   res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// ✅ यहाँ कई बदलाव किए गए हैं
 router.post('/register', async (req: Request, res: Response) => {
   try {
     const userData = req.body;
@@ -51,9 +50,7 @@ router.post('/register', async (req: Request, res: Response) => {
       name: userData.name || null,
       role: userRoleEnum.enumValues[0],
       approvalStatus: approvalStatusEnum.enumValues[1],
-      // ✅ यहाँ `password` के लिए खाली स्ट्रिंग
       password: userData.password || '',
-      // ✅ यहाँ `firstName`, `lastName`, `phone`, `address`, `city`, `pincode` के लिए खाली स्ट्रिंग
       firstName: userData.firstName || '',
       lastName: userData.lastName || '',
       phone: userData.phone || '',
@@ -71,6 +68,7 @@ router.post('/register', async (req: Request, res: Response) => {
 
 router.use('/auth', apiAuthLoginRouter);
 
+// ✅ यहाँ बदलाव किया गया है
 router.get('/users/me', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const userUuid = req.user?.firebaseUid;
@@ -85,11 +83,19 @@ router.get('/users/me', requireAuth, async (req: AuthenticatedRequest, res: Resp
 
     let sellerInfo;
     if (user.role === 'seller') {
-      const [record] = await db.select({ approvalStatus: sellersPgTable.approvalStatus }).from(sellersPgTable).where(eq(sellersPgTable.userId, user.id));
-      if (record) sellerInfo = { approvalStatus: record.approvalStatus };
+      const [record] = await db.select({
+        id: sellersPgTable.id,
+        userId: sellersPgTable.userId,
+        businessName: sellersPgTable.businessName,
+        approvalStatus: sellersPgTable.approvalStatus,
+        rejectionReason: sellersPgTable.rejectionReason
+      }).from(sellersPgTable).where(eq(sellersPgTable.userId, user.id));
+      if (record) sellerInfo = record;
     }
 
-    res.status(200).json({ firebaseUid: user.firebaseUid, email: user.email, name: user.name, role: user.role, seller: sellerInfo });
+    // ✅ यहाँ रिस्पॉन्स ऑब्जेक्ट में बदलाव किया गया है।
+    // हम उपयोगकर्ता के सभी डेटा के साथ-साथ `sellerInfo` भी भेज रहे हैं।
+    res.status(200).json({ ...user, sellerProfile: sellerInfo || null });
   } catch (error: any) {
     console.error(error);
     res.status(500).json({ error: 'Internal error.' });
@@ -112,8 +118,7 @@ router.post('/auth/logout', async (req, res) => {
   }
 });
 
-// ✅ Seller Routes moved to separate file
-router.use('/sellers', sellerRouter); // ✅ यह सही है
+router.use('/sellers', sellerRouter);
 
 // Categories
 router.get('/categories', async (req: Request, res: Response) => {
@@ -243,6 +248,5 @@ adminRouter.post('/sellers/:sellerId/reject', async (req: AuthenticatedRequest, 
 
 router.use('/admin', adminRouter);
 
-// ✅ यह नई लाइन जोड़ें:
 export default router;
-                                   
+
