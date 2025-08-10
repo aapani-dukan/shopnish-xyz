@@ -1,3 +1,5 @@
+// server/routes.ts
+
 import express, { Router, Request, Response } from 'express';
 import { db } from './db.ts';
 import { eq, like } from 'drizzle-orm';
@@ -34,6 +36,7 @@ router.get('/health', (req: Request, res: Response) => {
   res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
+// ✅ यहाँ `password: ''` को जोड़ा गया है
 router.post('/register', async (req: Request, res: Response) => {
   try {
     const userData = req.body;
@@ -48,6 +51,8 @@ router.post('/register', async (req: Request, res: Response) => {
       name: userData.name || null,
       role: userRoleEnum.enumValues[0],
       approvalStatus: approvalStatusEnum.enumValues[1],
+      // ✅ यह लाइन जोड़ी गई है
+      password: '',
       firstName: userData.firstName,
       lastName: userData.lastName,
       phone: userData.phone,
@@ -239,3 +244,4 @@ router.use('/admin', adminRouter);
 
 // ✅ यह नई लाइन जोड़ें:
 export default router;
+                                                                           
