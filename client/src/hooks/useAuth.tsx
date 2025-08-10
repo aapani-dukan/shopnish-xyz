@@ -63,14 +63,14 @@ export async function authenticatedApiRequest(method: 'GET' | 'POST' | 'PUT' | '
   };
 
   const response = await fetch(url, options);
-  
+
   if (!response.ok) {
     const errorText = await response.text();
     let errorData = null;
     try {
       errorData = JSON.parse(errorText);
     } catch (e) {
-      console.error("Failed to parse JSON response:", e);
+      // JSON parse error को संभालें
     }
     const errorMessage = errorData?.error || errorData?.message || errorText || `API Error: ${response.status} ${response.statusText}`;
     
@@ -117,7 +117,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         return currentUser;
       } catch (e: any) {
         // यहाँ हम 404 एरर को पकड़ रहे हैं
-        if (e.message.includes('404')) {
+        if (e.status === 404) {
           console.warn("User profile not found in DB. Creating a new user.");
           try {
             const newUserProfile = await authenticatedApiRequest("POST", `/api/users`, {
@@ -151,11 +151,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     },
     enabled: !!firebaseUser && !!idToken,
     staleTime: 1000 * 60 * 5,
+    // retries को अस्थायी रूप से false करें ताकि loop को रोका जा सके
     retry: false,
   });
 
   useEffect(() => {
-    // onAuthStateChanged के पहले ही redirect result को handle करें
     const checkRedirectResult = async () => {
       try {
         await firebaseHandleRedirectResult();
@@ -236,3 +236,4 @@ export const useAuth = () => {
   if (!ctx) throw new Error("useAuth must be used within an AuthProvider");
   return ctx;
 };
+                                           
