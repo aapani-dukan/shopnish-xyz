@@ -1,84 +1,243 @@
 // client/src/hooks/useAuth.tsx
-import React, { createContext, useContext, useState, useEffect } from "react";
-import { User, auth } from "@/lib/firebase"; // Assuming this is your client-side firebase config
-import { useQuery } from "@tanstack/react-query";
-import { api } from "@/lib/api";
 
-type AuthContextType = {
+import { useEffect, useState, createContext, useContext, useCallback } from "react";
+import { User as FirebaseUser } from "firebase/auth";
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { 
+  auth,
+  onAuthStateChanged,
+  handleRedirectResult as firebaseHandleRedirectResult,
+  signInWithGoogle as firebaseSignInWithGoogle,
+  signOutUser,
+  AuthError,
+} from "@/lib/firebase";
+
+// --- आपके प्रकारों को ठीक करें ---
+export interface SellerInfo {
+  id: string;
+  userId: string;
+  businessName: string;
+  approvalStatus: "pending" | "approved" | "rejected";
+  rejectionReason?: string | null;
+  [key: string]: any;
+}
+
+export interface User {
+  id: string;
+  uid: string;
+  email: string | null;
+  name: string | null;
+  role: "customer" | "seller" | "admin" | "delivery";
+  sellerProfile?: SellerInfo | null;
+  idToken: string;
+}
+
+interface AuthContextType {
   user: User | null;
-  isAuthenticated: boolean;
   isLoadingAuth: boolean;
-};
+  isAuthenticated: boolean;
+  error: AuthError | null;
+  clearError: () => void;
+  signIn: (usePopup?: boolean) => Promise<FirebaseUser | null>;
+  signOut: () => Promise<void>;
+  refetchUser: () => void;
+}
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [isLoadingAuth, setIsLoadingAuth] = useState(true);
+// यह फ़ंक्शन API रिक्वेस्ट को handle करता है
+export async function authenticatedApiRequest(method: 'GET' | 'POST' | 'PUT' | 'DELETE', url: string, data?: any, idToken?: string) {
+  if (!idToken) {
+    throw new Error("Authentication token is missing for API request.");
+  }
 
-  // TanStack Query to fetch user data from server
-  const { data: serverUser, isLoading: isLoadingServerUser, refetch } = useQuery({
-    queryKey: ['me'],
+  const headers = {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${idToken}`,
+  };
+
+  const options: RequestInit = {
+    method,
+    headers,
+    body: data ? JSON.stringify(data) : undefined,
+  };
+
+  const response = await fetch(url, options);
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    let errorData = null;
+    try {
+      errorData = JSON.parse(errorText);
+    } catch (e) {
+      // JSON parse error को संभालें
+    }
+    const errorMessage = errorData?.error || errorData?.message || errorText || `API Error: ${response.status} ${response.statusText}`;
+    
+    const error = new Error(errorMessage);
+    (error as any).status = response.status; // status को error object में जोड़ें
+    throw error;
+  }
+  
+  if (response.status === 204) {
+    return { ok: true, json: () => Promise.resolve({}) };
+  }
+
+  return response;
+}
+
+export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
+  const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
+  const [isLoadingFirebase, setIsLoadingFirebase] = useState(true);
+  const [authError, setAuthError] = useState<AuthError | null>(null);
+  const [idToken, setIdToken] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+
+  const { data: user, isLoading: isLoadingUser, error: queryError, refetch } = useQuery({
+    queryKey: ['userProfile', firebaseUser?.uid],
     queryFn: async () => {
-      const res = await api.get('/users/me');
-      return res.data;
+      if (!firebaseUser || !idToken) return null;
+
+      try {
+        const res = await authenticatedApiRequest("GET", `/api/users/me`, undefined, idToken);
+        // ✅ यहाँ बदलाव किया गया है। API से सीधे `user` ऑब्जेक्ट को एक्सट्रैक्ट करें।
+        const dbUserData = await res.json();
+        
+        const role = dbUserData?.role || 'customer'; 
+        
+        const currentUser: User = {
+          uid: firebaseUser.uid,
+          id: dbUserData?.id,
+          email: firebaseUser.email || dbUserData?.email,
+          name: firebaseUser.displayName || dbUserData?.name,
+          role: role,
+          idToken: idToken,
+          sellerProfile: dbUserData?.sellerProfile || null,
+        };
+        
+        return currentUser;
+      } catch (e: any) {
+        if (e.status === 404) {
+          console.warn("User profile not found in DB. Creating a new user.");
+          try {
+            const newUserProfile = await authenticatedApiRequest("POST", `/api/register`, {
+              firebaseUid: firebaseUser.uid,
+              email: firebaseUser.email,
+              name: firebaseUser.displayName,
+              role: "customer",
+              firstName: '',
+              lastName: '',
+              phone: '',
+              address: '',
+              city: '',
+              pincode: '',
+            }, idToken);
+
+            const newDbUserData = await newUserProfile.json();
+
+            const newUser: User = {
+              uid: firebaseUser.uid,
+              id: newDbUserData?.id, 
+              email: firebaseUser.email,
+              name: firebaseUser.displayName,
+              role: "customer",
+              idToken: idToken,
+              sellerProfile: null,
+            };
+            return newUser;
+          } catch (createError) {
+            console.error("Failed to create new user in DB:", createError);
+            throw createError;
+          }
+        }
+        console.error("Failed to fetch user data from DB:", e);
+        throw e;
+      }
     },
-    enabled: isAuthenticated, // Only run this query if the user is authenticated
+    enabled: !!firebaseUser && !!idToken,
+    staleTime: 1000 * 60 * 5,
+    retry: false,
   });
 
   useEffect(() => {
-    // 1. Firebase Auth listener
-    const unsubscribe = auth.onAuthStateChanged(async (firebaseUser) => {
-      if (firebaseUser) {
-        setUser(firebaseUser);
-        setIsAuthenticated(true);
-      } else {
-        // 2. Check for admin session separately
-        const isAdmin = localStorage.getItem("isAdmin") === "true";
-        if (isAdmin) {
-          // If admin, create a mock user object for consistency
-          setUser({
-            uid: "admin",
-            email: "admin@shopnish.com", // You can use a static email
-            role: "admin",
-            displayName: "Admin",
-          });
-          setIsAuthenticated(true);
-        } else {
-          setUser(null);
-          setIsAuthenticated(false);
-        }
+    const checkRedirectResult = async () => {
+      try {
+        await firebaseHandleRedirectResult();
+      } catch (error) {
+        console.error("Error handling redirect result:", error);
       }
-      setIsLoadingAuth(false);
+    };
+    checkRedirectResult();
+    
+    const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
+      setFirebaseUser(fbUser);
+      setIsLoadingFirebase(false);
+      if (fbUser) {
+        const idToken = await fbUser.getIdToken();
+        setIdToken(idToken);
+      } else {
+        setIdToken(null);
+        queryClient.clear();
+      }
     });
 
-    // 3. Sync server user data with client
-    if (isAuthenticated && serverUser) {
-      setUser(prevUser => ({
-        ...prevUser,
-        ...serverUser,
-      }));
-    }
-
-    // Clean up the auth listener
     return () => unsubscribe();
-  }, [isAuthenticated, serverUser]);
+  }, [queryClient]);
 
-  const value = { user, isAuthenticated, isLoadingAuth };
+  const isLoadingAuth = isLoadingFirebase || (!!firebaseUser && isLoadingUser);
+  const isAuthenticated = !!user && !!idToken;
+
+  const signIn = useCallback(async (usePopup: boolean = false): Promise<FirebaseUser | null> => {
+    setIsLoadingFirebase(true);
+    setAuthError(null);
+    try {
+      const fbUser = await firebaseSignInWithGoogle(usePopup);
+      return fbUser;
+    } catch (err: any) {
+      setAuthError(err as AuthError);
+      setIsLoadingFirebase(false);
+      throw err;
+    }
+  }, []);
+
+  const signOut = useCallback(async () => {
+    try {
+      await signOutUser();
+      setAuthError(null);
+      setFirebaseUser(null);
+      setIdToken(null);
+      queryClient.clear();
+    } catch (err: any) {
+      setAuthError(err as AuthError);
+      throw err;
+    }
+  }, [queryClient]);
+
+  const clearError = useCallback(() => {
+    setAuthError(null);
+  }, []);
+
+  const authContextValue = {
+    user,
+    isLoadingAuth,
+    isAuthenticated,
+    error: authError || queryError,
+    clearError,
+    signIn,
+    signOut,
+    refetchUser: refetch,
+  };
 
   return (
-    <AuthContext.Provider value={value}>
+    <AuthContext.Provider value={authContextValue}>
       {children}
     </AuthContext.Provider>
   );
-}
-
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error("useAuth must be used within an AuthProvider");
-  }
-  return context;
 };
 
+export const useAuth = () => {
+  const ctx = useContext(AuthContext);
+  if (!ctx) throw new Error("useAuth must be used within an AuthProvider");
+  return ctx;
+};
+    
