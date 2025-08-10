@@ -78,17 +78,20 @@ const Header: React.FC<HeaderProps> = ({ categories = [] }) => {
     if (!isAuthenticated) {
       localStorage.setItem('redirectIntent', 'become-seller');
       navigate("/auth");
-    } else if (user) {
-      if (user.role === "seller") {
+    } else {
+      // ✅ यहाँ मुख्य लॉजिक है: यह सिर्फ़ तब चलता है जब उपयोगकर्ता लॉग इन हो
+      if (user?.role === "seller") {
         const approvalStatus = user.sellerProfile?.approvalStatus;
         if (approvalStatus === "approved") {
           navigate("/seller-dashboard");
         } else if (approvalStatus === "pending") {
           navigate("/seller-status");
         } else {
+          // rejected या null स्टेटस के लिए
           navigate("/seller-apply");
         }
       } else {
+        // अगर रोल 'customer' है, तो सीधे अप्लाई पेज पर भेजें
         navigate("/seller-apply");
       }
     }
@@ -118,34 +121,16 @@ const Header: React.FC<HeaderProps> = ({ categories = [] }) => {
   };
 
   const dashboardLink = getDashboardLink();
-
-  // ✅ इस फ़ंक्शन को हटाकर लॉजिक को सीधे बटन में लिखा गया है।
-  const renderSellerButton = () => {
-    if (isLoadingAuth) {
-      return null;
-    }
-
-    let label = "Become a Seller";
-    if (user && user.role === "seller") {
+  
+  // ✅ यह फ़ंक्शन अब केवल बटन का लेबल तय करता है, लॉजिक नहीं
+  const getSellerButtonLabel = () => {
+    if (user?.role === "seller") {
       const status = user.sellerProfile?.approvalStatus;
-      if (status === "pending") {
-        label = "View Seller Status";
-      } else if (status === "approved") {
-        label = "Go to Seller Dashboard";
-      }
+      if (status === "pending") return "View Seller Status";
+      if (status === "approved") return "Go to Seller Dashboard";
+      return "Become a Seller";
     }
-
-    return (
-      <Button
-        onClick={handleSellerButtonClick}
-        disabled={isLoadingAuth}
-        variant="ghost"
-        className="w-full justify-start text-blue-600 hover:bg-blue-50"
-      >
-        <Store className="mr-2 h-4 w-4" />
-        {label}
-      </Button>
-    );
+    return "Become a Seller";
   };
   
   return (
@@ -170,7 +155,15 @@ const Header: React.FC<HeaderProps> = ({ categories = [] }) => {
         </form>
 
         <nav className="hidden md:flex items-center space-x-4">
-          {renderSellerButton()}
+          <Button
+            onClick={handleSellerButtonClick}
+            disabled={isLoadingAuth}
+            variant="ghost"
+            className="w-full justify-start text-blue-600 hover:bg-blue-50"
+          >
+            <Store className="mr-2 h-4 w-4" />
+            {getSellerButtonLabel()}
+          </Button>
 
           <Link to="/wishlist">
             <Button variant="ghost" size="icon">
@@ -312,7 +305,15 @@ const Header: React.FC<HeaderProps> = ({ categories = [] }) => {
                   </Button>
                 </Link>
                 
-                {renderSellerButton()}
+                <Button
+                  onClick={handleSellerButtonClick}
+                  disabled={isLoadingAuth}
+                  variant="ghost"
+                  className="w-full justify-start text-blue-600 hover:bg-blue-50"
+                >
+                  <Store className="mr-2 h-4 w-4" />
+                  {getSellerButtonLabel()}
+                </Button>
 
                 <div className="w-full border-t pt-4">
                   <p className="font-semibold mb-2">Categories</p>
@@ -346,6 +347,3 @@ const Header: React.FC<HeaderProps> = ({ categories = [] }) => {
     </header>
   );
 };
-
-export default Header;
-      
