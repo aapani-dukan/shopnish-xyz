@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom"; 
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth"; // ✅ useAuth हुक को इंपोर्ट करें
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,13 +12,13 @@ import { Shield } from "lucide-react";
 export default function AdminLogin() {
   const navigate = useNavigate(); 
   const { toast } = useToast();
+  const { user } = useAuth(); // ✅ user की स्थिति की जाँच करें
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleLogin = async () => {
     setLoading(true);
     try {
-      // ✅ यहाँ API कॉल के पाथ को ठीक किया गया है
       const res = await fetch("/api/auth/admin-login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -29,13 +30,19 @@ export default function AdminLogin() {
         throw new Error(data.message || "Login failed");
       }
 
-      // Login successful, set isAdmin flag and navigate
+      // Login successful, set isAdmin flag
       localStorage.setItem("isAdmin", "true");
       toast({
         title: "Login Successful",
         description: "Welcome Admin!",
       });
-      navigate("/admin-dashboard");
+
+      // ✅ यहाँ बदलाव है:
+      // नेविगेट करने से पहले auth हुक को अपडेट होने का समय दें।
+      setTimeout(() => {
+        navigate("/admin-dashboard", { replace: true });
+      }, 500); // 500ms का इंतज़ार करें
+
     } catch (err: any) {
       toast({
         title: "Login Failed",
@@ -48,11 +55,12 @@ export default function AdminLogin() {
   };
 
   useEffect(() => {
-    const isAdmin = localStorage.getItem("isAdmin");
-    if (isAdmin === "true") {
-      navigate("/admin-dashboard");
+    // ✅ यहाँ बदलाव है:
+    // navigate को localStorage के बजाय user.role पर आधारित करें
+    if (user && user.role === 'admin') {
+      navigate("/admin-dashboard", { replace: true });
     }
-  }, [navigate]);
+  }, [user, navigate]); // ✅ user को डिपेंडेंसी एरे में जोड़ें
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-700 flex items-center justify-center p-4">
