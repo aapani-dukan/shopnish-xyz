@@ -149,21 +149,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   });
 
   useEffect(() => {
-    // Redirect Result को यहाँ संभालें
+    // onAuthStateChanged के पहले ही redirect result को handle करें
     const checkRedirectResult = async () => {
       try {
-        const result = await firebaseHandleRedirectResult();
-        if (result) {
-          console.log("Redirect result handled successfully.");
-          // Firebase auth state listener अपने आप user को अपडेट कर देगा।
-        }
+        await firebaseHandleRedirectResult();
       } catch (error) {
         console.error("Error handling redirect result:", error);
-        setAuthError(error as AuthError);
       }
     };
+    checkRedirectResult();
     
-    // Firebase Auth State Listener
     const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
       setFirebaseUser(fbUser);
       setIsLoadingFirebase(false);
@@ -175,8 +170,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         queryClient.clear();
       }
     });
-
-    checkRedirectResult(); // पेज लोड होने पर इसे कॉल करें
 
     return () => unsubscribe();
   }, [queryClient]);
