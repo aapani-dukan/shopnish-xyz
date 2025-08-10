@@ -5,8 +5,65 @@ import { db } from '../db.ts';
 import { users, userRoleEnum, approvalStatusEnum } from '../../shared/backend/schema.ts';
 import { authAdmin } from '../lib/firebaseAdmin.ts';
 import { eq } from 'drizzle-orm';
+import bcrypt from 'bcrypt';
+import { createSessionCookie } from '../lib/sessionCookie.ts'; // ✅ यह फ़ंक्शन आपको बनाना होगा
+
 
 const apiAuthLoginRouter = Router();
+
+// ✅ नया राउट: एडमिन लॉगिन के लिए
+apiAuthLoginRouter.post("/admin-login", async (req: Request, res: Response) => {
+    const { password } = req.body;
+
+    // ✅ सुरक्षा: एडमिन का पासवर्ड environment variable से प्राप्त करें
+    const adminPassword = process.env.ADMIN_PASSWORD;
+
+    if (!adminPassword) {
+        console.error("❌ Admin password is not set in environment variables.");
+        return res.status(500).json({ error: "Configuration error." });
+    }
+
+    if (!password) {
+        return res.status(400).json({ error: "Password is required." });
+    }
+
+    try {
+        // ✅ यहाँ bcrypt का उपयोग करके पासवर्ड को environment variable में सेट किए गए पासवर्ड से तुलना करें
+        const isPasswordCorrect = await bcrypt.compare(password, adminPassword);
+
+        if (!isPasswordCorrect) {
+            console.warn(`Admin login attempt failed. Incorrect password.`);
+            return res.status(401).json({ error: "Invalid password." });
+        }
+
+        // ✅ यूजर को डेटाबेस में ढूंढें और रोल की जाँच करें
+        const [adminUser] = await db.select().from(users).where(eq(users.role, userRoleEnum.enumValues[2])); // assuming 'admin' is the third enum value
+
+        if (!adminUser) {
+            console.error("❌ Admin user not found in the database.");
+            return res.status(500).json({ error: "Admin account not configured." });
+        }
+
+        // ✅ सेशन कुकी बनाएं (यह फ़ंक्शन आपको बनाना होगा)
+        const sessionCookie = await createSessionCookie(adminUser.firebaseUid, authAdmin);
+
+        res.cookie('__session', sessionCookie, {
+            maxAge: 60 * 60 * 24 * 5 * 1000,
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'Lax',
+        });
+
+        return res.status(200).json({ message: "Admin logged in successfully." });
+
+    } catch (error: any) {
+        console.error("❌ Admin login error:", error);
+        return res.status(500).json({ error: "Internal server error." });
+    }
+});
+
+
+// ... आपका मौजूदा '/login' राउट यहाँ नीचे है
 
 apiAuthLoginRouter.post('/login', async (req: Request, res: Response) => {
   const authHeader = req.headers.authorization;
@@ -36,12 +93,10 @@ apiAuthLoginRouter.post('/login', async (req: Request, res: Response) => {
   const name = decodedToken.name || decodedToken.email;
 
   try {
-    // ✅ 1. Drizzle क्वेरी को ठीक करें: uuid की जगह firebaseUid का उपयोग करें
     let [user] = await db.select().from(users).where(eq(users.firebaseUid, firebaseUid));
 
     if (!user) {
       console.log(`ℹ️ User with UID ${firebaseUid} not found in DB. Creating new user.`);
-      // ✅ 2. Drizzle insert को ठीक करें: uuid की जगह firebaseUid का उपयोग करें
       const [newUser] = await db.insert(users).values({
         firebaseUid: firebaseUid,
         email: email,
@@ -65,7 +120,6 @@ apiAuthLoginRouter.post('/login', async (req: Request, res: Response) => {
     res.cookie('__session', sessionCookie, options);
     console.log('✅ Session cookie set in response.');
 
-    // ✅ 3. रिस्पॉन्स को ठीक करें: uuid की जगह firebaseUid का उपयोग करें
     res.status(200).json({
       message: 'Login successful and session cookie set.',
       user: {
