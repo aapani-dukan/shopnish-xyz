@@ -1,5 +1,6 @@
+// client/src/pages/admin-login.tsx
+
 import { useState, useEffect } from "react";
-// ✅ useNavigate हुक को इंपोर्ट करें
 import { useNavigate } from "react-router-dom"; 
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -8,7 +9,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Shield } from "lucide-react";
 
 export default function AdminLogin() {
-  // ✅ navigate हुक का उपयोग करें
   const navigate = useNavigate(); 
   const { toast } = useToast();
   const [password, setPassword] = useState("");
@@ -17,7 +17,8 @@ export default function AdminLogin() {
   const handleLogin = async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/admin-login", {
+      // ✅ यहाँ API कॉल के पाथ को ठीक किया गया है
+      const res = await fetch("/api/auth/admin-login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ password }),
@@ -28,12 +29,12 @@ export default function AdminLogin() {
         throw new Error(data.message || "Login failed");
       }
 
+      // Login successful, set isAdmin flag and navigate
       localStorage.setItem("isAdmin", "true");
       toast({
         title: "Login Successful",
         description: "Welcome Admin!",
       });
-      // ✅ navigate फंक्शन का उपयोग करें
       navigate("/admin-dashboard");
     } catch (err: any) {
       toast({
@@ -49,10 +50,9 @@ export default function AdminLogin() {
   useEffect(() => {
     const isAdmin = localStorage.getItem("isAdmin");
     if (isAdmin === "true") {
-      // ✅ navigate फंक्शन का उपयोग करें
       navigate("/admin-dashboard");
     }
-  }, [navigate]); // ✅ डिपेंडेंसी एरे में navigate को जोड़ें
+  }, [navigate]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-700 flex items-center justify-center p-4">
