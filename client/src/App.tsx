@@ -1,6 +1,6 @@
 // client/src/App.tsx
 
-import { Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route } from "react-router-dom";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "./lib/queryClient";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -23,11 +23,8 @@ import DeliveryDashboard from "@/pages/delivery-dashboard";
 import DeliveryApplyPage from "@/pages/delivery-apply";
 
 // Centralized auth-based routing
-import { AuthRedirectGuard } from "@/components/auth-redirect-guard";
+import AuthRedirectGuard from "@/components/auth-redirect-guard";
 import AdminLogin from "@/pages/admin-login";
-
-// ✅ अब हमें इसकी ज़रूरत नहीं है क्योंकि हम `AuthRedirectGuard` को सीधे राउट्स पर इस्तेमाल करेंगे
-// const PrivateRoute = ...
 
 function AppRouter() {
   return (
@@ -40,22 +37,20 @@ function AppRouter() {
       <Route path="/admin-login" element={<AdminLogin />} />
       
       {/* ✅ यह है नया और सही तरीका। 
-        हम `AuthRedirectGuard` को सभी प्रोटेक्टेड राउट्स के लिए एक ही बार में लागू कर रहे हैं।
+          AuthRedirectGuard को प्रत्येक प्रोटेक्टेड राउट के लिए एक रैपर के रूप में इस्तेमाल करें।
       */}
-      <Route element={<AuthRedirectGuard />}>
-        <Route path="/seller-dashboard" element={<SellerDashboard />} />
-        <Route path="/seller-apply" element={<SellerApplyPage />} />
-        <Route path="/seller-status" element={<SellerStatusPage />} />
-        <Route path="/delivery-dashboard" element={<DeliveryDashboard />} />
-        <Route path="/delivery-apply" element={<DeliveryApplyPage />} />
-        <Route path="/admin-dashboard" element={<AdminDashboard />} />
-      </Route>
+      <Route path="/seller-dashboard" element={<AuthRedirectGuard><SellerDashboard /></AuthRedirectGuard>} />
+      <Route path="/seller-apply" element={<AuthRedirectGuard><SellerApplyPage /></AuthRedirectGuard>} />
+      <Route path="/seller-status" element={<AuthRedirectGuard><SellerStatusPage /></AuthRedirectGuard>} />
+      <Route path="/delivery-dashboard" element={<AuthRedirectGuard><DeliveryDashboard /></AuthRedirectGuard>} />
+      <Route path="/delivery-apply" element={<AuthRedirectGuard><DeliveryApplyPage /></AuthRedirectGuard>} />
+      <Route path="/admin-dashboard" element={<AuthRedirectGuard><AdminDashboard /></AuthRedirectGuard>} />
 
-      {/* ✅ सार्वजनिक राउट्स जो ऑथेंटिकेशन के बिना काम करते हैं */}
       <Route path="*" element={<NotFound />} />
     </Routes>
   );
 }
+
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
