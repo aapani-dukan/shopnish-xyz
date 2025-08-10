@@ -1,246 +1,237 @@
-// server/routes.ts
+// client/src/hooks/useAuth.tsx
 
-import express, { Router, Request, Response } from 'express';
-import { db } from './db.ts';
-import { eq, like } from 'drizzle-orm';
-import {
-  users,
-  products,
-  categories,
-  deliveryBoys,
-  userRoleEnum,
-  approvalStatusEnum,
-  sellersPgTable,
-} from '../shared/backend/schema.ts';
+import { useEffect, useState, createContext, useContext, useCallback } from "react";
+import { User as FirebaseUser } from "firebase/auth";
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { 
+  auth,
+  onAuthStateChanged,
+  handleRedirectResult as firebaseHandleRedirectResult,
+  signInWithGoogle as firebaseSignInWithGoogle,
+  signOutUser,
+  AuthError,
+} from "@/lib/firebase";
 
-import { AuthenticatedRequest } from './middleware/verifyToken.ts';
-import { requireAuth, requireAdminAuth } from './middleware/authMiddleware.ts';
-import { authAdmin } from './lib/firebaseAdmin.ts';
+// --- आपके प्रकारों को ठीक करें ---
+export interface SellerInfo {
+  id: string;
+  userId: string;
+  businessName: string;
+  approvalStatus: "pending" | "approved" | "rejected";
+  rejectionReason?: string | null;
+  [key: string]: any;
+}
 
-// Sub-route modules
-import apiAuthLoginRouter from './roots/apiAuthLogin.ts';
-import adminApproveProductRoutes from './roots/admin/approve-product.ts';
-import adminRejectProductRoutes from './roots/admin/reject-product.ts';
-import adminProductsRoutes from './roots/admin/products.ts';
-import adminVendorsRoutes from './roots/admin/vendors.ts';
-import adminPasswordRoutes from './roots/admin/admin-password.ts';
-import sellerRouter from '../routes/sellers/sellerRoutes.ts'; // ✅ नया जोड़ा गया
+export interface User {
+  id: string;
+  uid: string;
+  email: string | null;
+  name: string | null;
+  role: "customer" | "seller" | "admin" | "delivery";
+  sellerProfile?: SellerInfo | null;
+  idToken: string;
+}
 
-const router = Router();
+interface AuthContextType {
+  user: User | null;
+  isLoadingAuth: boolean;
+  isAuthenticated: boolean;
+  error: AuthError | null;
+  clearError: () => void;
+  signIn: (usePopup?: boolean) => Promise<FirebaseUser | null>;
+  signOut: () => Promise<void>;
+  refetchUser: () => void;
+}
 
-router.get('/', (req: Request, res: Response) => {
-  res.status(200).json({ message: 'API is running' });
-});
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-router.get('/health', (req: Request, res: Response) => {
-  res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
-});
+// यह फ़ंक्शन API रिक्वेस्ट को handle करता है
+export async function authenticatedApiRequest(method: 'GET' | 'POST' | 'PUT' | 'DELETE', url: string, data?: any, idToken?: string) {
+  if (!idToken) {
+    throw new Error("Authentication token is missing for API request.");
+  }
 
-// ✅ यहाँ `password: ''` को जोड़ा गया है
-router.post('/register', async (req: Request, res: Response) => {
-  try {
-    const userData = req.body;
+  const headers = {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${idToken}`,
+  };
 
-    if (!userData.firebaseUid || !userData.email) {
-      return res.status(400).json({ error: 'Firebase UID and email are required.' });
+  const options: RequestInit = {
+    method,
+    headers,
+    body: data ? JSON.stringify(data) : undefined,
+  };
+
+  const response = await fetch(url, options);
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    let errorData = null;
+    try {
+      errorData = JSON.parse(errorText);
+    } catch (e) {
+      // JSON parse error को संभालें
     }
-
-    const [newUser] = await db.insert(users).values({
-      firebaseUid: userData.firebaseUid,
-      email: userData.email,
-      name: userData.name || null,
-      role: userRoleEnum.enumValues[0],
-      approvalStatus: approvalStatusEnum.enumValues[1],
-      // ✅ यह लाइन जोड़ी गई है
-      password: '',
-      firstName: userData.firstName,
-      lastName: userData.lastName,
-      phone: userData.phone,
-      address: userData.address,
-      city: userData.city,
-      pincode: userData.pincode,
-    }).returning();
-
-    res.status(201).json(newUser);
-  } catch (error: any) {
-    console.error('User registration failed:', error);
-    res.status(400).json({ error: error.message });
+    const errorMessage = errorData?.error || errorData?.message || errorText || `API Error: ${response.status} ${response.statusText}`;
+    
+    const error = new Error(errorMessage);
+    (error as any).status = response.status; // status को error object में जोड़ें
+    throw error;
   }
-});
+  
+  if (response.status === 204) {
+    return { ok: true, json: () => Promise.resolve({}) };
+  }
 
-router.use('/auth', apiAuthLoginRouter);
+  return response;
+}
 
-router.get('/users/me', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
-  try {
-    const userUuid = req.user?.firebaseUid;
-    if (!userUuid) {
-      return res.status(401).json({ error: 'Not authenticated.' });
+export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
+  const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
+  const [isLoadingFirebase, setIsLoadingFirebase] = useState(true);
+  const [authError, setAuthError] = useState<AuthError | null>(null);
+  const [idToken, setIdToken] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+
+  const { data: user, isLoading: isLoadingUser, error: queryError, refetch } = useQuery({
+    queryKey: ['userProfile', firebaseUser?.uid],
+    queryFn: async () => {
+      if (!firebaseUser || !idToken) return null;
+
+      try {
+        const res = await authenticatedApiRequest("GET", `/api/users/me`, undefined, idToken);
+        const { user: dbUserData } = await res.json();
+        
+        const role = dbUserData?.role || 'customer'; 
+        
+        const currentUser: User = {
+          uid: firebaseUser.uid,
+          id: dbUserData?.id,
+          email: firebaseUser.email || dbUserData?.email,
+          name: firebaseUser.displayName || dbUserData?.name,
+          role: role,
+          idToken: idToken,
+          sellerProfile: dbUserData?.sellerProfile || null,
+        };
+        
+        return currentUser;
+      } catch (e: any) {
+        if (e.status === 404) {
+          console.warn("User profile not found in DB. Creating a new user.");
+          try {
+            // ✅ पहला बदलाव: URL को `/api/register` में बदला गया है
+            const newUserProfile = await authenticatedApiRequest("POST", `/api/register`, {
+              // ✅ दूसरा बदलाव: `uid` के बजाय `firebaseUid` भेजा जा रहा है
+              firebaseUid: firebaseUser.uid,
+              email: firebaseUser.email,
+              name: firebaseUser.displayName,
+              role: "customer",
+            }, idToken);
+
+            const { user: newDbUserData } = await newUserProfile.json();
+
+            const newUser: User = {
+              uid: firebaseUser.uid,
+              id: newDbUserData?.id, 
+              email: firebaseUser.email,
+              name: firebaseUser.displayName,
+              role: "customer",
+              idToken: idToken,
+              sellerProfile: null,
+            };
+            return newUser;
+          } catch (createError) {
+            console.error("Failed to create new user in DB:", createError);
+            throw createError;
+          }
+        }
+        console.error("Failed to fetch user data from DB:", e);
+        throw e;
+      }
+    },
+    enabled: !!firebaseUser && !!idToken,
+    staleTime: 1000 * 60 * 5,
+    retry: false,
+  });
+
+  useEffect(() => {
+    const checkRedirectResult = async () => {
+      try {
+        await firebaseHandleRedirectResult();
+      } catch (error) {
+        console.error("Error handling redirect result:", error);
+      }
+    };
+    checkRedirectResult();
+    
+    const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
+      setFirebaseUser(fbUser);
+      setIsLoadingFirebase(false);
+      if (fbUser) {
+        const idToken = await fbUser.getIdToken();
+        setIdToken(idToken);
+      } else {
+        setIdToken(null);
+        queryClient.clear();
+      }
+    });
+
+    return () => unsubscribe();
+  }, [queryClient]);
+
+  const isLoadingAuth = isLoadingFirebase || (!!firebaseUser && isLoadingUser);
+  const isAuthenticated = !!user && !!idToken;
+
+  const signIn = useCallback(async (usePopup: boolean = false): Promise<FirebaseUser | null> => {
+    setIsLoadingFirebase(true);
+    setAuthError(null);
+    try {
+      const fbUser = await firebaseSignInWithGoogle(usePopup);
+      return fbUser;
+    } catch (err: any) {
+      setAuthError(err as AuthError);
+      setIsLoadingFirebase(false);
+      throw err;
     }
+  }, []);
 
-    const [user] = await db.select().from(users).where(eq(users.firebaseUid, userUuid));
-    if (!user) {
-      return res.status(404).json({ error: 'User not found.' });
+  const signOut = useCallback(async () => {
+    try {
+      await signOutUser();
+      setAuthError(null);
+      setFirebaseUser(null);
+      setIdToken(null);
+      queryClient.clear();
+    } catch (err: any) {
+      setAuthError(err as AuthError);
+      throw err;
     }
+  }, [queryClient]);
 
-    let sellerInfo;
-    if (user.role === 'seller') {
-      const [record] = await db.select({ approvalStatus: sellersPgTable.approvalStatus }).from(sellersPgTable).where(eq(sellersPgTable.userId, user.id));
-      if (record) sellerInfo = { approvalStatus: record.approvalStatus };
-    }
+  const clearError = useCallback(() => {
+    setAuthError(null);
+  }, []);
 
-    res.status(200).json({ firebaseUid: user.firebaseUid, email: user.email, name: user.name, role: user.role, seller: sellerInfo });
-  } catch (error: any) {
-    console.error(error);
-    res.status(500).json({ error: 'Internal error.' });
-  }
-});
+  const authContextValue = {
+    user,
+    isLoadingAuth,
+    isAuthenticated,
+    error: authError || queryError,
+    clearError,
+    signIn,
+    signOut,
+    refetchUser: refetch,
+  };
 
-router.post('/auth/logout', async (req, res) => {
-  const sessionCookie = req.cookies?.__session || '';
-  res.clearCookie('__session');
+  return (
+    <AuthContext.Provider value={authContextValue}>
+      {children}
+    </AuthContext.Provider>
+  );
+};
 
-  try {
-    if (sessionCookie) {
-      const decoded = await authAdmin.auth().verifySessionCookie(sessionCookie);
-      await authAdmin.auth().revokeRefreshTokens(decoded.sub);
-    }
-    res.status(200).json({ message: 'Logged out successfully!' });
-  } catch (error: any) {
-    console.error(error);
-    res.status(500).json({ message: 'Logout failed.' });
-  }
-});
-
-// ✅ Seller Routes moved to separate file
-router.use('/sellers', sellerRouter); // ✅ यह सही है
-
-// Categories
-router.get('/categories', async (req: Request, res: Response) => {
-  try {
-    const categoriesList = await db.select().from(categories);
-    res.status(200).json(categoriesList);
-  } catch (error: any) {
-    console.error(error);
-    res.status(500).json({ error: 'Internal error.' });
-  }
-});
-
-// Products
-router.get('/products', async (req: Request, res: Response) => {
-  try {
-    const { categoryId, search } = req.query;
-    let query = db.select().from(products);
-
-    if (categoryId) {
-      query = query.where(eq(products.categoryId, parseInt(categoryId as string)));
-    }
-    if (search) {
-      query = query.where(like(products.name, `%${search}%`));
-    }
-
-    const productsList = await query;
-    res.status(200).json(productsList);
-  } catch (error: any) {
-    console.error(error);
-    res.status(500).json({ error: 'Internal error.' });
-  }
-});
-
-router.get('/products/:id', async (req: Request, res: Response) => {
-  const productId = parseInt(req.params.id);
-  if (isNaN(productId)) return res.status(400).json({ error: 'Invalid product ID.' });
-
-  try {
-    const [product] = await db.select().from(products).where(eq(products.id, productId));
-    if (!product) return res.status(404).json({ error: 'Product not found.' });
-    res.status(200).json(product);
-  } catch (error: any) {
-    console.error(error);
-    res.status(500).json({ error: 'Internal error.' });
-  }
-});
-
-// Delivery Boy
-router.post('/delivery-boys/register', async (req: Request, res: Response) => {
-  try {
-    const { email, firebaseUid, name, vehicleType } = req.body;
-
-    const [newDeliveryBoy] = await db.insert(deliveryBoys).values({
-      firebaseUid: firebaseUid,
-      email,
-      name: name || 'Delivery Boy',
-      vehicleType,
-      approvalStatus: approvalStatusEnum.enumValues[0],
-    }).returning();
-
-    res.status(201).json(newDeliveryBoy);
-  } catch (error: any) {
-    console.error(error);
-    res.status(400).json({ error: error.message });
-  }
-});
-
-// Admin Routes
-const adminRouter = Router();
-adminRouter.use(requireAdminAuth);
-
-adminRouter.use('/products/approve', adminApproveProductRoutes);
-adminRouter.use('/products/reject', adminRejectProductRoutes);
-adminRouter.use('/products', adminProductsRoutes);
-adminRouter.use('/vendors', adminVendorsRoutes);
-adminRouter.use('/password', adminPasswordRoutes);
-
-// Admin Seller Actions
-adminRouter.get('/sellers', async (req: AuthenticatedRequest, res: Response) => {
-  try {
-    const pendingSellers = await db.select().from(sellersPgTable).where(eq(sellersPgTable.approvalStatus, approvalStatusEnum.enumValues[0]));
-    res.status(200).json(pendingSellers);
-  } catch (error: any) {
-    console.error(error);
-    res.status(500).json({ error: 'Internal error.' });
-  }
-});
-
-adminRouter.post('/sellers/:sellerId/approve', async (req: AuthenticatedRequest, res: Response) => {
-  const sellerId = parseInt(req.params.sellerId);
-  if (isNaN(sellerId)) return res.status(400).json({ error: 'Invalid seller ID.' });
-
-  try {
-    const [seller] = await db.select().from(sellersPgTable).where(eq(sellersPgTable.id, sellerId));
-    if (!seller) return res.status(404).json({ error: 'Seller not found.' });
-
-    await db.update(sellersPgTable).set({ approvalStatus: approvalStatusEnum.enumValues[1], approvedAt: new Date() }).where(eq(sellersPgTable.id, sellerId));
-    await db.update(users).set({ role: userRoleEnum.enumValues[1], approvalStatus: approvalStatusEnum.enumValues[1] }).where(eq(users.id, seller.userId));
-
-    res.status(200).json({ message: 'Seller approved successfully.' });
-  } catch (error: any) {
-    console.error(error);
-    res.status(500).json({ error: 'Internal error.' });
-  }
-});
-
-adminRouter.post('/sellers/:sellerId/reject', async (req: AuthenticatedRequest, res: Response) => {
-  const sellerId = parseInt(req.params.sellerId);
-  const { reason } = req.body;
-
-  if (isNaN(sellerId)) return res.status(400).json({ error: 'Invalid seller ID.' });
-  if (!reason) return res.status(400).json({ error: 'Rejection reason required.' });
-
-  try {
-    const [seller] = await db.select().from(sellersPgTable).where(eq(sellersPgTable.id, sellerId));
-    if (!seller) return res.status(404).json({ error: 'Seller not found.' });
-
-    await db.update(sellersPgTable).set({ approvalStatus: approvalStatusEnum.enumValues[2], rejectionReason: reason }).where(eq(sellersPgTable.id, sellerId));
-    await db.update(users).set({ approvalStatus: approvalStatusEnum.enumValues[2] }).where(eq(users.id, seller.userId));
-
-    res.status(200).json({ message: 'Seller rejected successfully.' });
-  } catch (error: any) {
-    console.error(error);
-    res.status(500).json({ error: 'Internal error.' });
-  }
-});
-
-router.use('/admin', adminRouter);
-
-// ✅ यह नई लाइन जोड़ें:
-export default router;
+export const useAuth = () => {
+  const ctx = useContext(AuthContext);
+  if (!ctx) throw new Error("useAuth must be used within an AuthProvider");
+  return ctx;
+};
