@@ -12,7 +12,7 @@ import { Shield } from "lucide-react";
 export default function AdminLogin() {
   const navigate = useNavigate(); 
   const { toast } = useToast();
-  const { user, isAuthenticated, isLoadingAuth } = useAuth(); // `user`, `isAuthenticated`, और `isLoadingAuth` को इंपोर्ट करें
+  const { user, isAuthenticated } = useAuth(); // केवल user और isAuthenticated का उपयोग करें
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -30,12 +30,16 @@ export default function AdminLogin() {
         throw new Error(data.message || "Login failed");
       }
 
-      // लॉगिन सफल, localStorage में isAdmin फ्लैग सेट करें
+      // लॉगिन सफल होने पर localStorage में isAdmin फ्लैग सेट करें
       localStorage.setItem("isAdmin", "true");
+      
       toast({
         title: "Login Successful",
         description: "Welcome Admin!",
       });
+
+      // ✅ यहाँ बदलाव है: लॉगिन सफल होने पर सीधे नेविगेट करें।
+      navigate("/admin-dashboard", { replace: true });
 
     } catch (err: any) {
       toast({
@@ -48,13 +52,13 @@ export default function AdminLogin() {
     }
   };
 
+  // ✅ यह useEffect अब सिर्फ एडमिन को /auth से बाहर निकालने के लिए है,
+  // अगर वह पहले से लॉग इन हो।
   useEffect(() => {
-    // यह `useEffect` लॉगिन होने के बाद नेविगेट करने का काम करेगा।
-    // यह सिर्फ तभी चलेगा जब `useAuth` हुक पूरी तरह से अपडेट हो जाए।
-    if (isAuthenticated && user && user.role === 'admin' && !isLoadingAuth) {
+    if (isAuthenticated && user?.role === 'admin' && location.pathname === '/admin-login') {
       navigate("/admin-dashboard", { replace: true });
     }
-  }, [user, isAuthenticated, isLoadingAuth, navigate]); // सभी ज़रूरी डिपेंडेंसी जोड़ें
+  }, [isAuthenticated, user, navigate, location.pathname]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-700 flex items-center justify-center p-4">
