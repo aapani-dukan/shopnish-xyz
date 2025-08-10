@@ -1,11 +1,9 @@
-// client/src/App.tsx
-
 import { Routes, Route } from "react-router-dom";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "./lib/queryClient";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/toaster";
-import { AuthProvider } from "@/hooks/useAuth"; 
+import { AuthProvider } from "@/hooks/useAuth";
 import "./index.css";
 
 // Pages
@@ -24,6 +22,7 @@ import DeliveryApplyPage from "@/pages/delivery-apply";
 
 // Centralized auth-based routing
 import AuthRedirectGuard from "@/components/auth-redirect-guard";
+import AdminGuard from "@/components/admin-guard"; // ✅ नया इंपोर्ट
 import AdminLogin from "@/pages/admin-login";
 
 function AppRouter() {
@@ -35,16 +34,16 @@ function AppRouter() {
       <Route path="/checkout" element={<Checkout />} />
       <Route path="/auth" element={<AuthPage />} />
       <Route path="/admin-login" element={<AdminLogin />} />
-      
-      {/* ✅ यह है नया और सही तरीका। 
-          AuthRedirectGuard को प्रत्येक प्रोटेक्टेड राउट के लिए एक रैपर के रूप में इस्तेमाल करें।
-      */}
+
+      {/* ✅ AuthRedirectGuard for normal authenticated routes */}
       <Route path="/seller-dashboard" element={<AuthRedirectGuard><SellerDashboard /></AuthRedirectGuard>} />
       <Route path="/seller-apply" element={<AuthRedirectGuard><SellerApplyPage /></AuthRedirectGuard>} />
       <Route path="/seller-status" element={<AuthRedirectGuard><SellerStatusPage /></AuthRedirectGuard>} />
       <Route path="/delivery-dashboard" element={<AuthRedirectGuard><DeliveryDashboard /></AuthRedirectGuard>} />
       <Route path="/delivery-apply" element={<AuthRedirectGuard><DeliveryApplyPage /></AuthRedirectGuard>} />
-      <Route path="/admin-dashboard" element={<AuthRedirectGuard><AdminDashboard /></AuthRedirectGuard>} />
+
+      {/* ✅ AdminGuard exclusively for admin-specific routes */}
+      <Route path="/admin-dashboard" element={<AdminGuard><AdminDashboard /></AdminGuard>} />
 
       <Route path="*" element={<NotFound />} />
     </Routes>
@@ -55,7 +54,7 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <AuthProvider> 
+        <AuthProvider>
           <Toaster />
           <AppRouter />
         </AuthProvider>
