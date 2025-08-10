@@ -2,17 +2,15 @@
 
 import React from "react";
 import { useAuth } from "@/hooks/useAuth";
-import { useSeller } from "@/hooks/useSeller";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Link } from "wouter";
+import { Link } from "react-router-dom"; 
 import { Clock, CheckCircle, XCircle, Store, AlertCircle } from "lucide-react";
 
 export default function SellerStatusPage() {
   const { user, isLoadingAuth, isAuthenticated } = useAuth();
-  const { seller, isLoading: isLoadingSellerData } = useSeller(); 
-
-  if (isLoadingAuth || isLoadingSellerData) {
+  
+  if (isLoadingAuth) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-100">
         <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" />
@@ -32,14 +30,17 @@ export default function SellerStatusPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Link href="/">
-              <Button>Go to Home & Login</Button>
+            <Link to="/auth">
+              <Button>Go to Login Page</Button>
             </Link>
           </CardContent>
         </Card>
       </div>
     );
   }
+  
+  const sellerProfile = user?.sellerProfile;
+  const approvalStatus = sellerProfile?.approvalStatus;
 
   let title = "Seller Application Status";
   let description = "We are checking your application status.";
@@ -51,7 +52,7 @@ export default function SellerStatusPage() {
   let actionButtonVariant: "default" | "secondary" | "destructive" | "ghost" | "link" = "default";
 
 
-  if (user?.role === "seller" || seller?.approvalStatus === "approved") {
+  if (user?.role === "seller" && approvalStatus === "approved") {
     title = "Welcome, Approved Seller!";
     description = "Your seller account has been approved. You can now access your dashboard and start managing your business.";
     IconComponent = CheckCircle;
@@ -60,22 +61,22 @@ export default function SellerStatusPage() {
     actionButtonText = "Go to Seller Dashboard";
     actionButtonLink = "/seller-dashboard";
     actionButtonVariant = "default";
-  } else if (user?.role === "seller" || seller?.approvalStatus === "pending") {
+  } else if (user?.role === "seller" && approvalStatus === "pending") {
     title = "Application Under Review";
     description = "Thank you for applying to become a seller on Shopnish. Our admin team is reviewing your application. You will be notified once your account is approved.";
     IconComponent = Clock;
     iconColor = "text-yellow-500";
     showActionButton = false;
-  } else if (seller?.approvalStatus === "rejected") {
+  } else if (user?.role === "seller" && approvalStatus === "rejected") {
     title = "Application Rejected";
-    description = `Unfortunately, your seller application was rejected. Reason: ${seller.rejectionReason || 'No specific reason provided.'} Please review the criteria or contact support for more details.`;
+    description = `Unfortunately, your seller application was rejected. Reason: ${sellerProfile?.rejectionReason || 'No specific reason provided.'} Please review the criteria or contact support for more details.`;
     IconComponent = XCircle;
     iconColor = "text-red-500";
     showActionButton = true;
     actionButtonText = "Re-apply as Seller";
     actionButtonLink = "/seller-apply";
     actionButtonVariant = "secondary";
-  } else if (user?.role === "customer" && !seller) { // ✅ यहाँ `user?.role === "customer"` में बदला गया है
+  } else if (user?.role === "customer" && !sellerProfile) {
     title = "No Seller Application Found";
     description = "It seems you haven't applied to become a seller yet. Start your application now!";
     IconComponent = Store;
@@ -105,7 +106,7 @@ export default function SellerStatusPage() {
         </CardHeader>
         {showActionButton && (
           <CardContent className="pb-8">
-            <Link href={actionButtonLink}>
+            <Link to={actionButtonLink}>
               <Button size="lg" className="w-full max-w-xs" variant={actionButtonVariant}>
                 {actionButtonText}
               </Button>
