@@ -72,7 +72,7 @@ const Header: React.FC<HeaderProps> = ({ categories = [] }) => {
     console.log("Seller button clicked! isAuthenticated:", isAuthenticated, "user:", user);
 
     if (isLoadingAuth) {
-      return; // ✅ लोडिंग के दौरान कुछ न करें
+      return; 
     }
 
     if (!isAuthenticated) {
@@ -118,15 +118,34 @@ const Header: React.FC<HeaderProps> = ({ categories = [] }) => {
   };
 
   const dashboardLink = getDashboardLink();
-  
-  const getSellerButtonLabel = () => {
-    if (user?.role === "seller") {
-      const status = user.sellerProfile?.approvalStatus;
-      if (status === "pending") return "View Seller Status";
-      if (status === "approved") return "Go to Seller Dashboard";
-      return "Become a Seller";
+
+  // ✅ इस फ़ंक्शन को हटाकर लॉजिक को सीधे बटन में लिखा गया है।
+  const renderSellerButton = () => {
+    if (isLoadingAuth) {
+      return null;
     }
-    return "Become a Seller";
+
+    let label = "Become a Seller";
+    if (user && user.role === "seller") {
+      const status = user.sellerProfile?.approvalStatus;
+      if (status === "pending") {
+        label = "View Seller Status";
+      } else if (status === "approved") {
+        label = "Go to Seller Dashboard";
+      }
+    }
+
+    return (
+      <Button
+        onClick={handleSellerButtonClick}
+        disabled={isLoadingAuth}
+        variant="ghost"
+        className="w-full justify-start text-blue-600 hover:bg-blue-50"
+      >
+        <Store className="mr-2 h-4 w-4" />
+        {label}
+      </Button>
+    );
   };
   
   return (
@@ -151,15 +170,7 @@ const Header: React.FC<HeaderProps> = ({ categories = [] }) => {
         </form>
 
         <nav className="hidden md:flex items-center space-x-4">
-          <Button
-            onClick={handleSellerButtonClick}
-            disabled={isLoadingAuth} // ✅ यहाँ isLoadingAuth के आधार पर अक्षम किया गया है
-            variant="ghost"
-            className="w-full justify-start text-blue-600 hover:bg-blue-50"
-          >
-            <Store className="mr-2 h-4 w-4" />
-            {getSellerButtonLabel()}
-          </Button>
+          {renderSellerButton()}
 
           <Link to="/wishlist">
             <Button variant="ghost" size="icon">
@@ -301,15 +312,7 @@ const Header: React.FC<HeaderProps> = ({ categories = [] }) => {
                   </Button>
                 </Link>
                 
-                <Button
-                  onClick={handleSellerButtonClick}
-                  disabled={isLoadingAuth}
-                  variant="ghost"
-                  className="w-full justify-start text-blue-600 hover:bg-blue-50"
-                >
-                  <Store className="mr-2 h-4 w-4" />
-                  {getSellerButtonLabel()}
-                </Button>
+                {renderSellerButton()}
 
                 <div className="w-full border-t pt-4">
                   <p className="font-semibold mb-2">Categories</p>
@@ -345,3 +348,4 @@ const Header: React.FC<HeaderProps> = ({ categories = [] }) => {
 };
 
 export default Header;
+      
