@@ -94,7 +94,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [idToken, setIdToken] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
-  // ✅ useQuery को अपडेट किया गया है
   const { data: user, isLoading: isLoadingUser, error: queryError, refetch } = useQuery({
     queryKey: ['userProfile', firebaseUser?.uid],
     queryFn: async () => {
@@ -119,13 +118,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         return currentUser;
       } catch (e: any) {
         if (e.message.includes('404')) {
-          // ✅ यहाँ नया लॉजिक जोड़ा गया है: 404 पर नया उपयोगकर्ता बनाएं
           console.warn("User profile not found in DB. Creating a new user.");
           const newUserProfile = await authenticatedApiRequest("POST", `/api/users`, {
             uid: firebaseUser.uid,
             email: firebaseUser.email,
             name: firebaseUser.displayName,
-            role: "customer", // डिफ़ॉल्ट रोल
+            role: "customer",
           }, idToken);
 
           const { user: newDbUserData } = await newUserProfile.json();
@@ -151,6 +149,21 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   });
 
   useEffect(() => {
+    // Redirect Result को यहाँ संभालें
+    const checkRedirectResult = async () => {
+      try {
+        const result = await firebaseHandleRedirectResult();
+        if (result) {
+          console.log("Redirect result handled successfully.");
+          // Firebase auth state listener अपने आप user को अपडेट कर देगा।
+        }
+      } catch (error) {
+        console.error("Error handling redirect result:", error);
+        setAuthError(error as AuthError);
+      }
+    };
+    
+    // Firebase Auth State Listener
     const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
       setFirebaseUser(fbUser);
       setIsLoadingFirebase(false);
@@ -162,6 +175,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         queryClient.clear();
       }
     });
+
+    checkRedirectResult(); // पेज लोड होने पर इसे कॉल करें
+
     return () => unsubscribe();
   }, [queryClient]);
 
