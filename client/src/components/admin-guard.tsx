@@ -11,14 +11,12 @@ const AdminGuard = ({ children }: { children: React.ReactNode }) => {
     const checkAdminSession = async () => {
       try {
         const res = await fetch("/api/users/me", {
-          // ✅ यह बदलाव सबसे महत्वपूर्ण है।
-          // `credentials: 'include'` ब्राउज़र को अनुरोध के साथ कुकीज़ भेजने का निर्देश देता है।
+          // ✅ यह सबसे महत्वपूर्ण बदलाव है।
           credentials: 'include' 
         });
 
         if (res.ok) {
           const userData = await res.json();
-          // सिर्फ एडमिन रोल की जाँच करें
           if (userData.role === 'admin') {
             setIsAuthenticated(true);
           }
@@ -33,19 +31,13 @@ const AdminGuard = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-100">
-        <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" />
-      </div>
-    );
+    // ... (आपका लोडिंग UI)
   }
 
-  // यदि एडमिन नहीं है, तो लॉगिन पेज पर भेजें
   if (!isAuthenticated) {
     return <Navigate to="/admin-login" replace />;
   }
 
-  // यदि एडमिन है, तो डैशबोर्ड दिखाएं
   return <>{children}</>;
 };
 
