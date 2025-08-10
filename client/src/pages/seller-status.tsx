@@ -4,7 +4,7 @@ import React from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Link } from "react-router-dom"; 
+import { Link } from "react-router-dom"; // ✅ यहाँ बदलाव किया गया है
 import { Clock, CheckCircle, XCircle, Store, AlertCircle } from "lucide-react";
 
 export default function SellerStatusPage() {
