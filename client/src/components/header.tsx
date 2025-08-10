@@ -79,7 +79,7 @@ const Header: React.FC<HeaderProps> = ({ categories = [] }) => {
       localStorage.setItem('redirectIntent', 'become-seller');
       navigate("/auth");
     } else {
-      // ✅ यहाँ मुख्य लॉजिक है: यह सिर्फ़ तब चलता है जब उपयोगकर्ता लॉग इन हो
+      // ✅ यहाँ मुख्य बदलाव है: अगर उपयोगकर्ता सेलर है, तो नेविगेट करें, वरना डायलॉग खोलें
       if (user?.role === "seller") {
         const approvalStatus = user.sellerProfile?.approvalStatus;
         if (approvalStatus === "approved") {
@@ -88,15 +88,15 @@ const Header: React.FC<HeaderProps> = ({ categories = [] }) => {
           navigate("/seller-status");
         } else {
           // rejected या null स्टेटस के लिए
-          navigate("/seller-apply");
+          setIsSellerDialogOpen(true); // ✅ डायलॉग खोलें
         }
       } else {
-        // अगर रोल 'customer' है, तो सीधे अप्लाई पेज पर भेजें
-        navigate("/seller-apply");
+        // अगर रोल 'customer' है, तो डायलॉग खोलें
+        setIsSellerDialogOpen(true); // ✅ डायलॉग खोलें
       }
     }
   };
-
+  
   const getDashboardLink = () => {
     if (!isAuthenticated || !user) return null;
 
@@ -348,3 +348,5 @@ const Header: React.FC<HeaderProps> = ({ categories = [] }) => {
   );
 };
 export default Header;
+
+      
