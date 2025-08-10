@@ -36,7 +36,7 @@ router.get('/health', (req: Request, res: Response) => {
   res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// ✅ यहाँ `password: ''` को जोड़ा गया है
+// ✅ यहाँ कई बदलाव किए गए हैं
 router.post('/register', async (req: Request, res: Response) => {
   try {
     const userData = req.body;
@@ -51,14 +51,15 @@ router.post('/register', async (req: Request, res: Response) => {
       name: userData.name || null,
       role: userRoleEnum.enumValues[0],
       approvalStatus: approvalStatusEnum.enumValues[1],
-      // ✅ यह लाइन जोड़ी गई है
-      password: '',
-      firstName: userData.firstName,
-      lastName: userData.lastName,
-      phone: userData.phone,
-      address: userData.address,
-      city: userData.city,
-      pincode: userData.pincode,
+      // ✅ यहाँ `password` के लिए खाली स्ट्रिंग
+      password: userData.password || '',
+      // ✅ यहाँ `firstName`, `lastName`, `phone`, `address`, `city`, `pincode` के लिए खाली स्ट्रिंग
+      firstName: userData.firstName || '',
+      lastName: userData.lastName || '',
+      phone: userData.phone || '',
+      address: userData.address || '',
+      city: userData.city || '',
+      pincode: userData.pincode || '',
     }).returning();
 
     res.status(201).json(newUser);
@@ -244,4 +245,4 @@ router.use('/admin', adminRouter);
 
 // ✅ यह नई लाइन जोड़ें:
 export default router;
-                                                                           
+                                   
