@@ -45,6 +45,7 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// यह फ़ंक्शन API रिक्वेस्ट को handle करता है
 export async function authenticatedApiRequest(method: 'GET' | 'POST' | 'PUT' | 'DELETE', url: string, data?: any, idToken?: string) {
   if (!idToken) {
     throw new Error("Authentication token is missing for API request.");
@@ -61,30 +62,28 @@ export async function authenticatedApiRequest(method: 'GET' | 'POST' | 'PUT' | '
     body: data ? JSON.stringify(data) : undefined,
   };
 
-  try {
-    const response = await fetch(url, options);
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      let errorData = null;
-      try {
-        errorData = JSON.parse(errorText);
-      } catch (e) {
-        console.error("Failed to parse JSON response:", e);
-      }
-      const errorMessage = errorData?.error || errorData?.message || errorText || `API Error: ${response.status} ${response.statusText}`;
-      throw new Error(errorMessage);
+  const response = await fetch(url, options);
+  
+  if (!response.ok) {
+    const errorText = await response.text();
+    let errorData = null;
+    try {
+      errorData = JSON.parse(errorText);
+    } catch (e) {
+      console.error("Failed to parse JSON response:", e);
     }
+    const errorMessage = errorData?.error || errorData?.message || errorText || `API Error: ${response.status} ${response.statusText}`;
     
-    if (response.status === 204) {
-      return { ok: true, json: () => Promise.resolve({}) };
-    }
-
-    return response;
-  } catch (e: any) {
-    console.error("API Request Failed:", e);
-    throw new Error(`Failed to perform API request: ${e.message || 'Unknown error'}`);
+    const error = new Error(errorMessage);
+    (error as any).status = response.status; // status को error object में जोड़ें
+    throw error;
   }
+  
+  if (response.status === 204) {
+    return { ok: true, json: () => Promise.resolve({}) };
+  }
+
+  return response;
 }
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
@@ -117,7 +116,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         
         return currentUser;
       } catch (e: any) {
-        // यहाँ नया लॉजिक है: 404 पर नया उपयोगकर्ता बनाएं और उसे return करें
+        // यहाँ हम 404 एरर को पकड़ रहे हैं
         if (e.message.includes('404')) {
           console.warn("User profile not found in DB. Creating a new user.");
           try {
@@ -142,9 +141,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             return newUser;
           } catch (createError) {
             console.error("Failed to create new user in DB:", createError);
-            throw createError; // अगर नया user बनाने में कोई error आती है तो उसे throw करें
+            throw createError; // अगर नया user बनाने में error आती है, तो उसे throw करें
           }
         }
+        // अन्य सभी errors को दोबारा throw करें
         console.error("Failed to fetch user data from DB:", e);
         throw e;
       }
@@ -236,4 +236,3 @@ export const useAuth = () => {
   if (!ctx) throw new Error("useAuth must be used within an AuthProvider");
   return ctx;
 };
-                 
