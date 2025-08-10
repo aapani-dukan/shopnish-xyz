@@ -117,27 +117,33 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         
         return currentUser;
       } catch (e: any) {
+        // यहाँ नया लॉजिक है: 404 पर नया उपयोगकर्ता बनाएं और उसे return करें
         if (e.message.includes('404')) {
           console.warn("User profile not found in DB. Creating a new user.");
-          const newUserProfile = await authenticatedApiRequest("POST", `/api/users`, {
-            uid: firebaseUser.uid,
-            email: firebaseUser.email,
-            name: firebaseUser.displayName,
-            role: "customer",
-          }, idToken);
+          try {
+            const newUserProfile = await authenticatedApiRequest("POST", `/api/users`, {
+              uid: firebaseUser.uid,
+              email: firebaseUser.email,
+              name: firebaseUser.displayName,
+              role: "customer", // डिफ़ॉल्ट रोल
+            }, idToken);
 
-          const { user: newDbUserData } = await newUserProfile.json();
+            const { user: newDbUserData } = await newUserProfile.json();
 
-          const newUser: User = {
-            uid: firebaseUser.uid,
-            id: newDbUserData?.id, 
-            email: firebaseUser.email,
-            name: firebaseUser.displayName,
-            role: "customer",
-            idToken: idToken,
-            sellerProfile: null,
-          };
-          return newUser;
+            const newUser: User = {
+              uid: firebaseUser.uid,
+              id: newDbUserData?.id, 
+              email: firebaseUser.email,
+              name: firebaseUser.displayName,
+              role: "customer",
+              idToken: idToken,
+              sellerProfile: null,
+            };
+            return newUser;
+          } catch (createError) {
+            console.error("Failed to create new user in DB:", createError);
+            throw createError; // अगर नया user बनाने में कोई error आती है तो उसे throw करें
+          }
         }
         console.error("Failed to fetch user data from DB:", e);
         throw e;
