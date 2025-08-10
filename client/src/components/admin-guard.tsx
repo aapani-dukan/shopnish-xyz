@@ -11,7 +11,7 @@ const AdminGuard = ({ children }: { children: React.ReactNode }) => {
     const checkAdminSession = async () => {
       try {
         const res = await fetch("/api/users/me", {
-          // ✅ यह सबसे महत्वपूर्ण बदलाव है।
+          // ✅ यह बदलाव सबसे महत्वपूर्ण है।
           credentials: 'include' 
         });
 
@@ -31,7 +31,7 @@ const AdminGuard = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   if (isLoading) {
-    // ... (आपका लोडिंग UI)
+    //...
   }
 
   if (!isAuthenticated) {
