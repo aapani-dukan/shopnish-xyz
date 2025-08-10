@@ -116,15 +116,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         
         return currentUser;
       } catch (e: any) {
-        // यहाँ हम 404 एरर को पकड़ रहे हैं
         if (e.status === 404) {
           console.warn("User profile not found in DB. Creating a new user.");
           try {
-            const newUserProfile = await authenticatedApiRequest("POST", `/api/users`, {
-              uid: firebaseUser.uid,
+            // ✅ पहला बदलाव: URL को `/api/register` में बदला गया है
+            const newUserProfile = await authenticatedApiRequest("POST", `/api/register`, {
+              // ✅ दूसरा बदलाव: `uid` के बजाय `firebaseUid` भेजा जा रहा है
+              firebaseUid: firebaseUser.uid,
               email: firebaseUser.email,
               name: firebaseUser.displayName,
-              role: "customer", // डिफ़ॉल्ट रोल
+              role: "customer",
             }, idToken);
 
             const { user: newDbUserData } = await newUserProfile.json();
@@ -141,17 +142,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             return newUser;
           } catch (createError) {
             console.error("Failed to create new user in DB:", createError);
-            throw createError; // अगर नया user बनाने में error आती है, तो उसे throw करें
+            throw createError;
           }
         }
-        // अन्य सभी errors को दोबारा throw करें
         console.error("Failed to fetch user data from DB:", e);
         throw e;
       }
     },
     enabled: !!firebaseUser && !!idToken,
     staleTime: 1000 * 60 * 5,
-    // retries को अस्थायी रूप से false करें ताकि loop को रोका जा सके
     retry: false,
   });
 
@@ -236,4 +235,3 @@ export const useAuth = () => {
   if (!ctx) throw new Error("useAuth must be used within an AuthProvider");
   return ctx;
 };
-                                           
