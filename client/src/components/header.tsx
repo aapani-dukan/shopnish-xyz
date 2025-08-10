@@ -78,25 +78,27 @@ const Header: React.FC<HeaderProps> = ({ categories = [] }) => {
     if (!isAuthenticated) {
       localStorage.setItem('redirectIntent', 'become-seller');
       navigate("/auth");
-    } else {
-      // ✅ यहाँ मुख्य बदलाव है: अगर उपयोगकर्ता सेलर है, तो नेविगेट करें, वरना डायलॉग खोलें
-      if (user?.role === "seller") {
-        const approvalStatus = user.sellerProfile?.approvalStatus;
-        if (approvalStatus === "approved") {
-          navigate("/seller-dashboard");
-        } else if (approvalStatus === "pending") {
-          navigate("/seller-status");
-        } else {
-          // rejected या null स्टेटस के लिए
-          setIsSellerDialogOpen(true); // ✅ डायलॉग खोलें
-        }
+      return;
+    }
+
+    // ✅ यहाँ नया लॉजिक शुरू होता है
+    if (user?.role === "seller") {
+      const approvalStatus = user.sellerProfile?.approvalStatus;
+      if (approvalStatus === "approved") {
+        navigate("/seller-dashboard");
+      } else if (approvalStatus === "pending") {
+        // 'pending' होने पर फॉर्म नहीं खुलेगा, बल्कि स्टेटस पेज पर जाएगा
+        navigate("/seller-status");
       } else {
-        // अगर रोल 'customer' है, तो डायलॉग खोलें
-        setIsSellerDialogOpen(true); // ✅ डायलॉग खोलें
+        // 'rejected' या किसी अन्य स्टेटस पर फॉर्म खुलेगा
+        setIsSellerDialogOpen(true);
       }
+    } else {
+      // अगर रोल 'customer' है, तो सीधे डायलॉग खोलें
+      setIsSellerDialogOpen(true);
     }
   };
-  
+
   const getDashboardLink = () => {
     if (!isAuthenticated || !user) return null;
 
@@ -348,5 +350,3 @@ const Header: React.FC<HeaderProps> = ({ categories = [] }) => {
   );
 };
 export default Header;
-
-      
