@@ -119,13 +119,19 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         if (e.status === 404) {
           console.warn("User profile not found in DB. Creating a new user.");
           try {
-            // ✅ पहला बदलाव: URL को `/api/register` में बदला गया है
+            // ✅ यहाँ बदलाव किया गया है
             const newUserProfile = await authenticatedApiRequest("POST", `/api/register`, {
-              // ✅ दूसरा बदलाव: `uid` के बजाय `firebaseUid` भेजा जा रहा है
               firebaseUid: firebaseUser.uid,
               email: firebaseUser.email,
               name: firebaseUser.displayName,
               role: "customer",
+              // ✅ इन सभी फ़ील्ड्स को जोड़ा गया है ताकि not-null constraint का उल्लंघन न हो
+              firstName: '',
+              lastName: '',
+              phone: '',
+              address: '',
+              city: '',
+              pincode: '',
             }, idToken);
 
             const { user: newDbUserData } = await newUserProfile.json();
@@ -235,3 +241,4 @@ export const useAuth = () => {
   if (!ctx) throw new Error("useAuth must be used within an AuthProvider");
   return ctx;
 };
+            
