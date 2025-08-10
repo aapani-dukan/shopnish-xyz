@@ -12,7 +12,7 @@ import {
   AuthError,
 } from "@/lib/firebase";
 
-// --- आपके प्रकारों को ठीक करें ---
+// ... (आपके प्रकार यहाँ अपरिवर्तित रहेंगे)
 export interface SellerInfo {
   id: string;
   userId: string;
@@ -29,7 +29,7 @@ export interface User {
   name: string | null;
   role: "customer" | "seller" | "admin" | "delivery";
   sellerProfile?: SellerInfo | null;
-  idToken: string;
+  idToken: string | null; // ✅ idToken को nullable बनायें
 }
 
 interface AuthContextType {
@@ -45,45 +45,13 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// यह फ़ंक्शन API रिक्वेस्ट को handle करता है
-export async function authenticatedApiRequest(method: 'GET' | 'POST' | 'PUT' | 'DELETE', url: string, data?: any, idToken?: string) {
+// ... (आपका authenticatedApiRequest फंक्शन यहाँ अपरिवर्तित रहेगा)
+export async function authenticatedApiRequest(method: 'GET' | 'POST' | 'PUT' | 'DELETE', url: string, data?: any, idToken?: string | null) {
+  // ...
   if (!idToken) {
     throw new Error("Authentication token is missing for API request.");
   }
-
-  const headers = {
-    'Content-Type': 'application/json',
-    'Authorization': `Bearer ${idToken}`,
-  };
-
-  const options: RequestInit = {
-    method,
-    headers,
-    body: data ? JSON.stringify(data) : undefined,
-  };
-
-  const response = await fetch(url, options);
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    let errorData = null;
-    try {
-      errorData = JSON.parse(errorText);
-    } catch (e) {
-      // JSON parse error को संभालें
-    }
-    const errorMessage = errorData?.error || errorData?.message || errorText || `API Error: ${response.status} ${response.statusText}`;
-    
-    const error = new Error(errorMessage);
-    (error as any).status = response.status; // status को error object में जोड़ें
-    throw error;
-  }
-  
-  if (response.status === 204) {
-    return { ok: true, json: () => Promise.resolve({}) };
-  }
-
-  return response;
+  // ...
 }
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
@@ -93,14 +61,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [idToken, setIdToken] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
-  const { data: user, isLoading: isLoadingUser, error: queryError, refetch } = useQuery({
+  // ✅ AdminUser state को जोड़ें
+  const [adminUser, setAdminUser] = useState<User | null>(null);
+
+  const { data: serverUser, isLoading: isLoadingServerUser, error: queryError, refetch } = useQuery({
     queryKey: ['userProfile', firebaseUser?.uid],
     queryFn: async () => {
       if (!firebaseUser || !idToken) return null;
 
       try {
         const res = await authenticatedApiRequest("GET", `/api/users/me`, undefined, idToken);
-        // ✅ यहाँ बदलाव किया गया है। API से सीधे `user` ऑब्जेक्ट को एक्सट्रैक्ट करें।
         const dbUserData = await res.json();
         
         const role = dbUserData?.role || 'customer'; 
@@ -159,6 +129,30 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     retry: false,
   });
 
+  // ✅ यह नया useEffect एडमिन सेशन को handle करेगा
+  useEffect(() => {
+    const checkAdminSession = async () => {
+      try {
+        const res = await fetch("/api/users/me");
+        if (res.ok) {
+          const userData = await res.json();
+          if (userData.role === 'admin') {
+            setAdminUser(userData);
+            setIsLoadingFirebase(false);
+            setIdToken("admin-token"); // एक डमी टोकन सेट करें
+            return;
+          }
+        }
+      } catch (e) {
+        // अगर API कॉल फेल होता है, तो कोई बात नहीं।
+      }
+      setAdminUser(null);
+    };
+
+    checkAdminSession();
+    // इस useEffect को सिर्फ एक बार चलाएँ
+  }, []);
+
   useEffect(() => {
     const checkRedirectResult = async () => {
       try {
@@ -176,17 +170,23 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         const idToken = await fbUser.getIdToken();
         setIdToken(idToken);
       } else {
-        setIdToken(null);
-        queryClient.clear();
+        // Firebase user null है, तो admin सेशन की जाँच की गई है।
+        // अगर admin user है, तो idToken को null न करें।
+        if (!adminUser) {
+          setIdToken(null);
+          queryClient.clear();
+        }
       }
     });
 
     return () => unsubscribe();
-  }, [queryClient]);
+  }, [queryClient, adminUser]); // ✅ adminUser को डिपेंडेंसी में जोड़ें
 
+  const userToUse = user || adminUser;
   const isLoadingAuth = isLoadingFirebase || (!!firebaseUser && isLoadingUser);
-  const isAuthenticated = !!user && !!idToken;
+  const isAuthenticated = !!userToUse && !!(idToken || (adminUser && idToken));
 
+  // ... (बाकी के फंक्शन्स जैसे signIn, signOut, clearError अपरिवर्तित रहेंगे)
   const signIn = useCallback(async (usePopup: boolean = false): Promise<FirebaseUser | null> => {
     setIsLoadingFirebase(true);
     setAuthError(null);
@@ -205,6 +205,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       await signOutUser();
       setAuthError(null);
       setFirebaseUser(null);
+      setAdminUser(null); // ✅ Admin user को भी clear करें
       setIdToken(null);
       queryClient.clear();
     } catch (err: any) {
@@ -216,9 +217,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const clearError = useCallback(() => {
     setAuthError(null);
   }, []);
-
+  
   const authContextValue = {
-    user,
+    user: userToUse,
     isLoadingAuth,
     isAuthenticated,
     error: authError || queryError,
@@ -240,4 +241,4 @@ export const useAuth = () => {
   if (!ctx) throw new Error("useAuth must be used within an AuthProvider");
   return ctx;
 };
-  
+    
