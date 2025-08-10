@@ -1,114 +1,28 @@
-// src/guards/AuthRedirectGuard.tsx
+// client/src/guards/auth-redirect-guard.tsx
 
-import { useEffect } from "react";
+import React from "react";
 import { useAuth } from "@/hooks/useAuth";
-import { useLocation, useNavigate } from "react-router-dom";
+import { Navigate, useLocation } from "react-router-dom";
 
-const PUBLIC_PATHS = [
-  "/",
-  "/auth",
-  "/admin-login",
-  "/products",
-  "/product",
-  "/search",
-  "/cart",
-  "/checkout",
-  "/seller-apply",
-];
-
-const ROLE_DASHBOARD_PATHS = {
-  seller: "/seller-dashboard",
-  admin: "/admin-dashboard",
-  delivery: "/delivery-dashboard",
-  customer: "/",
-};
-
-const SELLER_SPECIFIC_PATHS = {
-  apply: "/seller-apply",
-  status: "/seller-status",
-  dashboard: "/seller-dashboard",
-};
-
-export function AuthRedirectGuard({ children }: { children: React.ReactNode }) {
-  const navigate = useNavigate();
+const AuthRedirectGuard = ({ children }: { children: React.ReactNode }) => {
+  const { isAuthenticated, isLoadingAuth } = useAuth();
   const location = useLocation();
-  const { user, isLoadingAuth, isAuthenticated } = useAuth();
-  const currentPath = location.pathname;
-
-  useEffect(() => {
-    if (isLoadingAuth) {
-      return;
-    }
-
-    if (!isAuthenticated) {
-      const isPublicPath = PUBLIC_PATHS.some(path => currentPath.startsWith(path));
-      if (!isPublicPath) {
-        navigate("/auth", { replace: true });
-      }
-      return;
-    }
-
-    if (isAuthenticated && user) {
-      const redirectIntent = localStorage.getItem('redirectIntent');
-      if (redirectIntent === "become-seller") {
-        localStorage.removeItem('redirectIntent');
-        if (user.role === "seller") {
-          const approvalStatus = user.sellerProfile?.approvalStatus;
-          if (approvalStatus === "pending") {
-            navigate(SELLER_SPECIFIC_PATHS.status, { replace: true });
-          } else if (approvalStatus === "approved") {
-            navigate(SELLER_SPECIFIC_PATHS.dashboard, { replace: true });
-          } else {
-            navigate(SELLER_SPECIFIC_PATHS.apply, { replace: true });
-          }
-        } else {
-          navigate(SELLER_SPECIFIC_PATHS.apply, { replace: true });
-        }
-        return;
-      }
-      
-      if (currentPath === "/auth" || currentPath === "/admin-login") {
-        const targetDashboard = ROLE_DASHBOARD_PATHS[user.role];
-        navigate(targetDashboard, { replace: true });
-        return;
-      }
-
-      // ✅ सेलर के लिए नया और बेहतर रीडायरेक्ट लॉजिक
-      if (user.role === "seller") {
-        const approvalStatus = user.sellerProfile?.approvalStatus;
-        
-        if (approvalStatus === "approved") {
-          if (currentPath !== SELLER_SPECIFIC_PATHS.dashboard) {
-            navigate(SELLER_SPECIFIC_PATHS.dashboard, { replace: true });
-          }
-          return;
-        } 
-        
-        if (approvalStatus === "pending") {
-          if (currentPath !== SELLER_SPECIFIC_PATHS.status) {
-            navigate(SELLER_SPECIFIC_PATHS.status, { replace: true });
-          }
-          return;
-        }
-        
-        // अगर status 'rejected', 'null' या 'undefined' है
-        if ((!approvalStatus || approvalStatus === "rejected")) {
-          if (currentPath !== SELLER_SPECIFIC_PATHS.apply) {
-            navigate(SELLER_SPECIFIC_PATHS.apply, { replace: true });
-          }
-          return;
-        }
-      }
-      
-      if (user.role === "customer" && (currentPath.startsWith("/seller-") || currentPath.startsWith("/admin-") || currentPath.startsWith("/delivery-"))) {
-        navigate("/", { replace: true });
-      }
-    }
-  }, [user, isLoadingAuth, isAuthenticated, location.pathname, navigate, currentPath]);
 
   if (isLoadingAuth) {
-    return <div>Loading...</div>;
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-100">
+        <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" />
+      </div>
+    );
   }
 
+  if (!isAuthenticated) {
+    // अगर लॉग इन नहीं है, तो लॉगिन पेज पर रीडायरेक्ट करें
+    return <Navigate to="/auth" state={{ from: location.pathname }} replace />;
+  }
+
+  // अगर उपयोगकर्ता लॉग इन है, तो बच्चों को रेंडर करें।
   return <>{children}</>;
-}
+};
+
+export default AuthRedirectGuard;
