@@ -1,14 +1,31 @@
-// client/src/components/admin-guard.tsx
-
-import React from "react";
-import { useAuth } from "@/hooks/useAuth";
-import { Navigate, useLocation } from "react-router-dom";
+import React, { useEffect, useState } from "react";
+import { Navigate } from "react-router-dom";
 
 const AdminGuard = ({ children }: { children: React.ReactNode }) => {
-  const { isLoadingAuth, isAdmin } = useAuth();
-  const location = useLocation();
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
-  if (isLoadingAuth) {
+  useEffect(() => {
+    const checkAdminSession = async () => {
+      try {
+        const res = await fetch("/api/users/me");
+        if (res.ok) {
+          const userData = await res.json();
+          // ✅ सिर्फ एडमिन रोल की जाँच करें
+          if (userData.role === 'admin') {
+            setIsAuthenticated(true);
+          }
+        }
+      } catch (e) {
+        console.error("Failed to check admin session:", e);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    checkAdminSession();
+  }, []);
+
+  if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-100">
         <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" />
@@ -16,12 +33,12 @@ const AdminGuard = ({ children }: { children: React.ReactNode }) => {
     );
   }
 
-  // ✅ यदि उपयोगकर्ता एडमिन नहीं है, तो उसे /admin-login पर रीडायरेक्ट करें
-  if (!isAdmin) {
-    return <Navigate to="/admin-login" state={{ from: location.pathname }} replace />;
+  // ✅ यदि एडमिन नहीं है, तो लॉगिन पेज पर भेजें
+  if (!isAuthenticated) {
+    return <Navigate to="/admin-login" replace />;
   }
 
-  // ✅ यदि एडमिन है, तो डैशबोर्ड को रेंडर करें
+  // ✅ यदि एडमिन है, तो डैशबोर्ड दिखाएं
   return <>{children}</>;
 };
 
