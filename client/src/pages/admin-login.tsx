@@ -1,9 +1,8 @@
 // client/src/pages/admin-login.tsx
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom"; 
 import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/hooks/useAuth"; 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,7 +11,6 @@ import { Shield } from "lucide-react";
 export default function AdminLogin() {
   const navigate = useNavigate(); 
   const { toast } = useToast();
-  const { user, isAuthenticated } = useAuth(); // केवल user और isAuthenticated का उपयोग करें
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -29,16 +27,13 @@ export default function AdminLogin() {
         const data = await res.json();
         throw new Error(data.message || "Login failed");
       }
-
-      // लॉगिन सफल होने पर localStorage में isAdmin फ्लैग सेट करें
-      localStorage.setItem("isAdmin", "true");
       
       toast({
         title: "Login Successful",
         description: "Welcome Admin!",
       });
 
-      // ✅ यहाँ बदलाव है: लॉगिन सफल होने पर सीधे नेविगेट करें।
+      // ✅ लॉगिन सफल होने पर सीधे admin dashboard पर नेविगेट करें
       navigate("/admin-dashboard", { replace: true });
 
     } catch (err: any) {
@@ -51,14 +46,6 @@ export default function AdminLogin() {
       setLoading(false);
     }
   };
-
-  // ✅ यह useEffect अब सिर्फ एडमिन को /auth से बाहर निकालने के लिए है,
-  // अगर वह पहले से लॉग इन हो।
-  useEffect(() => {
-    if (isAuthenticated && user?.role === 'admin' && location.pathname === '/admin-login') {
-      navigate("/admin-dashboard", { replace: true });
-    }
-  }, [isAuthenticated, user, navigate, location.pathname]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-700 flex items-center justify-center p-4">
