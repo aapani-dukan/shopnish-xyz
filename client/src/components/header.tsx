@@ -347,3 +347,4 @@ const Header: React.FC<HeaderProps> = ({ categories = [] }) => {
     </header>
   );
 };
+export default Header;
