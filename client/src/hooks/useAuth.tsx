@@ -100,7 +100,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
       try {
         const res = await authenticatedApiRequest("GET", `/api/users/me`, undefined, idToken);
-        const { user: dbUserData } = await res.json();
+        // ✅ यहाँ बदलाव किया गया है। API से सीधे `user` ऑब्जेक्ट को एक्सट्रैक्ट करें।
+        const dbUserData = await res.json();
         
         const role = dbUserData?.role || 'customer'; 
         
@@ -119,13 +120,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         if (e.status === 404) {
           console.warn("User profile not found in DB. Creating a new user.");
           try {
-            // ✅ यहाँ बदलाव किया गया है
             const newUserProfile = await authenticatedApiRequest("POST", `/api/register`, {
               firebaseUid: firebaseUser.uid,
               email: firebaseUser.email,
               name: firebaseUser.displayName,
               role: "customer",
-              // ✅ इन सभी फ़ील्ड्स को जोड़ा गया है ताकि not-null constraint का उल्लंघन न हो
               firstName: '',
               lastName: '',
               phone: '',
@@ -134,7 +133,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
               pincode: '',
             }, idToken);
 
-            const { user: newDbUserData } = await newUserProfile.json();
+            const newDbUserData = await newUserProfile.json();
 
             const newUser: User = {
               uid: firebaseUser.uid,
@@ -241,4 +240,4 @@ export const useAuth = () => {
   if (!ctx) throw new Error("useAuth must be used within an AuthProvider");
   return ctx;
 };
-            
+  
