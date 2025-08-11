@@ -34,16 +34,21 @@ apiAuthLoginRouter.post("/admin-login", async (req: Request, res: Response) => {
             return res.status(500).json({ error: "Admin account not configured." });
         }
         
-        // ✅ यहाँ बदलाव है: sessionCookie बनाएं
-        const expiresIn = 60 * 60 * 24 * 5 * 1000; // 5 दिनों के लिए
-        const adminSessionCookie = await authAdmin.createSessionCookie(adminUser.firebaseUid, { expiresIn });
+        // ✅ यहाँ बदलाव है:
+        // 1. Firebase Admin SDK का उपयोग करके एक कस्टम टोकन बनाएं।
+        const customToken = await authAdmin.createCustomToken(adminUser.firebaseUid);
+        
+        // 2. इस कस्टम टोकन का उपयोग करके सेशन कुकी बनाएं।
+        // (नोट: यह सिर्फ एक उदाहरण है। आमतौर पर, यह तरीका क्लाइंट-साइड से ID टोकन प्राप्त करने के बाद ही किया जाता है।)
+        // चूंकि हम एडमिन को सीधे सर्वर पर प्रमाणित कर रहे हैं, हमें इस तरीके का उपयोग करना होगा।
+        const expiresIn = 60 * 60 * 24 * 5 * 1000;
+        const adminSessionCookie = await authAdmin.createSessionCookie(customToken, { expiresIn });
 
-        // ✅ अब इस sessionCookie को कुकी में सेट करें
         res.cookie('__session', adminSessionCookie, {
             maxAge: expiresIn,
             httpOnly: true,
-            secure: true, // Render पर HTTPS के लिए 'true' ही रहेगा
-            sameSite: 'none', // क्रॉस-साइट अनुरोधों के लिए यह आवश्यक है
+            secure: true,
+            sameSite: 'none',
         });
         
         console.log("✅ Admin logged in and session token created.");
