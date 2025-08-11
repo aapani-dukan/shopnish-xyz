@@ -1,16 +1,18 @@
 // client/src/pages/admin-login.tsx
 
-import { useState } from "react";
-import { useNavigate } from "react-router-dom"; 
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth"; // ✅ useAuth को इम्पोर्ट करें
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Shield } from "lucide-react";
 
 export default function AdminLogin() {
-  const navigate = useNavigate(); 
+  const navigate = useNavigate();
   const { toast } = useToast();
+  const { isAdmin, isLoadingAuth, refetchUser } = useAuth(); // ✅ useAuth से isAdmin और refetchUser लें
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -28,14 +30,16 @@ export default function AdminLogin() {
         const data = await res.json();
         throw new Error(data.message || "Login failed");
       }
-      
+
       toast({
         title: "Login Successful",
         description: "Welcome Admin!",
       });
-
-      navigate("/admin-dashboard", { replace: true });
-
+      
+      // ✅ लॉगिन सफल होने के बाद तुरंत डेटा को रिफ्रेश करें
+      await refetchUser(); 
+      // यह ensure करता है कि isAdmin की स्थिति अपडेट हो जाए
+      
     } catch (err: any) {
       toast({
         title: "Login Failed",
@@ -47,6 +51,14 @@ export default function AdminLogin() {
     }
   };
 
+  // ✅ यह useEffect हुक isAdmin के अपडेट होने पर नेविगेट करेगा
+  useEffect(() => {
+    if (!isLoadingAuth && isAdmin) {
+      navigate("/admin-dashboard", { replace: true });
+    }
+  }, [isAdmin, isLoadingAuth, navigate]);
+
+  
   // ✅ यह 'return' स्टेटमेंट और उसके बाद का JSX कोड गायब था
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-700 flex items-center justify-center p-4">
