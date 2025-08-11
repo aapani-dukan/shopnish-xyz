@@ -28,6 +28,7 @@ import AdminLogin from "@/pages/admin-login";
 function AppRouter() {
   return (
     <Routes>
+      {/* Public routes */}
       <Route path="/" element={<HomePage />} />
       <Route path="/product/:id" element={<ProductDetail />} />
       <Route path="/cart" element={<Cart />} />
@@ -35,16 +36,59 @@ function AppRouter() {
       <Route path="/auth" element={<AuthPage />} />
       <Route path="/admin-login" element={<AdminLogin />} />
 
-      {/* ✅ AuthRedirectGuard for normal authenticated routes */}
-      <Route path="/seller-dashboard" element={<AuthRedirectGuard><SellerDashboard /></AuthRedirectGuard>} />
-      <Route path="/seller-apply" element={<AuthRedirectGuard><SellerApplyPage /></AuthRedirectGuard>} />
-      <Route path="/seller-status" element={<AuthRedirectGuard><SellerStatusPage /></AuthRedirectGuard>} />
-      <Route path="/delivery-dashboard" element={<AuthRedirectGuard><DeliveryDashboard /></AuthRedirectGuard>} />
-      <Route path="/delivery-apply" element={<AuthRedirectGuard><DeliveryApplyPage /></AuthRedirectGuard>} />
+      {/* Protected - Normal Auth */}
+      <Route
+        path="/seller-dashboard"
+        element={
+          <AuthRedirectGuard>
+            <SellerDashboard />
+          </AuthRedirectGuard>
+        }
+      />
+      <Route
+        path="/seller-apply"
+        element={
+          <AuthRedirectGuard>
+            <SellerApplyPage />
+          </AuthRedirectGuard>
+        }
+      />
+      <Route
+        path="/seller-status"
+        element={
+          <AuthRedirectGuard>
+            <SellerStatusPage />
+          </AuthRedirectGuard>
+        }
+      />
+      <Route
+        path="/delivery-dashboard"
+        element={
+          <AuthRedirectGuard>
+            <DeliveryDashboard />
+          </AuthRedirectGuard>
+        }
+      />
+      <Route
+        path="/delivery-apply"
+        element={
+          <AuthRedirectGuard>
+            <DeliveryApplyPage />
+          </AuthRedirectGuard>
+        }
+      />
 
-      {/* ✅ AdminGuard exclusively for admin-specific routes */}
-      <Route path="/admin-dashboard" element={<AdminGuard><AdminDashboard /></AdminGuard>} />
+      {/* Protected - Admin */}
+      <Route
+        path="/admin-dashboard"
+        element={
+          <AdminGuard>
+            <AdminDashboard />
+          </AdminGuard>
+        }
+      />
 
+      {/* 404 */}
       <Route path="*" element={<NotFound />} />
     </Routes>
   );
