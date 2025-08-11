@@ -1,10 +1,10 @@
-// server/middleware/verifyToken.ts
 import { Request, Response, NextFunction } from 'express';
 import { authAdmin } from '../lib/firebaseAdmin.ts';
 import { db } from '../db.ts';
 import { users } from '../../shared/backend/schema.ts';
 import { eq } from 'drizzle-orm';
 import { AuthenticatedUser } from '../../shared/types/user.ts';
+import fetch from 'node-fetch';
 
 export interface AuthenticatedRequest extends Request {
   user?: AuthenticatedUser;
@@ -13,29 +13,45 @@ export interface AuthenticatedRequest extends Request {
 export const verifyToken = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   const authHeader = req.headers.authorization;
 
-  // 1. Authorization हेडर की जांच करें
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return res.status(401).json({ message: 'No valid token provided' });
   }
 
-  // 2. टोकन को हेडर से निकालें
   const token = authHeader.split(' ')[1];
 
   try {
-    const decodedToken = await authAdmin.verifyIdToken(token);
-    
-    // ✅ 3. डेटाबेस से user की जानकारी fetch करें
-    // firebase_uid की जगह firebaseUid का उपयोग करें
+    let decodedToken;
+
+    try {
+      // Try verifying as a normal ID token
+      decodedToken = await authAdmin.verifyIdToken(token);
+    } catch (err) {
+      // If that fails, try exchanging custom token for ID token
+      const apiKey = process.env.FIREBASE_API_KEY;
+      if (!apiKey) throw new Error("FIREBASE_API_KEY not configured");
+
+      const resp = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:signInWithCustomToken?key=${apiKey}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token, returnSecureToken: true }),
+      });
+
+      if (!resp.ok) throw new Error("Custom token exchange failed");
+
+      const data = await resp.json();
+      const idToken = data.idToken;
+      decodedToken = await authAdmin.verifyIdToken(idToken);
+    }
+
+    // ✅ DB से user जानकारी
     const [dbUser] = await db.select().from(users).where(eq(users.firebaseUid, decodedToken.uid));
     if (!dbUser) {
       return res.status(404).json({ message: 'User not found in database' });
     }
 
-    // ✅ 4. req.user ऑब्जेक्ट को पूरी जानकारी से अपडेट करें
     req.user = {
       id: dbUser.id,
-      // ✅ uuid की जगह firebaseUid का उपयोग करें
-      firebaseUid: decodedToken.uid, 
+      firebaseUid: decodedToken.uid,
       email: dbUser.email,
       name: dbUser.name,
       role: dbUser.role,
@@ -44,10 +60,7 @@ export const verifyToken = async (req: AuthenticatedRequest, res: Response, next
 
     next();
   } catch (error: any) {
-    console.error('VerifyToken: टोकन सत्यापन विफल रहा:', error.message);
-    if (error.code === 'auth/id-token-expired') {
-      return res.status(401).json({ message: 'टोकन की समय सीमा समाप्त हो गई है' });
-    }
-    return res.status(401).json({ message: 'अमान्य टोकन या सत्यापन विफल रहा' });
+    console.error('VerifyToken error:', error.message);
+    return res.status(401).json({ message: 'Invalid or expired token' });
   }
 };
