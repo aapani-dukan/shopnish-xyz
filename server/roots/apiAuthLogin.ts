@@ -28,31 +28,23 @@ apiAuthLoginRouter.post("/admin-login", async (req: Request, res: Response) => {
             return res.status(401).json({ error: "Invalid password." });
         }
 
-        const [adminUser] = await db.select().from(users).where(eq(users.role, userRoleEnum.enumValues[2]));
+        const [adminUser] = await db
+            .select()
+            .from(users)
+            .where(eq(users.role, userRoleEnum.enumValues[2])); // role = admin
         
         if (!adminUser) {
             return res.status(500).json({ error: "Admin account not configured." });
         }
         
-        // ✅ यहाँ बदलाव है:
-        // 1. Firebase Admin SDK का उपयोग करके एक कस्टम टोकन बनाएं।
+        // ✅ Custom Token बनाएँ और frontend को भेजें
         const customToken = await authAdmin.createCustomToken(adminUser.firebaseUid);
-        
-        // 2. इस कस्टम टोकन का उपयोग करके सेशन कुकी बनाएं।
-        // (नोट: यह सिर्फ एक उदाहरण है। आमतौर पर, यह तरीका क्लाइंट-साइड से ID टोकन प्राप्त करने के बाद ही किया जाता है।)
-        // चूंकि हम एडमिन को सीधे सर्वर पर प्रमाणित कर रहे हैं, हमें इस तरीके का उपयोग करना होगा।
-        const expiresIn = 60 * 60 * 24 * 5 * 1000;
-        const adminSessionCookie = await authAdmin.createSessionCookie(customToken, { expiresIn });
 
-        res.cookie('__session', adminSessionCookie, {
-            maxAge: expiresIn,
-            httpOnly: true,
-            secure: true,
-            sameSite: 'none',
+        console.log("✅ Admin custom token created.");
+        return res.status(200).json({
+            message: "Admin login successful.",
+            customToken
         });
-        
-        console.log("✅ Admin logged in and session token created.");
-        return res.status(200).json({ message: "Admin logged in successfully." });
 
     } catch (error: any) {
         console.error("❌ Admin login error:", error);
