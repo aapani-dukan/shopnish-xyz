@@ -33,7 +33,8 @@ export default function AdminDashboard() {
 
   const fetchVendors = async () => {
     try {
-     const res = await apiRequest("GET", "/api/admin/sellers");
+     // ✅ यहाँ URL को अपडेट किया गया है
+     const res = await apiRequest("GET", "/api/admin/vendors/sellers/pending");
       if (res && Array.isArray(res.data)) {
         setVendors(res.data);
         console.log("Fetched vendors for admin:", res.data);
@@ -49,6 +50,7 @@ export default function AdminDashboard() {
 
   const fetchProducts = async () => {
     try {
+      // ✅ यह URL पहले से ही सही है, इसलिए इसमें कोई बदलाव नहीं
       const res = await apiRequest("GET", "/api/admin/products");
       if (res && Array.isArray(res.data)) {
         setProducts(res.data);
@@ -65,7 +67,8 @@ export default function AdminDashboard() {
 
   const approveVendor = async (vendorId: string) => {
     try {
-      await apiRequest("POST", `/api/admin/approve-vendor/${vendorId}`, {});
+      // ✅ यहाँ URL को अपडेट किया गया है
+      await apiRequest("POST", `/api/admin/vendors/sellers/${vendorId}/approve`, {});
       fetchVendors(); // वेंडर्स की लिस्ट को रिफ्रेश करें
       alert("Vendor approved successfully!");
     } catch (error) {
@@ -76,7 +79,10 @@ export default function AdminDashboard() {
 
   const rejectVendor = async (vendorId: string) => {
     try {
-      await apiRequest("POST", `/api/admin/reject-vendor/${vendorId}`, {});
+      // ✅ यहाँ URL को अपडेट किया गया है
+      // ध्यान दें: रिजेक्शन रीज़न को भेजने के लिए आपको रिक्वेस्ट बॉडी में इसे शामिल करना होगा।
+      // हालाँकि, तुम्हारे कोड में यह नहीं था, इसलिए मैंने इसे अभी के लिए ऐसे ही छोड़ दिया है।
+      await apiRequest("POST", `/api/admin/vendors/sellers/${vendorId}/reject`, {});
       fetchVendors(); // वेंडर्स की लिस्ट को रिफ्रेश करें
       alert("Vendor rejected successfully!");
     } catch (error) {
@@ -88,8 +94,8 @@ export default function AdminDashboard() {
   // ✅ approveProduct और rejectProduct फंक्शन्स को यहां जोड़ें
   const approveProduct = async (productId: string) => {
     try {
-      // ध्यान दें: आपको /api/admin/approve-product/:id के लिए भी एक बैकएंड रूट बनाना होगा
-      await apiRequest("POST", `/api/admin/approve-product/${productId}`, {});
+      // ध्यान दें: आपको /api/admin/products/approve/:id के लिए भी एक बैकएंड रूट बनाना होगा
+      await apiRequest("POST", `/api/admin/products/approve/${productId}`, {});
       fetchProducts(); // प्रोडक्ट्स की लिस्ट को रिफ्रेश करें
       alert("Product approved successfully!");
     } catch (error) {
@@ -100,8 +106,8 @@ export default function AdminDashboard() {
 
   const rejectProduct = async (productId: string) => {
     try {
-      // ध्यान दें: आपको /api/admin/reject-product/:id के लिए भी एक बैकएंड रूट बनाना होगा
-      await apiRequest("POST", `/api/admin/reject-product/${productId}`, {});
+      // ध्यान दें: आपको /api/admin/products/reject/:id के लिए भी एक बैकएंड रूट बनाना होगा
+      await apiRequest("POST", `/api/admin/products/reject/${productId}`, {});
       fetchProducts(); // प्रोडक्ट्स की लिस्ट को रिफ्रेश करें
       alert("Product rejected successfully!");
     } catch (error) {
@@ -240,4 +246,3 @@ export default function AdminDashboard() {
     </div>
   );
 }
-
