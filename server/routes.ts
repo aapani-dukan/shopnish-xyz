@@ -17,7 +17,7 @@ import { AuthenticatedRequest } from './middleware/verifyToken.ts';
 import { requireAuth, requireAdminAuth } from './middleware/authMiddleware.ts';
 import { authAdmin } from './lib/firebaseAdmin.ts';
 
-// Sub-route modules
+// ✅ Sub-route modules को इंपोर्ट करें
 import apiAuthLoginRouter from './roots/apiAuthLogin.ts';
 import adminApproveProductRoutes from './roots/admin/approve-product.ts';
 import adminRejectProductRoutes from './roots/admin/reject-product.ts';
@@ -66,9 +66,10 @@ router.post('/register', async (req: Request, res: Response) => {
   }
 });
 
+// ✅ Auth Routes
 router.use('/auth', apiAuthLoginRouter);
 
-// ✅ यहाँ बदलाव किया गया है
+// ✅ User Profile
 router.get('/users/me', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const userUuid = req.user?.firebaseUid;
@@ -93,8 +94,6 @@ router.get('/users/me', requireAuth, async (req: AuthenticatedRequest, res: Resp
       if (record) sellerInfo = record;
     }
 
-    // ✅ यहाँ रिस्पॉन्स ऑब्जेक्ट में बदलाव किया गया है।
-    // हम उपयोगकर्ता के सभी डेटा के साथ-साथ `sellerInfo` भी भेज रहे हैं।
     res.status(200).json({ ...user, sellerProfile: sellerInfo || null });
   } catch (error: any) {
     console.error(error);
@@ -118,9 +117,10 @@ router.post('/auth/logout', async (req, res) => {
   }
 });
 
+// ✅ Seller-specific routes
 router.use('/sellers', sellerRouter);
 
-// Categories
+// ✅ Categories
 router.get('/categories', async (req: Request, res: Response) => {
   try {
     const categoriesList = await db.select().from(categories);
@@ -131,7 +131,7 @@ router.get('/categories', async (req: Request, res: Response) => {
   }
 });
 
-// Products
+// ✅ Products
 router.get('/products', async (req: Request, res: Response) => {
   try {
     const { categoryId, search } = req.query;
@@ -166,7 +166,7 @@ router.get('/products/:id', async (req: Request, res: Response) => {
   }
 });
 
-// Delivery Boy
+// ✅ Delivery Boy
 router.post('/delivery-boys/register', async (req: Request, res: Response) => {
   try {
     const { email, firebaseUid, name, vehicleType } = req.body;
@@ -186,67 +186,22 @@ router.post('/delivery-boys/register', async (req: Request, res: Response) => {
   }
 });
 
-// Admin Routes
+// ---
+// ## Admin Routes
+// ---
 const adminRouter = Router();
-adminRouter.use(requireAdminAuth);
+adminRouter.use(requireAdminAuth); // ✅ सभी एडमिन राउट्स के लिए ऑथेंटिकेशन
 
 adminRouter.use('/products/approve', adminApproveProductRoutes);
 adminRouter.use('/products/reject', adminRejectProductRoutes);
 adminRouter.use('/products', adminProductsRoutes);
-adminRouter.use('/vendors', adminVendorsRoutes);
 adminRouter.use('/password', adminPasswordRoutes);
 
-// Admin Seller Actions
-adminRouter.get('/sellers', async (req: AuthenticatedRequest, res: Response) => {
-  try {
-    const pendingSellers = await db.select().from(sellersPgTable).where(eq(sellersPgTable.approvalStatus, approvalStatusEnum.enumValues[0]));
-    res.status(200).json(pendingSellers);
-  } catch (error: any) {
-    console.error(error);
-    res.status(500).json({ error: 'Internal error.' });
-  }
-});
+// ✅ vendors.ts से राउट्स को जोड़ें। ये /admin/vendors के तहत उपलब्ध होंगे।
+adminRouter.use('/vendors', adminVendorsRoutes);
 
-adminRouter.post('/sellers/:sellerId/approve', async (req: AuthenticatedRequest, res: Response) => {
-  const sellerId = parseInt(req.params.sellerId);
-  if (isNaN(sellerId)) return res.status(400).json({ error: 'Invalid seller ID.' });
-
-  try {
-    const [seller] = await db.select().from(sellersPgTable).where(eq(sellersPgTable.id, sellerId));
-    if (!seller) return res.status(404).json({ error: 'Seller not found.' });
-
-    await db.update(sellersPgTable).set({ approvalStatus: approvalStatusEnum.enumValues[1], approvedAt: new Date() }).where(eq(sellersPgTable.id, sellerId));
-    await db.update(users).set({ role: userRoleEnum.enumValues[1], approvalStatus: approvalStatusEnum.enumValues[1] }).where(eq(users.id, seller.userId));
-
-    res.status(200).json({ message: 'Seller approved successfully.' });
-  } catch (error: any) {
-    console.error(error);
-    res.status(500).json({ error: 'Internal error.' });
-  }
-});
-
-adminRouter.post('/sellers/:sellerId/reject', async (req: AuthenticatedRequest, res: Response) => {
-  const sellerId = parseInt(req.params.sellerId);
-  const { reason } = req.body;
-
-  if (isNaN(sellerId)) return res.status(400).json({ error: 'Invalid seller ID.' });
-  if (!reason) return res.status(400).json({ error: 'Rejection reason required.' });
-
-  try {
-    const [seller] = await db.select().from(sellersPgTable).where(eq(sellersPgTable.id, sellerId));
-    if (!seller) return res.status(404).json({ error: 'Seller not found.' });
-
-    await db.update(sellersPgTable).set({ approvalStatus: approvalStatusEnum.enumValues[2], rejectionReason: reason }).where(eq(sellersPgTable.id, sellerId));
-    await db.update(users).set({ approvalStatus: approvalStatusEnum.enumValues[2] }).where(eq(users.id, seller.userId));
-
-    res.status(200).json({ message: 'Seller rejected successfully.' });
-  } catch (error: any) {
-    console.error(error);
-    res.status(500).json({ error: 'Internal error.' });
-  }
-});
+// ✅ यहाँ से अनावश्यक और conflicting राउट्स हटा दिए गए हैं।
 
 router.use('/admin', adminRouter);
 
 export default router;
-
