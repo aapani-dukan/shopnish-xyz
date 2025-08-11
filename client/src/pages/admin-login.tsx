@@ -1,7 +1,7 @@
 // client/src/pages/admin-login.tsx
 
 import { useState } from "react";
-import { useNavigate } from "react-router-dom"; 
+import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,7 +10,7 @@ import { Shield } from "lucide-react";
 import { getAuth, signInWithCustomToken } from "firebase/auth";
 
 export default function AdminLogin() {
-  const navigate = useNavigate(); 
+  const navigate = useNavigate();
   const { toast } = useToast();
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -35,13 +35,18 @@ export default function AdminLogin() {
       const auth = getAuth();
       await signInWithCustomToken(auth, customToken);
 
+      // ✅ Login के बाद ID token लेकर localStorage में save करें
+      const idToken = await auth.currentUser?.getIdToken();
+      if (idToken) {
+        localStorage.setItem("authToken", idToken);
+      }
+
       toast({
         title: "Login Successful",
         description: "Welcome Admin!",
       });
 
       navigate("/admin-dashboard", { replace: true });
-
     } catch (err: any) {
       toast({
         title: "Login Failed",
