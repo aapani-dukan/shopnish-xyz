@@ -31,16 +31,27 @@ apiAuthLoginRouter.post("/admin-login", async (req: Request, res: Response) => {
         const [adminUser] = await db
             .select()
             .from(users)
-            .where(eq(users.role, userRoleEnum.enumValues[2])); // role = admin
-        
+            .where(eq(users.role, userRoleEnum.enumValues[2]));
+
         if (!adminUser) {
             return res.status(500).json({ error: "Admin account not configured." });
         }
-        
-        // ✅ Custom Token बनाएँ और frontend को भेजें
-        const customToken = await authAdmin.createCustomToken(adminUser.firebaseUid);
 
+        // ✅ Custom token create
+        const customToken = await authAdmin.createCustomToken(adminUser.firebaseUid);
         console.log("✅ Admin custom token created.");
+
+        // 🔹 यहाँ हम custom token को ID token में exchange नहीं कर सकते server से,
+        // तो हम इसे session cookie के तौर पर store कर देंगे
+        const expiresIn = 60 * 60 * 24 * 5 * 1000; // 5 दिन
+
+        res.cookie('__session', customToken, {
+            maxAge: expiresIn,
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production', // dev में false
+            sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+        });
+
         return res.status(200).json({
             message: "Admin login successful.",
             customToken
