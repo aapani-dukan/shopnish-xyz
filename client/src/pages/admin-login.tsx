@@ -35,10 +35,12 @@ export default function AdminLogin() {
       const auth = getAuth();
       await signInWithCustomToken(auth, customToken);
 
-      // ✅ Login के बाद ID token लेकर localStorage में save करें
-      const idToken = await auth.currentUser?.getIdToken();
+      // ✅ Force refresh करके fresh ID token लें और localStorage में store करें
+      const idToken = await auth.currentUser?.getIdToken(true);
       if (idToken) {
         localStorage.setItem("authToken", idToken);
+      } else {
+        throw new Error("Failed to retrieve ID token");
       }
 
       toast({
