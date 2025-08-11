@@ -1,13 +1,16 @@
-// routes/sellers/sellerRoutes.ts
+// server/routes/sellers/sellerRoutes.ts
 
 import { Router, Response, NextFunction } from 'express';
 import { db } from '../../server/db.ts';
-import { sellersPgTable, users, userRoleEnum, approvalStatusEnum } from '../../shared/backend/schema.ts';
+import { sellersPgTable, users, userRoleEnum, approvalStatusEnum, categories } from '../../shared/backend/schema.ts'; // ✅ categories स्कीमा को इंपोर्ट करें
 import { requireSellerAuth } from '../../server/middleware/authMiddleware.ts';
 import { AuthenticatedRequest, verifyToken } from '../../server/middleware/verifyToken.ts';
 import { eq } from 'drizzle-orm';
+import { storage } from '../../storage.ts'; // ✅ storage service को इंपोर्ट करें
+import multer from 'multer'; // ✅ multer को इंपोर्ट करें
 
 const sellerRouter = Router();
+const upload = multer({ dest: 'uploads/' }); // ✅ Multer को कॉन्फ़िगर करें
 
 /**
  * ✅ GET /api/sellers/me
@@ -137,5 +140,53 @@ sellerRouter.post("/apply", verifyToken, async (req: AuthenticatedRequest, res: 
     next(error);
   }
 });
+
+/**
+ * ✅ POST /api/sellers/categories
+ * Authenticated route to allow a seller to add a new category with an image.
+ */
+sellerRouter.post(
+  '/categories',
+  requireSellerAuth,
+  upload.single('image'), // 'image' फ़ील्ड से फ़ाइल को हैंडल करें
+  async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const sellerId = req.user?.id;
+      if (!sellerId) {
+        return res.status(401).json({ error: 'Unauthorized: Seller ID not found.' });
+      }
+
+      // Multer req.body और req.file को हैंडल करता है
+      const { name, slug } = req.body;
+      const file = req.file;
+
+      if (!name || !slug || !file) {
+        return res.status(400).json({ error: 'Category name, slug, and image are required.' });
+      }
+
+      // 1. इमेज को स्टोरेज में अपलोड करें
+      const imageUrl = await storage.uploadImage(file.path, file.originalname);
+
+      // 2. डेटाबेस में नई कैटेगरी बनाएं
+      const newCategory = await db
+        .insert(categories)
+        .values({
+          sellerId,
+          name,
+          slug,
+          imageUrl,
+        })
+        .returning();
+
+      return res.status(201).json(newCategory[0]);
+    } catch (error: any) {
+      console.error('❌ Error in POST /api/sellers/categories:', error);
+      if (error.message && error.message.includes('duplicate key')) {
+        return res.status(409).json({ error: 'Category with this slug already exists.' });
+      }
+      return res.status(500).json({ error: 'Failed to create category.' });
+    }
+  }
+);
 
 export default sellerRouter;
