@@ -30,8 +30,6 @@ apiAuthLoginRouter.post("/admin-login", async (req: Request, res: Response) => {
             return res.status(401).json({ error: "Invalid password." });
         }
 
-        // ✅ यहाँ बदलाव है: Firebase ID टोकन का उपयोग किए बिना सेशन बनाएं।
-        // हम सीधे एक सेशन कुकी बनाते हैं जो एडमिन की पहचान करती है।
         const [adminUser] = await db.select().from(users).where(eq(users.role, userRoleEnum.enumValues[2]));
         
         if (!adminUser) {
@@ -39,18 +37,17 @@ apiAuthLoginRouter.post("/admin-login", async (req: Request, res: Response) => {
             return res.status(500).json({ error: "Admin account not configured." });
         }
         
-        // एक साधारण JWT (JSON Web Token) या Express Session का उपयोग करें
-        // यहाँ मैं एक टोकन बनाने का सरल तरीका दिखा रहा हूँ
         const adminSessionToken = authAdmin.createCustomToken(adminUser.firebaseUid);
 
-        // अब इस टोकन को कुकी में सेट करें।
+        // ✅ यहाँ कुकी कॉन्फ़िगरेशन को अपडेट किया गया है
         res.cookie('__session', adminSessionToken, {
             maxAge: 60 * 60 * 24 * 5 * 1000,
             httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'Lax',
+            // 'SameSite=None' के लिए 'secure' अनिवार्य है
+            secure: true, 
+            sameSite: 'none', // ✅ यह बदलाव सबसे महत्वपूर्ण है
         });
-
+        
         console.log("✅ Admin logged in and session token created.");
         return res.status(200).json({ message: "Admin logged in successfully." });
 
@@ -59,7 +56,5 @@ apiAuthLoginRouter.post("/admin-login", async (req: Request, res: Response) => {
         return res.status(500).json({ error: "Internal server error." });
     }
 });
-
-// ... आपका मौजूदा '/login' राउट यहाँ नीचे है
 
 export default apiAuthLoginRouter;
