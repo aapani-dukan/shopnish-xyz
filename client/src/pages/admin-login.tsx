@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Shield } from "lucide-react";
+import { getAuth, signInWithCustomToken } from "firebase/auth";
 
 export default function AdminLogin() {
   const navigate = useNavigate(); 
@@ -21,21 +22,25 @@ export default function AdminLogin() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ password }),
-        credentials: 'include'
       });
 
       if (!res.ok) {
         const data = await res.json();
         throw new Error(data.message || "Login failed");
       }
-      
-      // ✅ लॉगिन सफल होने पर तुरंत नेविगेट करें
-      navigate("/admin-dashboard", { replace: true });
+
+      const { customToken } = await res.json();
+
+      // ✅ Firebase में Custom Token से Login करें
+      const auth = getAuth();
+      await signInWithCustomToken(auth, customToken);
 
       toast({
         title: "Login Successful",
         description: "Welcome Admin!",
       });
+
+      navigate("/admin-dashboard", { replace: true });
 
     } catch (err: any) {
       toast({
