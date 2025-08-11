@@ -1,16 +1,17 @@
 // server/roots/admin/vendors.ts
 import { Router, Response } from 'express';
-import { storage } from '../../storage.ts'; // Correct relative path
+import { storage } from '../../storage.ts'; 
 import { AuthenticatedRequest } from '../../middleware/verifyToken.ts';
 import { requireAdminAuth } from '../../middleware/authMiddleware.ts';
-import { approvalStatusEnum } from '../../../shared/backend/schema.ts'; // Import approvalStatusEnum
+import { approvalStatusEnum } from '../../../shared/backend/schema.ts'; 
 
 const router = Router();
 
-// Get pending sellers
-router.get('/admin/sellers/pending', requireAdminAuth, async (req: AuthenticatedRequest, res: Response) => {
+// ✅ सभी राउट्स को सीधे '/sellers' के तहत परिभाषित करें
+// जब यह '/admin/vendors' के साथ जुड़ेगा, तो '/admin/vendors/sellers/...' बनेगा
+router.get('/sellers/pending', requireAdminAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const pendingSellers = await storage.getSellers(approvalStatusEnum.enumValues[0]); // Fetch pending sellers
+    const pendingSellers = await storage.getSellers(approvalStatusEnum.enumValues[0]);
     res.status(200).json(pendingSellers);
   } catch (error: any) {
     console.error('Failed to fetch pending sellers:', error);
@@ -18,15 +19,14 @@ router.get('/admin/sellers/pending', requireAdminAuth, async (req: Authenticated
   }
 });
 
-// Approve seller
-router.post('/admin/sellers/:sellerId/approve', requireAdminAuth, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/sellers/:sellerId/approve', requireAdminAuth, async (req: AuthenticatedRequest, res: Response) => {
   const sellerId = parseInt(req.params.sellerId);
   if (isNaN(sellerId)) {
     return res.status(400).json({ error: 'Invalid seller ID.' });
   }
 
   try {
-    const updatedSeller = await storage.updateSellerStatus(sellerId, approvalStatusEnum.enumValues[1]); // 'approved'
+    const updatedSeller = await storage.updateSellerStatus(sellerId, approvalStatusEnum.enumValues[1]);
     if (!updatedSeller) {
       return res.status(404).json({ error: 'Seller not found or update failed.' });
     }
@@ -37,8 +37,7 @@ router.post('/admin/sellers/:sellerId/approve', requireAdminAuth, async (req: Au
   }
 });
 
-// Reject seller
-router.post('/admin/sellers/:sellerId/reject', requireAdminAuth, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/sellers/:sellerId/reject', requireAdminAuth, async (req: AuthenticatedRequest, res: Response) => {
   const sellerId = parseInt(req.params.sellerId);
   const { reason } = req.body;
   if (isNaN(sellerId)) {
@@ -49,7 +48,7 @@ router.post('/admin/sellers/:sellerId/reject', requireAdminAuth, async (req: Aut
   }
 
   try {
-    const updatedSeller = await storage.updateSellerStatus(sellerId, approvalStatusEnum.enumValues[2], reason); // 'rejected'
+    const updatedSeller = await storage.updateSellerStatus(sellerId, approvalStatusEnum.enumValues[2], reason);
     if (!updatedSeller) {
       return res.status(404).json({ error: 'Seller not found or update failed.' });
     }
