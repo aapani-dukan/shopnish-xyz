@@ -35,12 +35,12 @@ export default function AdminDashboard() {
     try {
      // ✅ यहाँ URL को अपडेट किया गया है
      const res = await apiRequest("GET", "/api/admin/vendors/sellers/pending");
-      if (res && Array.isArray(res.data)) {
-        setVendors(res.data);
-        console.log("Fetched vendors for admin:", res.data);
+      if (res && Array.isArray(res)) {
+        setVendors(res);
+        console.log("Fetched vendors for admin:", res);
       } else {
         setVendors([]);
-        console.warn("API response for vendors is not an array:", res?.data);
+        console.warn("API response for vendors is not an array:", res);
       }
     } catch (error) {
       console.error("Error fetching vendors:", error);
@@ -50,14 +50,14 @@ export default function AdminDashboard() {
 
   const fetchProducts = async () => {
     try {
-      // ✅ यह URL पहले से ही सही है, इसलिए इसमें कोई बदलाव नहीं
+      // ✅ यह URL अब सही है
       const res = await apiRequest("GET", "/api/admin/products");
-      if (res && Array.isArray(res.data)) {
-        setProducts(res.data);
-        console.log("Fetched products for admin:", res.data);
+      if (res && Array.isArray(res)) {
+        setProducts(res);
+        console.log("Fetched products for admin:", res);
       } else {
         setProducts([]);
-        console.warn("API response for products is not an array:", res?.data);
+        console.warn("API response for products is not an array:", res);
       }
     } catch (error) {
       console.error("Error fetching products:", error);
@@ -94,7 +94,7 @@ export default function AdminDashboard() {
   // ✅ approveProduct और rejectProduct फंक्शन्स को यहां जोड़ें
   const approveProduct = async (productId: string) => {
     try {
-      // ध्यान दें: आपको /api/admin/products/approve/:id के लिए भी एक बैकएंड रूट बनाना होगा
+      // ✅ URL अपडेट किया गया
       await apiRequest("POST", `/api/admin/products/approve/${productId}`, {});
       fetchProducts(); // प्रोडक्ट्स की लिस्ट को रिफ्रेश करें
       alert("Product approved successfully!");
@@ -106,7 +106,7 @@ export default function AdminDashboard() {
 
   const rejectProduct = async (productId: string) => {
     try {
-      // ध्यान दें: आपको /api/admin/products/reject/:id के लिए भी एक बैकएंड रूट बनाना होगा
+      // ✅ URL अपडेट किया गया
       await apiRequest("POST", `/api/admin/products/reject/${productId}`, {});
       fetchProducts(); // प्रोडक्ट्स की लिस्ट को रिफ्रेश करें
       alert("Product rejected successfully!");
@@ -218,13 +218,13 @@ export default function AdminDashboard() {
                     <td className="border px-4 py-2 space-x-2">
                       {/* यहां प्रोडक्ट स्टेटस के आधार पर बटन लॉजिक जोड़ सकते हैं */}
                       <button
-                        onClick={() => approveProduct(product.id)} // ✅ यह अब डिफाइन किया गया है
+                        onClick={() => approveProduct(product.id)}
                         className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-sm"
                       >
                         Approve
                       </button>
                       <button
-                        onClick={() => rejectProduct(product.id)} // ✅ यह अब डिफाइन किया गया है
+                        onClick={() => rejectProduct(product.id)}
                         className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-sm"
                       >
                         Reject
