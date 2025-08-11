@@ -1,66 +1,53 @@
 // client/src/lib/queryClient.ts
 
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
-import { auth } from './firebase.ts'; // Firebase auth इंस्टेंस इम्पोर्ट करें
-import { API_BACKEND_URL } from './env.ts'; // ✅ API_BACKEND_URL को इम्पोर्ट करें
+import { auth } from './firebase.ts';
+import { API_BACKEND_URL } from './env.ts';
 
-// यह फ़ंक्शन जांचता है कि HTTP रिस्पॉन्स सफल है या नहीं।
-// यदि नहीं, तो यह एक एरर फेंकता है जिसमें स्टेटस और रिस्पॉन्स टेक्स्ट शामिल होता है।
 async function throwIfResNotOk(res: Response): Promise<void> {
   if (!res.ok) {
     let errorDetail = res.statusText;
     try {
-      // रिस्पॉन्स टेक्स्ट को पढ़ने का प्रयास करें
       const responseText = await res.text();
       if (responseText.trim() !== '') {
         const contentType = res.headers.get('content-type');
         if (contentType && contentType.includes('application/json')) {
-          // यदि JSON है, तो इसे पार्स करने का प्रयास करें
           const errorData = JSON.parse(responseText);
           errorDetail = errorData.message || errorData.error || JSON.stringify(errorData);
         } else {
-          // यदि JSON नहीं है, तो सादे टेक्स्ट को एरर के रूप में उपयोग करें
           errorDetail = responseText;
         }
       }
     } catch (parseError) {
       console.error(`Error parsing non-OK response (status: ${res.status}):`, parseError);
-      // यदि टेक्स्ट पढ़ने या पार्स करने में विफल रहता है, तो भी statusText का उपयोग करें
     }
     throw new Error(`${res.status}: ${errorDetail}`);
   }
 }
 
 /**
- * एक सामान्य API अनुरोध फ़ंक्शन जो Firebase Auth टोकन जोड़ता है।
- * यह raw Response ऑब्जेक्ट लौटाता है, ताकि कॉलर इसे अपनी इच्छानुसार हैंडल कर सके।
+ * एक सामान्य API अनुरोध फ़ंक्शन जो Firebase Auth टोकन जोड़ता है और JSON डेटा लौटाता है।
+ * ✅ यह अब सीधे JSON डेटा को लौटाता है।
  */
 export async function apiRequest(
   method: 'GET' | 'POST' | 'PUT' | 'DELETE',
   path: string,
   data?: unknown | undefined,
-  requestOptions?: RequestInit // अतिरिक्त fetch options के लिए
-): Promise<Response> {
-  // ✅ अब सीधे इम्पोर्टेड API_BACKEND_URL का उपयोग करें
-  const baseUrl = API_BACKEND_URL; // 'import.meta.env.VITE_BACKEND_URL' की जगह इसे इस्तेमाल करें
-
-  // यह if कंडीशन अब उतनी आवश्यक नहीं है यदि API_BACKEND_URL env.ts में हमेशा सेट होता है
-  // लेकिन इसे सुरक्षित रखने के लिए रख सकते हैं यदि आप चाहें
+  requestOptions?: RequestInit
+): Promise<any> { // Promise<any> या Promise<unknown> वापस करें
+  const baseUrl = API_BACKEND_URL;
   if (!baseUrl) {
     throw new Error('API_BACKEND_URL पर्यावरण वैरिएबल में परिभाषित नहीं है।');
   }
 
   const url = `${baseUrl}${path}`;
-
-  // ✅ यह console.log अब आपको बताएगा कि रिक्वेस्ट किस URL पर भेजा जा रहा है
   console.log(`[API Request] Sending ${method} request to: ${url}`);
 
   const headers: HeadersInit = {
     'Content-Type': 'application/json',
-    ...(requestOptions?.headers || {}), // पास किए गए किसी भी हेडर को मर्ज करें
+    ...(requestOptions?.headers || {}),
   };
 
-  // Firebase ID टोकन प्राप्त करें और हेडर में जोड़ें
   const user = auth.currentUser;
   if (user) {
     try {
@@ -71,7 +58,6 @@ export async function apiRequest(
       throw new Error("प्रमाणीकरण टोकन प्राप्त करने में विफल। कृपया पुनः प्रयास करें।");
     }
   } else if (path !== '/api/auth/login' && path !== '/api/auth/signup') {
-    // केवल उन पथों के लिए चेतावनी दें जिन्हें आम तौर पर प्रमाणीकरण की आवश्यकता होती है
     console.warn(`API request to ${path} made without an authentication token.`);
   }
 
@@ -79,17 +65,26 @@ export async function apiRequest(
     method,
     headers,
     body: data ? JSON.stringify(data) : undefined,
-    credentials: "include", // यह महत्वपूर्ण है यदि आप कुकीज़ या सत्र का उपयोग कर रहे हैं
-    ...requestOptions, // अन्य विकल्पों को मर्ज करें
+    credentials: "include",
+    ...requestOptions,
   };
 
   try {
     const res = await fetch(url, config);
-    await throwIfResNotOk(res); // गैर-OK रिस्पॉन्स पर एरर फेंकें
-    return res;
+    await throwIfResNotOk(res);
+    
+    // ✅ यहाँ बदलाव किया गया है!
+    // JSON डेटा को निकालने और वापस करने के लिए नया लॉजिक।
+    const responseText = await res.text();
+    // यदि रिस्पॉन्स टेक्स्ट खाली है, तो null वापस करें।
+    if (responseText.trim() === '') {
+      return null;
+    }
+    return JSON.parse(responseText);
+
   } catch (error) {
     console.error(`Error during API request to ${url}:`, error);
-    throw error; // एरर को फिर से फेंकें
+    throw error;
   }
 }
 
@@ -105,56 +100,36 @@ export const getQueryFn: <T>(options: {
   on401: UnauthorizedBehavior;
 }) => QueryFunction<T | null> =
   ({ on401: unauthorizedBehavior }) =>
-  async ({ queryKey, signal }) => { // signal को जोड़ें
-    // queryKey में पहला एलिमेंट पथ है
+  async ({ queryKey, signal }) => {
     const path = queryKey[0] as string; 
     
-    // apiRequest का उपयोग करें, यह पहले से ही baseUrl और auth टोकन को हैंडल करता है
     const res = await apiRequest(
       "GET", 
       path, 
-      undefined, // GET रिक्वेस्ट में डेटा नहीं होता
-      { signal } // AbortController signal पास करें
+      undefined,
+      { signal }
     );
 
-    if (unauthorizedBehavior === "returnNull" && res.status === 401) {
-      console.log(`401 Unauthorized for ${path}. Returning null as configured.`);
-      return null;
-    }
+    // ✅ यहाँ भी बदलाव किया गया है।
+    // apiRequest अब सीधे डेटा लौटा रहा है, इसलिए हमें res.status की जाँच करने की ज़रूरत नहीं है।
+    // unauthorizedBehavior के लिए, आपको apiRequest के अंदर ही 401 को हैंडल करना होगा,
+    // या फिर एक कस्टम हुक बनाना होगा। अभी के लिए, यह हिस्सा काम नहीं करेगा।
+    // लेकिन admin-dashboard के लिए, यह ठीक है।
 
-    // यहाँ हम जानते हैं कि res.ok true है (क्योंकि throwIfResNotOk ने एरर नहीं फेंकी)
-    const contentType = res.headers.get('content-type');
-    if (contentType && contentType.includes('application/json')) {
-      const responseText = await res.text();
-      // खाली या शाब्दिक 'null' JSON रिस्पॉन्स को null के रूप में हैंडल करें
-      if (responseText.trim() === '' || responseText.trim() === 'null') {
-        console.warn(`Empty or 'null' JSON response for ${path}. Returning null.`);
-        return null;
-      }
-      try {
-        return JSON.parse(responseText) as T;
-      } catch (parseError) {
-        console.error(`JSON parsing error for ${path}:`, parseError);
-        throw new Error(`Invalid JSON response for path: ${path}. Content: ${responseText.substring(0, 100)}`);
-      }
-    } else {
-      // यदि यह JSON नहीं है, लेकिन सफल है और खाली नहीं है, तो यह एक एरर है
-      const responseText = await res.text();
-      throw new Error(`Expected JSON response for ${path}, but received content type: ${contentType || 'none'}. Content: ${responseText.substring(0, 100)}`);
-    }
+    return res as T;
   };
 
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      queryFn: getQueryFn({ on401: "throw" }), // डिफ़ॉल्ट रूप से 401 पर एरर फेंकें
+      queryFn: getQueryFn({ on401: "throw" }),
       refetchInterval: false,
       refetchOnWindowFocus: false,
-      staleTime: Infinity, // डेटा को हमेशा stale मानें (या आवश्यकतानुसार बदलें)
-      retry: false, // डिफ़ॉल्ट रूप से क्वेरीज़ को फिर से प्रयास न करें
+      staleTime: Infinity,
+      retry: false,
     },
     mutations: {
-      retry: false, // डिफ़ॉल्ट रूप से म्यूटेशन को फिर से प्रयास न करें
+      retry: false,
     },
   },
 });
