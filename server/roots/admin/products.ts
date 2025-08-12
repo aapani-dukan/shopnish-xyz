@@ -1,24 +1,32 @@
 // server/roots/admin/products.ts
 
 import { Router, Response } from 'express';
-import { storage } from '../../storage.ts'; 
 import { AuthenticatedRequest } from '../../middleware/verifyToken.ts';
 import { requireAdminAuth } from '../../middleware/authMiddleware.ts';
+import { storage } from '../../storage.ts'; // ध्यान दें: यह सुनिश्चित करें कि 'storage.ts' में getProducts फ़ंक्शन है
 
 const router = Router();
 
-// ✅ यहाँ राउट को ठीक किया गया है।
-// अब यह केवल '/' पर रिक्वेस्ट सुनेगा।
+// GET /api/admin/products
 router.get('/', requireAdminAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const { categoryId, search, status } = req.query; 
+    const { categoryId, search, status } = req.query;
+
+    // ✅ categoryId को सुरक्षित रूप से नंबर में बदलें
+    let parsedCategoryId: number | undefined;
+    if (categoryId) {
+      const num = parseInt(categoryId as string);
+      if (!isNaN(num)) {
+        parsedCategoryId = num;
+      }
+    }
 
     const productsList = await storage.getProducts({
-      categoryId: categoryId ? parseInt(categoryId as string) : undefined,
+      categoryId: parsedCategoryId, // अब यहाँ सुरक्षित नंबर पास किया जा रहा है
       search: search as string | undefined,
-      // status: status as string | undefined, 
+      // status: status as string | undefined,
     });
-    // ✅ सुनिश्चित करें कि यहाँ JSON डेटा भेजा जा रहा है।
+    
     return res.status(200).json(productsList);
   } catch (error: any) {
     console.error('Failed to fetch admin products:', error);
