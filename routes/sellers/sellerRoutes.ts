@@ -141,14 +141,14 @@ sellerRouter.post("/apply", verifyToken, async (req: AuthenticatedRequest, res: 
   }
 });
 
-/**
- * ✅ POST /api/sellers/categories
- * Authenticated route to allow a seller to add a new category with an image.
- */
+ 
+ //✅ POST /api/sellers/categories
+ // Authenticated route to allow a seller to add a new category with an image.
+ 
 sellerRouter.post(
   '/categories',
   requireSellerAuth,
-  upload.single('image'), // 'image' फ़ील्ड से फ़ाइल को हैंडल करें
+  upload.single('image'),
   async (req: AuthenticatedRequest, res: Response) => {
     try {
       const sellerId = req.user?.id;
@@ -156,7 +156,6 @@ sellerRouter.post(
         return res.status(401).json({ error: 'Unauthorized: Seller ID not found.' });
       }
 
-      // Multer req.body और req.file को हैंडल करता है
       const { name, slug } = req.body;
       const file = req.file;
 
@@ -165,16 +164,18 @@ sellerRouter.post(
       }
 
       // 1. इमेज को स्टोरेज में अपलोड करें
-      const imageUrl = await storage.uploadImage(file.path, file.originalname);
+      const image_url = await storage.uploadImage(file.path, file.originalname);
 
       // 2. डेटाबेस में नई कैटेगरी बनाएं
       const newCategory = await db
         .insert(categories)
         .values({
-          sellerId,
           name,
           slug,
-          imageUrl,
+          // ✅ यहाँ `imageUrl` को `image` से बदलें ताकि यह डेटाबेस स्कीमा से मेल खाए।
+          image: image_url,
+          // ✅ sellerId को जोड़ें
+          sellerId: sellerId
         })
         .returning();
 
