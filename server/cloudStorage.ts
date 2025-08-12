@@ -26,7 +26,7 @@ export const uploadImage = async (filePath: string, originalname: string): Promi
     });
 
     // फ़ाइल को पब्लिक करें और URL प्राप्त करें
-    await file.makePublic();
+    
     const publicUrl = `https://storage.googleapis.com/${bucket.name}/${file.name}`;
     
     // लोकल फ़ाइल को हटा दें
