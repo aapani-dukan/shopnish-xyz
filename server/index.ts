@@ -11,6 +11,8 @@ import { Pool } from "pg";
 import path from "path";
 import { fileURLToPath } from "url";
 import cookieParser from "cookie-parser";
+import productsRouter from '../routes/products.ts';
+//...
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -98,6 +100,7 @@ async function runMigrations() {
   // Register all routes
     app.use("/api", apiRouter);
 
+app.use('/api/products', productsRouter);
   // Serve static files (production only)
   if (isProd) {
     app.use(express.static(path.resolve(__dirname, "..", "dist", "public")));
