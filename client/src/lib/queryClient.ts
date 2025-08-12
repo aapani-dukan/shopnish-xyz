@@ -4,6 +4,10 @@ import { QueryClient, QueryFunction } from "@tanstack/react-query";
 import { auth } from './firebase.ts';
 import { API_BACKEND_URL } from './env.ts';
 
+/**
+ * जाँचता है कि क्या रिस्पॉन्स ठीक है, और अगर नहीं, तो एक विस्तृत एरर थ्रो करता है।
+ * यह JSON और टेक्स्ट रिस्पॉन्स दोनों को हैंडल करता है।
+ */
 async function throwIfResNotOk(res: Response): Promise<void> {
   if (!res.ok) {
     let errorDetail = res.statusText;
@@ -26,15 +30,15 @@ async function throwIfResNotOk(res: Response): Promise<void> {
 }
 
 /**
- * एक सामान्य API अनुरोध फ़ंक्शन जो Firebase Auth टोकन जोड़ता है और JSON डेटा लौटाता है।
- * ✅ यह अब सीधे JSON डेटा को लौटाता है।
+ * एक सामान्य API अनुरोध फ़ंक्शन जो Firebase Auth टोकन जोड़ता है
+ * और FormData या JSON डेटा को सही ढंग से हैंडल करता है।
  */
 export async function apiRequest(
   method: 'GET' | 'POST' | 'PUT' | 'DELETE',
   path: string,
-  data?: unknown | undefined,
+  data?: unknown | FormData,
   requestOptions?: RequestInit
-): Promise<any> { // Promise<any> या Promise<unknown> वापस करें
+): Promise<any> {
   const baseUrl = API_BACKEND_URL;
   if (!baseUrl) {
     throw new Error('API_BACKEND_URL पर्यावरण वैरिएबल में परिभाषित नहीं है।');
@@ -44,9 +48,17 @@ export async function apiRequest(
   console.log(`[API Request] Sending ${method} request to: ${url}`);
 
   const headers: HeadersInit = {
-    'Content-Type': 'application/json',
     ...(requestOptions?.headers || {}),
   };
+
+  let body: BodyInit | undefined;
+  if (data instanceof FormData) {
+    body = data;
+    // FormData के लिए Content-Type हेडर को मैन्युअल रूप से सेट न करें
+  } else if (data !== undefined) {
+    headers['Content-Type'] = 'application/json';
+    body = JSON.stringify(data);
+  }
 
   const user = auth.currentUser;
   if (user) {
@@ -64,7 +76,7 @@ export async function apiRequest(
   const config: RequestInit = {
     method,
     headers,
-    body: data ? JSON.stringify(data) : undefined,
+    body,
     credentials: "include",
     ...requestOptions,
   };
@@ -73,10 +85,7 @@ export async function apiRequest(
     const res = await fetch(url, config);
     await throwIfResNotOk(res);
     
-    // ✅ यहाँ बदलाव किया गया है!
-    // JSON डेटा को निकालने और वापस करने के लिए नया लॉजिक।
     const responseText = await res.text();
-    // यदि रिस्पॉन्स टेक्स्ट खाली है, तो null वापस करें।
     if (responseText.trim() === '') {
       return null;
     }
@@ -88,14 +97,8 @@ export async function apiRequest(
   }
 }
 
-// यह परिभाषित करता है कि 401 Unauthorized रिस्पॉन्स को कैसे हैंडल करना है
 type UnauthorizedBehavior = "returnNull" | "throw";
 
-/**
- * React Query के लिए एक डिफ़ॉल्ट queryFn बनाता है।
- * यह queryKey को URL के रूप में मानता है।
- * यह 401 Unauthorized रिस्पॉन्स को विशिष्ट रूप से हैंडल कर सकता है।
- */
 export const getQueryFn: <T>(options: {
   on401: UnauthorizedBehavior;
 }) => QueryFunction<T | null> =
@@ -109,12 +112,6 @@ export const getQueryFn: <T>(options: {
       undefined,
       { signal }
     );
-
-    // ✅ यहाँ भी बदलाव किया गया है।
-    // apiRequest अब सीधे डेटा लौटा रहा है, इसलिए हमें res.status की जाँच करने की ज़रूरत नहीं है।
-    // unauthorizedBehavior के लिए, आपको apiRequest के अंदर ही 401 को हैंडल करना होगा,
-    // या फिर एक कस्टम हुक बनाना होगा। अभी के लिए, यह हिस्सा काम नहीं करेगा।
-    // लेकिन admin-dashboard के लिए, यह ठीक है।
 
     return res as T;
   };
