@@ -152,30 +152,29 @@ sellerRouter.post(
   upload.single('image'), // 'image' फ़ील्ड से फ़ाइल को हैंडल करें
   async (req: AuthenticatedRequest, res: Response) => {
     try {
-      const sellerId = req.user?.id; // ✅ यहाँ सेलर आईडी प्राप्त करें
+      const sellerId = req.user?.id;
       if (!sellerId) {
         return res.status(401).json({ error: 'Unauthorized: Seller ID not found.' });
       }
-
-      // Multer req.body और req.file को हैंडल करता है
-      const { name, slug } = req.body;
+      
+      // ✅ `req.body` में name और slug और `req.file` में इमेज उपलब्ध होनी चाहिए
+      const { name, slug, description } = req.body;
       const file = req.file;
 
       if (!name || !slug || !file) {
         return res.status(400).json({ error: 'Category name, slug, and image are required.' });
       }
+      
+      const imageUrl = await storage.uploadImage(file.path, file.originalname);
 
-      // 1. इमेज को स्टोरेज में अपलोड करें
-      const image_url = await storage.uploadImage(file.path, file.originalname);
-
-      // 2. डेटाबेस में नई कैटेगरी बनाएं
       const newCategory = await db
         .insert(categories)
         .values({
           name,
           slug,
-          image: image_url, // ✅ यहाँ `imageUrl` को `image` से बदलें
-          sellerId: sellerId // ✅ **यह सबसे महत्वपूर्ण बदलाव है।**
+          image: imageUrl,
+          sellerId: sellerId,
+          description: description || null // वैकल्पिक फ़ील्ड
         })
         .returning();
 
@@ -189,5 +188,7 @@ sellerRouter.post(
     }
   }
 );
+
+
 
 export default sellerRouter;
