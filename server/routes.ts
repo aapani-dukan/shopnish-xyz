@@ -132,14 +132,31 @@ router.get('/categories', async (req: Request, res: Response) => {
 });
 
 // ✅ Products
-router.get('/products', async (req: Request, res: Response) => {
+// GET /api/products
+router.get('/', async (req: Request, res: Response) => {
   try {
     const { categoryId, search } = req.query;
-    let query = db.select().from(products);
+
+    let query = db.select({
+      id: products.id,
+      name: products.name,
+      description: products.description,
+      price: products.price,
+      image: products.image,
+      sellerId: products.sellerId,
+      // ✅ कैटेगरी का नाम यहाँ से प्राप्त करें
+      categoryName: categories.name,
+    })
+    .from(products)
+    .leftJoin(categories, eq(products.categoryId, categories.id));
 
     if (categoryId) {
-      query = query.where(eq(products.categoryId, parseInt(categoryId as string)));
+      const parsedCategoryId = parseInt(categoryId as string);
+      if (!isNaN(parsedCategoryId)) {
+        query = query.where(eq(products.categoryId, parsedCategoryId));
+      }
     }
+    
     if (search) {
       query = query.where(like(products.name, `%${search}%`));
     }
@@ -152,12 +169,27 @@ router.get('/products', async (req: Request, res: Response) => {
   }
 });
 
+// GET /api/products/:id
 router.get('/products/:id', async (req: Request, res: Response) => {
   const productId = parseInt(req.params.id);
   if (isNaN(productId)) return res.status(400).json({ error: 'Invalid product ID.' });
 
   try {
-    const [product] = await db.select().from(products).where(eq(products.id, productId));
+    // ✅ यहाँ भी join() का उपयोग करके products और categories को जोड़ा जा रहा है
+    const [product] = await db.select({
+      id: products.id,
+      name: products.name,
+      description: products.description,
+      price: products.price,
+      image: products.image,
+      sellerId: products.sellerId,
+      // ✅ कैटेगरी का नाम यहाँ से प्राप्त करें
+      categoryName: categories.name,
+    })
+    .from(products)
+    .leftJoin(categories, eq(products.categoryId, categories.id))
+    .where(eq(products.id, productId));
+
     if (!product) return res.status(404).json({ error: 'Product not found.' });
     res.status(200).json(product);
   } catch (error: any) {
@@ -165,6 +197,7 @@ router.get('/products/:id', async (req: Request, res: Response) => {
     res.status(500).json({ error: 'Internal error.' });
   }
 });
+
 
 // ✅ Delivery Boy
 router.post('/delivery-boys/register', async (req: Request, res: Response) => {
