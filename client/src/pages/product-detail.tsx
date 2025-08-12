@@ -13,6 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import Header from "@/components/header";
 import Footer from "@/components/footer";
 
+// ✅ Product इंटरफ़ेस में categoryName जोड़ा गया है
 interface Product {
   id: number;
   name: string;
@@ -25,6 +26,7 @@ interface Product {
   stock: number;
   rating: string | null;
   reviewCount: number | null;
+  categoryName: string | null; // ✅ नया फ़ील्ड
 }
 
 interface Review {
@@ -197,6 +199,10 @@ export default function ProductDetail() {
               <h1 className="text-3xl font-bold text-gray-900 mb-2">
                 {product.name}
               </h1>
+              {/* ✅ यहाँ कैटेगरी का नाम जोड़ा गया है */}
+              {product.categoryName && (
+                <p className="text-sm text-gray-500">Category: <span className="font-medium">{product.categoryName}</span></p>
+              )}
               {product.brand && (
                 <p className="text-gray-600">by {product.brand}</p>
               )}
