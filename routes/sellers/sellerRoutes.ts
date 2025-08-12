@@ -6,7 +6,7 @@ import { sellersPgTable, users, userRoleEnum, approvalStatusEnum, categories } f
 import { requireSellerAuth } from '../../server/middleware/authMiddleware.ts';
 import { AuthenticatedRequest, verifyToken } from '../../server/middleware/verifyToken.ts';
 import { eq } from 'drizzle-orm';
-import { storage } from '../../storage.ts'; // ✅ storage service को इंपोर्ट करें
+import { storage } from '../../server/storage.ts'; // ✅ storage service को इंपोर्ट करें
 import multer from 'multer'; // ✅ multer को इंपोर्ट करें
 
 const sellerRouter = Router();
