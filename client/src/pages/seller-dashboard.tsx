@@ -723,24 +723,28 @@ const onCategorySubmit = (data: z.infer<typeof categoryFormSchema>) => {
                                 />
                               </div>
                                 {/* Images Field (Optional - you might need a proper image upload component) */}
-                              <FormField
-                                control={productForm.control}
-                                name="images"
-                                render={({ field }) => (
-                                  <FormItem>
-                                    <FormLabel>Image URLs (Comma Separated)</FormLabel>
-                                    <FormControl>
-                                      <Input
-                                        value={field.value?.join(", ") || ""}
-                                        onChange={(e) => field.onChange(e.target.value.split(",").map(s => s.trim()).filter(Boolean))}
-                                        placeholder="https://example.com/image1.jpg, https://example.com/image2.png"
-                                      />
-                                    </FormControl>
-                                    <FormMessage />
-                                  </FormItem>
-                                )}
-                              />
 
+                              <FormField
+    control={productForm.control}
+    name="image"
+    render={({ field: { value, onChange, ...fieldProps } }) => (
+        <FormItem>
+            <FormLabel>Product Image</FormLabel>
+            <FormControl>
+                <Input
+                    {...fieldProps}
+                    type="file"
+                    accept="image/*"
+                    onChange={(event) => onChange(event.target.files?.[0])}
+                />
+            </FormControl>
+            <FormMessage />
+        </FormItem>
+    )}
+/>  
+
+
+                              
                               <div className="flex justify-end space-x-2">
                                 <Button
                                   type="button"
