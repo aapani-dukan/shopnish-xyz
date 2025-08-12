@@ -12,7 +12,7 @@ const storage = new Storage({
   },
 });
 
-const bucket = storage.bucket('your-firebase-storage-bucket-name'); // ✅ यहाँ अपने बकेट का नाम डालें
+const bucket = storage.bucket("aapani-dukan.firebasestorage.app"); // ✅ यहाँ अपने बकेट का नाम डालें
 
 export const uploadImage = async (filePath: string, originalname: string): Promise<string> => {
   const destination = `uploads/${Date.now()}_${path.basename(originalname)}`;
