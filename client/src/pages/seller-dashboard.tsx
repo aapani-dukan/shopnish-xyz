@@ -120,10 +120,12 @@ export default function SellerDashboard() {
       name: "",
       slug: "",
       description: "",
-      imageUrl: "",
+      // ✅ imageUrl को हटाकर image फ़ील्ड को जोड़ा गया है
+      image: undefined,
       isActive: true,
     },
   });
+  
 
   // Seller form
   const sellerForm = useForm<z.infer<typeof sellerFormSchema>>({
@@ -234,7 +236,15 @@ export default function SellerDashboard() {
   // Category creation mutation
   const categoryMutation = useMutation({
     mutationFn: async (data: z.infer<typeof categoryFormSchema>) => {
-      return await apiRequest("POST", "/api/categories", data);
+      // ✅ 1. FormData का उपयोग करके डेटा तैयार करें
+      const formData = new FormData();
+      formData.append("name", data.name);
+      formData.append("slug", data.slug);
+      formData.append("description", data.description || ""); // Optional
+      formData.append("image", data.image); // Image file
+
+      // ✅ 2. सही API URL पर FormData भेजें
+      return await apiRequest("POST", "/api/sellers/categories", formData);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/categories"] });
@@ -253,6 +263,7 @@ export default function SellerDashboard() {
       });
     },
   });
+  
 
   const onProductSubmit = (data: z.infer<typeof productFormSchema>) => {
     productMutation.mutate(data);
@@ -261,10 +272,19 @@ export default function SellerDashboard() {
   const onSellerSubmit = (data: z.infer<typeof sellerFormSchema>) => {
     sellerMutation.mutate(data);
   };
+// 'data' को सीधे mutate में भेजने के बजाय, FormData का उपयोग करें
+const onCategorySubmit = (data: z.infer<typeof categoryFormSchema>) => {
+  const formData = new FormData();
+  formData.append("name", data.name);
+  formData.append("slug", data.slug);
+  formData.append("description", data.description || ""); 
+  formData.append("image", data.image); // ✅ इमेज फाइल को FormData में जोड़ें
 
-  const onCategorySubmit = (data: z.infer<typeof categoryFormSchema>) => {
-    categoryMutation.mutate(data);
-  };
+  // अब FormData ऑब्जेक्ट को mutate में भेजें
+  categoryMutation.mutate(formData);
+};
+
+  
 
   const handleEditProduct = (product: ProductWithSeller) => {
     setEditingProduct(product);
