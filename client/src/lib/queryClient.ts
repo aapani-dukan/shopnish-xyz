@@ -52,12 +52,14 @@ export async function apiRequest(
   };
 
   let body: BodyInit | undefined;
-  if (data instanceof FormData) {
-    body = data;
-    // FormData के लिए Content-Type हेडर को मैन्युअल रूप से सेट न करें
-  } else if (data !== undefined) {
-    headers['Content-Type'] = 'application/json';
-    body = JSON.stringify(data);
+  // ✅ यहाँ बदलाव किया गया है: GET और HEAD रिक्वेस्ट में body नहीं होनी चाहिए
+  if (method !== 'GET' && method !== 'HEAD') {
+    if (data instanceof FormData) {
+      body = data;
+    } else if (data !== undefined) {
+      headers['Content-Type'] = 'application/json';
+      body = JSON.stringify(data);
+    }
   }
 
   const user = auth.currentUser;
