@@ -25,7 +25,7 @@ import adminProductsRoutes from './roots/admin/products.ts';
 import adminVendorsRoutes from './roots/admin/vendors.ts';
 import adminPasswordRoutes from './roots/admin/admin-password.ts';
 import sellerRouter from '../routes/sellers/sellerRoutes.ts';
-
+import productsRouter from './products.ts';
 const router = Router();
 
 router.get('/', (req: Request, res: Response) => {
@@ -134,68 +134,7 @@ router.get('/categories', async (req: Request, res: Response) => {
 // ✅ Products
 // GET /api/products
 
-// GET /api/products
-router.get('/', async (req: Request, res: Response) => {
-  try {
-    const { categoryId, search } = req.query;
-
-    let query = db.select({
-      id: products.id,
-      name: products.name,
-      description: products.description,
-      price: products.price,
-      image: products.image,
-      sellerId: products.sellerId,
-      categoryName: categories.name,
-    })
-    .from(products)
-    .leftJoin(categories, eq(products.categoryId, categories.id));
-
-    if (categoryId) {
-      const parsedCategoryId = parseInt(categoryId as string);
-      if (!isNaN(parsedCategoryId)) {
-        query = query.where(eq(products.categoryId, parsedCategoryId));
-      }
-    }
-    
-    if (search) {
-      query = query.where(like(products.name, `%${search}%`));
-    }
-
-    const productsList = await query;
-    res.status(200).json(productsList);
-  } catch (error: any) {
-    console.error(error);
-    res.status(500).json({ error: 'Internal error.' });
-  }
-});
-
-// GET /api/products/:id
-router.get('/:id', async (req: Request, res: Response) => {
-  const productId = parseInt(req.params.id);
-  if (isNaN(productId)) return res.status(400).json({ error: 'Invalid product ID.' });
-
-  try {
-    const [product] = await db.select({
-      id: products.id,
-      name: products.name,
-      description: products.description,
-      price: products.price,
-      image: products.image,
-      sellerId: products.sellerId,
-      categoryName: categories.name,
-    })
-    .from(products)
-    .leftJoin(categories, eq(products.categoryId, categories.id))
-    .where(eq(products.id, productId));
-
-    if (!product) return res.status(404).json({ error: 'Product not found.' });
-    res.status(200).json(product);
-  } catch (error: any) {
-    console.error(error);
-    res.status(500).json({ error: 'Internal error.' });
-  }
-});
+router.use('/products', productsRouter);
 
 
 
