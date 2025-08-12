@@ -8,7 +8,7 @@ import { AuthenticatedRequest, verifyToken } from '../../server/middleware/verif
 import { eq } from 'drizzle-orm';
 import { storage } from '../../server/storage.ts'; // ✅ storage service को इंपोर्ट करें
 import multer from 'multer'; // ✅ multer को इंपोर्ट करें
-
+import { uploadImage } from '../../server/cloudStorage.ts'; 
 const sellerRouter = Router();
 const upload = multer({ dest: 'uploads/' }); // ✅ Multer को कॉन्फ़िगर करें
 
@@ -165,7 +165,7 @@ sellerRouter.post(
         return res.status(400).json({ error: 'Category name, slug, and image are required.' });
       }
       
-      const imageUrl = await storage.uploadImage(file.path, file.originalname);
+      const imageUrl = await uploadImage(file.path, file.originalname);
 
       const newCategory = await db
         .insert(categories)
@@ -174,7 +174,6 @@ sellerRouter.post(
           slug,
           image: imageUrl,
           sellerId: sellerId,
-          description: description || null // वैकल्पिक फ़ील्ड
         })
         .returning();
 
@@ -188,7 +187,5 @@ sellerRouter.post(
     }
   }
 );
-
-
 
 export default sellerRouter;
