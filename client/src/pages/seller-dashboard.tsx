@@ -468,182 +468,104 @@ export default function SellerDashboard() {
                     {/* ✅ यदि सेलर सत्यापित नहीं है, तो प्रोडक्ट और श्रेणी बनाने को रोकें */}
                     {seller.approvalStatus === "approved" ? (
                       <>
-                        <Dialog open={isCategoryDialogOpen} onOpenChange={setIsCategoryDialogOpen}>
-                          <DialogTrigger asChild>
-                            <Button variant="outline" onClick={() => {
-                              categoryForm.reset();
-                            }}>
-                              <Plus className="h-4 w-4 mr-2" />
-                              Create Category
-                            </Button>
-                          </DialogTrigger>
-                          <DialogContent>
-                            <DialogHeader>
-                              <DialogTitle>Create New Category</DialogTitle>
-                              <DialogDescription>
-                                Add a new product category to organize your items.
-                              </DialogDescription>
-                            </DialogHeader>
-                            <Form {...categoryForm}>
-                              <form onSubmit={categoryForm.handleSubmit(onCategorySubmit)} className="space-y-4">
-                                <FormField
-                                  control={categoryForm.control}
-                                  name="name"
-                                  render={({ field }) => (
-                                    <FormItem>
-                                      <FormLabel>Category Name</FormLabel>
-                                      <FormControl>
-                                        <Input {...field} />
-                                      </FormControl>
-                                      <FormMessage />
-                                    </FormItem>
-                                  )}
-                                />
-                                
-                                <FormField
-                                  control={categoryForm.control}
-                                  name="slug"
-                                  render={({ field }) => (
-                                    <FormItem>
-                                      <FormLabel>Category Slug</FormLabel>
-                                      <FormControl>
-                                        <Input {...field} placeholder="e.g., electronics" />
-                                      </FormControl>
-                                      <FormMessage />
-                                       </FormItem>
-                                  )}
-                                />
-                                
-                                <FormField
-                                  control={categoryForm.control}
-                                  name="slug"
-                                  render={({ field }) => (
-                                    <FormItem>
-                                      <FormLabel>Category Slug</FormLabel>
-                                      <FormControl>
-                                        <Input {...field} placeholder="e.g., electronics" />
-                                      </FormControl>
-                                      <FormMessage />
-                                    </FormItem>
-                                  )}
-                                />
-                                
-                                <FormField
-                                  control={categoryForm.control}
-                                  name="description"
-                                  render={({ field }) => (
-                                    <FormItem>
-                                      <FormLabel>Description (Optional)</FormLabel>
-                                      <FormControl>
-                                        <Textarea {...field} />
-                                      </FormControl>
-                                      <FormMessage />
-                                    </FormItem>
-                                  )}
-                                />
-                                
-                                <FormField
-                                  control={categoryForm.control}
-                                  name="imageUrl"
-                                  render={({ field }) => (
-                                    <FormItem>
-                                      <FormLabel>Image URL (Optional)</FormLabel>
-                                      <FormControl>
-                                        <Input {...field} type="url" />
-                                      </FormControl>
-                                      <FormMessage />
-                                    </FormItem>
-                        // ... आपके मौजूदा इंपोर्ट्स और कंपोनेंट की शुरुआत ...
+                        
+  <Dialog open={isCategoryDialogOpen} onOpenChange={setIsCategoryDialogOpen}>
+    <DialogTrigger asChild>
+      <Button variant="outline" onClick={() => {
+        categoryForm.reset();
+      }}>
+        <Plus className="h-4 w-4 mr-2" />
+        Create Category
+      </Button>
+    </DialogTrigger>
+    <DialogContent>
+      <DialogHeader>
+        <DialogTitle>Create New Category</DialogTitle>
+        <DialogDescription>
+          Add a new product category to organize your items.
+        </DialogDescription>
+      </DialogHeader>
+      <Form {...categoryForm}>
+        <form onSubmit={categoryForm.handleSubmit(onCategorySubmit)} className="space-y-4">
+          <FormField
+            control={categoryForm.control}
+            name="name"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Category Name</FormLabel>
+                <FormControl>
+                  <Input {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          
+          <FormField
+            control={categoryForm.control}
+            name="slug"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Category Slug</FormLabel>
+                <FormControl>
+                  <Input {...field} placeholder="e.g., electronics" />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          
+          <FormField
+            control={categoryForm.control}
+            name="description"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Description (Optional)</FormLabel>
+                <FormControl>
+                  <Textarea {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          
+          {/* ✅ यह इमेज अपलोड फ़ील्ड है */}
+          <FormField
+            control={categoryForm.control}
+            name="image"
+            render={({ field: { value, onChange, ...fieldProps } }) => (
+              <FormItem>
+                <FormLabel>Category Image</FormLabel>
+                <FormControl>
+                  <Input 
+                    {...fieldProps}
+                    type="file" 
+                    accept="image/*"
+                    onChange={(event) => onChange(event.target.files?.[0])}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
 
-<Dialog open={isCategoryDialogOpen} onOpenChange={setIsCategoryDialogOpen}>
-  <DialogTrigger asChild>
-    <Button variant="outline" onClick={() => {
-      categoryForm.reset();
-    }}>
-      <Plus className="h-4 w-4 mr-2" />
-      Create Category
-    </Button>
-  </DialogTrigger>
-  <DialogContent>
-    <DialogHeader>
-      <DialogTitle>Create New Category</DialogTitle>
-      <DialogDescription>
-        Add a new product category to organize your items.
-      </DialogDescription>
-    </DialogHeader>
-    <Form {...categoryForm}>
-      <form onSubmit={categoryForm.handleSubmit(onCategorySubmit)} className="space-y-4">
-        <FormField
-          control={categoryForm.control}
-          name="name"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Category Name</FormLabel>
-              <FormControl>
-                <Input {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        
-        <FormField
-          control={categoryForm.control}
-          name="slug"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Category Slug</FormLabel>
-              <FormControl>
-                <Input {...field} placeholder="e.g., electronics" />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        {/* ✅ यहाँ इमेज अपलोड फ़ील्ड को जोड़ा गया है */}
-        <FormField
-          control={categoryForm.control}
-          name="image" // नाम 'image' होना चाहिए ताकि यह multer से मैच करे
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Category Image</FormLabel>
-              <FormControl>
-                <Input 
-                  type="file" 
-                  accept="image/*"
-                  // फाइल हैंडलिंग के लिए onChange को कस्टमाइज़ करना होगा
-                  onChange={(e) => field.onChange(e.target.files?.[0])}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        
-        {/*
-          ✅ आपने डिस्क्रिप्शन और इमेज URL को सीधे भेजा था, 
-          लेकिन सर्वर इमेज फाइल की उम्मीद कर रहा है। 
-          ये फ़ील्ड अब आवश्यक नहीं हैं। 
-        */}
-        
-        <div className="flex justify-end space-x-2">
-          <Button 
-            type="button" 
-            variant="outline" 
-            onClick={() => setIsCategoryDialogOpen(false)}
-          >
-            Cancel
-          </Button>
-          <Button type="submit" disabled={categoryMutation.isPending}>
-            {categoryMutation.isPending ? "Creating..." : "Create Category"}
-          </Button>
-        </div>
-      </form>
-    </Form>
-  </DialogContent>
-</Dialog>
-
+          <div className="flex justify-end space-x-2">
+            <Button 
+              type="button" 
+              variant="outline" 
+              onClick={() => setIsCategoryDialogOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button type="submit">
+              Create Category
+            </Button>
+          </div>
+        </form>
+      </Form>
+    </DialogContent>
+  </Dialog>
+            
 
                         
                         <Dialog open={isProductDialogOpen} onOpenChange={setIsProductDialogOpen}>
