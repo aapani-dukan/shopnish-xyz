@@ -1,4 +1,5 @@
 // client/src/pages/seller-dashboard.tsx
+
 import Header from "@/components/header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -14,34 +15,34 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { insertProductSchema, insertSellerSchema, insertCategorySchema } from "@shared/backend/schema";
+// ✅ ध्यान दें: यहाँ insertCategorySchema को इंपोर्ट नहीं करना है, बल्कि अपनी स्कीमा को सीधे नीचे परिभाषित करना है
+import { insertProductSchema, insertSellerSchema } from "@shared/backend/schema";
 import type { Seller, ProductWithSeller, Category, OrderWithItems } from "@shared/backend/schema";
 import { apiRequest } from "@/lib/queryClient";
-import { useToast } from "@/hooks/use-toast"; // ✅ useToast का सही इम्पोर्ट
-import { Link } from "react-router-dom"; // ✅ react-router-dom से Link इम्पोर्ट करें
-import { 
-  Package, 
-  ShoppingCart, 
-  TrendingUp, 
-  Star, 
-  Plus, 
-  Edit, 
+import { useToast } from "@/hooks/use-toast";
+import { Link } from "react-router-dom";
+import {
+  Package,
+  ShoppingCart,
+  TrendingUp,
+  Star,
+  Plus,
+  Edit,
   Trash2,
-  Eye, // यदि आप उत्पादों को देखने का लिंक बनाना चाहते हैं
+  Eye,
   Clock,
   CheckCircle,
   Truck,
   Settings,
   XCircle,
-  Info // ✅ Info आइकन जोड़ा
+  Info
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { z } from "zod";
 
-// ✅ ProductFormSchema को अपडेट किया गया: price और originalPrice अब string के बजाय number होंगे
+// ✅ ProductFormSchema सही है
 const productFormSchema = insertProductSchema.extend({
   images: z.array(z.string()).optional(),
-  // ✅ price और originalPrice को numbers के रूप में पार्स करें, string के रूप में नहीं
   price: z.preprocess(
     (val) => (val === "" ? undefined : Number(val)),
     z.number().min(0.01, "Price must be a positive number")
@@ -52,13 +53,27 @@ const productFormSchema = insertProductSchema.extend({
   ),
   stock: z.preprocess(
     (val) => (val === "" ? undefined : Number(val)),
-    z.number().int("Stock must be an integer").min(0, "Stock cannot be negative").default(0) // ✅ stock को integer बनाया
+    z.number().int("Stock must be an integer").min(0, "Stock cannot be negative").default(0)
   ),
 });
 
-// ✅ SellerFormSchema: userId को omit करना जारी रखें क्योंकि यह बैकएंड पर जुड़ता है
+// ✅ SellerFormSchema सही है
 const sellerFormSchema = insertSellerSchema.omit({ userId: true });
-const categoryFormSchema = insertCategorySchema;
+
+// ---
+// ✅ **यह मुख्य बदलाव है:** `insertCategorySchema` को सीधे उपयोग करने के बजाय,
+//    हम एक नई `zod` स्कीमा बनाते हैं जो इमेज अपलोड को सही ढंग से संभाल सके।
+// ---
+const categoryFormSchema = z.object({
+  name: z.string().min(2, { message: "Category name must be at least 2 characters." }),
+  slug: z.string().min(2, { message: "Slug must be at least 2 characters." }),
+  description: z.string().optional(),
+  // ✅ Image फ़ाइल के लिए स्कीमा। यह `File` ऑब्जेक्ट की उम्मीद करता है, स्ट्रिंग की नहीं।
+  image: z.any().refine(file => file instanceof File, {
+    message: "An image file is required.",
+  }),
+  isActive: z.boolean().default(true),
+});
 
 export default function SellerDashboard() {
   const { toast } = useToast();
@@ -113,19 +128,17 @@ export default function SellerDashboard() {
     },
   });
 
-  // Category form
+  // ✅ Category form - defaultValues अब `image` फ़ील्ड के साथ सही है
   const categoryForm = useForm<z.infer<typeof categoryFormSchema>>({
     resolver: zodResolver(categoryFormSchema),
     defaultValues: {
       name: "",
       slug: "",
       description: "",
-      // ✅ imageUrl को हटाकर image फ़ील्ड को जोड़ा गया है
       image: undefined,
       isActive: true,
     },
   });
-  
 
   // Seller form
   const sellerForm = useForm<z.infer<typeof sellerFormSchema>>({
@@ -157,18 +170,11 @@ export default function SellerDashboard() {
         price: Number(data.price),
         originalPrice: data.originalPrice ? Number(data.originalPrice) : undefined,
         stock: Number(data.stock),
-        // images को सीधे भेजें, क्योंकि हमने उन्हें पहले ही एरे के रूप में पार्स कर लिया है
       };
 
       if (editingProduct) {
         return await apiRequest("PUT", `/api/products/${editingProduct.id}`, payload);
       } else {
-        // ✅ यहाँ sellerId को payload में शामिल करने की आवश्यकता है
-        // यह बैकएंड पर user.sellerId से मिलान किया जाएगा, लेकिन फ्रंटएंड को भी यह पास करना चाहिए
-        // या बैकएंड इसे Firebase UID से खुद ही निकाल लेगा।
-        // सुरक्षा के लिए, बैकएंड को हमेशा ID Token से sellerId की पुष्टि करनी चाहिए।
-        // हम मान रहे हैं कि आपका API `sellerId` को बॉडी में उम्मीद नहीं करता है,
-        // बल्कि ID Token से इसे प्राप्त करता है।
         return await apiRequest("POST", "/api/products", payload);
       }
     },
@@ -233,18 +239,14 @@ export default function SellerDashboard() {
     },
   });
 
-  // Category creation mutation
+  // ---
+  // ✅ **यह categoryMutation हुक है:** इसे FormData स्वीकार करने के लिए अपडेट किया गया है
+  // ---
   const categoryMutation = useMutation({
-    mutationFn: async (data: z.infer<typeof categoryFormSchema>) => {
-      // ✅ 1. FormData का उपयोग करके डेटा तैयार करें
-      const formData = new FormData();
-      formData.append("name", data.name);
-      formData.append("slug", data.slug);
-      formData.append("description", data.description || ""); // Optional
-      formData.append("image", data.image); // Image file
-
-      // ✅ 2. सही API URL पर FormData भेजें
-      return await apiRequest("POST", "/api/sellers/categories", formData);
+    // ✅ data का प्रकार `FormData` होना चाहिए
+    mutationFn: async (data: FormData) => {
+      // ✅ सीधे FormData को apiRequest में भेजें
+      return await apiRequest("POST", "/api/sellers/categories", data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/categories"] });
@@ -263,7 +265,7 @@ export default function SellerDashboard() {
       });
     },
   });
-  
+
 
   const onProductSubmit = (data: z.infer<typeof productFormSchema>) => {
     productMutation.mutate(data);
@@ -272,27 +274,27 @@ export default function SellerDashboard() {
   const onSellerSubmit = (data: z.infer<typeof sellerFormSchema>) => {
     sellerMutation.mutate(data);
   };
-// 'data' को सीधे mutate में भेजने के बजाय, FormData का उपयोग करें
-const onCategorySubmit = (data: z.infer<typeof categoryFormSchema>) => {
-  const formData = new FormData();
-  formData.append("name", data.name);
-  formData.append("slug", data.slug);
-  formData.append("description", data.description || ""); 
-  formData.append("image", data.image); // ✅ इमेज फाइल को FormData में जोड़ें
 
-  // अब FormData ऑब्जेक्ट को mutate में भेजें
-  categoryMutation.mutate(formData);
-};
+  // ---
+  // ✅ **यह onCategorySubmit फ़ंक्शन है:** अब यह FormData बनाता है
+  // ---
+  const onCategorySubmit = (data: z.infer<typeof categoryFormSchema>) => {
+    const formData = new FormData();
+    formData.append("name", data.name);
+    formData.append("slug", data.slug);
+    formData.append("description", data.description || "");
+    formData.append("image", data.image);
 
-  
+    categoryMutation.mutate(formData);
+  };
 
   const handleEditProduct = (product: ProductWithSeller) => {
     setEditingProduct(product);
     productForm.reset({
       name: product.name,
       description: product.description || "",
-      price: product.price, // ✅ यह पहले से ही नंबर होना चाहिए अगर DB से सही से आ रहा है
-      originalPrice: product.originalPrice, // ✅ यह पहले से ही नंबर होना चाहिए
+      price: product.price,
+      originalPrice: product.originalPrice,
       categoryId: product.categoryId,
       stock: product.stock || 0,
       images: product.images || [],
@@ -309,11 +311,11 @@ const onCategorySubmit = (data: z.infer<typeof categoryFormSchema>) => {
         <div className="flex gap-2">
           <Button onClick={() => {
             deleteProductMutation.mutate(productId);
-            toast.dismiss(); // ✅ कन्फर्मेशन टोस्ट को बंद करें
+            toast.dismiss();
           }} className="bg-red-500 hover:bg-red-600 text-white">
             Delete
           </Button>
-          <Button onClick={() => toast.dismiss()} variant="outline"> {/* ✅ कन्फर्मेशन टोस्ट को बंद करें */}
+          <Button onClick={() => toast.dismiss()} variant="outline">
             Cancel
           </Button>
         </div>
@@ -323,17 +325,16 @@ const onCategorySubmit = (data: z.infer<typeof categoryFormSchema>) => {
   };
 
   // Calculate dashboard metrics
-  const totalRevenue = orders?.reduce((sum, order) => 
-    sum + order.orderItems.reduce((itemSum, item) => 
-      itemSum + (typeof item.total === 'string' ? parseFloat(item.total) : item.total), 0 // ✅ parseFloat added for safety
+  const totalRevenue = orders?.reduce((sum, order) =>
+    sum + order.orderItems.reduce((itemSum, item) =>
+      itemSum + (typeof item.total === 'string' ? parseFloat(item.total) : item.total), 0
     ), 0
   ) || 0;
 
   const totalOrders = orders?.length || 0;
   const totalProducts = products?.length || 0;
-  const averageRating = parseFloat(seller?.rating?.toString() || "0"); // ✅ rating को string से number में बदला
+  const averageRating = parseFloat(seller?.rating?.toString() || "0");
 
-  // Initial load or seller profile not found scenarios
   if (sellerLoading) {
     return (
       <div className="min-h-screen bg-background">
@@ -366,7 +367,6 @@ const onCategorySubmit = (data: z.infer<typeof categoryFormSchema>) => {
           <p className="text-muted-foreground mb-6">
             {sellerError ? "There was an issue fetching your seller profile. Please try again." : "It looks like you haven't set up your seller profile yet or it's not approved."}
           </p>
-          {/* ✅ react-router-dom Link का उपयोग करें */}
           <Link to="/seller-apply">
             <Button>
               {sellerError ? "Retry" : "Apply to be a Seller"}
@@ -485,109 +485,104 @@ const onCategorySubmit = (data: z.infer<typeof categoryFormSchema>) => {
                 <div className="flex justify-between items-center">
                   <CardTitle>Your Products</CardTitle>
                   <div className="flex gap-2">
-                    {/* ✅ यदि सेलर सत्यापित नहीं है, तो प्रोडक्ट और श्रेणी बनाने को रोकें */}
                     {seller.approvalStatus === "approved" ? (
                       <>
-                        
-  <Dialog open={isCategoryDialogOpen} onOpenChange={setIsCategoryDialogOpen}>
-    <DialogTrigger asChild>
-      <Button variant="outline" onClick={() => {
-        categoryForm.reset();
-      }}>
-        <Plus className="h-4 w-4 mr-2" />
-        Create Category
-      </Button>
-    </DialogTrigger>
-    <DialogContent>
-      <DialogHeader>
-        <DialogTitle>Create New Category</DialogTitle>
-        <DialogDescription>
-          Add a new product category to organize your items.
-        </DialogDescription>
-      </DialogHeader>
-      <Form {...categoryForm}>
-        <form onSubmit={categoryForm.handleSubmit(onCategorySubmit)} className="space-y-4">
-          <FormField
-            control={categoryForm.control}
-            name="name"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Category Name</FormLabel>
-                <FormControl>
-                  <Input {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          
-          <FormField
-            control={categoryForm.control}
-            name="slug"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Category Slug</FormLabel>
-                <FormControl>
-                  <Input {...field} placeholder="e.g., electronics" />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          
-          <FormField
-            control={categoryForm.control}
-            name="description"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Description (Optional)</FormLabel>
-                <FormControl>
-                  <Textarea {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          
-          {/* ✅ यह इमेज अपलोड फ़ील्ड है */}
-          <FormField
-            control={categoryForm.control}
-            name="image"
-            render={({ field: { value, onChange, ...fieldProps } }) => (
-              <FormItem>
-                <FormLabel>Category Image</FormLabel>
-                <FormControl>
-                  <Input 
-                    {...fieldProps}
-                    type="file" 
-                    accept="image/*"
-                    onChange={(event) => onChange(event.target.files?.[0])}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+                        <Dialog open={isCategoryDialogOpen} onOpenChange={setIsCategoryDialogOpen}>
+                          <DialogTrigger asChild>
+                            <Button variant="outline" onClick={() => {
+                              categoryForm.reset();
+                            }}>
+                              <Plus className="h-4 w-4 mr-2" />
+                              Create Category
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent>
+                            <DialogHeader>
+                              <DialogTitle>Create New Category</DialogTitle>
+                              <DialogDescription>
+                                Add a new product category to organize your items.
+                              </DialogDescription>
+                            </DialogHeader>
+                            <Form {...categoryForm}>
+                              <form onSubmit={categoryForm.handleSubmit(onCategorySubmit)} className="space-y-4">
+                                <FormField
+                                  control={categoryForm.control}
+                                  name="name"
+                                  render={({ field }) => (
+                                    <FormItem>
+                                      <FormLabel>Category Name</FormLabel>
+                                      <FormControl>
+                                        <Input {...field} />
+                                      </FormControl>
+                                      <FormMessage />
+                                    </FormItem>
+                                  )}
+                                />
 
-          <div className="flex justify-end space-x-2">
-            <Button 
-              type="button" 
-              variant="outline" 
-              onClick={() => setIsCategoryDialogOpen(false)}
-            >
-              Cancel
-            </Button>
-            <Button type="submit">
-              Create Category
-            </Button>
-          </div>
-        </form>
-      </Form>
-    </DialogContent>
-  </Dialog>
-            
+                                <FormField
+                                  control={categoryForm.control}
+                                  name="slug"
+                                  render={({ field }) => (
+                                    <FormItem>
+                                      <FormLabel>Category Slug</FormLabel>
+                                      <FormControl>
+                                        <Input {...field} placeholder="e.g., electronics" />
+                                      </FormControl>
+                                      <FormMessage />
+                                    </FormItem>
+                                  )}
+                                />
+<FormField
+                                  control={categoryForm.control}
+                                  name="description"
+                                  render={({ field }) => (
+                                    <FormItem>
+                                      <FormLabel>Description (Optional)</FormLabel>
+                                      <FormControl>
+                                        <Textarea {...field} />
+                                      </FormControl>
+                                      <FormMessage />
+                                    </FormItem>
+                                  )}
+                                />
 
-                        
+                                {/* ✅ यह इमेज अपलोड फ़ील्ड है */}
+                                <FormField
+                                  control={categoryForm.control}
+                                  name="image"
+                                  render={({ field: { value, onChange, ...fieldProps } }) => (
+                                    <FormItem>
+                                      <FormLabel>Category Image</FormLabel>
+                                      <FormControl>
+                                        <Input
+                                          {...fieldProps}
+                                          type="file"
+                                          accept="image/*"
+                                          onChange={(event) => onChange(event.target.files?.[0])}
+                                        />
+                                      </FormControl>
+                                      <FormMessage />
+                                    </FormItem>
+                                  )}
+                                />
+
+                                <div className="flex justify-end space-x-2">
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={() => setIsCategoryDialogOpen(false)}
+                                  >
+                                    Cancel
+                                  </Button>
+                                  <Button type="submit">
+                                    Create Category
+                                  </Button>
+                                </div>
+                              </form>
+                            </Form>
+                          </DialogContent>
+                        </Dialog>
+
                         <Dialog open={isProductDialogOpen} onOpenChange={setIsProductDialogOpen}>
                           <DialogTrigger asChild>
                             <Button onClick={() => {
@@ -622,7 +617,7 @@ const onCategorySubmit = (data: z.infer<typeof categoryFormSchema>) => {
                                   </FormItem>
                                 )}
                               />
-                              
+
                               <FormField
                                 control={productForm.control}
                                 name="description"
@@ -707,8 +702,7 @@ const onCategorySubmit = (data: z.infer<typeof categoryFormSchema>) => {
                                   )}
                                 />
                               </div>
-
-                              {/* Images Field (Optional - you might need a proper image upload component) */}
+                                {/* Images Field (Optional - you might need a proper image upload component) */}
                               <FormField
                                 control={productForm.control}
                                 name="images"
@@ -716,7 +710,7 @@ const onCategorySubmit = (data: z.infer<typeof categoryFormSchema>) => {
                                   <FormItem>
                                     <FormLabel>Image URLs (Comma Separated)</FormLabel>
                                     <FormControl>
-                                      <Input 
+                                      <Input
                                         value={field.value?.join(", ") || ""}
                                         onChange={(e) => field.onChange(e.target.value.split(",").map(s => s.trim()).filter(Boolean))}
                                         placeholder="https://example.com/image1.jpg, https://example.com/image2.png"
@@ -728,9 +722,9 @@ const onCategorySubmit = (data: z.infer<typeof categoryFormSchema>) => {
                               />
 
                               <div className="flex justify-end space-x-2">
-                                <Button 
-                                  type="button" 
-                                  variant="outline" 
+                                <Button
+                                  type="button"
+                                  variant="outline"
                                   onClick={() => {
                                     setIsProductDialogOpen(false);
                                     setEditingProduct(null);
@@ -773,9 +767,9 @@ const onCategorySubmit = (data: z.infer<typeof categoryFormSchema>) => {
                     {products?.map((product) => (
                       <Card key={product.id} className="relative group overflow-hidden">
                         {product.images && product.images.length > 0 && (
-                          <img 
-                            src={product.images[0]} 
-                            alt={product.name} 
+                          <img
+                            src={product.images[0]}
+                            alt={product.name}
                             className="w-full h-40 object-cover rounded-t-lg"
                           />
                         )}
@@ -826,12 +820,12 @@ const onCategorySubmit = (data: z.infer<typeof categoryFormSchema>) => {
                       <Card key={order.id} className="p-4">
                         <div className="flex justify-between items-center mb-2">
                           <h4 className="font-semibold">Order ID: {order.id}</h4>
-                          <Badge 
+                          <Badge
                             variant={
-                              order.status === "pending" 
-                                ? "secondary" 
-                                : order.status === "completed" 
-                                  ? "default" 
+                              order.status === "pending"
+                                ? "secondary"
+                                : order.status === "completed"
+                                  ? "default"
                                   : "destructive"
                             }
                           >
@@ -922,7 +916,7 @@ const onCategorySubmit = (data: z.infer<typeof categoryFormSchema>) => {
                       name="gstNumber"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>GST Number 
+                          <FormLabel>GST Number
                           (Optional)</FormLabel>
                           <FormControl>
                             <Input {...field} />
@@ -957,9 +951,11 @@ const onCategorySubmit = (data: z.infer<typeof categoryFormSchema>) => {
                         </FormItem>
                       )}
                     />
-                    <Button type="submit" disabled={sellerMutation.isPending}>
-                      {sellerMutation.isPending ? "Saving..." : "Save Profile"}
-                    </Button>
+                    <div className="flex justify-end">
+                      <Button type="submit" disabled={sellerMutation.isPending}>
+                        {sellerMutation.isPending ? "Saving..." : "Save Profile"}
+                      </Button>
+                    </div>
                   </form>
                 </Form>
               </CardContent>
@@ -969,5 +965,5 @@ const onCategorySubmit = (data: z.infer<typeof categoryFormSchema>) => {
       </div>
     </div>
   );
-}
-         
+                    }
+                                
