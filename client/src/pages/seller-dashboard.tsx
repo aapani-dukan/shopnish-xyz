@@ -41,6 +41,7 @@ import { useEffect, useState } from "react";
 import { z } from "zod";
 
 // ✅ ProductFormSchema सही है
+// ✅ अपडेटेड प्रोडक्ट फॉर्म स्कीमा
 const productFormSchema = insertProductSchema.extend({
   images: z.array(z.string()).optional(),
   price: z.preprocess(
@@ -55,7 +56,13 @@ const productFormSchema = insertProductSchema.extend({
     (val) => (val === "" ? undefined : Number(val)),
     z.number().int("Stock must be an integer").min(0, "Stock cannot be negative").default(0)
   ),
+  // ✅ categoryId को स्ट्रिंग से नंबर में बदलें और वैलिडेट करें
+  categoryId: z.preprocess(
+    (val) => (val === "" ? undefined : Number(val)),
+    z.number().int("Category ID must be an integer").min(1, "Category ID is required")
+  ),
 });
+
 
 // ✅ SellerFormSchema सही है
 const sellerFormSchema = insertSellerSchema.omit({ userId: true });
