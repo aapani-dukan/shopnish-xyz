@@ -145,17 +145,19 @@ sellerRouter.post("/apply", verifyToken, async (req: AuthenticatedRequest, res: 
  //✅ POST /api/sellers/categories
  // Authenticated route to allow a seller to add a new category with an image.
  
+
 sellerRouter.post(
   '/categories',
   requireSellerAuth,
-  upload.single('image'),
+  upload.single('image'), // 'image' फ़ील्ड से फ़ाइल को हैंडल करें
   async (req: AuthenticatedRequest, res: Response) => {
     try {
-      const sellerId = req.user?.id;
+      const sellerId = req.user?.id; // ✅ यहाँ सेलर आईडी प्राप्त करें
       if (!sellerId) {
         return res.status(401).json({ error: 'Unauthorized: Seller ID not found.' });
       }
 
+      // Multer req.body और req.file को हैंडल करता है
       const { name, slug } = req.body;
       const file = req.file;
 
@@ -172,10 +174,8 @@ sellerRouter.post(
         .values({
           name,
           slug,
-          // ✅ यहाँ `imageUrl` को `image` से बदलें ताकि यह डेटाबेस स्कीमा से मेल खाए।
-          image: image_url,
-          // ✅ sellerId को जोड़ें
-          sellerId: sellerId
+          image: image_url, // ✅ यहाँ `imageUrl` को `image` से बदलें
+          sellerId: sellerId // ✅ **यह सबसे महत्वपूर्ण बदलाव है।**
         })
         .returning();
 
