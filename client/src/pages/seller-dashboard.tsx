@@ -41,9 +41,17 @@ import { useEffect, useState } from "react";
 import { z } from "zod";
 
 // ✅ ProductFormSchema सही है
-// ✅ अपडेटेड प्रोडक्ट फॉर्म स्कीमा
+
 const productFormSchema = insertProductSchema.extend({
-  images: z.array(z.string()).optional(),
+  // ✅ images को हटाकर image को File ऑब्जेक्ट के रूप में वैलिडेट करें
+  image: z
+    .any()
+    .refine((file) => file instanceof File, {
+      message: "An image file is required.",
+    })
+    .refine((file) => file.size < 5000000, {
+      message: "Image size must be less than 5MB.",
+    }),
   price: z.preprocess(
     (val) => (val === "" ? undefined : Number(val)),
     z.number().min(0.01, "Price must be a positive number")
@@ -56,12 +64,13 @@ const productFormSchema = insertProductSchema.extend({
     (val) => (val === "" ? undefined : Number(val)),
     z.number().int("Stock must be an integer").min(0, "Stock cannot be negative").default(0)
   ),
-  // ✅ categoryId को स्ट्रिंग से नंबर में बदलें और वैलिडेट करें
+  // ✅ यहाँ categoryId को स्ट्रिंग से नंबर में बदलें
   categoryId: z.preprocess(
     (val) => (val === "" ? undefined : Number(val)),
     z.number().int("Category ID must be an integer").min(1, "Category ID is required")
   ),
 });
+
 
 
 // ✅ SellerFormSchema सही है
@@ -131,7 +140,7 @@ export default function SellerDashboard() {
       originalPrice: undefined,
       categoryId: undefined,
       stock: 0,
-      images: [],
+      images:null,
     },
   });
 
