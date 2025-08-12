@@ -1,7 +1,7 @@
-// server/products.ts
+// routes/products.ts
 
 import { Router, Request, Response } from 'express';
-import { db } from './db.ts';
+import { db } from '../server/db.ts';
 import { products, categories } from '../shared/backend/schema.ts';
 import { eq, like } from 'drizzle-orm';
 
