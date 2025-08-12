@@ -133,6 +133,7 @@ router.get('/categories', async (req: Request, res: Response) => {
 
 // ✅ Products
 // GET /api/products
+
 // GET /api/products
 router.get('/', async (req: Request, res: Response) => {
   try {
@@ -170,7 +171,6 @@ router.get('/', async (req: Request, res: Response) => {
 });
 
 // GET /api/products/:id
-// ✅ यहाँ रूट को '/:id' में बदल दिया गया है।
 router.get('/:id', async (req: Request, res: Response) => {
   const productId = parseInt(req.params.id);
   if (isNaN(productId)) return res.status(400).json({ error: 'Invalid product ID.' });
@@ -196,7 +196,6 @@ router.get('/:id', async (req: Request, res: Response) => {
     res.status(500).json({ error: 'Internal error.' });
   }
 });
-
 
 
 
