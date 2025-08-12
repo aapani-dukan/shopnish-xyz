@@ -12,7 +12,7 @@ const storage = new Storage({
   },
 });
 
-const bucket = storage.bucket("aapani-dukan.appspot.com"); // ✅ यहाँ अपने बकेट का नाम डालें
+const bucket = storage.bucket("aapani-dukan"); // ✅ यहाँ अपने बकेट का नाम डालें
 
 export const uploadImage = async (filePath: string, originalname: string): Promise<string> => {
   const destination = `uploads/${Date.now()}_${path.basename(originalname)}`;
