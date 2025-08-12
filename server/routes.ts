@@ -133,6 +133,7 @@ router.get('/categories', async (req: Request, res: Response) => {
 
 // ✅ Products
 // GET /api/products
+// GET /api/products
 router.get('/', async (req: Request, res: Response) => {
   try {
     const { categoryId, search } = req.query;
@@ -144,7 +145,6 @@ router.get('/', async (req: Request, res: Response) => {
       price: products.price,
       image: products.image,
       sellerId: products.sellerId,
-      // ✅ कैटेगरी का नाम यहाँ से प्राप्त करें
       categoryName: categories.name,
     })
     .from(products)
@@ -170,12 +170,12 @@ router.get('/', async (req: Request, res: Response) => {
 });
 
 // GET /api/products/:id
-router.get('/products/:id', async (req: Request, res: Response) => {
+// ✅ यहाँ रूट को '/:id' में बदल दिया गया है।
+router.get('/:id', async (req: Request, res: Response) => {
   const productId = parseInt(req.params.id);
   if (isNaN(productId)) return res.status(400).json({ error: 'Invalid product ID.' });
 
   try {
-    // ✅ यहाँ भी join() का उपयोग करके products और categories को जोड़ा जा रहा है
     const [product] = await db.select({
       id: products.id,
       name: products.name,
@@ -183,7 +183,6 @@ router.get('/products/:id', async (req: Request, res: Response) => {
       price: products.price,
       image: products.image,
       sellerId: products.sellerId,
-      // ✅ कैटेगरी का नाम यहाँ से प्राप्त करें
       categoryName: categories.name,
     })
     .from(products)
@@ -197,6 +196,8 @@ router.get('/products/:id', async (req: Request, res: Response) => {
     res.status(500).json({ error: 'Internal error.' });
   }
 });
+
+
 
 
 // ✅ Delivery Boy
