@@ -278,15 +278,28 @@ export default function SellerDashboard() {
   // ---
   // ✅ **यह onCategorySubmit फ़ंक्शन है:** अब यह FormData बनाता है
   // ---
-  const onCategorySubmit = (data: z.infer<typeof categoryFormSchema>) => {
-    const formData = new FormData();
-    formData.append("name", data.name);
-    formData.append("slug", data.slug);
-    formData.append("description", data.description || "");
-    formData.append("image", data.image);
+const onCategorySubmit = (data: z.infer<typeof categoryFormSchema>) => {
+  // ✅ सुनिश्चित करें कि data.image मौजूद है
+  if (!data.image) {
+    toast({
+      title: "Error",
+      description: "Please select an image for the category.",
+      variant: "destructive",
+    });
+    return;
+  }
+  
+  const formData = new FormData();
+  formData.append("name", data.name);
+  formData.append("slug", data.slug);
+  formData.append("description", data.description || ""); 
+  
+  // ✅ FormData में इमेज को जोड़ें
+  formData.append("image", data.image);
 
-    categoryMutation.mutate(formData);
-  };
+  categoryMutation.mutate(formData);
+};
+  
 
   const handleEditProduct = (product: ProductWithSeller) => {
     setEditingProduct(product);
