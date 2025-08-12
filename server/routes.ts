@@ -25,7 +25,7 @@ import adminProductsRoutes from './roots/admin/products.ts';
 import adminVendorsRoutes from './roots/admin/vendors.ts';
 import adminPasswordRoutes from './roots/admin/admin-password.ts';
 import sellerRouter from '../routes/sellers/sellerRoutes.ts';
-import productsRouter from './products.ts';
+import productsRouter from '../routes/products.ts';
 const router = Router();
 
 router.get('/', (req: Request, res: Response) => {
