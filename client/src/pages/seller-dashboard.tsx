@@ -116,8 +116,8 @@ export default function SellerDashboard() {
 
   // Fetch seller's orders
   const { data: orders, isLoading: ordersLoading, error: ordersError } = useQuery<OrderWithItems[]>({
-    queryKey: ["/api/seller/orders"],
-    queryFn: () => apiRequest("GET", "/api/seller/orders"),
+    queryKey: ["/api/sellers/orders"],
+    queryFn: () => apiRequest("GET", "/api/sellers/orders"),
     enabled: !!seller?.id,
     staleTime: 0,
     refetchInterval: 60 * 1000,
