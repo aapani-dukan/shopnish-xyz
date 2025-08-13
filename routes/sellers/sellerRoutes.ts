@@ -8,17 +8,18 @@ import {
   userRoleEnum, 
   approvalStatusEnum, 
   categories, 
-  products // ✅ products स्कीमा को इंपोर्ट करें
+  products,
+  orders, // ✅ orders स्कीमा को इंपोर्ट करें
+  ordersToProducts // ✅ अगर आपके पास यह स्कीमा है तो इसे भी इंपोर्ट करें
 } from '../../shared/backend/schema.ts';
 import { requireSellerAuth } from '../../server/middleware/authMiddleware.ts';
 import { AuthenticatedRequest, verifyToken } from '../../server/middleware/verifyToken.ts';
-import { eq } from 'drizzle-orm';
-import { storage } from '../../server/storage.ts';
-import multer from 'multer'; // ✅ multer को इंपोर्ट करें
+import { eq, desc } from 'drizzle-orm'; // ✅ desc को इंपोर्ट करें
+import multer from 'multer';
 import { uploadImage } from '../../server/cloudStorage.ts'; 
 
 const sellerRouter = Router();
-const upload = multer({ dest: 'uploads/' }); // ✅ Multer को कॉन्फ़िगर करें
+const upload = multer({ dest: 'uploads/' });
 
 /**
  * ✅ GET /api/sellers/me
@@ -156,7 +157,7 @@ sellerRouter.post("/apply", verifyToken, async (req: AuthenticatedRequest, res: 
 sellerRouter.post(
   '/categories',
   requireSellerAuth,
-  upload.single('image'), // 'image' फ़ील्ड से फ़ाइल को हैंडल करें
+  upload.single('image'),
   async (req: AuthenticatedRequest, res: Response) => {
     try {
       const sellerId = req.user?.id;
@@ -194,10 +195,8 @@ sellerRouter.post(
   }
 );
 
----
-
 /**
- * ✅ POST /api/sellers/products - नया जोड़ा गया राउट
+ * ✅ POST /api/sellers/products
  * Authenticated route to allow a seller to add a new product with an image.
  */
 sellerRouter.post(
@@ -218,7 +217,6 @@ sellerRouter.post(
         return res.status(400).json({ error: 'Missing required fields or image.' });
       }
 
-      // ✅ categoryId, stock और price को सुरक्षित रूप से नंबर में बदलें
       const parsedCategoryId = parseInt(categoryId as string);
       const parsedStock = parseInt(stock as string);
       const parsedPrice = parseFloat(price as string);
@@ -249,5 +247,31 @@ sellerRouter.post(
     }
   }
 );
+
+/**
+ * ✅ GET /api/sellers/orders - नया जोड़ा गया राउट
+ * Authenticated route to get all orders for the current seller.
+ */
+sellerRouter.get('/orders', requireSellerAuth, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const sellerId = req.user?.id;
+    if (!sellerId) {
+      return res.status(401).json({ error: 'Unauthorized: Seller ID not found.' });
+    }
+
+    const sellerOrders = await db.query.orders.findMany({
+      where: eq(orders.sellerId, sellerId),
+      orderBy: [desc(orders.createdAt)],
+      with: {
+        items: true,
+      },
+    });
+
+    return res.status(200).json(sellerOrders);
+  } catch (error: any) {
+    console.error('❌ Error in GET /api/sellers/orders:', error);
+    return res.status(500).json({ error: 'Failed to fetch seller orders.' });
+  }
+});
 
 export default sellerRouter;
