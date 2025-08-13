@@ -191,7 +191,7 @@ export default function SellerDashboard() {
       if (editingProduct) {
         return await apiRequest("PUT", `/api/products/${editingProduct.id}`, payload);
       } else {
-        return await apiRequest("POST", "/api/products", payload);
+        return await apiRequest("POST", "/api/sellers/products", payload);
       }
     },
     onSuccess: () => {
