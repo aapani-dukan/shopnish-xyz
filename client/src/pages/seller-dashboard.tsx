@@ -138,7 +138,7 @@ export default function SellerDashboard() {
       description: "",
       price: undefined,
       originalPrice: undefined,
-      categoryId: undefined,
+      categoryId: null,
       stock: 0,
       images:null,
     },
