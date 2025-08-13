@@ -179,39 +179,20 @@ export default function SellerDashboard() {
   });
 
   // Create/Update product mutation
-  const productMutation = useMutation({
-    mutationFn: async (data: z.infer<typeof productFormSchema>) => {
-      const payload = {
-        ...data,
-        price: Number(data.price),
-        originalPrice: data.originalPrice ? Number(data.originalPrice) : undefined,
-        stock: Number(data.stock),
-      };
-
-      if (editingProduct) {
-        return await apiRequest("PUT", `/api/products/${editingProduct.id}`, payload);
-      } else {
-        return await apiRequest("POST", "/api/sellers/products", payload);
-      }
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/products"] });
-      toast({
-        title: editingProduct ? "Product updated" : "Product created",
-        description: `Product has been ${editingProduct ? "updated" : "created"} successfully`,
-      });
-      setIsProductDialogOpen(false);
-      setEditingProduct(null);
-      productForm.reset();
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Error",
-        description: error.response?.data?.message || `Failed to ${editingProduct ? "update" : "create"} product`,
-        variant: "destructive",
-      });
-    },
-  });
+  GET /api/categories 304 in 82ms :: [{"id":43,"name":"Fruits","nameHindi":null,"slug":"fru…
+GET /api/users/me 200 in 865ms :: {"id":98,"firebaseUid":"dP7FI4gILUhIg9PMv7svKH0mz883","…
+GET /api/categories 304 in 83ms :: [{"id":43,"name":"Fruits","nameHindi":null,"slug":"fru…
+GET /api/products 304 in 84ms :: [{"id":13,"name":"Fresh Granite Chair","description":"Fe…
+GET /api/products 304 in 578ms :: [{"id":13,"name":"Fresh Granite Chair","description":"F…
+GET /api/categories 304 in 83ms :: [{"id":43,"name":"Fruits","nameHindi":null,"slug":"fru…
+GET /api/sellers/me 200 in 252ms :: {"id":26,"userId":98,"businessName":"my shop ","busin…
+GET /api/seller/orders 200 in 6ms
+GET /api/products 200 in 85ms :: [{"id":13,"name":"Fresh Granite Chair","description":"Fe…
+POST /api/sellers/products 400 in 591ms :: {"error":"Missing required fields or image."}
+GET /api/seller/orders 304 in 1ms
+     ==> Detected service running on port 10000
+     ==> Docs on specifying a port: https://render.com/docs/web-services#port-binding
+GET /api/seller/orders 304 in 2ms
 
   // Update seller mutation
   const sellerMutation = useMutation({
