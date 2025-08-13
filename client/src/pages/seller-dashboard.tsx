@@ -177,34 +177,37 @@ export default function SellerDashboard() {
       ifscCode: "",
     },
   });
-
-  // Create/Update product mutation
+// Create/Update product mutation
   const productMutation = useMutation({
     mutationFn: async (data: z.infer<typeof productFormSchema>) => {
+      // ✅ टोकन को localStorage से प्राप्त करें
+      const token = localStorage.getItem("token");
+      
       const formData = new FormData();
       
       // ✅ सभी डेटा को FormData में जोड़ें
       for (const key in data) {
-        // सुनिश्चित करें कि आप undefined या null वैल्यू को स्किप करें
         if (data[key] !== null && data[key] !== undefined) {
            formData.append(key, data[key]);
         }
       }
       
-      // ✅ सीधे fetch API का उपयोग करें
       if (editingProduct) {
         // PUT रिक्वेस्ट के लिए FormData भेजने का लॉजिक अलग होगा
-        // इस केस को अभी के लिए छोड़ देते हैं क्योंकि आप नया प्रोडक्ट बना रहे हैं
-        // यह मान लें कि PUT भी FormData का उपयोग करेगा
-        // return await apiRequest("PUT", `/api/products/${editingProduct.id}`, payload);
       } else {
         const response = await fetch("/api/sellers/products", {
           method: "POST",
           body: formData, // ✅ यहाँ FormData भेजें
+          // ✅ यहाँ Authorization हेडर जोड़ें
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
         });
         
         if (!response.ok) {
-          throw new Error("Failed to create product");
+          // अब error.message को ठीक से हैंडल करेगा
+          const errorData = await response.json();
+          throw new Error(errorData.error || errorData.message || "Failed to create product");
         }
         return response.json();
       }
@@ -228,6 +231,7 @@ export default function SellerDashboard() {
     },
   });
   
+
 
   // Update seller mutation
   const sellerMutation = useMutation({
