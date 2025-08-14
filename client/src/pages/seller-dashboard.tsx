@@ -178,33 +178,42 @@ export default function SellerDashboard() {
     },
   });
 // Create/Update product mutation
+import { getAuth } from "firebase/auth";
 
-  const productMutation = useMutation({
+// ...
+
+const productMutation = useMutation({
   mutationFn: async (data: z.infer<typeof productFormSchema>) => {
-    const token = localStorage.getItem("token");
+    // ✅ हर बार एक नया, वैध टोकन प्राप्त करें
+    const auth = getAuth();
+    const user = auth.currentUser;
+
+    if (!user) {
+      throw new Error("User not authenticated.");
+    }
     
+    // ✅ Firebase SDK से सीधा टोकन प्राप्त करें
+    const token = await user.getIdToken();
+
     const formData = new FormData();
-    
+    formData.append('image', data.image); 
+
     for (const key in data) {
-      if (data[key] !== null && data[key] !== undefined) {
+      if (data[key] !== null && data[key] !== undefined && key !== 'image') {
          formData.append(key, data[key]);
       }
     }
     
-    // ✅ यहाँ फाइल को FormData में जोड़ें
-    formData.append('image', data.image); 
-
-    if (editingProduct) {
-      // PUT रिक्वेस्ट के लिए लॉजिक
-    } else {
-      const response = await fetch("/api/sellers/products", {
-        method: "POST",
-        body: formData,
-        // ✅ ध्यान दें: यहाँ 'Content-Type' हेडर हटा दिया गया है
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
+    const response = await fetch("/api/sellers/products", {
+      method: "POST",
+      body: formData,
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+    });
+    
+    
+  
       
       if (!response.ok) {
         const errorData = await response.json();
