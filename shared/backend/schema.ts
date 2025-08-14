@@ -344,7 +344,7 @@ export const ordersRelations = relations(orders, ({ many }) => ({
 }));
 
 // ✅ यहाँ भी 'ordersToProducts' के बजाय 'orderItems' का उपयोग किया गया है
-export const ordersToProductsRelations = relations(orderItems, ({ one }) => ({
+export const orderItemsRelations = relations(orderItems, ({ one }) => ({
   order: one(orders, {
     fields: [orderItems.orderId], // ✅ 'orderItems' का उपयोग करें
     references: [orders.id],
