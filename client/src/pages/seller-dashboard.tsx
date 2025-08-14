@@ -216,7 +216,7 @@ const productMutation = useMutation({
         throw new Error(errorData.error || errorData.message || "Failed to create product");
       }
       return response.json();
-    }
+    
   },
   
   
