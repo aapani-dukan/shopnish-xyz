@@ -252,9 +252,14 @@ sellerRouter.post(
  * ✅ GET /api/sellers/orders - नया जोड़ा गया राउट
  * Authenticated route to get all orders for the current seller.
  */
+// server/routes/sellers/sellerRoutes.ts
+
+
 sellerRouter.get('/orders', requireSellerAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const sellerId = req.user?.id;
+    console.log('✅ /sellers/orders: Received request for sellerId:', sellerId); // ✅ नया लॉग
+
     if (!sellerId) {
       return res.status(401).json({ error: 'Unauthorized: Seller ID not found.' });
     }
@@ -267,11 +272,16 @@ sellerRouter.get('/orders', requireSellerAuth, async (req: AuthenticatedRequest,
       },
     });
 
+    console.log('✅ /sellers/orders: Orders fetched successfully. Count:', sellerOrders.length); // ✅ नया लॉग
     return res.status(200).json(sellerOrders);
   } catch (error: any) {
     console.error('❌ Error in GET /api/sellers/orders:', error);
+    // ✅ यहाँ full error object को लॉग करें
+    console.error(error); 
     return res.status(500).json({ error: 'Failed to fetch seller orders.' });
   }
 });
 
 export default sellerRouter;
+
+ 
