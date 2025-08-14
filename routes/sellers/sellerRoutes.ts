@@ -265,7 +265,7 @@ sellerRouter.get('/orders', requireSellerAuth, async (req: AuthenticatedRequest,
     }
 
     const sellerOrders = await db.query.orders.findMany({
-      where: eq(orders.sellerId, sellerId),
+      where: eq(orders.customerId, sellerId),
       orderBy: [desc(orders.createdAt)],
       with: {
         items: true,
