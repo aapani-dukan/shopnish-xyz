@@ -2,6 +2,7 @@
 
 import { pgTable, text, serial, integer, decimal, boolean, timestamp, json, pgEnum } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
+import { relations } from 'drizzle-orm';
 import { z } from "zod";
 
 // --- Drizzle ORM Table Definitions ---
@@ -337,6 +338,17 @@ export const insertOrderTrackingSchema = createInsertSchema(orderTracking).omit(
   id: true,
   createdAt: true,
 });
+export const ordersRelations = relations(orders, ({ many }) => ({
+  items: many(ordersToProducts), // orders में कई items होते हैं
+}));
+
+export const ordersToProductsRelations = relations(ordersToProducts, ({ one }) => ({
+  order: one(orders, {
+    fields: [ordersToProducts.orderId],
+    references: [orders.id],
+  }),
+}));
+
 
 export const insertPromoCodeSchema = createInsertSchema(promoCodes, {
   discountValue: z.string(),
