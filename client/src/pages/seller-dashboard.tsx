@@ -38,6 +38,7 @@ import {
   Info
 } from "lucide-react";
 import { useEffect, useState } from "react";
+import { getAuth } from "firebase/auth";
 import { z } from "zod";
 
 // ✅ ProductFormSchema सही है
