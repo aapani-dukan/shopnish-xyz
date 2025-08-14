@@ -177,10 +177,6 @@ export default function SellerDashboard() {
       ifscCode: "",
     },
   });
-// Create/Update product mutation
-import { getAuth } from "firebase/auth";
-
-// ...
 
 const productMutation = useMutation({
   mutationFn: async (data: z.infer<typeof productFormSchema>) => {
