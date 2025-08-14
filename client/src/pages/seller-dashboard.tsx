@@ -178,40 +178,43 @@ export default function SellerDashboard() {
     },
   });
 // Create/Update product mutation
+
   const productMutation = useMutation({
-    mutationFn: async (data: z.infer<typeof productFormSchema>) => {
-      // ✅ टोकन को localStorage से प्राप्त करें
-      const token = localStorage.getItem("token");
-      
-      const formData = new FormData();
-      
-      // ✅ सभी डेटा को FormData में जोड़ें
-      for (const key in data) {
-        if (data[key] !== null && data[key] !== undefined) {
-           formData.append(key, data[key]);
-        }
+  mutationFn: async (data: z.infer<typeof productFormSchema>) => {
+    const token = localStorage.getItem("token");
+    
+    const formData = new FormData();
+    
+    for (const key in data) {
+      if (data[key] !== null && data[key] !== undefined) {
+         formData.append(key, data[key]);
       }
+    }
+    
+    // ✅ यहाँ फाइल को FormData में जोड़ें
+    formData.append('image', data.image); 
+
+    if (editingProduct) {
+      // PUT रिक्वेस्ट के लिए लॉजिक
+    } else {
+      const response = await fetch("/api/sellers/products", {
+        method: "POST",
+        body: formData,
+        // ✅ ध्यान दें: यहाँ 'Content-Type' हेडर हटा दिया गया है
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
       
-      if (editingProduct) {
-        // PUT रिक्वेस्ट के लिए FormData भेजने का लॉजिक अलग होगा
-      } else {
-        const response = await fetch("/api/sellers/products", {
-          method: "POST",
-          body: formData, // ✅ यहाँ FormData भेजें
-          // ✅ यहाँ Authorization हेडर जोड़ें
-          headers: {
-            'Authorization': `Bearer ${token}`,
-          },
-        });
-        
-        if (!response.ok) {
-          // अब error.message को ठीक से हैंडल करेगा
-          const errorData = await response.json();
-          throw new Error(errorData.error || errorData.message || "Failed to create product");
-        }
-        return response.json();
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || errorData.message || "Failed to create product");
       }
-    },
+      return response.json();
+    }
+  },
+  
+  
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/products"] });
       toast({
