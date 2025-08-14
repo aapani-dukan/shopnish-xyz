@@ -338,16 +338,19 @@ export const insertOrderTrackingSchema = createInsertSchema(orderTracking).omit(
   id: true,
   createdAt: true,
 });
+// ✅ यहाँ 'ordersToProducts' के बजाय 'orderItems' का उपयोग किया गया है
 export const ordersRelations = relations(orders, ({ many }) => ({
-  items: many(ordersToProducts), // orders में कई items होते हैं
+  items: many(orderItems), // ✅ 'orderItems' का उपयोग करें
 }));
 
-export const ordersToProductsRelations = relations(ordersToProducts, ({ one }) => ({
+// ✅ यहाँ भी 'ordersToProducts' के बजाय 'orderItems' का उपयोग किया गया है
+export const ordersToProductsRelations = relations(orderItems, ({ one }) => ({
   order: one(orders, {
-    fields: [ordersToProducts.orderId],
+    fields: [orderItems.orderId], // ✅ 'orderItems' का उपयोग करें
     references: [orders.id],
   }),
 }));
+
 
 
 export const insertPromoCodeSchema = createInsertSchema(promoCodes, {
