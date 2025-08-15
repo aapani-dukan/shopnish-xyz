@@ -23,7 +23,7 @@ const sellerRouter = Router();
 const upload = multer({ dest: 'uploads/' });
 
 
-✅ GET /api/sellers/me
+//✅ GET /api/sellers/me
  * Authenticated route to get the current seller profile
  */
 sellerRouter.get('/me', requireSellerAuth, async (req: AuthenticatedRequest, res: Response) => {
