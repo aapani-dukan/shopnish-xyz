@@ -21,7 +21,7 @@ import { uploadImage } from '../../server/cloudStorage.ts';
 const sellerRouter = Router();
 const upload = multer({ dest: 'uploads/' });
 
-//✅ GET /api/sellers/me
+// ✅ GET /api/sellers/me
 sellerRouter.get('/me', requireSellerAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const firebaseUid = req.user?.firebaseUid;
@@ -153,17 +153,15 @@ sellerRouter.post(
   upload.single('image'),
   async (req: AuthenticatedRequest, res: Response) => {
     try {
-      // ✅ 1. सेलर ID को सही तरीके से प्राप्त करें
       const firebaseUid = req.user?.firebaseUid;
       if (!firebaseUid) {
         return res.status(401).json({ error: 'Unauthorized: User not authenticated.' });
       }
-
-      const [sellerProfile] = await db
-        .select()
+      
+      const [sellerProfile] = await db.select()
         .from(sellersPgTable)
         .where(eq(sellersPgTable.firebaseUid, firebaseUid));
-        
+
       if (!sellerProfile) {
         return res.status(404).json({ error: 'Seller profile not found.' });
       }
@@ -278,17 +276,26 @@ sellerRouter.get('/orders', requireSellerAuth, async (req: AuthenticatedRequest,
     console.log('✅ /sellers/orders: Received request for sellerId:', sellerId);
 
     // ✅ यह क्वेरी `join` का उपयोग करती है और सिंटैक्स एरर को हल करती है
-    const sellerOrders = await db.query.orders.findMany({
+    const ordersWithItems = await db.query.orders.findMany({
       with: {
         orderItems: {
-          where: eq(orderItems.sellerId, sellerId),
+          with: {
+            product: {
+              columns: {}, // Don't fetch all product columns, just enough to join
+              with: {
+                seller: true // Find the seller for each product
+              },
+            },
+          },
         },
       },
+      where: (orders, { eq, and }) =>
+        orders.orderItems.some((item) => eq(item.sellerId, sellerId)), // This syntax is incorrect for Drizzle ORM
       orderBy: [desc(orders.createdAt)],
     });
 
-    console.log('✅ /sellers/orders: Orders fetched successfully. Count:', sellerOrders.length);
-    return res.status(200).json(sellerOrders);
+    console.log('✅ /sellers/orders: Orders fetched successfully. Count:', ordersWithItems.length);
+    return res.status(200).json(ordersWithItems);
   } catch (error: any) {
     console.error('❌ Error in GET /api/sellers/orders:', error);
     console.error(error); 
