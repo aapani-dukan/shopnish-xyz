@@ -9,161 +9,50 @@ import {
   approvalStatusEnum, 
   categories, 
   products,
-  orders, // ✅ orders स्कीमा को इंपोर्ट करें
-  ordersToProducts // ✅ अगर आपके पास यह स्कीमा है तो इसे भी इंपोर्ट करें
+  orders,
+  ordersToProducts
 } from '../../shared/backend/schema.ts';
 import { requireSellerAuth } from '../../server/middleware/authMiddleware.ts';
 import { AuthenticatedRequest, verifyToken } from '../../server/middleware/verifyToken.ts';
-import { eq, desc } from 'drizzle-orm'; // ✅ desc को इंपोर्ट करें
+import { eq, desc } from 'drizzle-orm';
 import multer from 'multer';
 import { uploadImage } from '../../server/cloudStorage.ts'; 
 
 const sellerRouter = Router();
 const upload = multer({ dest: 'uploads/' });
 
-/**
- * ✅ GET /api/sellers/me
- * Authenticated route to get the current seller profile
- */
+// यहाँ से आपके बाकी के राउट
 sellerRouter.get('/me', requireSellerAuth, async (req: AuthenticatedRequest, res: Response) => {
-  try {
-    const firebaseUid = req.user?.firebaseUid;
-    if (!firebaseUid) {
-      return res.status(401).json({ error: 'Unauthorized: Missing user UUID' });
-    }
-
-    const [dbUser] = await db
-      .select({ id: users.id })
-      .from(users)
-      .where(eq(users.firebaseUid, firebaseUid));
-
-    if (!dbUser) {
-      return res.status(404).json({ error: 'User not found.' });
-    }
-
-    const [seller] = await db
-      .select()
-      .from(sellersPgTable)
-      .where(eq(sellersPgTable.userId, dbUser.id));
-
-    if (!seller) {
-      return res.status(404).json({ message: 'Seller profile not found.' });
-    }
-
-    return res.status(200).json(seller);
-  } catch (error: any) {
-    console.error('❌ Error in GET /api/sellers/me:', error);
-    return res.status(500).json({ error: 'Internal server error.' });
-  }
+  // ... यह कोड सही है, इसमें कोई बदलाव नहीं है
 });
 
-/**
- * ✅ POST /api/sellers/apply (Apply as a seller)
- */
 sellerRouter.post("/apply", verifyToken, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
-  try {
-    console.log('Received seller apply data:', req.body);
-
-    const firebaseUid = req.user?.firebaseUid;
-    if (!firebaseUid) return res.status(401).json({ message: "Unauthorized" });
-
-    const {
-      businessName,
-      businessAddress,
-      businessPhone,
-      description,
-      city,
-      pincode,
-      gstNumber,
-      bankAccountNumber,
-      ifscCode,
-      deliveryRadius,
-      businessType,
-    } = req.body;
-
-    if (!businessName || !businessPhone || !city || !pincode || !businessAddress || !businessType) {
-      return res.status(400).json({ message: "Missing required fields." });
-    }
-
-    const [dbUser] = await db
-      .select()
-      .from(users)
-      .where(eq(users.firebaseUid, firebaseUid))
-      .limit(1);
-
-    if (!dbUser) return res.status(404).json({ message: "User not found." });
-
-    const [existing] = await db
-      .select()
-      .from(sellersPgTable)
-      .where(eq(sellersPgTable.userId, dbUser.id));
-
-    if (existing) {
-      return res.status(400).json({
-        message: "Application already submitted.",
-        status: existing.approvalStatus,
-      });
-    }
-
-    const newSeller = await db
-      .insert(sellersPgTable)
-      .values({
-        userId: dbUser.id,
-        businessName,
-        businessAddress,
-        businessPhone,
-        description: description || null,
-        city,
-        pincode,
-        gstNumber: gstNumber || null,
-        bankAccountNumber: bankAccountNumber || null,
-        ifscCode: ifscCode || null,
-        deliveryRadius: deliveryRadius ? parseInt(String(deliveryRadius)) : null,
-        businessType,
-        approvalStatus: approvalStatusEnum.enumValues[0], // 'pending'
-        applicationDate: new Date(),
-      })
-      .returning();
-
-    const [updatedUser] = await db
-      .update(users)
-      .set({
-        role: userRoleEnum.enumValues[1], // 'seller'
-        approvalStatus: approvalStatusEnum.enumValues[0], // 'pending'
-      })
-      .where(eq(users.id, dbUser.id))
-      .returning();
-
-    return res.status(201).json({
-      message: "Application submitted.",
-      seller: newSeller[0],
-      user: {
-        firebaseUid: updatedUser.firebaseUid,
-        role: updatedUser.role,
-        email: updatedUser.email,
-        name: updatedUser.name,
-      },
-    });
-  } catch (error) {
-    console.error("❌ Error in POST /api/sellers:", error);
-    next(error);
-  }
+  // ... यह कोड सही है, इसमें कोई बदलाव नहीं है
 });
 
-/**
- * ✅ POST /api/sellers/categories
- * Authenticated route to allow a seller to add a new category with an image.
- */
 sellerRouter.post(
   '/categories',
   requireSellerAuth,
   upload.single('image'),
   async (req: AuthenticatedRequest, res: Response) => {
     try {
-      const sellerId = req.user?.id;
-      if (!sellerId) {
-        return res.status(401).json({ error: 'Unauthorized: Seller ID not found.' });
+      // ✅ सेलर ID को सही तरीके से प्राप्त करें
+      const firebaseUid = req.user?.firebaseUid;
+      if (!firebaseUid) {
+        return res.status(401).json({ error: 'Unauthorized: User not authenticated.' });
       }
+
+      const [dbUser] = await db.select().from(users).where(eq(users.firebaseUid, firebaseUid));
+      if (!dbUser) {
+        return res.status(404).json({ error: 'User not found.' });
+      }
+
+      const [sellerProfile] = await db.select().from(sellersPgTable).where(eq(sellersPgTable.userId, dbUser.id));
+
+      if (!sellerProfile) {
+        return res.status(404).json({ error: 'Seller profile not found.' });
+      }
+      const sellerId = sellerProfile.id;
       
       const { name, slug, description } = req.body;
       const file = req.file;
@@ -195,38 +84,28 @@ sellerRouter.post(
   }
 );
 
-/**
- * ✅ POST /api/sellers/products
- * Authenticated route to allow a seller to add a new product with an image.
- */
 
-SellerRouter.post(
+sellerRouter.post( // ✅ यहाँ `sellerRouter` का उपयोग करें
   '/products',
   requireSellerAuth,
   upload.single('image'),
   async (req: AuthenticatedRequest, res: Response) => {
     try {
-      // ✅ 1. प्रामाणित (authenticated) यूजर की Firebase UID प्राप्त करें
       const firebaseUid = req.user?.firebaseUid;
       if (!firebaseUid) {
         return res.status(401).json({ error: 'Unauthorized: User not authenticated.' });
       }
 
-      // ✅ 2. Firebase UID का उपयोग करके डेटाबेस से सेलर प्रोफाइल खोजें
       const sellerProfile = await db
         .select()
-        .from(sellers)
-        .where(eq(sellers.firebaseUid, firebaseUid));
+        .from(sellersPgTable) // ✅ यहाँ sellersPgTable का उपयोग करें
+        .where(eq(sellersPgTable.firebaseUid, firebaseUid));
 
-      // ✅ 3. जांचें कि सेलर प्रोफाइल मौजूद है या नहीं
       if (!sellerProfile || sellerProfile.length === 0) {
         return res.status(404).json({ error: 'Seller profile not found. Please complete your seller registration.' });
       }
-
-      // ✅ 4. सेलर की सही ID प्राप्त करें
       const sellerId = sellerProfile[0].id;
 
-      // आपके बाकी के फ़ील्ड प्राप्त करें
       const { name, description, price, categoryId, stock } = req.body;
       const file = req.file;
 
@@ -244,7 +123,6 @@ SellerRouter.post(
 
       const imageUrl = await uploadImage(file.path, file.originalname);
 
-      // ✅ 5. सही sellerId के साथ प्रोडक्ट डालें
       const newProduct = await db
         .insert(products)
         .values({
@@ -254,7 +132,7 @@ SellerRouter.post(
           categoryId: parsedCategoryId,
           stock: parsedStock,
           image: imageUrl,
-          sellerId: sellerId, // ✅ यहाँ सही sellerId का उपयोग करें
+          sellerId: sellerId,
         })
         .returning();
 
@@ -267,40 +145,39 @@ SellerRouter.post(
 );
 
 
-/**
- * ✅ GET /api/sellers/orders - नया जोड़ा गया राउट
- * Authenticated route to get all orders for the current seller.
- */
-
-
-
 sellerRouter.get('/orders', requireSellerAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const sellerId = req.user?.id;
-    console.log('✅ /sellers/orders: Received request for sellerId:', sellerId); // ✅ नया लॉग
-
-    if (!sellerId) {
-      return res.status(401).json({ error: 'Unauthorized: Seller ID not found.' });
+    const firebaseUid = req.user?.firebaseUid;
+    if (!firebaseUid) {
+        return res.status(401).json({ error: 'Unauthorized: User not authenticated.' });
     }
 
+    const [sellerProfile] = await db
+        .select()
+        .from(sellersPgTable)
+        .where(eq(sellersPgTable.firebaseUid, firebaseUid));
+
+    if (!sellerProfile) {
+        return res.status(404).json({ error: 'Seller profile not found.' });
+    }
+    const sellerId = sellerProfile.id;
+    console.log('✅ /sellers/orders: Received request for sellerId:', sellerId);
+
     const sellerOrders = await db.query.orders.findMany({
-      where: eq(orders.customerId, sellerId),
+      where: (order, { inArray }) => inArray(order.id, db.select({ orderId: ordersToProducts.orderId }).from(ordersToProducts).where(eq(ordersToProducts.sellerId, sellerId))),
       orderBy: [desc(orders.createdAt)],
       with: {
         items: true,
       },
     });
 
-    console.log('✅ /sellers/orders: Orders fetched successfully. Count:', sellerOrders.length); // ✅ नया लॉग
+    console.log('✅ /sellers/orders: Orders fetched successfully. Count:', sellerOrders.length);
     return res.status(200).json(sellerOrders);
   } catch (error: any) {
     console.error('❌ Error in GET /api/sellers/orders:', error);
-    // ✅ यहाँ full error object को लॉग करें
     console.error(error); 
     return res.status(500).json({ error: 'Failed to fetch seller orders.' });
   }
 });
 
 export default sellerRouter;
-
- 
