@@ -199,17 +199,34 @@ sellerRouter.post(
  * ✅ POST /api/sellers/products
  * Authenticated route to allow a seller to add a new product with an image.
  */
-sellerRouter.post(
+
+SellerRouter.post(
   '/products',
   requireSellerAuth,
   upload.single('image'),
   async (req: AuthenticatedRequest, res: Response) => {
     try {
-      const sellerId = req.user?.id;
-      if (!sellerId) {
-        return res.status(401).json({ error: 'Unauthorized: Seller ID not found.' });
+      // ✅ 1. प्रामाणित (authenticated) यूजर की Firebase UID प्राप्त करें
+      const firebaseUid = req.user?.firebaseUid;
+      if (!firebaseUid) {
+        return res.status(401).json({ error: 'Unauthorized: User not authenticated.' });
       }
 
+      // ✅ 2. Firebase UID का उपयोग करके डेटाबेस से सेलर प्रोफाइल खोजें
+      const sellerProfile = await db
+        .select()
+        .from(sellers)
+        .where(eq(sellers.firebaseUid, firebaseUid));
+
+      // ✅ 3. जांचें कि सेलर प्रोफाइल मौजूद है या नहीं
+      if (!sellerProfile || sellerProfile.length === 0) {
+        return res.status(404).json({ error: 'Seller profile not found. Please complete your seller registration.' });
+      }
+
+      // ✅ 4. सेलर की सही ID प्राप्त करें
+      const sellerId = sellerProfile[0].id;
+
+      // आपके बाकी के फ़ील्ड प्राप्त करें
       const { name, description, price, categoryId, stock } = req.body;
       const file = req.file;
 
@@ -227,6 +244,7 @@ sellerRouter.post(
 
       const imageUrl = await uploadImage(file.path, file.originalname);
 
+      // ✅ 5. सही sellerId के साथ प्रोडक्ट डालें
       const newProduct = await db
         .insert(products)
         .values({
@@ -236,7 +254,7 @@ sellerRouter.post(
           categoryId: parsedCategoryId,
           stock: parsedStock,
           image: imageUrl,
-          sellerId: sellerId,
+          sellerId: sellerId, // ✅ यहाँ सही sellerId का उपयोग करें
         })
         .returning();
 
@@ -248,11 +266,12 @@ sellerRouter.post(
   }
 );
 
+
 /**
  * ✅ GET /api/sellers/orders - नया जोड़ा गया राउट
  * Authenticated route to get all orders for the current seller.
  */
-// server/routes/sellers/sellerRoutes.ts
+
 
 
 sellerRouter.get('/orders', requireSellerAuth, async (req: AuthenticatedRequest, res: Response) => {
