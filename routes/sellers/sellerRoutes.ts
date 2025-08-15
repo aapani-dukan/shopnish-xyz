@@ -15,16 +15,13 @@ import {
 import { requireSellerAuth } from '../../server/middleware/authMiddleware.ts';
 import { AuthenticatedRequest, verifyToken } from '../../server/middleware/verifyToken.ts';
 import { eq, desc } from 'drizzle-orm';
-import { sql } from 'drizzle-orm'; // ✅ SQL हेल्पर को इंपोर्ट करें
 import multer from 'multer';
 import { uploadImage } from '../../server/cloudStorage.ts'; 
 
 const sellerRouter = Router();
 const upload = multer({ dest: 'uploads/' });
 
-
 //✅ GET /api/sellers/me
- 
 sellerRouter.get('/me', requireSellerAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const firebaseUid = req.user?.firebaseUid;
@@ -59,7 +56,6 @@ sellerRouter.get('/me', requireSellerAuth, async (req: AuthenticatedRequest, res
 
 
  // ✅ POST /api/sellers/apply (Apply as a seller)
- 
 sellerRouter.post("/apply", verifyToken, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     console.log('Received seller apply data:', req.body);
@@ -157,19 +153,17 @@ sellerRouter.post(
   upload.single('image'),
   async (req: AuthenticatedRequest, res: Response) => {
     try {
-      // ✅ सेलर ID को सही तरीके से प्राप्त करें
+      // ✅ 1. सेलर ID को सही तरीके से प्राप्त करें
       const firebaseUid = req.user?.firebaseUid;
       if (!firebaseUid) {
         return res.status(401).json({ error: 'Unauthorized: User not authenticated.' });
       }
 
-      const [dbUser] = await db.select().from(users).where(eq(users.firebaseUid, firebaseUid));
-      if (!dbUser) {
-        return res.status(404).json({ error: 'User not found.' });
-      }
-
-      const [sellerProfile] = await db.select().from(sellersPgTable).where(eq(sellersPgTable.userId, dbUser.id));
-
+      const [sellerProfile] = await db
+        .select()
+        .from(sellersPgTable)
+        .where(eq(sellersPgTable.firebaseUid, firebaseUid));
+        
       if (!sellerProfile) {
         return res.status(404).json({ error: 'Seller profile not found.' });
       }
@@ -206,7 +200,7 @@ sellerRouter.post(
 );
 
 
-sellerRouter.post( // ✅ यहाँ `sellerRouter` का उपयोग करें
+sellerRouter.post(
   '/products',
   requireSellerAuth,
   upload.single('image'),
@@ -217,15 +211,15 @@ sellerRouter.post( // ✅ यहाँ `sellerRouter` का उपयोग क
         return res.status(401).json({ error: 'Unauthorized: User not authenticated.' });
       }
 
-      const sellerProfile = await db
+      const [sellerProfile] = await db
         .select()
-        .from(sellersPgTable) // ✅ यहाँ sellersPgTable का उपयोग करें
+        .from(sellersPgTable)
         .where(eq(sellersPgTable.firebaseUid, firebaseUid));
 
-      if (!sellerProfile || sellerProfile.length === 0) {
+      if (!sellerProfile) {
         return res.status(404).json({ error: 'Seller profile not found. Please complete your seller registration.' });
       }
-      const sellerId = sellerProfile[0].id;
+      const sellerId = sellerProfile.id;
 
       const { name, description, price, categoryId, stock } = req.body;
       const file = req.file;
@@ -283,24 +277,18 @@ sellerRouter.get('/orders', requireSellerAuth, async (req: AuthenticatedRequest,
     const sellerId = sellerProfile.id;
     console.log('✅ /sellers/orders: Received request for sellerId:', sellerId);
 
-    // ✅ यहाँ Drizzle के join का उपयोग करके सही क्वेरी
-    const sellerOrders = await db
-      .selectDistinct({ order: orders })
-      .from(orders)
-      .innerJoin(orderItems, eq(orders.id, orderItems.orderId))
-      .where(eq(orderItems.sellerId, sellerId))
-      .orderBy(desc(orders.createdAt));
-
-    // परिणाम से केवल ऑर्डर ऑब्जेक्ट निकालें
-    const ordersWithItems = await db.query.orders.findMany({
-      where: (order, { inArray }) => inArray(order.id, sellerOrders.map(o => o.order.id)),
+    // ✅ यह क्वेरी `join` का उपयोग करती है और सिंटैक्स एरर को हल करती है
+    const sellerOrders = await db.query.orders.findMany({
       with: {
-        items: true,
+        orderItems: {
+          where: eq(orderItems.sellerId, sellerId),
+        },
       },
+      orderBy: [desc(orders.createdAt)],
     });
 
-    console.log('✅ /sellers/orders: Orders fetched successfully. Count:', ordersWithItems.length);
-    return res.status(200).json(ordersWithItems);
+    console.log('✅ /sellers/orders: Orders fetched successfully. Count:', sellerOrders.length);
+    return res.status(200).json(sellerOrders);
   } catch (error: any) {
     console.error('❌ Error in GET /api/sellers/orders:', error);
     console.error(error); 
