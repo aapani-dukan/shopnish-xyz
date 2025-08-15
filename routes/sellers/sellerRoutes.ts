@@ -24,8 +24,7 @@ const upload = multer({ dest: 'uploads/' });
 
 
 //✅ GET /api/sellers/me
- * Authenticated route to get the current seller profile
- */
+ 
 sellerRouter.get('/me', requireSellerAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const firebaseUid = req.user?.firebaseUid;
@@ -58,9 +57,9 @@ sellerRouter.get('/me', requireSellerAuth, async (req: AuthenticatedRequest, res
   }
 });
 
-/**
- * ✅ POST /api/sellers/apply (Apply as a seller)
- */
+
+ // ✅ POST /api/sellers/apply (Apply as a seller)
+ 
 sellerRouter.post("/apply", verifyToken, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     console.log('Received seller apply data:', req.body);
