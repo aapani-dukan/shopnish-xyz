@@ -10,7 +10,7 @@ import {
   categories, 
   products,
   orders,
-  ordersToProducts
+  orderItems
 } from '../../shared/backend/schema.ts';
 import { requireSellerAuth } from '../../server/middleware/authMiddleware.ts';
 import { AuthenticatedRequest, verifyToken } from '../../server/middleware/verifyToken.ts';
@@ -164,7 +164,7 @@ sellerRouter.get('/orders', requireSellerAuth, async (req: AuthenticatedRequest,
     console.log('✅ /sellers/orders: Received request for sellerId:', sellerId);
 
     const sellerOrders = await db.query.orders.findMany({
-      where: (order, { inArray }) => inArray(order.id, db.select({ orderId: ordersToProducts.orderId }).from(ordersToProducts).where(eq(ordersToProducts.sellerId, sellerId))),
+      where: (order, { inArray }) => inArray(order.id, db.select({ orderId: orderItems.orderId }).from(ordersToProducts).where(eq(ordersToProducts.sellerId, sellerId))),
       orderBy: [desc(orders.createdAt)],
       with: {
         items: true,
