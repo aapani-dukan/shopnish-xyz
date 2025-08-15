@@ -14,7 +14,7 @@ import {
 } from '../../shared/backend/schema.ts';
 import { requireSellerAuth } from '../../server/middleware/authMiddleware.ts';
 import { AuthenticatedRequest, verifyToken } from '../../server/middleware/verifyToken.ts';
-import { eq, desc } from 'drizzle-orm';
+import { eq, desc, inArray } from 'drizzle-orm';
 import multer from 'multer';
 import { uploadImage } from '../../server/cloudStorage.ts'; 
 
@@ -29,19 +29,10 @@ sellerRouter.get('/me', requireSellerAuth, async (req: AuthenticatedRequest, res
       return res.status(401).json({ error: 'Unauthorized: Missing user UUID' });
     }
 
-    const [dbUser] = await db
-      .select({ id: users.id })
-      .from(users)
-      .where(eq(users.firebaseUid, firebaseUid));
-
-    if (!dbUser) {
-      return res.status(404).json({ error: 'User not found.' });
-    }
-
     const [seller] = await db
       .select()
       .from(sellersPgTable)
-      .where(eq(sellersPgTable.userId, dbUser.id));
+      .where(eq(sellersPgTable.firebaseUid, firebaseUid));
 
     if (!seller) {
       return res.status(404).json({ message: 'Seller profile not found.' });
@@ -55,7 +46,7 @@ sellerRouter.get('/me', requireSellerAuth, async (req: AuthenticatedRequest, res
 });
 
 
- // ✅ POST /api/sellers/apply (Apply as a seller)
+// ✅ POST /api/sellers/apply (Apply as a seller)
 sellerRouter.post("/apply", verifyToken, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     console.log('Received seller apply data:', req.body);
@@ -275,22 +266,18 @@ sellerRouter.get('/orders', requireSellerAuth, async (req: AuthenticatedRequest,
     const sellerId = sellerProfile.id;
     console.log('✅ /sellers/orders: Received request for sellerId:', sellerId);
 
-    // ✅ यह क्वेरी `join` का उपयोग करती है और सिंटैक्स एरर को हल करती है
+    // ✅ यह क्वेरी `join` का उपयोग करके सही सिंटैक्स के साथ काम करती है
     const ordersWithItems = await db.query.orders.findMany({
       with: {
-        orderItems: {
-          with: {
-            product: {
-              columns: {}, // Don't fetch all product columns, just enough to join
-              with: {
-                seller: true // Find the seller for each product
-              },
-            },
-          },
-        },
+        orderItems: true,
       },
-      where: (orders, { eq, and }) =>
-        orders.orderItems.some((item) => eq(item.sellerId, sellerId)), // This syntax is incorrect for Drizzle ORM
+      where: (orders, { inArray }) =>
+        inArray(orders.id,
+          db
+            .select({ orderId: orderItems.orderId })
+            .from(orderItems)
+            .where(eq(orderItems.sellerId, sellerId))
+        ),
       orderBy: [desc(orders.createdAt)],
     });
 
