@@ -1,6 +1,8 @@
+// client/src/pages/checkout.tsx
+
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useLocation } from "wouter";
+import { useNavigate } from "react-router-dom"; // ✅ Changed from wouter's useLocation
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -10,6 +12,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { ShoppingCart, MapPin, CreditCard, Check } from "lucide-react";
+import { Link } from "react-router-dom"; // ✅ Import Link to fix navigation
 
 interface CartItem {
   id: number;
@@ -36,10 +39,10 @@ interface DeliveryAddress {
 }
 
 export default function Checkout() {
-  const [, navigate] = useLocation();
+  const navigate = useNavigate(); // ✅ Changed from useLocation()
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  
+
   const [currentStep, setCurrentStep] = useState(1);
   const [deliveryAddress, setDeliveryAddress] = useState<DeliveryAddress>({
     fullName: "",
@@ -55,11 +58,10 @@ export default function Checkout() {
   // Get cart items
   const { data: cartItems = [], isLoading } = useQuery<CartItem[]>({
     queryKey: ["/api/cart"],
-    queryParams: { sessionId: "guest-session" }
   });
 
   // Calculate totals
-  const subtotal = cartItems.reduce((sum, item) => 
+  const subtotal = cartItems.reduce((sum, item) =>
     sum + (parseFloat(item.product.price) * item.quantity), 0
   );
   const deliveryCharge = subtotal >= 500 ? 0 : 25;
@@ -75,10 +77,10 @@ export default function Checkout() {
         title: "Order Placed Successfully!",
         description: `Order #${data.orderNumber} has been confirmed`,
       });
-      
+
       // Clear cart
       queryClient.invalidateQueries({ queryKey: ["/api/cart"] });
-      
+
       // Navigate to order confirmation
       navigate(`/order-confirmation/${data.id}`);
     },
@@ -136,6 +138,7 @@ export default function Checkout() {
     );
   }
 
+  // ✅ Here is the core fix: Use Link component from react-router-dom
   if (cartItems.length === 0) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -144,7 +147,9 @@ export default function Checkout() {
             <ShoppingCart className="mx-auto h-12 w-12 text-gray-400 mb-4" />
             <h3 className="text-lg font-medium mb-2">Your cart is empty</h3>
             <p className="text-gray-600 mb-4">Add some items to proceed with checkout</p>
-            <Button onClick={() => navigate("/")}>Continue Shopping</Button>
+            <Link to="/"> {/* ✅ Fixed: Use <Link> from react-router-dom */}
+              <Button>Continue Shopping</Button>
+            </Link>
           </CardContent>
         </Card>
       </div>
@@ -182,7 +187,7 @@ export default function Checkout() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Main Content */}
           <div className="lg:col-span-2 space-y-6">
-            
+
             {/* Step 1: Cart Review */}
             {currentStep === 1 && (
               <Card>
@@ -341,12 +346,12 @@ export default function Checkout() {
                       </Label>
                     </div>
                   </RadioGroup>
-                  
+
                   <div className="flex space-x-4 mt-6">
                     <Button variant="outline" onClick={() => setCurrentStep(2)}>
                       Back to Address
                     </Button>
-                    <Button 
+                    <Button
                       onClick={handlePlaceOrder}
                       disabled={createOrderMutation.isPending}
                       className="flex-1"
@@ -395,4 +400,4 @@ export default function Checkout() {
       </div>
     </div>
   );
-}
+                      }
