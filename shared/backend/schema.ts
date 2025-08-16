@@ -258,9 +258,16 @@ export const reviews = pgTable("reviews", {
 });
 
 // --- Drizzle ORM Relations ---
+
+// ✅ Corrected and complete Drizzle ORM relations code
+
 export const usersRelations = relations(users, ({ one, many }) => ({
-  sellers: one(sellersPgTable),
-  deliveryBoys: one(deliveryBoys),
+  // ✅ sellers relation को usersRelations में जोड़ा गया
+  seller: one(sellersPgTable, {
+    fields: [users.id],
+    references: [sellersPgTable.userId],
+  }),
+  deliveryBoy: one(deliveryBoys),
   orders: many(orders),
   reviews: many(reviews),
   serviceProviders: many(serviceProviders),
@@ -317,7 +324,6 @@ export const deliveryBoysRelations = relations(deliveryBoys, ({ one, many }) => 
   orders: many(orders),
 }));
 
-// ✅ यहाँ cartItems और products के बीच संबंध (relation) परिभाषित करें
 export const cartItemsRelations = relations(cartItems, ({ one }) => ({
   user: one(users, {
     fields: [cartItems.userId],
@@ -333,6 +339,11 @@ export const ordersRelations = relations(orders, ({ many, one }) => ({
   customer: one(users, {
     fields: [orders.customerId],
     references: [users.id],
+  }),
+  // ✅ seller रिलेशन को ordersRelations में जोड़ा गया
+  seller: one(sellersPgTable, {
+    fields: [orders.sellerId],
+    references: [sellersPgTable.id],
   }),
   deliveryBoy: one(deliveryBoys, {
     fields: [orders.deliveryBoyId],
@@ -430,6 +441,9 @@ export const reviewsRelations = relations(reviews, ({ one }) => ({
     references: [orders.id],
   }),
 }));
+
+// --- Zod Schemas for Validation
+
 
 // --- Zod Schemas for Validation ---
 export const insertUserSchema = createInsertSchema(users).omit({
