@@ -1,10 +1,30 @@
-// Client/src/components/cart-modal.tsx
+// client/src/components/cart-modal.tsx
 
 import { X, Plus, Minus, Trash2, ShoppingBag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { useCartStore } from "@/lib/store";
-import { Link } from "react-router-dom"; // ✅ wouter से react-router-dom में बदलें
+import { Link } from "react-router-dom";
+import { useQuery, useQueryClient } from "@tanstack/react-query"; // ✅ useQuery और useQueryClient जोड़ा गया
+import { apiRequest } from "@/lib/queryClient"; // ✅ apiRequest जोड़ा गया
+import { useAuth } from "@/hooks/useAuth"; // ✅ useAuth जोड़ा गया
+import { useToast } from "@/hooks/use-toast"; // ✅ useToast जोड़ा गया
+
+// ✅ CartItem Interface
+interface CartItem {
+  id: number;
+  quantity: number;
+  product: {
+    id: number;
+    name: string;
+    price: string;
+    image: string;
+  };
+}
+
+interface CartResponse {
+  message: string;
+  items: CartItem[];
+}
 
 interface CartModalProps {
   isOpen: boolean;
@@ -12,9 +32,89 @@ interface CartModalProps {
 }
 
 export default function CartModal({ isOpen, onClose }: CartModalProps) {
-  const { items, updateQuantity, removeItem, getTotalPrice, clearCart } = useCartStore();
+  const { isAuthenticated } = useAuth();
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
 
-  const total = getTotalPrice();
+  // ✅ डेटाबेस से कार्ट आइटम प्राप्त करने के लिए useQuery का उपयोग करें
+  const { data, isLoading, error } = useQuery<CartResponse>({
+    queryKey: ["/api/cart"],
+    queryFn: () => apiRequest("GET", "/api/cart"),
+    enabled: isAuthenticated, // ✅ केवल तभी क्वेरी चलाएं जब उपयोगकर्ता प्रमाणित हो
+  });
+
+  // ✅ अब आइटम्स डेटाबेस से आ रहे हैं
+  const items = data?.items || [];
+  const total = items.reduce((sum, item) => sum + (parseFloat(item.product.price) * item.quantity), 0);
+
+  // ✅ कार्ट आइटम की मात्रा अपडेट करने के लिए mutation
+  const handleUpdateQuantity = async (itemId: number, newQuantity: number) => {
+    try {
+      if (newQuantity <= 0) {
+        // अगर मात्रा 0 या उससे कम है, तो आइटम हटा दें
+        await apiRequest("DELETE", `/api/cart/${itemId}`);
+      } else {
+        await apiRequest("PUT", `/api/cart/${itemId}`, { quantity: newQuantity });
+      }
+      queryClient.invalidateQueries({ queryKey: ["/api/cart"] });
+    } catch (error) {
+      console.error("Failed to update cart item:", error);
+      toast({
+        title: "Error updating cart",
+        description: "Failed to update item quantity. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // ✅ कार्ट आइटम हटाने के लिए mutation
+  const handleRemoveItem = async (itemId: number) => {
+    try {
+      await apiRequest("DELETE", `/api/cart/${itemId}`);
+      queryClient.invalidateQueries({ queryKey: ["/api/cart"] });
+      toast({
+        title: "Item removed",
+        description: "The item has been successfully removed from your cart.",
+      });
+    } catch (error) {
+      console.error("Failed to remove item:", error);
+      toast({
+        title: "Error removing item",
+        description: "Failed to remove item. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <Sheet open={isOpen} onOpenChange={onClose}>
+        <SheetContent className="w-full max-w-md">
+          <SheetHeader>
+            <SheetTitle>Shopping Cart</SheetTitle>
+          </SheetHeader>
+          <div className="flex justify-center items-center h-96">
+            Loading cart...
+          </div>
+        </SheetContent>
+      </Sheet>
+    );
+  }
+
+  if (error) {
+    return (
+      <Sheet open={isOpen} onOpenChange={onClose}>
+        <SheetContent className="w-full max-w-md">
+          <SheetHeader>
+            <SheetTitle>Shopping Cart</SheetTitle>
+          </SheetHeader>
+          <div className="flex justify-center items-center h-96 text-red-500">
+            Error loading cart.
+          </div>
+        </SheetContent>
+      </Sheet>
+    );
+  }
 
   if (items.length === 0) {
     return (
@@ -48,24 +148,24 @@ export default function CartModal({ isOpen, onClose }: CartModalProps) {
           {items.map((item) => (
             <div key={item.id} className="flex items-center space-x-4 p-4 border rounded-lg">
               <img
-                src={item.image}
-                alt={item.name}
+                src={item.product.image}
+                alt={item.product.name}
                 className="w-16 h-16 object-cover rounded-lg"
               />
               
               <div className="flex-1 min-w-0">
                 <h4 className="font-medium text-sm truncate">
-                  {item.name}
+                  {item.product.name}
                 </h4>
                 <p className="text-gray-500 text-sm">
-                  ${item.price}
+                  ${item.product.price}
                 </p>
                 
                 <div className="flex items-center mt-2 space-x-2">
                   <Button
                     size="sm"
                     variant="outline"
-                    onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                    onClick={() => handleUpdateQuantity(item.id, item.quantity - 1)}
                     className="h-6 w-6 p-0"
                   >
                     <Minus className="h-3 w-3" />
@@ -78,7 +178,7 @@ export default function CartModal({ isOpen, onClose }: CartModalProps) {
                   <Button
                     size="sm"
                     variant="outline"
-                    onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                    onClick={() => handleUpdateQuantity(item.id, item.quantity + 1)}
                     className="h-6 w-6 p-0"
                   >
                     <Plus className="h-3 w-3" />
@@ -89,7 +189,7 @@ export default function CartModal({ isOpen, onClose }: CartModalProps) {
               <Button
                 size="sm"
                 variant="ghost"
-                onClick={() => removeItem(item.id)}
+                onClick={() => handleRemoveItem(item.id)}
                 className="text-red-500 hover:text-red-700 p-1"
               >
                 <Trash2 className="h-4 w-4" />
@@ -108,7 +208,6 @@ export default function CartModal({ isOpen, onClose }: CartModalProps) {
           </div>
           
           <div className="space-y-2">
-            {/* ✅ href को to में बदलें */}
             <Link to="/checkout" onClick={onClose}>
               <Button 
                 className="w-full bg-primary hover:bg-primary/90 text-white"
@@ -117,7 +216,6 @@ export default function CartModal({ isOpen, onClose }: CartModalProps) {
               </Button>
             </Link>
             
-            {/* ✅ href को to में बदलें */}
             <Link to="/cart" onClick={onClose}>
               <Button 
                 variant="outline" 
