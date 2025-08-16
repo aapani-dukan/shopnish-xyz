@@ -262,7 +262,7 @@ export const reviews = pgTable("reviews", {
 // ✅ corrected relations code
 
 export const usersRelations = relations(users, ({ one, many }) => ({
-  // ✅ इस लाइन को सही किया गया है
+  // ✅ यह लाइन सही है, बशर्ते sellersPgTable सही ढंग से इम्पोर्ट हो
   seller: one(sellersPgTable, {
     fields: [users.id],
     references: [sellersPgTable.userId],
