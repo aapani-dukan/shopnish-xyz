@@ -1,5 +1,9 @@
+// Store.ts
+
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { apiRequest } from '@/lib/queryClient';
+import { useQueryClient } from '@tanstack/react-query'; // `useQueryClient` को इंपोर्ट करें
 
 interface CartItem {
   id: number;
@@ -13,13 +17,26 @@ interface CartItem {
 interface CartStore {
   items: CartItem[];
   sessionId: string;
-  addItem: (item: Omit<CartItem, 'id'>) => void;
-  removeItem: (id: number) => void;
-  updateQuantity: (id: number, quantity: number) => void;
-  clearCart: () => void;
+  addItem: (item: Omit<CartItem, 'id'>) => Promise<void>;
+  removeItem: (id: number) => Promise<void>;
+  updateQuantity: (id: number, quantity: number) => Promise<void>;
+  setItems: (items: CartItem[]) => void;
+  clearCart: () => Promise<void>;
   getTotalItems: () => number;
   getTotalPrice: () => number;
 }
+
+// `useQueryClient` हुक को सीधे कॉल नहीं कर सकते,
+// इसलिए हम इसे फ़ंक्शन के अंदर लेंगे।
+const getQueryClient = () => {
+  try {
+    // यह हुक केवल कंपोनेंट के अंदर काम करता है,
+    // इसलिए हम इसे एक फ़ंक्शन में रैप कर रहे हैं
+    return useQueryClient();
+  } catch (e) {
+    return null; // यदि कंपोनेंट के बाहर उपयोग हो तो null लौटाएँ
+  }
+};
 
 export const useCartStore = create<CartStore>()(
   persist(
@@ -27,44 +44,66 @@ export const useCartStore = create<CartStore>()(
       items: [],
       sessionId: Math.random().toString(36).substring(2, 15),
 
-      addItem: (newItem) => {
-        const items = get().items;
-        const existingItem = items.find(item => item.productId === newItem.productId);
+      addItem: async (newItem) => {
+        try {
+          const queryClient = getQueryClient();
+          if (!queryClient) return;
 
-        if (existingItem) {
-          set({
-            items: items.map(item =>
-              item.productId === newItem.productId
-                ? { ...item, quantity: item.quantity + newItem.quantity }
-                : item
-            )
+          await apiRequest("POST", "/api/cart/add", {
+            productId: newItem.productId,
+            quantity: newItem.quantity || 1, // `quantity` को सुनिश्चित करें
           });
-        } else {
-          set({
-            items: [...items, { ...newItem, id: Date.now() }]
-          });
+
+          // TanStack Query को बताएं कि डेटा पुराना हो गया है
+          queryClient.invalidateQueries({ queryKey: ["/api/cart"] });
+        } catch (error) {
+          console.error("Failed to add item via API:", error);
         }
       },
 
-      removeItem: (id) => {
-        set({ items: get().items.filter(item => item.id !== id) });
+      removeItem: async (id) => {
+        try {
+          const queryClient = getQueryClient();
+          if (!queryClient) return;
+          
+          await apiRequest("DELETE", `/api/cart/${id}`);
+          queryClient.invalidateQueries({ queryKey: ["/api/cart"] });
+        } catch (error) {
+          console.error("Failed to remove item via API:", error);
+        }
       },
 
-      updateQuantity: (id, quantity) => {
+      updateQuantity: async (id, quantity) => {
         if (quantity <= 0) {
           get().removeItem(id);
           return;
         }
 
-        set({
-          items: get().items.map(item =>
-            item.id === id ? { ...item, quantity } : item
-          )
-        });
+        try {
+          const queryClient = getQueryClient();
+          if (!queryClient) return;
+          
+          await apiRequest("PUT", `/api/cart/${id}`, { quantity });
+          queryClient.invalidateQueries({ queryKey: ["/api/cart"] });
+        } catch (error) {
+          console.error("Failed to update quantity via API:", error);
+        }
       },
 
-      clearCart: () => {
-        set({ items: [] });
+      setItems: (newItems) => {
+        set({ items: newItems });
+      },
+
+      clearCart: async () => {
+        try {
+          const queryClient = getQueryClient();
+          if (!queryClient) return;
+
+          await apiRequest("DELETE", "/api/cart/clear");
+          queryClient.invalidateQueries({ queryKey: ["/api/cart"] });
+        } catch (error) {
+          console.error("Failed to clear cart via API:", error);
+        }
       },
 
       getTotalItems: () => {
@@ -80,16 +119,3 @@ export const useCartStore = create<CartStore>()(
     }
   )
 );
-
-// ✅ Seller Registration Store — Add this below cart store
-interface SellerRegistrationStore {
-  isOpen: boolean;
-  open: () => void;
-  close: () => void;
-}
-
-export const useSellerRegistrationStore = create<SellerRegistrationStore>((set) => ({
-  isOpen: false,
-  open: () => set({ isOpen: true }),
-  close: () => set({ isOpen: false }),
-}));
