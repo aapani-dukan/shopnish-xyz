@@ -67,6 +67,7 @@ cartRouter.get('/', requireAuth, async (req: AuthenticatedRequest, res: Response
 // ✅ POST /api/cart/add - Add item to cart
 cartRouter.post('/add', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
+    console.log("🚀 [API] Received POST request to add item to cart.");
     const firebaseUid = req.user?.firebaseUid;
     const { productId, quantity } = req.body;
     
