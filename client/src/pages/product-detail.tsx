@@ -105,7 +105,8 @@ export default function ProductDetail() {
   // ✅ `handleAddToCart` फ़ंक्शन को अपडेट किया गया
   const handleAddToCart = () => {
   // ✅ यहाँ लॉग जोड़ें
-  console.log("Adding item to cart..."); 
+  console.log("Button clicked, attempting to add item to cart."); 
+    
   
   if (!product) {
     console.error("Product data is missing. Cannot add to cart.");
