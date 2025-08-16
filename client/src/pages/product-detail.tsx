@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useParams } from "wouter";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"; // ✅ useMutation और useQueryClient जोड़ा गया
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Star, ShoppingCart, Heart, Share2, Plus, Minus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -11,11 +11,10 @@ import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient"; // ✅ apiRequest जोड़ा गया
+import { apiRequest } from "@/lib/queryClient";
 import Header from "@/components/header";
 import Footer from "@/components/footer";
 
-// ✅ Product इंटरफ़ेस में categoryName जोड़ा गया है
 interface Product {
   id: number;
   name: string;
@@ -53,7 +52,7 @@ export default function ProductDetail() {
   const [quantity, setQuantity] = useState(1);
   const [selectedImage, setSelectedImage] = useState(0);
   const { toast } = useToast();
-  const queryClient = useQueryClient(); // ✅ useQueryClient जोड़ा गया
+  const queryClient = useQueryClient();
 
   const { data: categories = [] } = useQuery<Category[]>({
     queryKey: ['/api/categories'],
@@ -82,6 +81,7 @@ export default function ProductDetail() {
   // ✅ Cart mutation
   const addToCartMutation = useMutation({
     mutationFn: async ({ productId, quantity }: { productId: number; quantity: number }) => {
+      // ✅ यहां apiRequest को सीधे कॉल करें
       return await apiRequest("POST", "/api/cart/add", { productId, quantity });
     },
     onSuccess: () => {
@@ -104,22 +104,18 @@ export default function ProductDetail() {
 
   // ✅ `handleAddToCart` फ़ंक्शन को अपडेट किया गया
   const handleAddToCart = () => {
-  // ✅ यहाँ लॉग जोड़ें
-  console.log("Button clicked, attempting to add item to cart."); 
+    console.log("Adding item to cart..."); 
     
+    if (!product) {
+      console.error("Product data is missing. Cannot add to cart.");
+      return;
+    }
   
-  if (!product) {
-    console.error("Product data is missing. Cannot add to cart.");
-    // ✅ यदि प्रोडक्ट उपलब्ध नहीं है तो तुरंत बाहर निकलें
-    return;
-  }
-
-  // ✅ mutate फ़ंक्शन को कॉल करें
-  addToCartMutation.mutate({
-    productId: product.id,
-    quantity,
-  });
-};
+    addToCartMutation.mutate({
+      productId: product.id,
+      quantity,
+    });
+  };
 
   const renderStars = (rating: number) => {
     return (
@@ -299,7 +295,7 @@ export default function ProductDetail() {
             <div className="space-y-4">
               <Button
                 onClick={handleAddToCart}
-                disabled={product.stock === 0 || addToCartMutation.isPending} // ✅ बटन को डिसेबल किया गया
+                disabled={product.stock === 0 || addToCartMutation.isPending}
                 size="lg"
                 className="w-full bg-primary hover:bg-primary/90 text-white"
               >
