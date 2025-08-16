@@ -164,7 +164,6 @@ export default function ProductDetail() {
         </div>
       </div>
     );
-  );
   }
 
   const images = product.images || [product.image];
