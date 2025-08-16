@@ -281,10 +281,7 @@ sellerRouter.get('/orders', requireSellerAuth, async (req: AuthenticatedRequest,
         return res.status(401).json({ error: 'Unauthorized: User not authenticated.' });
     }
 
-    const [dbUser] = await db
-        .select()
-        .from(users)
-        .where(eq(users.firebaseUid, firebaseUid));
+    const [dbUser] = await db.select().from(users).where(eq(users.firebaseUid, firebaseUid));
 
     if (!dbUser) {
         return res.status(404).json({ error: 'User not found.' });
@@ -298,23 +295,44 @@ sellerRouter.get('/orders', requireSellerAuth, async (req: AuthenticatedRequest,
     if (!sellerProfile) {
         return res.status(404).json({ error: 'Seller profile not found.' });
     }
+
     const sellerId = sellerProfile.id;
     console.log('✅ /sellers/orders: Received request for sellerId:', sellerId);
 
-    const ordersWithItems = await db.query.orders.findMany({
-      with: {
-        orderItems: true,
-      },
-      where: (orders, { inArray }) =>
-        inArray(orders.id,
-          db
-            .select({ orderId: orderItems.orderId })
-            .from(orderItems)
-            .where(eq(orderItems.sellerId, sellerId))
-        ),
-      orderBy: [desc(orders.createdAt)],
+    // ✅ Drizzle का उपयोग करके सही और कुशल क्वेरी
+    const orderItemsForSeller = await db.query.orderItems.findMany({
+        where: eq(orderItems.sellerId, sellerId),
+        with: {
+            order: {
+                with: {
+                    customer: true,
+                    deliveryBoy: true,
+                    tracking: true,
+                }
+            },
+            product: true,
+        },
+        orderBy: [desc(orderItems.createdAt)],
     });
 
+    // ✅ परिणामों को ऑर्डर आईडी द्वारा समूहित (group) करें
+    const groupedOrders: any = {};
+    orderItemsForSeller.forEach(item => {
+      const orderId = item.order.id;
+      if (!groupedOrders[orderId]) {
+        groupedOrders[orderId] = {
+          ...item.order,
+          items: [],
+        };
+      }
+      groupedOrders[orderId].items.push({
+        ...item,
+        order: undefined, // orderItem से order डेटा को हटा दें
+      });
+    });
+
+    const ordersWithItems = Object.values(groupedOrders);
+    
     console.log('✅ /sellers/orders: Orders fetched successfully. Count:', ordersWithItems.length);
     return res.status(200).json(ordersWithItems);
   } catch (error: any) {
@@ -325,4 +343,4 @@ sellerRouter.get('/orders', requireSellerAuth, async (req: AuthenticatedRequest,
 });
 
 export default sellerRouter;
-          
+
