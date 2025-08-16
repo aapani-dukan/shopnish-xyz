@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useNavigate } from "react-router-dom"; // ✅ Changed from wouter's useLocation
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -12,7 +12,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { ShoppingCart, MapPin, CreditCard, Check } from "lucide-react";
-import { Link } from "react-router-dom"; // ✅ Import Link to fix navigation
+import { Link } from "react-router-dom";
 
 interface CartItem {
   id: number;
@@ -29,6 +29,12 @@ interface CartItem {
   };
 }
 
+// ✅ बैकएंड से अपेक्षित डेटा संरचना को अपडेट करें
+interface ApiResponse {
+  message: string;
+  items: CartItem[];
+}
+
 interface DeliveryAddress {
   fullName: string;
   phone: string;
@@ -39,7 +45,7 @@ interface DeliveryAddress {
 }
 
 export default function Checkout() {
-  const navigate = useNavigate(); // ✅ Changed from useLocation()
+  const navigate = useNavigate();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -55,11 +61,15 @@ export default function Checkout() {
   const [paymentMethod, setPaymentMethod] = useState("cod");
   const [deliveryInstructions, setDeliveryInstructions] = useState("");
 
-  // Get cart items
-  const { data: cartItems = [], isLoading } = useQuery<CartItem[]>({
+  // ✅ Get cart items using the new API response structure
+  const { data, isLoading } = useQuery<ApiResponse>({
     queryKey: ["/api/cart"],
+    queryFn: () => apiRequest("GET", "/api/cart"),
   });
-
+  
+  // ✅ कार्ट आइटम्स को डेटा से निकालें
+  const cartItems = data?.items || [];
+  
   // Calculate totals
   const subtotal = cartItems.reduce((sum, item) =>
     sum + (parseFloat(item.product.price) * item.quantity), 0
@@ -77,11 +87,7 @@ export default function Checkout() {
         title: "Order Placed Successfully!",
         description: `Order #${data.orderNumber} has been confirmed`,
       });
-
-      // Clear cart
       queryClient.invalidateQueries({ queryKey: ["/api/cart"] });
-
-      // Navigate to order confirmation
       navigate(`/order-confirmation/${data.id}`);
     },
     onError: (error) => {
@@ -107,7 +113,7 @@ export default function Checkout() {
     const orderData = {
       order: {
         orderNumber,
-        customerId: null, // Guest order
+        customerId: null,
         subtotal: subtotal.toString(),
         deliveryCharge: deliveryCharge.toString(),
         total: total.toString(),
@@ -116,11 +122,11 @@ export default function Checkout() {
         status: "placed",
         deliveryAddress,
         deliveryInstructions,
-        estimatedDeliveryTime: new Date(Date.now() + 60 * 60 * 1000), // 1 hour from now
+        estimatedDeliveryTime: new Date(Date.now() + 60 * 60 * 1000),
       },
       items: cartItems.map(item => ({
         productId: item.productId,
-        sellerId: 1, // Kumar General Store
+        sellerId: 1,
         quantity: item.quantity,
         unitPrice: item.product.price,
         totalPrice: (parseFloat(item.product.price) * item.quantity).toString(),
@@ -138,7 +144,7 @@ export default function Checkout() {
     );
   }
 
-  // ✅ Here is the core fix: Use Link component from react-router-dom
+  // ✅ `cartItems` अब एक एरे है, इसलिए `length` काम करेगा।
   if (cartItems.length === 0) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -147,7 +153,7 @@ export default function Checkout() {
             <ShoppingCart className="mx-auto h-12 w-12 text-gray-400 mb-4" />
             <h3 className="text-lg font-medium mb-2">Your cart is empty</h3>
             <p className="text-gray-600 mb-4">Add some items to proceed with checkout</p>
-            <Link to="/"> {/* ✅ Fixed: Use <Link> from react-router-dom */}
+            <Link to="/">
               <Button>Continue Shopping</Button>
             </Link>
           </CardContent>
@@ -400,4 +406,4 @@ export default function Checkout() {
       </div>
     </div>
   );
-                      }
+}
