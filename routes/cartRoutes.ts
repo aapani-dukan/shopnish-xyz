@@ -64,11 +64,6 @@ cartRouter.get('/', requireAuth, async (req: AuthenticatedRequest, res: Response
   }
 });
 
----
-
-### **सही किया गया POST राउट**
-
-```typescript
 // ✅ POST /api/cart/add - Add item to cart
 cartRouter.post('/add', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
