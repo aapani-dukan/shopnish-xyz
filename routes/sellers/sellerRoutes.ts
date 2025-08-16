@@ -22,6 +22,7 @@ const sellerRouter = Router();
 const upload = multer({ dest: 'uploads/' });
 
 // ✅ GET /api/sellers/me
+// इस राउट को ठीक किया गया है
 sellerRouter.get('/me', requireSellerAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const firebaseUid = req.user?.firebaseUid;
@@ -29,10 +30,19 @@ sellerRouter.get('/me', requireSellerAuth, async (req: AuthenticatedRequest, res
       return res.status(401).json({ error: 'Unauthorized: Missing user UUID' });
     }
 
+    const [dbUser] = await db
+      .select({ id: users.id })
+      .from(users)
+      .where(eq(users.firebaseUid, firebaseUid));
+
+    if (!dbUser) {
+      return res.status(404).json({ error: 'User not found.' });
+    }
+
     const [seller] = await db
       .select()
       .from(sellersPgTable)
-      .where(eq(sellersPgTable.firebaseUid, firebaseUid));
+      .where(eq(sellersPgTable.userId, dbUser.id));
 
     if (!seller) {
       return res.status(404).json({ message: 'Seller profile not found.' });
@@ -149,9 +159,17 @@ sellerRouter.post(
         return res.status(401).json({ error: 'Unauthorized: User not authenticated.' });
       }
       
+      const [dbUser] = await db.select()
+        .from(users)
+        .where(eq(users.firebaseUid, firebaseUid));
+
+      if (!dbUser) {
+        return res.status(404).json({ error: 'User not found.' });
+      }
+
       const [sellerProfile] = await db.select()
         .from(sellersPgTable)
-        .where(eq(sellersPgTable.firebaseUid, firebaseUid));
+        .where(eq(sellersPgTable.userId, dbUser.id));
 
       if (!sellerProfile) {
         return res.status(404).json({ error: 'Seller profile not found.' });
@@ -200,10 +218,18 @@ sellerRouter.post(
         return res.status(401).json({ error: 'Unauthorized: User not authenticated.' });
       }
 
+      const [dbUser] = await db.select()
+        .from(users)
+        .where(eq(users.firebaseUid, firebaseUid));
+        
+      if (!dbUser) {
+        return res.status(404).json({ error: 'User not found.' });
+      }
+      
       const [sellerProfile] = await db
         .select()
         .from(sellersPgTable)
-        .where(eq(sellersPgTable.firebaseUid, firebaseUid));
+        .where(eq(sellersPgTable.userId, dbUser.id));
 
       if (!sellerProfile) {
         return res.status(404).json({ error: 'Seller profile not found. Please complete your seller registration.' });
@@ -255,10 +281,19 @@ sellerRouter.get('/orders', requireSellerAuth, async (req: AuthenticatedRequest,
         return res.status(401).json({ error: 'Unauthorized: User not authenticated.' });
     }
 
+    const [dbUser] = await db
+        .select()
+        .from(users)
+        .where(eq(users.firebaseUid, firebaseUid));
+
+    if (!dbUser) {
+        return res.status(404).json({ error: 'User not found.' });
+    }
+
     const [sellerProfile] = await db
         .select()
         .from(sellersPgTable)
-        .where(eq(sellersPgTable.firebaseUid, firebaseUid));
+        .where(eq(sellersPgTable.userId, dbUser.id));
 
     if (!sellerProfile) {
         return res.status(404).json({ error: 'Seller profile not found.' });
@@ -266,7 +301,6 @@ sellerRouter.get('/orders', requireSellerAuth, async (req: AuthenticatedRequest,
     const sellerId = sellerProfile.id;
     console.log('✅ /sellers/orders: Received request for sellerId:', sellerId);
 
-    // ✅ यह क्वेरी `join` का उपयोग करके सही सिंटैक्स के साथ काम करती है
     const ordersWithItems = await db.query.orders.findMany({
       with: {
         orderItems: true,
@@ -291,3 +325,4 @@ sellerRouter.get('/orders', requireSellerAuth, async (req: AuthenticatedRequest,
 });
 
 export default sellerRouter;
+          
