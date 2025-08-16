@@ -141,18 +141,6 @@ export const cartItems = pgTable("cart_items", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-// ✅ cartItems और products के बीच संबंध (relation) यहाँ परिभाषित करें
-export const cartItemsRelations = relations(cartItems, ({ one }) => ({
-  user: one(users, {
-    fields: [cartItems.userId],
-    references: [users.id],
-  }),
-  product: one(products, {
-    fields: [cartItems.productId],
-    references: [products.id],
-  }),
-}));
-
 export const orders = pgTable("orders", {
   id: serial("id").primaryKey(),
   customerId: integer("customer_id").references(() => users.id),
@@ -329,7 +317,18 @@ export const deliveryBoysRelations = relations(deliveryBoys, ({ one, many }) => 
   orders: many(orders),
 }));
 
-// ✅ यहाँ 'ordersToProducts' के बजाय 'orderItems' का उपयोग किया गया है
+// ✅ यहाँ cartItems और products के बीच संबंध (relation) परिभाषित करें
+export const cartItemsRelations = relations(cartItems, ({ one }) => ({
+  user: one(users, {
+    fields: [cartItems.userId],
+    references: [users.id],
+  }),
+  product: one(products, {
+    fields: [cartItems.productId],
+    references: [products.id],
+  }),
+}));
+
 export const ordersRelations = relations(orders, ({ many, one }) => ({
   customer: one(users, {
     fields: [orders.customerId],
@@ -339,14 +338,13 @@ export const ordersRelations = relations(orders, ({ many, one }) => ({
     fields: [orders.deliveryBoyId],
     references: [deliveryBoys.id],
   }),
-  items: many(orderItems), // ✅ 'orderItems' का उपयोग करें
+  items: many(orderItems),
   tracking: many(orderTracking),
 }));
 
-// ✅ यहाँ भी 'ordersToProducts' के बजाय 'orderItems' का उपयोग किया गया है
 export const orderItemsRelations = relations(orderItems, ({ one }) => ({
   order: one(orders, {
-    fields: [orderItems.orderId], // ✅ 'orderItems' का उपयोग करें
+    fields: [orderItems.orderId],
     references: [orders.id],
   }),
   product: one(products, {
@@ -514,35 +512,6 @@ export const insertOrderTrackingSchema = createInsertSchema(orderTracking).omit(
   id: true,
   createdAt: true,
 });
-// ✅ यहाँ 'ordersToProducts' के बजाय 'orderItems' का उपयोग किया गया है
-export const ordersRelations = relations(orders, ({ many, one }) => ({
-  customer: one(users, {
-    fields: [orders.customerId],
-    references: [users.id],
-  }),
-  deliveryBoy: one(deliveryBoys, {
-    fields: [orders.deliveryBoyId],
-    references: [deliveryBoys.id],
-  }),
-  items: many(orderItems), // ✅ 'orderItems' का उपयोग करें
-  tracking: many(orderTracking),
-}));
-
-// ✅ यहाँ भी 'ordersToProducts' के बजाय 'orderItems' का उपयोग किया गया है
-export const orderItemsRelations = relations(orderItems, ({ one }) => ({
-  order: one(orders, {
-    fields: [orderItems.orderId], // ✅ 'orderItems' का उपयोग करें
-    references: [orders.id],
-  }),
-  product: one(products, {
-    fields: [orderItems.productId],
-    references: [products.id],
-  }),
-  seller: one(sellersPgTable, {
-    fields: [orderItems.sellerId],
-    references: [sellersPgTable.id],
-  }),
-}));
 
 export const insertPromoCodeSchema = createInsertSchema(promoCodes, {
   discountValue: z.string(),
