@@ -1,9 +1,9 @@
-// Store.ts
+// store.ts
 
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { apiRequest } from '@/lib/queryClient';
-import { useQueryClient } from '@tanstack/react-query'; // `useQueryClient` को इंपोर्ट करें
+import { useQueryClient } from '@tanstack/react-query';
 
 interface CartItem {
   id: number;
@@ -26,15 +26,11 @@ interface CartStore {
   getTotalPrice: () => number;
 }
 
-// `useQueryClient` हुक को सीधे कॉल नहीं कर सकते,
-// इसलिए हम इसे फ़ंक्शन के अंदर लेंगे।
 const getQueryClient = () => {
   try {
-    // यह हुक केवल कंपोनेंट के अंदर काम करता है,
-    // इसलिए हम इसे एक फ़ंक्शन में रैप कर रहे हैं
     return useQueryClient();
   } catch (e) {
-    return null; // यदि कंपोनेंट के बाहर उपयोग हो तो null लौटाएँ
+    return null;
   }
 };
 
@@ -51,10 +47,9 @@ export const useCartStore = create<CartStore>()(
 
           await apiRequest("POST", "/api/cart/add", {
             productId: newItem.productId,
-            quantity: newItem.quantity || 1, // `quantity` को सुनिश्चित करें
+            quantity: newItem.quantity || 1,
           });
 
-          // TanStack Query को बताएं कि डेटा पुराना हो गया है
           queryClient.invalidateQueries({ queryKey: ["/api/cart"] });
         } catch (error) {
           console.error("Failed to add item via API:", error);
@@ -119,3 +114,16 @@ export const useCartStore = create<CartStore>()(
     }
   )
 );
+
+// ✅ Seller Registration Store को वापस जोड़ा गया है
+interface SellerRegistrationStore {
+  isOpen: boolean;
+  open: () => void;
+  close: () => void;
+}
+
+export const useSellerRegistrationStore = create<SellerRegistrationStore>((set) => ({
+  isOpen: false,
+  open: () => set({ isOpen: true }),
+  close: () => set({ isOpen: false }),
+}));
