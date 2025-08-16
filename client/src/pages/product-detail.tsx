@@ -1,6 +1,8 @@
+// client/src/pages/ProductDetail.tsx
+
 import { useState } from "react";
 import { useParams } from "wouter";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"; // ✅ useMutation और useQueryClient जोड़ा गया
 import { Star, ShoppingCart, Heart, Share2, Plus, Minus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -8,8 +10,8 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useCartStore } from "@/lib/store";
 import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient"; // ✅ apiRequest जोड़ा गया
 import Header from "@/components/header";
 import Footer from "@/components/footer";
 
@@ -26,7 +28,7 @@ interface Product {
   stock: number;
   rating: string | null;
   reviewCount: number | null;
-  categoryName: string | null; // ✅ नया फ़ील्ड
+  categoryName: string | null;
 }
 
 interface Review {
@@ -50,8 +52,8 @@ export default function ProductDetail() {
   const { id } = useParams<{ id: string }>();
   const [quantity, setQuantity] = useState(1);
   const [selectedImage, setSelectedImage] = useState(0);
-  const addItem = useCartStore(state => state.addItem);
   const { toast } = useToast();
+  const queryClient = useQueryClient(); // ✅ useQueryClient जोड़ा गया
 
   const { data: categories = [] } = useQuery<Category[]>({
     queryKey: ['/api/categories'],
@@ -76,21 +78,36 @@ export default function ProductDetail() {
     },
     enabled: !!id,
   });
+  
+  // ✅ Cart mutation
+  const addToCartMutation = useMutation({
+    mutationFn: async ({ productId, quantity }: { productId: number; quantity: number }) => {
+      return await apiRequest("POST", "/api/cart/add", { productId, quantity });
+    },
+    onSuccess: () => {
+      toast({
+        title: "Added to cart",
+        description: `${quantity} × ${product?.name} added to your cart.`,
+      });
+      // ✅ `api/cart` query को इनवैलिडेट करें ताकि कार्ट रीफ़्रेश हो जाए
+      queryClient.invalidateQueries({ queryKey: ["/api/cart"] });
+    },
+    onError: (error) => {
+      console.error("Error adding to cart:", error);
+      toast({
+        title: "Failed to add to cart",
+        description: "An error occurred while adding the item to your cart.",
+        variant: "destructive",
+      });
+    },
+  });
 
+  // ✅ `handleAddToCart` फ़ंक्शन को अपडेट किया गया
   const handleAddToCart = () => {
     if (!product) return;
-
-    addItem({
+    addToCartMutation.mutate({
       productId: product.id,
-      name: product.name,
-      price: product.price,
-      image: product.image,
       quantity,
-    });
-
-    toast({
-      title: "Added to cart",
-      description: `${quantity} × ${product.name} added to your cart.`,
     });
   };
 
@@ -109,8 +126,8 @@ export default function ProductDetail() {
     );
   };
 
-  const averageRating = reviews.length > 0 
-    ? reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length 
+  const averageRating = reviews.length > 0
+    ? reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length
     : 0;
 
   if (productLoading) {
@@ -147,6 +164,7 @@ export default function ProductDetail() {
         </div>
       </div>
     );
+  );
   }
 
   const images = product.images || [product.image];
@@ -199,7 +217,6 @@ export default function ProductDetail() {
               <h1 className="text-3xl font-bold text-gray-900 mb-2">
                 {product.name}
               </h1>
-              {/* ✅ यहाँ कैटेगरी का नाम जोड़ा गया है */}
               {product.categoryName && (
                 <p className="text-sm text-gray-500">Category: <span className="font-medium">{product.categoryName}</span></p>
               )}
@@ -273,12 +290,16 @@ export default function ProductDetail() {
             <div className="space-y-4">
               <Button
                 onClick={handleAddToCart}
-                disabled={product.stock === 0}
+                disabled={product.stock === 0 || addToCartMutation.isPending} // ✅ बटन को डिसेबल किया गया
                 size="lg"
                 className="w-full bg-primary hover:bg-primary/90 text-white"
               >
-                <ShoppingCart className="mr-2 h-5 w-5" />
-                Add to Cart
+                {addToCartMutation.isPending ? "Adding..." : (
+                  <>
+                    <ShoppingCart className="mr-2 h-5 w-5" />
+                    Add to Cart
+                  </>
+                )}
               </Button>
               
               <div className="flex space-x-4">
