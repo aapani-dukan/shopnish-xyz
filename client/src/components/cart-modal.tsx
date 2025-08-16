@@ -1,8 +1,10 @@
+// Client/src/components/cart-modal.tsx
+
 import { X, Plus, Minus, Trash2, ShoppingBag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { useCartStore } from "@/lib/store";
-import { Link } from "wouter";
+import { Link } from "react-router-dom"; // ✅ wouter से react-router-dom में बदलें
 
 interface CartModalProps {
   isOpen: boolean;
@@ -106,20 +108,20 @@ export default function CartModal({ isOpen, onClose }: CartModalProps) {
           </div>
           
           <div className="space-y-2">
-            <Link href="/checkout">
+            {/* ✅ href को to में बदलें */}
+            <Link to="/checkout" onClick={onClose}>
               <Button 
                 className="w-full bg-primary hover:bg-primary/90 text-white"
-                onClick={onClose}
               >
                 Proceed to Checkout
               </Button>
             </Link>
             
-            <Link href="/cart">
+            {/* ✅ href को to में बदलें */}
+            <Link to="/cart" onClick={onClose}>
               <Button 
                 variant="outline" 
                 className="w-full"
-                onClick={onClose}
               >
                 View Cart
               </Button>
