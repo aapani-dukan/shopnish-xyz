@@ -1,14 +1,14 @@
 //routes/cartRoutes.ts
 
 import { Router, Response } from 'express';
-import { db } from '../db.ts';
+import { db } from '../server/db.ts';
 import {
   users,
   cartItemsPgTable,
   products
-} from '../../shared/backend/schema.ts';
+} from '../shared/backend/schema.ts';
 import { eq } from 'drizzle-orm';
-import { AuthenticatedRequest, requireUserAuth } from '../middleware/authMiddleware.ts';
+import { AuthenticatedRequest, requireUserAuth } from '../server/middleware/authMiddleware.ts';
 
 const cartRouter = Router();
 
