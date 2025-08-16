@@ -4,16 +4,16 @@ import { Router, Response } from 'express';
 import { db } from '../server/db.ts';
 import {
   users,
-  cartItemsPgTable,
+  cartItems,
   products
 } from '../shared/backend/schema.ts';
 import { eq } from 'drizzle-orm';
-import { AuthenticatedRequest, requireUserAuth } from '../server/middleware/authMiddleware.ts';
+import { AuthenticatedRequest, requireAuth } from '../server/middleware/authMiddleware.ts';
 
 const cartRouter = Router();
 
 // ✅ GET /api/cart - Get user's cart
-cartRouter.get('/', requireUserAuth, async (req: AuthenticatedRequest, res: Response) => {
+cartRouter.get('/', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     console.log("🛒 [API] Received GET request for cart.");
     const firebaseUid = req.user?.firebaseUid;
@@ -34,8 +34,8 @@ cartRouter.get('/', requireUserAuth, async (req: AuthenticatedRequest, res: Resp
     }
 
     // 2. Drizzle का उपयोग करके कार्ट आइटम्स को उनके संबंधित प्रोडक्ट डेटा के साथ प्राप्त करें
-    const cartItems = await db.query.cartItemsPgTable.findMany({
-      where: eq(cartItemsPgTable.userId, dbUser.id),
+    const cartItems = await db.query.cartItems.findMany({
+      where: eq(cartItems.userId, dbUser.id),
       with: {
         product: true, // `products` टेबल से संबंधित डेटा प्राप्त करें
       },
@@ -53,7 +53,7 @@ cartRouter.get('/', requireUserAuth, async (req: AuthenticatedRequest, res: Resp
 });
 
 // ✅ POST /api/cart/add - Add item to cart
-cartRouter.post('/add', requireUserAuth, async (req: AuthenticatedRequest, res: Response) => {
+cartRouter.post('/add', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const firebaseUid = req.user?.firebaseUid;
     const { productId, quantity } = req.body;
@@ -73,21 +73,21 @@ cartRouter.post('/add', requireUserAuth, async (req: AuthenticatedRequest, res: 
 
     const [existingItem] = await db
       .select()
-      .from(cartItemsPgTable)
-      .where(eq(cartItemsPgTable.userId, dbUser.id));
+      .from(cartItems)
+      .where(eq(cartItems.userId, dbUser.id));
 
     if (existingItem) {
       const updatedItem = await db
-        .update(cartItemsPgTable)
+        .update(cartItems)
         .set({
           quantity: existingItem.quantity + quantity,
         })
-        .where(eq(cartItemsPgTable.id, existingItem.id))
+        .where(eq(cartItems.id, existingItem.id))
         .returning();
       return res.status(200).json({ message: 'Cart item quantity updated.', item: updatedItem[0] });
     } else {
       const newItem = await db
-        .insert(cartItemsPgTable)
+        .insert(cartItems)
         .values({
           userId: dbUser.id,
           productId: productId,
