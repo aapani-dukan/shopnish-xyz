@@ -13,6 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { ShoppingCart, MapPin, CreditCard, Check } from "lucide-react";
 import { Link } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth"; // ✅ useAuth को इंपोर्ट करें
 
 interface CartItem {
   id: number;
@@ -29,7 +30,6 @@ interface CartItem {
   };
 }
 
-// ✅ बैकएंड से अपेक्षित डेटा संरचना को अपडेट करें
 interface ApiResponse {
   message: string;
   items: CartItem[];
@@ -48,6 +48,7 @@ export default function Checkout() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { isAuthenticated } = useAuth(); // ✅ useAuth हुक का उपयोग करें
 
   const [currentStep, setCurrentStep] = useState(1);
   const [deliveryAddress, setDeliveryAddress] = useState<DeliveryAddress>({
@@ -65,9 +66,9 @@ export default function Checkout() {
   const { data, isLoading } = useQuery<ApiResponse>({
     queryKey: ["/api/cart"],
     queryFn: () => apiRequest("GET", "/api/cart"),
+    enabled: isAuthenticated, // ✅ API कॉल को केवल तभी चलाएं जब उपयोगकर्ता प्रमाणित हो
   });
   
-  // ✅ कार्ट आइटम्स को डेटा से निकालें
   const cartItems = data?.items || [];
   
   // Calculate totals
