@@ -34,7 +34,7 @@ cartRouter.get('/', requireAuth, async (req: AuthenticatedRequest, res: Response
     }
 
     // 2. Drizzle का उपयोग करके कार्ट आइटम्स को उनके संबंधित प्रोडक्ट डेटा के साथ प्राप्त करें
-    const cartItems = await db.query.cartItems.findMany({
+    const cartItemsData = await db.query.cartItems.findMany({
       where: eq(cartItems.userId, dbUser.id),
       with: {
         product: true, // `products` टेबल से संबंधित डेटा प्राप्त करें
