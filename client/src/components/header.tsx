@@ -1,6 +1,6 @@
 // src/components/Header.tsx
 import React, { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom"; // ✅ useNavigate को इंपोर्ट करें
 import { useAuth } from "@/hooks/useAuth";
 import { useCartStore } from "@/lib/store";
 import { logout } from "@/lib/firebase";
@@ -41,7 +41,7 @@ interface HeaderProps {
 }
 
 const Header: React.FC<HeaderProps> = ({ categories = [] }) => {
-  const { items, isCartOpen, toggleCart } = useCartStore();
+  const { items } = useCartStore(); // ✅ `isCartOpen, toggleCart` को हटाएँ
   const [searchValue, setSearchValue] = useState("");
   const navigate = useNavigate();
   const { user, isAuthenticated, isLoadingAuth } = useAuth();
@@ -72,7 +72,7 @@ const Header: React.FC<HeaderProps> = ({ categories = [] }) => {
     console.log("Seller button clicked! isAuthenticated:", isAuthenticated, "user:", user);
 
     if (isLoadingAuth) {
-      return; 
+      return;
     }
 
     if (!isAuthenticated) {
@@ -81,20 +81,16 @@ const Header: React.FC<HeaderProps> = ({ categories = [] }) => {
       return;
     }
 
-    // ✅ यहाँ नया लॉजिक शुरू होता है
     if (user?.role === "seller") {
       const approvalStatus = user.sellerProfile?.approvalStatus;
       if (approvalStatus === "approved") {
         navigate("/seller-dashboard");
       } else if (approvalStatus === "pending") {
-        // 'pending' होने पर फॉर्म नहीं खुलेगा, बल्कि स्टेटस पेज पर जाएगा
         navigate("/seller-status");
       } else {
-        // 'rejected' या किसी अन्य स्टेटस पर फॉर्म खुलेगा
         setIsSellerDialogOpen(true);
       }
     } else {
-      // अगर रोल 'customer' है, तो सीधे डायलॉग खोलें
       setIsSellerDialogOpen(true);
     }
   };
@@ -124,7 +120,6 @@ const Header: React.FC<HeaderProps> = ({ categories = [] }) => {
 
   const dashboardLink = getDashboardLink();
   
-  // ✅ यह फ़ंक्शन अब केवल बटन का लेबल तय करता है, लॉजिक नहीं
   const getSellerButtonLabel = () => {
     if (user?.role === "seller") {
       const status = user.sellerProfile?.approvalStatus;
@@ -174,15 +169,18 @@ const Header: React.FC<HeaderProps> = ({ categories = [] }) => {
             </Button>
           </Link>
 
-          <Button onClick={toggleCart} variant="ghost" size="icon" className="relative">
-            <ShoppingCart className="h-5 w-5" />
-            {totalItemsInCart > 0 && (
-              <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-xs text-white">
-                {totalItemsInCart}
-              </span>
-            )}
-            <span className="sr-only">Shopping Cart</span>
-          </Button>
+          {/* ✅ यह कार्ट बटन अब सही तरीके से काम करेगा */}
+          <Link to="/cart">
+            <Button variant="ghost" size="icon" className="relative">
+              <ShoppingCart className="h-5 w-5" />
+              {totalItemsInCart > 0 && (
+                <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-xs text-white">
+                  {totalItemsInCart}
+                </span>
+              )}
+              <span className="sr-only">Shopping Cart</span>
+            </Button>
+          </Link>
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -233,16 +231,21 @@ const Header: React.FC<HeaderProps> = ({ categories = [] }) => {
           </DropdownMenu>
         </nav>
 
+        {/* मोबाइल मेनू */}
         <div className="flex items-center md:hidden">
-          <Button onClick={toggleCart} variant="ghost" size="icon" className="relative mr-2">
-            <ShoppingCart className="h-5 w-5" />
-            {totalItemsInCart > 0 && (
-              <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-xs text-white">
-                {totalItemsInCart}
-              </span>
-            )}
-            <span className="sr-only">Shopping Cart</span>
-          </Button>
+          {/* ✅ यह मोबाइल कार्ट बटन अब सही तरीके से काम करेगा */}
+          <Link to="/cart" className="relative mr-2">
+            <Button variant="ghost" size="icon">
+              <ShoppingCart className="h-5 w-5" />
+              {totalItemsInCart > 0 && (
+                <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-xs text-white">
+                  {totalItemsInCart}
+                </span>
+              )}
+              <span className="sr-only">Shopping Cart</span>
+            </Button>
+          </Link>
+
           <Sheet>
             <SheetTrigger asChild>
               <Button variant="ghost" size="icon">
