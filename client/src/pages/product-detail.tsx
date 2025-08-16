@@ -1,7 +1,8 @@
 // client/src/pages/ProductDetail.tsx
 
 import { useState } from "react";
-import { useParams } from "wouter";
+// ✅ wouter को हटाकर react-router-dom का उपयोग करें
+import { useParams } from "react-router-dom"; 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Star, ShoppingCart, Heart, Share2, Plus, Minus } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -48,7 +49,8 @@ interface Category {
 }
 
 export default function ProductDetail() {
-  const { id } = useParams<{ id: string }>();
+  // ✅ useParams from 'react-router-dom' is used correctly here
+  const { id } = useParams();
   const [quantity, setQuantity] = useState(1);
   const [selectedImage, setSelectedImage] = useState(0);
   const { toast } = useToast();
@@ -65,7 +67,8 @@ export default function ProductDetail() {
       if (!response.ok) throw new Error('Product not found');
       return response.json();
     },
-    enabled: !!id,
+    // ✅ Ensure ID is not undefined before fetching
+    enabled: !!id, 
   });
 
   const { data: reviews = [] } = useQuery<Review[]>({
@@ -75,13 +78,13 @@ export default function ProductDetail() {
       if (!response.ok) throw new Error('Failed to fetch reviews');
       return response.json();
     },
+    // ✅ Ensure ID is not undefined before fetching
     enabled: !!id,
   });
   
   // ✅ Cart mutation
   const addToCartMutation = useMutation({
     mutationFn: async ({ productId, quantity }: { productId: number; quantity: number }) => {
-      // ✅ यहां apiRequest को सीधे कॉल करें
       return await apiRequest("POST", "/api/cart/add", { productId, quantity });
     },
     onSuccess: () => {
@@ -89,7 +92,6 @@ export default function ProductDetail() {
         title: "Added to cart",
         description: `${quantity} × ${product?.name} added to your cart.`,
       });
-      // ✅ `api/cart` query को इनवैलिडेट करें ताकि कार्ट रीफ़्रेश हो जाए
       queryClient.invalidateQueries({ queryKey: ["/api/cart"] });
     },
     onError: (error) => {
@@ -102,12 +104,11 @@ export default function ProductDetail() {
     },
   });
 
-  // ✅ `handleAddToCart` फ़ंक्शन को अपडेट किया गया
   const handleAddToCart = () => {
     console.log("Adding item to cart..."); 
     
-    if (!product) {
-      console.error("Product data is missing. Cannot add to cart.");
+    if (!product || typeof id === 'undefined') {
+      console.error("Product data or ID is missing. Cannot add to cart.");
       return;
     }
   
