@@ -259,13 +259,11 @@ export const reviews = pgTable("reviews", {
 
 // --- Drizzle ORM Relations ---
 
-// ✅ usersRelations में सुधार किया गया
-export const usersRelations = relations(users, ({ one, many }) => ({
+   export const usersRelations = relations(users, ({ one, many }) => ({
   seller: one(sellersPgTable, {
     fields: [users.id],
     references: [sellersPgTable.userId],
   }),
-  // ✅ deliveryBoy संबंध को सही किया गया
   deliveryBoy: one(deliveryBoys, {
     fields: [users.id],
     references: [deliveryBoys.userId],
@@ -278,7 +276,6 @@ export const usersRelations = relations(users, ({ one, many }) => ({
 }));
 
 export const sellersRelations = relations(sellersPgTable, ({ one, many }) => ({
-  // यह लाइन पहले से ही सही थी
   user: one(users, {
     fields: [sellersPgTable.userId],
     references: [users.id],
@@ -342,10 +339,6 @@ export const ordersRelations = relations(orders, ({ many, one }) => ({
   customer: one(users, {
     fields: [orders.customerId],
     references: [users.id],
-  }),
-  seller: one(sellersPgTable, {
-    fields: [orders.sellerId],
-    references: [sellersPgTable.id],
   }),
   deliveryBoy: one(deliveryBoys, {
     fields: [orders.deliveryBoyId],
@@ -447,8 +440,6 @@ export const reviewsRelations = relations(reviews, ({ one }) => ({
 // --- Zod Schemas for Validation
 
 
-
-// --- Zod Schemas for Validation ---
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
   createdAt: true,
