@@ -259,21 +259,24 @@ export const reviews = pgTable("reviews", {
 
 // --- Drizzle ORM Relations ---
 
-// ✅ corrected relations code
-
-export const usersRelations = relations(users, ({ one, many }) => ({
-  // ✅ यह लाइन सही है, बशर्ते sellersPgTable सही ढंग से इम्पोर्ट हो
-  seller: one(sellersPgTable, {
-    fields: [users.id],
-    references: [sellersPgTable.userId],
-  }),
-  deliveryBoys: one(deliveryBoys),
-  orders: many(orders),
-  reviews: many(reviews),
-  serviceProviders: many(serviceProviders),
-  serviceBookings: many(serviceBookings),
-  cartItems: many(cartItems),
-}));
+export const deliveryBoys = pgTable("delivery_boys", {
+  id: serial("id").primaryKey(),
+  firebaseUid: text("firebase_uid").unique(),
+  userId: integer("user_id").unique().notNull().references(() => users.id),
+  email: text("email").unique().notNull(),
+  name: text("name"),
+  approvalStatus: approvalStatusEnum("approval_status").notNull().default("pending"),
+  vehicleType: text("vehicle_type").notNull(),
+  vehicleNumber: text("vehicle_number"),
+  licenseNumber: text("license_number"),
+  aadharNumber: text("aadhar_number"),
+  isAvailable: boolean("is_available").default(true),
+  currentLat: decimal("current_lat", { precision: 10, scale: 8 }),
+  currentLng: decimal("current_lng", { precision: 11, scale: 8 }),
+  rating: decimal("rating", { precision: 3, scale: 2 }).default("5.0"),
+  totalDeliveries: integer("total_deliveries").default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+});
 
 export const sellersRelations = relations(sellersPgTable, ({ one, many }) => ({
   // यह लाइन पहले से ही सही थी
