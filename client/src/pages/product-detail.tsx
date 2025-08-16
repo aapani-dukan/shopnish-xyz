@@ -104,12 +104,21 @@ export default function ProductDetail() {
 
   // ✅ `handleAddToCart` फ़ंक्शन को अपडेट किया गया
   const handleAddToCart = () => {
-    if (!product) return;
-    addToCartMutation.mutate({
-      productId: product.id,
-      quantity,
-    });
-  };
+  // ✅ यहाँ लॉग जोड़ें
+  console.log("Adding item to cart..."); 
+  
+  if (!product) {
+    console.error("Product data is missing. Cannot add to cart.");
+    // ✅ यदि प्रोडक्ट उपलब्ध नहीं है तो तुरंत बाहर निकलें
+    return;
+  }
+
+  // ✅ mutate फ़ंक्शन को कॉल करें
+  addToCartMutation.mutate({
+    productId: product.id,
+    quantity,
+  });
+};
 
   const renderStars = (rating: number) => {
     return (
