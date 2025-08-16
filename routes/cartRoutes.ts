@@ -41,13 +41,29 @@ cartRouter.get('/', requireAuth, async (req: AuthenticatedRequest, res: Response
       },
     });
 
-    // 3. डेटा को JSON के रूप में भेजें
-    console.log(`✅ [API] Sending cart with ${cartItems.length} items.`);
-    return res.status(200).json(cartItems);
+    // ✅ समाधान: डेटा को JSON के रूप में भेजने से पहले उसे साफ करें।
+    const cleanedCartData = cartItemsData.map(item => ({
+      id: item.id,
+      quantity: item.quantity,
+      product: {
+        id: item.product.id,
+        name: item.product.name,
+        price: item.product.price,
+        image: item.product.image,
+      },
+    }));
+
+    if (cleanedCartData.length === 0) {
+      console.log("✅ [API] Sending empty cart.");
+      return res.status(200).json({ message: "Your cart is empty", items: [] });
+    }
+    
+    // 3. साफ किया हुआ डेटा JSON के रूप में भेजें
+    console.log(`✅ [API] Sending cart with ${cleanedCartData.length} items.`);
+    return res.status(200).json({ message: "Cart fetched successfully", items: cleanedCartData });
 
   } catch (error) {
     console.error('❌ [API] Error fetching cart:', error);
-    // इस त्रुटि को पकड़ें और एक साफ JSON त्रुटि संदेश भेजें
     return res.status(500).json({ error: 'Failed to fetch cart. An unexpected error occurred.' });
   }
 });
