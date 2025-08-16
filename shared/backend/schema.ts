@@ -259,15 +259,15 @@ export const reviews = pgTable("reviews", {
 
 // --- Drizzle ORM Relations ---
 
-// ✅ Corrected and complete Drizzle ORM relations code
+// ✅ corrected relations code
 
 export const usersRelations = relations(users, ({ one, many }) => ({
-  // ✅ sellers relation को usersRelations में जोड़ा गया
+  // ✅ इस लाइन को सही किया गया है
   seller: one(sellersPgTable, {
     fields: [users.id],
     references: [sellersPgTable.userId],
   }),
-  deliveryBoy: one(deliveryBoys),
+  deliveryBoys: one(deliveryBoys),
   orders: many(orders),
   reviews: many(reviews),
   serviceProviders: many(serviceProviders),
@@ -276,6 +276,7 @@ export const usersRelations = relations(users, ({ one, many }) => ({
 }));
 
 export const sellersRelations = relations(sellersPgTable, ({ one, many }) => ({
+  // यह लाइन पहले से ही सही थी
   user: one(users, {
     fields: [sellersPgTable.userId],
     references: [users.id],
@@ -340,7 +341,6 @@ export const ordersRelations = relations(orders, ({ many, one }) => ({
     fields: [orders.customerId],
     references: [users.id],
   }),
-  // ✅ seller रिलेशन को ordersRelations में जोड़ा गया
   seller: one(sellersPgTable, {
     fields: [orders.sellerId],
     references: [sellersPgTable.id],
@@ -443,6 +443,7 @@ export const reviewsRelations = relations(reviews, ({ one }) => ({
 }));
 
 // --- Zod Schemas for Validation
+
 
 
 // --- Zod Schemas for Validation ---
