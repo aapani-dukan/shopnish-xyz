@@ -26,6 +26,7 @@ import adminVendorsRoutes from './roots/admin/vendors.ts';
 import adminPasswordRoutes from './roots/admin/admin-password.ts';
 import sellerRouter from '../routes/sellers/sellerRoutes.ts';
 import productsRouter from '../routes/productRoutes.ts';
+import cartRouter from '../routes/cartRoutes.ts';
 const router = Router();
 
 router.get('/', (req: Request, res: Response) => {
@@ -119,6 +120,8 @@ router.post('/auth/logout', async (req, res) => {
 
 // ✅ Seller-specific routes
 router.use('/sellers', sellerRouter);
+//cartRourer
+router.use('/cart', cartRouter);
 
 // ✅ Categories
 router.get('/categories', async (req: Request, res: Response) => {
