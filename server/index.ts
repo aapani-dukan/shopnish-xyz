@@ -23,7 +23,7 @@ let server: Server;
 app.use(
   cors({
     
-    origin: ["https://shopnish-9vlk.onrender.com", "http://localhost:5173"], 
+    origin: ["https://https://shopnish-lzrf.onrender.com", "http://localhost:5173"], 
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     credentials: true,
   })
