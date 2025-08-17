@@ -1,9 +1,12 @@
 // src/components/Header.tsx
 import React, { useState } from "react";
-import { Link, useNavigate } from "react-router-dom"; // ✅ useNavigate को इंपोर्ट करें
+import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
-import { useCartStore } from "@/lib/store";
-import { logout } from "@/lib/firebase";
+// ✅ useQuery को react-query से इंपोर्ट करें
+import { useQuery } from "@tanstack/react-query";
+// ✅ apiRequest को queryClient से इंपोर्ट करें
+import { apiRequest } from "@/lib/queryClient";
+
 // UI कॉम्पोनेंट्स इम्पोर्ट करें
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,7 +18,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Sheet, SheetContent, SheetTrigger,SheetHeader,SheetTitle} from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import {
   ShoppingCart,
   Menu,
@@ -29,6 +32,7 @@ import {
   ListOrdered,
 } from "lucide-react";
 import SellerOnboardingDialog from "./seller/SellerOnboardingDialog";
+import { logout } from "@/lib/firebase"; // ✅ logout को इंपोर्ट करें
 
 interface Category {
   id: string;
@@ -36,18 +40,41 @@ interface Category {
   slug: string;
 }
 
+// ✅ CartItem और CartResponse इंटरफेस को यहाँ जोड़ें
+interface CartItem {
+  id: number;
+  quantity: number;
+  product: {
+    id: number;
+    name: string;
+    price: string;
+    image: string;
+  };
+}
+
+interface CartResponse {
+  message: string;
+  items: CartItem[];
+}
+
 interface HeaderProps {
   categories: Category[];
 }
 
 const Header: React.FC<HeaderProps> = ({ categories = [] }) => {
-  const { items } = useCartStore(); // ✅ `isCartOpen, toggleCart` को हटाएँ
   const [searchValue, setSearchValue] = useState("");
   const navigate = useNavigate();
   const { user, isAuthenticated, isLoadingAuth } = useAuth();
   const [isSellerDialogOpen, setIsSellerDialogOpen] = useState(false);
 
-  const totalItemsInCart = items.reduce((sum, item) => sum + item.quantity, 0);
+  // ✅ useCartStore की जगह useQuery का उपयोग करें
+  const { data: cartData } = useQuery<CartResponse>({
+    queryKey: ["/api/cart"],
+    queryFn: () => apiRequest("GET", "/api/cart"),
+    enabled: isAuthenticated, // ✅ क्वेरी केवल तभी चलाएं जब उपयोगकर्ता प्रमाणित हो
+  });
+
+  const totalItemsInCart = cartData?.items.reduce((sum, item) => sum + item.quantity, 0) || 0;
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -119,7 +146,7 @@ const Header: React.FC<HeaderProps> = ({ categories = [] }) => {
   };
 
   const dashboardLink = getDashboardLink();
-  
+
   const getSellerButtonLabel = () => {
     if (user?.role === "seller") {
       const status = user.sellerProfile?.approvalStatus;
@@ -169,7 +196,6 @@ const Header: React.FC<HeaderProps> = ({ categories = [] }) => {
             </Button>
           </Link>
 
-          {/* ✅ यह कार्ट बटन अब सही तरीके से काम करेगा */}
           <Link to="/cart">
             <Button variant="ghost" size="icon" className="relative">
               <ShoppingCart className="h-5 w-5" />
@@ -233,7 +259,6 @@ const Header: React.FC<HeaderProps> = ({ categories = [] }) => {
 
         {/* मोबाइल मेनू */}
         <div className="flex items-center md:hidden">
-          {/* ✅ यह मोबाइल कार्ट बटन अब सही तरीके से काम करेगा */}
           <Link to="/cart" className="relative mr-2">
             <Button variant="ghost" size="icon">
               <ShoppingCart className="h-5 w-5" />
@@ -254,9 +279,9 @@ const Header: React.FC<HeaderProps> = ({ categories = [] }) => {
               </Button>
             </SheetTrigger>
             <SheetContent side="right" className="w-full max-w-xs p-4">
-               <SheetHeader>
-              <SheetTitle>Menu</SheetTitle>
-            </SheetHeader>
+              <SheetHeader>
+                <SheetTitle>Menu</SheetTitle>
+              </SheetHeader>
               <div className="flex flex-col items-start space-y-4">
                 <form onSubmit={handleSearch} className="w-full flex">
                   <Input
@@ -284,14 +309,14 @@ const Header: React.FC<HeaderProps> = ({ categories = [] }) => {
                         </Button>
                       </Link>
                     )}
-                     {user?.role === "customer" && (
-                       <Link to="/customer/orders" className="w-full">
-                         <Button variant="ghost" className="w-full justify-start">
-                           <ListOrdered className="mr-2 h-4 w-4" />
-                           My Orders
-                         </Button>
-                       </Link>
-                     )}
+                    {user?.role === "customer" && (
+                      <Link to="/customer/orders" className="w-full">
+                        <Button variant="ghost" className="w-full justify-start">
+                          <ListOrdered className="mr-2 h-4 w-4" />
+                          My Orders
+                        </Button>
+                      </Link>
+                    )}
                     <Button onClick={handleLogout} variant="ghost" className="w-full justify-start text-red-500 hover:bg-red-50">
                       <LogOut className="mr-2 h-4 w-4" />
                       Logout
@@ -312,7 +337,7 @@ const Header: React.FC<HeaderProps> = ({ categories = [] }) => {
                     Wishlist
                   </Button>
                 </Link>
-                
+
                 <Button
                   onClick={handleSellerButtonClick}
                   disabled={isLoadingAuth}
@@ -355,4 +380,5 @@ const Header: React.FC<HeaderProps> = ({ categories = [] }) => {
     </header>
   );
 };
+
 export default Header;
