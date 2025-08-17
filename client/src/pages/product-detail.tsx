@@ -3,7 +3,7 @@ import React, { useState } from "react";
 import { useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useQuery } from "@tanstack/react-query";
-import api from "@/lib/axios";
+import api from "@/lib/axios"; // ✅ yahi use karna hai
 
 const ProductDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -13,7 +13,7 @@ const ProductDetail: React.FC = () => {
   const { data: product, isLoading } = useQuery({
     queryKey: ["product", id],
     queryFn: async () => {
-      const res = await axios.get(`/api/products/${id}`);
+      const res = await api.get(`/api/products/${id}`); // <-- yaha api.get
       return res.data;
     },
   });
@@ -24,11 +24,11 @@ const ProductDetail: React.FC = () => {
   // ✅ Add to Cart Function
   const handleAddToCart = async () => {
     try {
-     const res = await api.post("/api/cart/add", {
-      productId: product.id,
-       });
-      
-      
+      const res = await api.post("/api/cart/add", {
+        productId: product.id,
+        quantity, // ✅ qty bhi bhejna
+      });
+
       alert("✅ Product added to cart!");
       console.log("Cart Response:", res.data);
     } catch (error) {
