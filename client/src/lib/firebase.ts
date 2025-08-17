@@ -12,7 +12,7 @@ import {
   User
 } from "firebase/auth";
 
-import { firebaseConfig } from "./env";
+
 
 const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 
