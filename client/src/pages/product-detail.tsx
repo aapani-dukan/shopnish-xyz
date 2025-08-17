@@ -3,7 +3,7 @@ import React, { useState } from "react";
 import { useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useQuery } from "@tanstack/react-query";
-import axios from "axios";
+import api from "@/lib/axios";
 
 const ProductDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -24,9 +24,10 @@ const ProductDetail: React.FC = () => {
   // ✅ Add to Cart Function
   const handleAddToCart = async () => {
     try {
-      const res = await axios.post("/api/cart/add", {
-        productId: product.id,
-        quantity,
+     const res = await api.post("/api/cart/add", {
+      productId: product.id,
+       });
+      
       });
       alert("✅ Product added to cart!");
       console.log("Cart Response:", res.data);
