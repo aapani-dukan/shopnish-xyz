@@ -1,102 +1,61 @@
-// pages/product-detail.tsx
+// src/pages/product-detail.tsx
+import React, { useState } from "react";
 import { useParams } from "react-router-dom";
-import { useQuery, useMutation } from "@tanstack/react-query";
-import { useState } from "react";
-import axios from "axios";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { useQuery } from "@tanstack/react-query";
+import axios from "axios";
 
-interface Product {
-  id: string;
-  name: string;
-  description: string;
-  price: number;
-  image: string;
-}
-
-export default function ProductDetail() {
+const ProductDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const [quantity, setQuantity] = useState(1);
 
-  // ✅ Product details fetch
-  const { data: product, isLoading, error } = useQuery<Product>({
+  // ✅ Product fetch
+  const { data: product, isLoading } = useQuery({
     queryKey: ["product", id],
     queryFn: async () => {
       const res = await axios.get(`/api/products/${id}`);
       return res.data;
     },
-    enabled: !!id,
-  });
-
-  // ✅ Add to Cart Mutation
-  const addToCart = useMutation({
-    mutationFn: async () => {
-      const token = localStorage.getItem("token"); // auth token
-      const res = await axios.post(
-        "/api/cart",
-        {
-          productId: product?.id,
-          quantity,
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-      return res.data;
-    },
-    onSuccess: () => {
-      alert("✅ Product added to cart!");
-    },
-    onError: () => {
-      alert("❌ Failed to add product to cart. Please login.");
-    },
   });
 
   if (isLoading) return <p>Loading...</p>;
-  if (error || !product) return <p>Product not found</p>;
+  if (!product) return <p>Product not found</p>;
+
+  // ✅ Add to Cart Function
+  const handleAddToCart = async () => {
+    try {
+      const res = await axios.post("/api/cart", {
+        productId: product.id,
+        quantity,
+      });
+      alert("✅ Product added to cart!");
+      console.log("Cart Response:", res.data);
+    } catch (error) {
+      console.error("❌ Error adding to cart:", error);
+      alert("Failed to add to cart.");
+    }
+  };
 
   return (
-    <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-      {/* Image */}
-      <Card className="flex items-center justify-center">
-        <img
-          src={product.image}
-          alt={product.name}
-          className="w-full h-96 object-cover rounded-2xl"
+    <div className="max-w-3xl mx-auto p-4">
+      <h1 className="text-2xl font-bold">{product.name}</h1>
+      <p className="text-gray-700">{product.description}</p>
+      <p className="text-lg font-semibold">₹{product.price}</p>
+
+      <div className="flex items-center gap-2 my-4">
+        <label>Qty:</label>
+        <input
+          type="number"
+          value={quantity}
+          min={1}
+          onChange={(e) => setQuantity(Number(e.target.value))}
+          className="border p-1 w-16"
         />
-      </Card>
-
-      {/* Details */}
-      <div>
-        <h1 className="text-3xl font-bold mb-4">{product.name}</h1>
-        <p className="text-lg text-gray-600 mb-4">{product.description}</p>
-        <p className="text-2xl font-semibold mb-6">₹{product.price}</p>
-
-        {/* Quantity Selector */}
-        <div className="flex items-center mb-6">
-          <Button
-            variant="outline"
-            onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-          >
-            -
-          </Button>
-          <span className="px-4">{quantity}</span>
-          <Button variant="outline" onClick={() => setQuantity((q) => q + 1)}>
-            +
-          </Button>
-        </div>
-
-        {/* Add to Cart */}
-        <Button
-          className="w-full"
-          onClick={() => addToCart.mutate()}
-          disabled={addToCart.isPending}
-        >
-          {addToCart.isPending ? "Adding..." : "Add to Cart"}
-        </Button>
       </div>
+
+      <Button onClick={handleAddToCart}>Add to Cart</Button>
     </div>
   );
-}
+};
+
+export default ProductDetail;
