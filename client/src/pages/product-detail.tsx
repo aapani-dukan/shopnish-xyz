@@ -13,31 +13,58 @@ export default function ProductDetail() {
 
   // ✅ कंसोल लॉग को सरल किया
   console.log("Product ID for Add to Cart:", id);
-
+        
   const addToCartMutation = useMutation({
-    mutationFn: async () => {
+  mutationFn: async (data: z.infer<typeof productFormSchema>) => {
       console.log("🚀 [Add to Cart] Attempting to add product ID:", id);
-      // API कॉल सीधे productId के साथ
-      return await apiRequest("POST", "/api/cart/add", { 
-        productId: Number(id), // सुनिश्चित करें कि यह एक संख्या है
-        quantity: 1 
+    const auth = getAuth();
+    const user = auth.currentUser;
+    if (!user) {
+      throw new Error("User not authenticated.");
+    }
+    const token = await user.getIdToken();
+
+    const formData = new FormData();
+    formData.append('image', data.image); 
+    if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || errorData.message || "Failed to add cart");
+    }
+    for (const key in data) {
+      if (data[key] !== null && data[key] !== undefined && key !== 'image') {
+         formData.append(key, data[key]);
+      }
+    }
+    const response = await fetch("/api/cart/add", {
+      method: "POST",
+      body: formData,
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+    });
+    return response.json();
+    
+  },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/products"] });
+      toast({
+        title: editingProduct ? "Product updated" : "Product created",
+        description: `Product has been ${editingProduct ? "updated" : "added"} successfully`,
+      });
+      setIsProductDialogOpen(false);
+      setEditingProduct(null);
+      productForm.reset();
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || `Failed to ${editingProduct ? "update" : "added"} product`,
+        variant: "destructive",
       });
     },
-    onSuccess: () => {
-      toast({ title: "Added to cart", description: "Item successfully added." });
-      // कार्ट को अपडेट करने के लिए queries को इनवैलिडेट करें
-      queryClient.invalidateQueries({ queryKey: ["/api/cart"] });
-    },
-    onError: (err) => {
-      console.error("❌ [Add to Cart] Mutation failed:", err);
-      toast({ title: "Failed to add", description: "An error occurred.", variant: "destructive" });
-    },
   });
-
-  const handleAddToCart = () => {
-    console.log("✅ [Add to Cart] Button clicked. Initiating mutation.");
-    addToCartMutation.mutate();
-  };
+      // API कॉल सीधे productId के साथ
+      
 
   // ✅ सरल UI जो सिर्फ़ बटन दिखाता है
   return (
