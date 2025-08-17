@@ -1,7 +1,6 @@
 // client/src/pages/ProductDetail.tsx
 
 import { useState } from "react";
-// ✅ wouter को हटाकर react-router-dom का उपयोग करें
 import { useParams } from "react-router-dom"; 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Star, ShoppingCart, Heart, Share2, Plus, Minus } from "lucide-react";
@@ -17,6 +16,7 @@ import Header from "@/components/header";
 import Footer from "@/components/footer";
 import api from "../lib/api.ts";
 import { auth } from "../lib/firebase.ts";
+
 interface Product {
   id: number;
   name: string;
@@ -50,7 +50,6 @@ interface Category {
 }
 
 export default function ProductDetail() {
-  // ✅ useParams from 'react-router-dom' is used correctly here
   const { id } = useParams();
   const [quantity, setQuantity] = useState(1);
   const [selectedImage, setSelectedImage] = useState(0);
@@ -68,7 +67,6 @@ export default function ProductDetail() {
       if (!response.ok) throw new Error('Product not found');
       return response.json();
     },
-    // ✅ Ensure ID is not undefined before fetching
     enabled: !!id, 
   });
 
@@ -79,30 +77,35 @@ export default function ProductDetail() {
       if (!response.ok) throw new Error('Failed to fetch reviews');
       return response.json();
     },
-    // ✅ Ensure ID is not undefined before fetching
     enabled: !!id,
   });
   
-  // ✅ Cart mutation
   const addToCartMutation = useMutation({
     mutationFn: async ({ productId, quantity }: { productId: number; quantity: number }) => {
       return await apiRequest("POST", "/api/cart/add", { productId, quantity });
     },
-    onSuccess: () => {
-      toast({
-        title: "Added to cart",
-        description: `${quantity} × ${product?.name} added to your cart.`,
-      });
-      queryClient.invalidateQueries({ queryKey: ["/api/cart"] });
+    onSuccess: (data) => {
+      console.log("✅ Cart API Response (onSuccess):", data); // ✅ डेटा को लॉग करें
+      // toast और invalidateQueries को यहां से हटा दिया गया है ताकि TypeError न आए
     },
     onError: (error) => {
-      console.error("Error adding to cart:", error);
+      console.error("❌ Error adding to cart:", error);
       toast({
         title: "Failed to add to cart",
         description: "An error occurred while adding the item to your cart.",
         variant: "destructive",
       });
     },
+    onSettled: () => {
+      // ✅ onSettled हमेशा चलेगा, चाहे onSuccess हो या onError
+      if (addToCartMutation.isSuccess) {
+         toast({
+            title: "Added to cart",
+            description: `${quantity} × ${product?.name} added to your cart.`,
+        });
+        queryClient.invalidateQueries({ queryKey: ["/api/cart"] });
+      }
+    }
   });
 
   const handleAddToCart = () => {
@@ -379,4 +382,4 @@ export default function ProductDetail() {
       <Footer />
     </div>
   );
-                    }
+}
