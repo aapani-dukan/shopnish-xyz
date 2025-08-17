@@ -1,5 +1,5 @@
 import api from "@/lib/api"; // 👈 ये import ज़रूर करो
-
+import React from "react";
 const handleAddToCart = async (e: React.MouseEvent) => {
   e.preventDefault();
   e.stopPropagation();
