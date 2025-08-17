@@ -2,7 +2,7 @@ import axios from "axios";
 import { auth } from "./firebase";
 
 const api = axios.create({
-  baseURL: "https://shopnish-9vlk.onrender.com", // ✅ Render वाली live URL डालो
+  baseURL: "https://shopnish-lzrf.onrender.com", // ✅ Render वाली live URL डालो
   withCredentials: true,
 });
 
