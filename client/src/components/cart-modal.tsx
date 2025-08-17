@@ -4,12 +4,11 @@ import { X, Plus, Minus, Trash2, ShoppingBag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Link } from "react-router-dom";
-import { useQuery, useQueryClient } from "@tanstack/react-query"; // ✅ useQuery और useQueryClient जोड़ा गया
-import { apiRequest } from "@/lib/queryClient"; // ✅ apiRequest जोड़ा गया
-import { useAuth } from "@/hooks/useAuth"; // ✅ useAuth जोड़ा गया
-import { useToast } from "@/hooks/use-toast"; // ✅ useToast जोड़ा गया
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
+import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
 
-// ✅ CartItem Interface
 interface CartItem {
   id: number;
   quantity: number;
@@ -36,22 +35,20 @@ export default function CartModal({ isOpen, onClose }: CartModalProps) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  // ✅ डेटाबेस से कार्ट आइटम प्राप्त करने के लिए useQuery का उपयोग करें
   const { data, isLoading, error } = useQuery<CartResponse>({
     queryKey: ["/api/cart"],
     queryFn: () => apiRequest("GET", "/api/cart"),
-    enabled: isAuthenticated, // ✅ केवल तभी क्वेरी चलाएं जब उपयोगकर्ता प्रमाणित हो
+    enabled: isAuthenticated,
   });
 
-  // ✅ अब आइटम्स डेटाबेस से आ रहे हैं
-  const items = data?.items || [];
+  // ✅ यह बदलाव करें: सुनिश्चित करें कि items एक एरे है
+  const items = Array.isArray(data?.items) ? data.items : [];
   const total = items.reduce((sum, item) => sum + (parseFloat(item.product.price) * item.quantity), 0);
 
   // ✅ कार्ट आइटम की मात्रा अपडेट करने के लिए mutation
   const handleUpdateQuantity = async (itemId: number, newQuantity: number) => {
     try {
       if (newQuantity <= 0) {
-        // अगर मात्रा 0 या उससे कम है, तो आइटम हटा दें
         await apiRequest("DELETE", `/api/cart/${itemId}`);
       } else {
         await apiRequest("PUT", `/api/cart/${itemId}`, { quantity: newQuantity });
@@ -101,6 +98,7 @@ export default function CartModal({ isOpen, onClose }: CartModalProps) {
     );
   }
 
+  // ✅ Error को यहाँ हैंडल करें
   if (error) {
     return (
       <Sheet open={isOpen} onOpenChange={onClose}>
@@ -108,8 +106,11 @@ export default function CartModal({ isOpen, onClose }: CartModalProps) {
           <SheetHeader>
             <SheetTitle>Shopping Cart</SheetTitle>
           </SheetHeader>
-          <div className="flex justify-center items-center h-96 text-red-500">
-            Error loading cart.
+          <div className="flex flex-col items-center justify-center h-96 space-y-4">
+            <p className="text-red-500 text-center">Failed to load cart. Please try logging in again.</p>
+            <Button onClick={onClose} className="bg-primary hover:bg-primary/90">
+              Close
+            </Button>
           </div>
         </SheetContent>
       </Sheet>
