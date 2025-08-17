@@ -64,6 +64,72 @@ export default function ProductDetail() {
     },
   });
       // API कॉल सीधे productId के साथ
+  <TabsContent value="products" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <div className="flex justify-between items-center">
+                  <CardTitle>Your Products</CardTitle>
+                  <div className="flex gap-2">
+                    {seller.approvalStatus === "approved" ? (
+                      <>
+                        <Dialog open={isCategoryDialogOpen} onOpenChange={setIsCategoryDialogOpen}>
+                          <DialogTrigger asChild>
+                            <Button variant="outline" onClick={() => {
+                              categoryForm.reset();
+                            }}>
+                              <Plus className="h-4 w-4 mr-2" />
+                              Create Category
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent>
+                            <DialogHeader>
+                              <DialogTitle>Create New Category</DialogTitle>
+                              <DialogDescription>
+                                Add a new product category to organize your items.
+                              </DialogDescription>
+                            </DialogHeader>
+                            <Form {...categoryForm}>
+                              <form onSubmit={categoryForm.handleSubmit(onCategorySubmit)} className="space-y-4">
+                                <FormField
+                                  control={categoryForm.control}
+                                  name="name"
+                                  render={({ field }) => (
+                                    <FormItem>
+                                      <FormLabel>Category Name</FormLabel>
+                                      <FormControl>
+                                        <Input {...field} />
+                                      </FormControl>
+                                      <FormMessage />
+                                    </FormItem>
+                                  )}
+                                />
+
+                                <FormField
+                                  control={categoryForm.control}
+                                  name="slug"
+                                  render={({ field }) => (
+                                    <FormItem>
+                                      <FormLabel>Category Slug</FormLabel>
+                                      <FormControl>
+                                        <Input {...field} placeholder="e.g., electronics" />
+                                      </FormControl>
+                                      <FormMessage />
+                                    </FormItem>
+                                  )}
+                                />
+<FormField
+                                  control={categoryForm.control}
+                                  name="description"
+                                  render={({ field }) => (
+                                    <FormItem>
+                                      <FormLabel>Description (Optional)</FormLabel>
+                                      <FormControl>
+                                        <Textarea {...field} />
+                                      </FormControl>
+                                      <FormMessage />
+                                    </FormItem>
+                                  )}
+                                />
       
 
   // ✅ सरल UI जो सिर्फ़ बटन दिखाता है
