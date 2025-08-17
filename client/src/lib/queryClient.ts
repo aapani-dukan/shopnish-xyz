@@ -40,11 +40,11 @@ export async function apiRequest(
   requestOptions?: RequestInit
 ): Promise<any> {
   const BASE_URL = import.meta.env.VITE_BACKEND_URL;
-  if (!baseUrl) {
+  if (!BASE_URL) {
     throw new Error('API_BACKEND_URL पर्यावरण वैरिएबल में परिभाषित नहीं है।');
   }
 
-  const url = `${baseUrl}${path}`;
+  const url = `${BASE_URL}${path}`;
   console.log(`[API Request] Sending ${method} request to: ${url}`);
 
   const headers: HeadersInit = {
