@@ -15,7 +15,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetTrigger,SheetHeader,SheetTitle} from "@/components/ui/sheet";
 import {
   ShoppingCart,
   Menu,
@@ -254,6 +254,9 @@ const Header: React.FC<HeaderProps> = ({ categories = [] }) => {
               </Button>
             </SheetTrigger>
             <SheetContent side="right" className="w-full max-w-xs p-4">
+               <SheetHeader>
+              <SheetTitle>Menu</SheetTitle>
+            </SheetHeader>
               <div className="flex flex-col items-start space-y-4">
                 <form onSubmit={handleSearch} className="w-full flex">
                   <Input
