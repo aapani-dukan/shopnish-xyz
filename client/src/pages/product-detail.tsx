@@ -28,7 +28,7 @@ const ProductDetail: React.FC = () => {
       productId: product.id,
        });
       
-      });
+      
       alert("✅ Product added to cart!");
       console.log("Cart Response:", res.data);
     } catch (error) {
