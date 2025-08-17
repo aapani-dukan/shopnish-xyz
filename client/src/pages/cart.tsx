@@ -1,256 +1,120 @@
-import { useState } from "react";
-// import { Link } from "wouter"; // Removed wouter Link
-import { Link } from "react-router-dom"; // ✅ Changed to react-router-dom Link
-import { Trash2, Plus, Minus, ShoppingBag, ArrowLeft } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
-import { useQuery } from "@tanstack/react-query";
-import { useCartStore } from "@/lib/store";
-import Header from "@/components/header";
-import Footer from "@/components/footer";
-import axios from 'axios'; // ✅ Import axios for API requests
+// components/Cart.tsx
+import React, { useEffect, useState } from "react";
+import { api } from "@/lib/axios";
 
-interface Category {
+interface CartItem {
   id: number;
-  name: string;
-  slug: string;
+  productId: number;
+  quantity: number;
+  product: {
+    id: number;
+    name: string;
+    price: number;
+    image?: string;
+  };
 }
 
-// ✅ Function to fetch categories - Re-defined here, or import from a shared utility if available
-const fetchCategories = async (): Promise<Category[]> => {
-  const response = await axios.get('/api/categories');
-  return response.data;
-};
+const Cart: React.FC = () => {
+  const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  const [loading, setLoading] = useState(true);
 
-export default function Cart() {
-  const { items, updateQuantity, removeItem, clearCart, getTotalPrice } = useCartStore();
+  // ✅ Cart fetch करने वाला function
+  const fetchCart = async () => {
+    try {
+      const res = await api.get("/api/cart");
+      setCartItems(res.data);
+    } catch (error) {
+      console.error("Error fetching cart:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  // ✅ Added queryFn for categories
-  const { 
-    data: categories = [], 
-    isLoading: categoriesLoading, // ✅ Added loading state
-    error: categoriesError      // ✅ Added error state
-  } = useQuery<Category[]>({
-    queryKey: ['categories'], // Consistent queryKey with Home component
-    queryFn: fetchCategories, 
-  });
+  // ✅ quantity update function
+  const updateQuantity = async (itemId: number, newQuantity: number) => {
+    try {
+      await api.put(`/api/cart/update/${itemId}`, { quantity: newQuantity });
+      fetchCart(); // अपडेट के बाद cart फिर से लोड करें
+    } catch (error) {
+      console.error("Error updating quantity:", error);
+    }
+  };
 
-  const subtotal = getTotalPrice();
-  const shipping = subtotal > 50 ? 0 : 5.99;
-  const tax = subtotal * 0.08; // 8% tax
-  const total = subtotal + shipping + tax;
+  // ✅ item remove function
+  const removeItem = async (itemId: number) => {
+    try {
+      await api.delete(`/api/cart/remove/${itemId}`);
+      fetchCart();
+    } catch (error) {
+      console.error("Error removing item:", error);
+    }
+  };
 
-  // ✅ Handle loading state for categories
-  if (categoriesLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-neutral-50">
-        <p>Loading categories...</p>
-      </div>
-    );
-  }
+  // ✅ Mount पर cart लोड करना
+  useEffect(() => {
+    fetchCart();
+  }, []);
 
-  // ✅ Handle error state for categories
-  if (categoriesError) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-neutral-50 text-red-600">
-        <p>Error loading categories: {categoriesError.message}</p>
-      </div>
-    );
-  }
-
-  // Original empty cart logic
-  if (items.length === 0) {
-    return (
-      <div className="min-h-screen bg-neutral-50">
-        <Header categories={categories} /> {/* Pass categories */}
-        
-        <main className="max-w-4xl mx-auto px-4 py-16">
-          <Card className="text-center py-16">
-            <CardContent>
-              <ShoppingBag className="h-24 w-24 text-gray-300 mx-auto mb-6" />
-              <h2 className="text-2xl font-bold text-gray-900 mb-4">
-                Your cart is empty
-              </h2>
-              <p className="text-gray-600 mb-8">
-                Looks like you haven't added anything to your cart yet.
-              </p>
-              <Link to="/"> {/* ✅ Changed href to to for react-router-dom Link */}
-                <Button size="lg" className="bg-primary hover:bg-primary/90">
-                  Continue Shopping
-                </Button>
-              </Link>
-            </CardContent>
-          </Card>
-        </main>
-
-        <Footer />
-      </div>
-    );
-  }
+  if (loading) return <p>Loading cart...</p>;
 
   return (
-    <div className="min-h-screen bg-neutral-50">
-      <Header categories={categories} /> {/* Pass categories */}
+    <div className="p-4 bg-white rounded-lg shadow-md">
+      <h2 className="text-xl font-bold mb-4">Your Cart</h2>
 
-      <main className="max-w-6xl mx-auto px-4 py-8">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <div className="flex items-center space-x-4">
-            <Link to="/"> {/* ✅ Changed href to to for react-router-dom Link */}
-              <Button variant="ghost" size="sm">
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Continue Shopping
-              </Button>
-            </Link>
-            <h1 className="text-3xl font-bold text-gray-900">Shopping Cart</h1>
-          </div>
-          
-          <Button
-            variant="outline"
-            onClick={clearCart}
-            className="text-red-600 hover:text-red-700"
-          >
-            Clear Cart
-          </Button>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Cart Items */}
-          <div className="lg:col-span-2 space-y-4">
-            {items.map((item) => (
-              <Card key={item.id}>
-                <CardContent className="p-6">
-                  <div className="flex items-center space-x-4">
-                    {/* Product Image */}
-                    <div className="flex-shrink-0">
-                      <img
-                        src={item.image}
-                        alt={item.name}
-                        className="w-24 h-24 object-cover rounded-lg"
-                      />
-                    </div>
-
-                    {/* Product Details */}
-                    <div className="flex-1 min-w-0">
-                      <h3 className="text-lg font-semibold text-gray-900 mb-1">
-                        {item.name}
-                      </h3>
-                      <p className="text-gray-600">
-                        ${item.price} each
-                      </p>
-                    </div>
-
-                    {/* Quantity Controls */}
-                    <div className="flex items-center space-x-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                        disabled={item.quantity <= 1}
-                        className="h-8 w-8 p-0"
-                      >
-                        <Minus className="h-4 w-4" />
-                      </Button>
-                      
-                      <span className="font-medium min-w-[40px] text-center">
-                        {item.quantity}
-                      </span>
-                      
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                        className="h-8 w-8 p-0"
-                      >
-                        <Plus className="h-4 w-4" />
-                      </Button>
-                    </div>
-
-                    {/* Item Total */}
-                    <div className="text-right">
-                      <p className="text-lg font-semibold text-gray-900">
-                        ${(parseFloat(item.price) * item.quantity).toFixed(2)}
-                      </p>
-                    </div>
-
-                    {/* Remove Button */}
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => removeItem(item.id)}
-                      className="text-red-600 hover:text-red-700 p-2"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-
-          {/* Order Summary */}
-          <div className="lg:col-span-1">
-            <Card className="sticky top-24">
-              <CardHeader>
-                <CardTitle>Order Summary</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex justify-between">
-                  <span>Subtotal</span>
-                  <span>${subtotal.toFixed(2)}</span>
-                </div>
-                
-                <div className="flex justify-between">
-                  <span>Shipping</span>
-                  <span>
-                    {shipping === 0 ? (
-                      <span className="text-green-600">Free</span>
-                    ) : (
-                      `$${shipping.toFixed(2)}`
-                    )}
-                  </span>
-                </div>
-                
-                <div className="flex justify-between">
-                  <span>Tax</span>
-                  <span>${tax.toFixed(2)}</span>
-                </div>
-                
-                <Separator />
-                
-                <div className="flex justify-between text-lg font-semibold">
-                  <span>Total</span>
-                  <span>${total.toFixed(2)}</span>
-                </div>
-
-                {subtotal < 50 && (
-                  <p className="text-sm text-gray-600">
-                    Add ${(50 - subtotal).toFixed(2)} more for free shipping!
-                  </p>
+      {cartItems.length === 0 ? (
+        <p>Your cart is empty</p>
+      ) : (
+        <ul className="space-y-4">
+          {cartItems.map((item) => (
+            <li
+              key={item.id}
+              className="flex items-center justify-between border-b pb-2"
+            >
+              <div className="flex items-center space-x-4">
+                {item.product.image && (
+                  <img
+                    src={item.product.image}
+                    alt={item.product.name}
+                    className="w-16 h-16 object-cover rounded"
+                  />
                 )}
+                <div>
+                  <h3 className="font-medium">{item.product.name}</h3>
+                  <p className="text-sm text-gray-500">
+                    ₹{item.product.price} x {item.quantity}
+                  </p>
+                </div>
+              </div>
 
-                <Link to="/checkout"> {/* ✅ Changed href to to for react-router-dom Link */}
-                  <Button 
-                    className="w-full bg-primary hover:bg-primary/90 text-white"
-                    size="lg"
-                  >
-                    Proceed to Checkout
-                  </Button>
-                </Link>
-
-                <Link to="/"> {/* ✅ Changed href to to for react-router-dom Link */}
-                  <Button variant="outline" className="w-full">
-                    Continue Shopping
-                  </Button>
-                </Link>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      </main>
-
-      <Footer />
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() =>
+                    updateQuantity(item.id, Math.max(item.quantity - 1, 1))
+                  }
+                  className="px-2 py-1 bg-gray-200 rounded"
+                >
+                  -
+                </button>
+                <span>{item.quantity}</span>
+                <button
+                  onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                  className="px-2 py-1 bg-gray-200 rounded"
+                >
+                  +
+                </button>
+                <button
+                  onClick={() => removeItem(item.id)}
+                  className="ml-2 px-3 py-1 bg-red-500 text-white rounded"
+                >
+                  Remove
+                </button>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
-}
+};
+
+export default Cart;
