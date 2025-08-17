@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import api from "@/lib/api";
-import { toast } from "@/components/ui/use-toast"; // अपने toast hook का सही import path डालो
+import { toast } from "../hook/use-toast"; // अपने toast hook का सही import path डालो
 import { Button } from "@/components/ui/button";   // मान लो तुम Shadcn button use कर रहे हो
 
 interface Product {
