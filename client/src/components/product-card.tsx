@@ -50,3 +50,4 @@ const handleAddToCart = async (e: React.MouseEvent) => {
     setTimeout(() => setIsAdding(false), 1000);
   }
 };
+export default ProductCard;
