@@ -2,7 +2,7 @@
 
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
 import { auth } from './firebase.ts';
-import { API_BACKEND_URL } from './env.ts';
+
 
 /**
  * जाँचता है कि क्या रिस्पॉन्स ठीक है, और अगर नहीं, तो एक विस्तृत एरर थ्रो करता है।
@@ -39,7 +39,7 @@ export async function apiRequest(
   data?: unknown | FormData,
   requestOptions?: RequestInit
 ): Promise<any> {
-  const baseUrl = API_BACKEND_URL;
+  const BASE_URL = import.meta.env.VITE_BACKEND_URL;
   if (!baseUrl) {
     throw new Error('API_BACKEND_URL पर्यावरण वैरिएबल में परिभाषित नहीं है।');
   }
