@@ -24,7 +24,7 @@ const ProductDetail: React.FC = () => {
   // ✅ Add to Cart Function
   const handleAddToCart = async () => {
     try {
-      const res = await axios.post("/api/cart", {
+      const res = await axios.post("/api/cart/add", {
         productId: product.id,
         quantity,
       });
