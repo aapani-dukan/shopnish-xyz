@@ -1,6 +1,6 @@
 // components/Cart.tsx
 import React, { useEffect, useState } from "react";
-import { api } from "@/lib/axios";
+import api from "@/lib/axios";
 
 interface CartItem {
   id: number;
