@@ -1,7 +1,7 @@
 // client/src/pages/ProductDetail.tsx
 
 import { useParams } from "react-router-dom";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query"; // useQuery को हटाया
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -11,65 +11,55 @@ export default function ProductDetail() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // ✅ यह सुनिश्चित करने के लिए कि id सही ढंग से मिल रहा है
-  console.log("Product ID from URL:", id);
-
-  const { data: product, isLoading: productLoading, error } = useQuery({
-    queryKey: ['/api/products', id],
-    queryFn: async () => {
-      const response = await fetch(`/api/products/${id}`);
-      if (!response.ok) throw new Error('Product not found');
-      return response.json();
-    },
-    enabled: !!id,
-  });
+  // ✅ कंसोल लॉग को सरल किया
+  console.log("Product ID for Add to Cart:", id);
 
   const addToCartMutation = useMutation({
     mutationFn: async () => {
-      console.log("Mutating... Product ID:", product?.id);
+      console.log("🚀 [Add to Cart] Attempting to add product ID:", id);
+      // API कॉल सीधे productId के साथ
       return await apiRequest("POST", "/api/cart/add", { 
-        productId: product?.id, 
+        productId: Number(id), // सुनिश्चित करें कि यह एक संख्या है
         quantity: 1 
       });
     },
     onSuccess: () => {
       toast({ title: "Added to cart", description: "Item successfully added." });
+      // कार्ट को अपडेट करने के लिए queries को इनवैलिडेट करें
       queryClient.invalidateQueries({ queryKey: ["/api/cart"] });
     },
     onError: (err) => {
-      console.error("Mutation failed:", err);
+      console.error("❌ [Add to Cart] Mutation failed:", err);
       toast({ title: "Failed to add", description: "An error occurred.", variant: "destructive" });
     },
   });
 
   const handleAddToCart = () => {
-    console.log("Button clicked!");
-    if (!product) {
-      console.error("Cannot add to cart: Product data is missing.");
-      return;
-    }
+    console.log("✅ [Add to Cart] Button clicked. Initiating mutation.");
     addToCartMutation.mutate();
   };
 
-  if (isLoading || productLoading) {
-    return <div>Loading product...</div>;
-  }
-
-  if (error || !product) {
-    return <div>Product not found or an error occurred.</div>;
-  }
-
+  // ✅ सरल UI जो सिर्फ़ बटन दिखाता है
   return (
     <div style={{ padding: "2rem" }}>
-      <h1>{product.name}</h1>
-      <p>Price: ${product.price}</p>
-      <img src={product.image} alt={product.name} style={{ width: "300px" }} />
+      <h1>Product Detail Page</h1>
+      <p>Product ID: {id}</p>
       <Button 
         onClick={handleAddToCart} 
-        disabled={addToCartMutation.isPending}
+        disabled={addToCartMutation.isPending || !id}
       >
         {addToCartMutation.isPending ? "Adding..." : "Add to Cart"}
       </Button>
+      {/* आप चाहें तो यहाँ प्रोडक्ट की जानकारी हार्डकोड कर सकते हैं */}
+      <div className="mt-4">
+        {/*
+          आप चाहें तो यहाँ एक अस्थायी प्रोडक्ट नाम दिखा सकते हैं
+          जब तक कि आप useQuery को वापस नहीं जोड़ते।
+        */}
+        <p className="text-gray-500">
+          (Product data is not being fetched in this simplified example.)
+        </p>
+      </div>
     </div>
   );
 }
