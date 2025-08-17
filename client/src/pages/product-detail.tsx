@@ -3,7 +3,7 @@ import React, { useState } from "react";
 import { useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useQuery } from "@tanstack/react-query";
-import api from "@/lib/axios"; // ✅ yahi use karna hai
+import api from "@/lib/api.ts"; // ✅ yahi use karna hai
 
 const ProductDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
