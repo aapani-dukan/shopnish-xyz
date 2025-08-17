@@ -56,10 +56,12 @@ export default function ProductDetail() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
+  // Categories data fetching
   const { data: categories = [] } = useQuery<Category[]>({
     queryKey: ['/api/categories'],
   });
 
+  // Product data fetching
   const { data: product, isLoading: productLoading, error } = useQuery<Product>({
     queryKey: ['/api/products', id],
     queryFn: async () => {
@@ -70,6 +72,7 @@ export default function ProductDetail() {
     enabled: !!id, 
   });
 
+  // Product reviews fetching
   const { data: reviews = [] } = useQuery<Review[]>({
     queryKey: ['/api/products', id, 'reviews'],
     queryFn: async () => {
@@ -80,13 +83,22 @@ export default function ProductDetail() {
     enabled: !!id,
   });
   
+  // ✅ Add to Cart Mutation
   const addToCartMutation = useMutation({
     mutationFn: async ({ productId, quantity }: { productId: number; quantity: number }) => {
       return await apiRequest("POST", "/api/cart/add", { productId, quantity });
     },
     onSuccess: (data) => {
-      console.log("✅ Cart API Response (onSuccess):", data); // ✅ डेटा को लॉग करें
-      // toast और invalidateQueries को यहां से हटा दिया गया है ताकि TypeError न आए
+      console.log("✅ Cart API Response (onSuccess):", data);
+      
+      // ✅ Cart query को invalidate करें ताकि cart page पर data refresh हो
+      queryClient.invalidateQueries({ queryKey: ["/api/cart"] });
+
+      // ✅ Success toast message दिखाएँ
+      toast({
+        title: "Added to cart",
+        description: `${quantity} × ${product?.name} added to your cart.`,
+      });
     },
     onError: (error) => {
       console.error("❌ Error adding to cart:", error);
@@ -96,16 +108,6 @@ export default function ProductDetail() {
         variant: "destructive",
       });
     },
-    onSettled: () => {
-      // ✅ onSettled हमेशा चलेगा, चाहे onSuccess हो या onError
-      if (addToCartMutation.isSuccess) {
-         toast({
-            title: "Added to cart",
-            description: `${quantity} × ${product?.name} added to your cart.`,
-        });
-        queryClient.invalidateQueries({ queryKey: ["/api/cart"] });
-      }
-    }
   });
 
   const handleAddToCart = () => {
@@ -113,6 +115,11 @@ export default function ProductDetail() {
     
     if (!product || typeof id === 'undefined') {
       console.error("Product data or ID is missing. Cannot add to cart.");
+      toast({
+          title: "Error",
+          description: "Product data is not available. Please try again.",
+          variant: "destructive",
+      });
       return;
     }
   
