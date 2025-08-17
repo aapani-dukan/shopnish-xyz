@@ -1,7 +1,10 @@
-import React, { useState } from "react";
-import api from "@/lib/api";
-import { toast } from "../hooks/use-toast"; // अपने toast hook का सही import path डालो
-import { Button } from "@/components/ui/button";   // मान लो तुम Shadcn button use कर रहे हो
+// client/src/components/product-card.tsx
+
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "@/hooks/use-toast";
+import { Button } from "@/components/ui/button";
+import { apiRequest } from "@/lib/queryClient";
+import React from "react";
 
 interface Product {
   id: number;
@@ -13,22 +16,39 @@ interface Product {
 
 interface ProductCardProps {
   product: Product;
-  addItem: (item: {
-    productId: number;
-    name: string;
-    price: string;
-    image: string;
-    quantity: number;
-  }) => void;
 }
 
-const ProductCard: React.FC<ProductCardProps> = ({ product, addItem }) => {
-  const [isAdding, setIsAdding] = useState(false);
+const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
+  const queryClient = useQueryClient();
 
-  const handleAddToCart = async (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
+  const addToCartMutation = useMutation({
+    mutationFn: async ({ productId, quantity }: { productId: number; quantity: number }) => {
+      // ✅ apiRequest का उपयोग करके सही POST call
+      return await apiRequest("POST", "/api/cart/add", { productId, quantity });
+    },
+    onSuccess: (data) => {
+      console.log("✅ Cart API Response (onSuccess):", data);
+      
+      // ✅ Cart query को invalidate करें ताकि cart page पर data refresh हो
+      queryClient.invalidateQueries({ queryKey: ["/api/cart"] });
 
+      // ✅ Success toast message दिखाएँ
+      toast({
+        title: "Added to cart",
+        description: `${product?.name} has been added to your cart.`,
+      });
+    },
+    onError: (error) => {
+      console.error("❌ Error adding to cart:", error);
+      toast({
+        title: "Failed to add to cart",
+        description: "An error occurred while adding the item to your cart.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleAddToCart = () => {
     if (product.stock === 0) {
       toast({
         title: "Out of Stock",
@@ -38,50 +58,23 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, addItem }) => {
       return;
     }
 
-    setIsAdding(true);
-
-    try {
-      console.log("🛒 Sending API request to add to cart...", product);
-
-      // ✅ Backend API call
-      const response = await api.post("/api/cart/add", {
-        productId: product.id,
-        quantity: 1,
-      });
-
-      console.log("✅ Cart API Response:", response.data);
-
-      // ✅ Local store update
-      addItem({
-        productId: product.id,
-        name: product.name,
-        price: product.price,
-        image: product.image,
-        quantity: 1,
-      });
-
-      toast({
-        title: "Added to cart",
-        description: `${product.name} has been added to your cart.`,
-      });
-    } catch (error: any) {
-      console.error("❌ Error adding to cart:", error);
-      toast({
-        title: "Error",
-        description: "Failed to add item to cart.",
-        variant: "destructive",
-      });
-    } finally {
-      setTimeout(() => setIsAdding(false), 1000);
-    }
+    addToCartMutation.mutate({
+      productId: product.id,
+      quantity: 1,
+    });
   };
 
   return (
     <div className="p-4 border rounded-lg">
-      <h3>{product.name}</h3>
-      <p>₹{product.price}</p>
-      <Button onClick={handleAddToCart} disabled={isAdding}>
-        {isAdding ? "Adding..." : "Add to Cart"}
+      <img src={product.image} alt={product.name} className="h-40 w-full object-cover rounded-lg mb-4" />
+      <h3 className="text-lg font-semibold truncate">{product.name}</h3>
+      <p className="text-gray-600 mb-2">₹{product.price}</p>
+      <Button 
+        onClick={handleAddToCart} 
+        disabled={addToCartMutation.isPending || product.stock === 0}
+        className="w-full"
+      >
+        {addToCartMutation.isPending ? "Adding..." : "Add to Cart"}
       </Button>
     </div>
   );
