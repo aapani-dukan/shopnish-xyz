@@ -1,83 +1,101 @@
-// client/src/pages/ProductDetail.tsx
-
+// pages/product-detail.tsx
 import { useParams } from "react-router-dom";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useToast } from "@/hooks/use-toast";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { useState } from "react";
+import axios from "axios";
 import { Button } from "@/components/ui/button";
-import { getAuth } from "firebase/auth";
+import { Card, CardContent } from "@/components/ui/card";
+
+interface Product {
+  id: string;
+  name: string;
+  description: string;
+  price: number;
+  image: string;
+}
 
 export default function ProductDetail() {
-  const { id } = useParams();
-  const { toast } = useToast();
-  const queryClient = useQueryClient();
+  const { id } = useParams<{ id: string }>();
+  const [quantity, setQuantity] = useState(1);
 
-  console.log("Product ID for Add to Cart:", id);
+  // ✅ Product details fetch
+  const { data: product, isLoading, error } = useQuery<Product>({
+    queryKey: ["product", id],
+    queryFn: async () => {
+      const res = await axios.get(`/api/products/${id}`);
+      return res.data;
+    },
+    enabled: !!id,
+  });
 
-  const addToCartMutation = useMutation({
+  // ✅ Add to Cart Mutation
+  const addToCart = useMutation({
     mutationFn: async () => {
-      if (!id) throw new Error("Invalid product ID");
-
-      console.log("🚀 [Add to Cart] Attempting to add product ID:", id);
-
-      const auth = getAuth();
-      const user = auth.currentUser;
-      if (!user) {
-        throw new Error("User not authenticated.");
-      }
-      const token = await user.getIdToken();
-
-      const response = await fetch("/api/cart/add", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
+      const token = localStorage.getItem("token"); // auth token
+      const res = await axios.post(
+        "/api/cart",
+        {
+          productId: product?.id,
+          quantity,
         },
-        body: JSON.stringify({ productId: id, quantity: 1 }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || errorData.message || "Failed to add to cart");
-      }
-
-      return response.json();
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      return res.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/cart"] });
-      toast({
-        title: "Added to Cart",
-        description: `Product has been added successfully.`,
-      });
+      alert("✅ Product added to cart!");
     },
-    onError: (error: any) => {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to add to cart",
-        variant: "destructive",
-      });
+    onError: () => {
+      alert("❌ Failed to add product to cart. Please login.");
     },
   });
 
-  const handleAddToCart = () => {
-    addToCartMutation.mutate();
-  };
+  if (isLoading) return <p>Loading...</p>;
+  if (error || !product) return <p>Product not found</p>;
 
-  // ✅ Simple UI
   return (
-    <div style={{ padding: "2rem" }}>
-      <h1>Product Detail Page</h1>
-      <p>Product ID: {id}</p>
-      <Button
-        onClick={handleAddToCart}
-        disabled={addToCartMutation.isPending || !id}
-      >
-        {addToCartMutation.isPending ? "Adding..." : "Add to Cart"}
-      </Button>
+    <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+      {/* Image */}
+      <Card className="flex items-center justify-center">
+        <img
+          src={product.image}
+          alt={product.name}
+          className="w-full h-96 object-cover rounded-2xl"
+        />
+      </Card>
 
-      <div className="mt-4">
-        <p className="text-gray-500">
-          (Product data is not being fetched in this simplified example.)
-        </p>
+      {/* Details */}
+      <div>
+        <h1 className="text-3xl font-bold mb-4">{product.name}</h1>
+        <p className="text-lg text-gray-600 mb-4">{product.description}</p>
+        <p className="text-2xl font-semibold mb-6">₹{product.price}</p>
+
+        {/* Quantity Selector */}
+        <div className="flex items-center mb-6">
+          <Button
+            variant="outline"
+            onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+          >
+            -
+          </Button>
+          <span className="px-4">{quantity}</span>
+          <Button variant="outline" onClick={() => setQuantity((q) => q + 1)}>
+            +
+          </Button>
+        </div>
+
+        {/* Add to Cart */}
+        <Button
+          className="w-full"
+          onClick={() => addToCart.mutate()}
+          disabled={addToCart.isPending}
+        >
+          {addToCart.isPending ? "Adding..." : "Add to Cart"}
+        </Button>
       </div>
     </div>
   );
