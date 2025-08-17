@@ -12,10 +12,10 @@ import {
   User,
 } from "firebase/auth";
 
-// ✅ Firebase config को सीधे Vite's environment variables से access करें
+// ✅ Firebase config को सीधे hard-code करें
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  authDomain: "aapani-dukan.firebaseapp.com",
   projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
   storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
   messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
