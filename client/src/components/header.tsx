@@ -1,10 +1,9 @@
-// src/components/Header.tsx
+// client/src/components/Header.tsx
+
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
-// ✅ useQuery को react-query से इंपोर्ट करें
 import { useQuery } from "@tanstack/react-query";
-// ✅ apiRequest को queryClient से इंपोर्ट करें
 import { apiRequest } from "@/lib/queryClient";
 
 // UI कॉम्पोनेंट्स इम्पोर्ट करें
@@ -32,7 +31,7 @@ import {
   ListOrdered,
 } from "lucide-react";
 import SellerOnboardingDialog from "./seller/SellerOnboardingDialog";
-import { logout } from "@/lib/firebase"; // ✅ logout को इंपोर्ट करें
+import { logout } from "@/lib/firebase";
 
 interface Category {
   id: string;
@@ -40,7 +39,6 @@ interface Category {
   slug: string;
 }
 
-// ✅ CartItem और CartResponse इंटरफेस को यहाँ जोड़ें
 interface CartItem {
   id: number;
   quantity: number;
@@ -59,19 +57,20 @@ interface CartResponse {
 
 interface HeaderProps {
   categories: Category[];
+  // ✅ onCartClick प्रॉप्स को जोड़ें
+  onCartClick: () => void;
 }
 
-const Header: React.FC<HeaderProps> = ({ categories = [] }) => {
+const Header: React.FC<HeaderProps> = ({ categories = [], onCartClick }) => {
   const [searchValue, setSearchValue] = useState("");
   const navigate = useNavigate();
   const { user, isAuthenticated, isLoadingAuth } = useAuth();
   const [isSellerDialogOpen, setIsSellerDialogOpen] = useState(false);
 
-  // ✅ useCartStore की जगह useQuery का उपयोग करें
   const { data: cartData } = useQuery<CartResponse>({
     queryKey: ["/api/cart"],
     queryFn: () => apiRequest("GET", "/api/cart"),
-    enabled: isAuthenticated, // ✅ क्वेरी केवल तभी चलाएं जब उपयोगकर्ता प्रमाणित हो
+    enabled: isAuthenticated,
   });
 
   const totalItemsInCart = cartData?.items.reduce((sum, item) => sum + item.quantity, 0) || 0;
@@ -196,17 +195,21 @@ const Header: React.FC<HeaderProps> = ({ categories = [] }) => {
             </Button>
           </Link>
 
-          <Link to="/cart">
-            <Button variant="ghost" size="icon" className="relative">
-              <ShoppingCart className="h-5 w-5" />
-              {totalItemsInCart > 0 && (
-                <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-xs text-white">
-                  {totalItemsInCart}
-                </span>
-              )}
-              <span className="sr-only">Shopping Cart</span>
-            </Button>
-          </Link>
+          {/* ✅ कार्ट बटन को अपडेट करें */}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="relative"
+            onClick={onCartClick} // ✅ यहाँ पर onClick हैंडलर जोड़ें
+          >
+            <ShoppingCart className="h-5 w-5" />
+            {totalItemsInCart > 0 && (
+              <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-xs text-white">
+                {totalItemsInCart}
+              </span>
+            )}
+            <span className="sr-only">Shopping Cart</span>
+          </Button>
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -259,17 +262,21 @@ const Header: React.FC<HeaderProps> = ({ categories = [] }) => {
 
         {/* मोबाइल मेनू */}
         <div className="flex items-center md:hidden">
-          <Link to="/cart" className="relative mr-2">
-            <Button variant="ghost" size="icon">
-              <ShoppingCart className="h-5 w-5" />
-              {totalItemsInCart > 0 && (
-                <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-xs text-white">
-                  {totalItemsInCart}
-                </span>
-              )}
-              <span className="sr-only">Shopping Cart</span>
-            </Button>
-          </Link>
+          {/* ✅ मोबाइल कार्ट बटन को अपडेट करें */}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="relative mr-2"
+            onClick={onCartClick} // ✅ यहाँ पर onClick हैंडलर जोड़ें
+          >
+            <ShoppingCart className="h-5 w-5" />
+            {totalItemsInCart > 0 && (
+              <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-xs text-white">
+                {totalItemsInCart}
+              </span>
+            )}
+            <span className="sr-only">Shopping Cart</span>
+          </Button>
 
           <Sheet>
             <SheetTrigger asChild>
