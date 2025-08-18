@@ -126,7 +126,7 @@ router.use('/sellers', sellerRouter);
 //cartRourer
 router.use('/cart', cartRouter);
 //orderRouter
-app.use('/api/orders', orderRoutes);
+router.use('/orders', orderRoutes);
 
 // ✅ Categories
 router.get('/categories', async (req: Request, res: Response) => {
