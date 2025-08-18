@@ -3,7 +3,7 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
 import { auth } from './firebase.ts';
 
-
+import { signOutUser } from "@/lib/firebase";
 /**
  * जाँचता है कि क्या रिस्पॉन्स ठीक है, और अगर नहीं, तो एक विस्तृत एरर थ्रो करता है।
  * यह JSON और टेक्स्ट रिस्पॉन्स दोनों को हैंडल करता है।
@@ -127,11 +127,48 @@ export const queryClient = new QueryClient({
       queryFn: getQueryFn({ on401: "throw" }),
       refetchInterval: false,
       refetchOnWindowFocus: false,
-      staleTime: Infinity,
-      retry: false,
+      staleTime: 1000 * 60 * 5, // ✅ staleTime को 5 मिनट पर सेट करें
+      retry: (failureCount, error) => {
+        // ✅ यह लॉजिक 401 एरर पर री-लॉगिन की कोशिश करेगा।
+        const status = (error as any).status;
+        if (status === 401 && failureCount < 1) {
+            console.log("401 Error detected. Attempting to refresh token...");
+            // आप यहाँ टोकन को मैन्युअल रूप से रिफ्रेश करने का लॉजिक जोड़ सकते हैं
+            // या एक और तरीका:
+            //signOutUser(); // यह उपयोगकर्ता को लॉगआउट कर देगा, जो एक सख्त उपाय है।
+            return true; // दोबारा कोशिश करें
+        }
+        return false;
+      },
     },
     mutations: {
       retry: false,
     },
   },
 });
+
+type UnauthorizedBehavior = "returnNull" | "throw";
+
+export const getQueryFn: <T>(options: {
+  on401: UnauthorizedBehavior;
+}) => QueryFunction<T | null> =
+  ({ on401: unauthorizedBehavior }) =>
+  async ({ queryKey, signal }) => {
+    const path = queryKey[0] as string; 
+    
+    // ✅ यहाँ try-catch ब्लॉक जोड़ें
+    try {
+        const res = await apiRequest(
+          "GET", 
+          path, 
+          undefined,
+          { signal }
+        );
+        return res as T;
+    } catch (error: any) {
+        if (error.status === 401 && unauthorizedBehavior === "returnNull") {
+            return null;
+        }
+        throw error;
+    }
+  };
