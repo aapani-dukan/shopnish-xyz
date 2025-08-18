@@ -30,7 +30,8 @@ export default function Cart() {
       }
       
       const response = await apiRequest("GET", "/api/cart");
-      return response.items; // ✅ backend response structure के अनुसार
+      
+      return response.items || [];
     },
     // ✅ जब तक user लॉग इन नहीं होता, तब तक query को disable रखें
     enabled: !!auth.currentUser,
@@ -61,7 +62,8 @@ export default function Cart() {
       <Header />
       <main className="max-w-4xl mx-auto p-4">
         <h2 className="text-2xl font-bold mb-6 text-center">Your Cart</h2>
-        {cartItems?.length === 0 ? (
+        
+    {!cartItems || cartItems.length === 0 ? (
           <p className="text-center text-gray-500">No items in cart.</p>
         ) : (
           <div className="space-y-4">
