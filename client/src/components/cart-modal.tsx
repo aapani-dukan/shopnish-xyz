@@ -32,16 +32,15 @@ interface CartModalProps {
 }
 
 export default function CartModal({ isOpen, onClose }: CartModalProps) {
-  // ✅ `isLoadingAuth` को `useAuth` से प्राप्त करें
-  const { isAuthenticated, isLoadingAuth } = useAuth();
+  const { isAuthenticated, isLoadingAuth, user } = useAuth(); // ✅ `user` को भी प्राप्त करें
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
   const { data, isLoading, error } = useQuery<CartResponse>({
-    queryKey: ["/api/cart"],
+    // ✅ `queryKey` में टोकन को शामिल करें
+    // यह सुनिश्चित करता है कि क्वेरी केवल तभी इनवैलिडेट हो जब टोकन बदलता है
+    queryKey: ["/api/cart", user?.idToken],
     queryFn: () => apiRequest("GET", "/api/cart"),
-    // ✅ `enabled` प्रॉपर्टी को अपडेट करें
-    // यह सुनिश्चित करता है कि क्वेरी तभी चले जब उपयोगकर्ता प्रमाणित हो और Firebase Auth लोड हो चुका हो
     enabled: isAuthenticated && !isLoadingAuth,
   });
 
