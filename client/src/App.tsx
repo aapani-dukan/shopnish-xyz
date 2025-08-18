@@ -9,7 +9,7 @@ import { AuthProvider } from "@/hooks/useAuth";
 import { TooltipProvider } from "@/components/ui/tooltip"; // ✅ TooltipProvider को इंपोर्ट करें
 
 // Layouts and components
-import Header from "./layouts/header";
+import Header from "./components/header";
 import CartModal from "./components/cart-modal";
 
 // Pages
