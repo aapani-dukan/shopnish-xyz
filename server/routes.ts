@@ -17,6 +17,9 @@ import { AuthenticatedRequest } from './middleware/verifyToken.ts';
 import { requireAuth, requireAdminAuth } from './middleware/authMiddleware.ts';
 import { authAdmin } from './lib/firebaseAdmin.ts';
 
+import orderRoutes from '../routes/ordersRoutes.ts';
+
+
 // ✅ Sub-route modules को इंपोर्ट करें
 import apiAuthLoginRouter from './roots/apiAuthLogin.ts';
 import adminApproveProductRoutes from './roots/admin/approve-product.ts';
@@ -122,6 +125,8 @@ router.post('/auth/logout', async (req, res) => {
 router.use('/sellers', sellerRouter);
 //cartRourer
 router.use('/cart', cartRouter);
+//orderRouter
+app.use('/api/orders', orderRoutes);
 
 // ✅ Categories
 router.get('/categories', async (req: Request, res: Response) => {
