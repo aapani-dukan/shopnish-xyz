@@ -40,17 +40,50 @@ export default function CartModal({ isOpen, onClose }: CartModalProps) {
     queryFn: () => apiRequest("GET", "/api/cart"),
     enabled: isAuthenticated && !isLoadingAuth,
   });
-
+  
   const items = Array.isArray(data?.items) ? data.items : [];
   
-  // ✅ कुल कीमत की गणना को सुरक्षित करें
   const total = items.reduce((sum, item) => {
-    const price = parseFloat(item.product.price) || 0; // ✅ NaN को 0 से बदलें
-    const quantity = item.quantity || 0; // ✅ undefined को 0 से बदलें
+    const price = parseFloat(item.product.price) || 0;
+    const quantity = item.quantity || 0;
     return sum + (price * quantity);
   }, 0);
 
-  // ... (handleUpdateQuantity और handleRemoveItem फ़ंक्शंस अपरिवर्तित रहेंगे)
+  const handleUpdateQuantity = async (itemId: number, newQuantity: number) => {
+    try {
+      if (newQuantity <= 0) {
+        await apiRequest("DELETE", `/api/cart/${itemId}`);
+      } else {
+        await apiRequest("PUT", `/api/cart/${itemId}`, { quantity: newQuantity });
+      }
+      queryClient.invalidateQueries({ queryKey: ["/api/cart"] });
+    } catch (error) {
+      console.error("Failed to update cart item:", error);
+      toast({
+        title: "Error updating cart",
+        description: "Failed to update item quantity. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleRemoveItem = async (itemId: number) => {
+    try {
+      await apiRequest("DELETE", `/api/cart/${itemId}`);
+      queryClient.invalidateQueries({ queryKey: ["/api/cart"] });
+      toast({
+        title: "Item removed",
+        description: "The item has been successfully removed from your cart.",
+      });
+    } catch (error) {
+      console.error("Failed to remove item:", error);
+      toast({
+        title: "Error removing item",
+        description: "Failed to remove item. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
 
   if (isLoadingAuth) {
     return (
@@ -100,7 +133,6 @@ export default function CartModal({ isOpen, onClose }: CartModalProps) {
     );
   }
 
-  // ✅ यह ब्लॉक तब चलेगा जब कार्ट खाली हो
   if (items.length === 0) {
     return (
       <Sheet open={isOpen} onOpenChange={onClose}>
@@ -121,7 +153,6 @@ export default function CartModal({ isOpen, onClose }: CartModalProps) {
     );
   }
 
-  // ✅ जब कार्ट में आइटम हों, तो यह ब्लॉक चलेगा
   return (
     <Sheet open={isOpen} onOpenChange={onClose}>
       <SheetContent className="w-full max-w-md flex flex-col">
@@ -129,7 +160,6 @@ export default function CartModal({ isOpen, onClose }: CartModalProps) {
           <SheetTitle>Shopping Cart</SheetTitle>
         </SheetHeader>
 
-        {/* Cart Items */}
         <div className="flex-1 overflow-y-auto py-4 space-y-4">
           {items.map((item) => (
             <div key={item.id} className="flex items-center space-x-4 p-4 border rounded-lg">
@@ -184,7 +214,6 @@ export default function CartModal({ isOpen, onClose }: CartModalProps) {
           ))}
         </div>
 
-        {/* Cart Footer */}
         <div className="border-t pt-4 space-y-4">
           <div className="flex justify-between items-center">
             <span className="text-lg font-semibold">Total:</span>
