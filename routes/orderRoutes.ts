@@ -1,7 +1,7 @@
 //routes/orderRoutes.ts
 
 import { Router } from 'express';
-import { createOrder, getUserOrders } from '../controllers/orderController';
+import { createOrder, getUserOrders } from '../server/controllers/orderController.ts';
 import { requireAuth } from '../server/middleware/authMiddleware.ts'; // ✅ मिडलवेयर को आयात करें
 
 const ordersRouter = Router();
