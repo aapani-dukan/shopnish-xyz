@@ -1,12 +1,13 @@
 // server/controllers/orderController.ts
 
 import { Request, Response } from 'express';
-import { db } from '../db.ts'; // आपके डेटाबेस कनेक्शन का पथ
+import { db } from '../db.ts';
+import { orders, orderItems, cartItems } from '../../shared/backend/schema.ts'; // ✅ Drizzle स्कीमा इंपोर्ट करें
+import { eq } from 'drizzle-orm'; // ✅ Drizzle ORM से आवश्यक हेल्पर फ़ंक्शन इंपोर्ट करें
 
 // Function to create a new order
 export const createOrder = async (req: Request, res: Response) => {
   try {
-    // We assume req.user is populated by a Firebase auth middleware
     const userId = req.user?.id; 
     
     if (!userId) {
@@ -15,18 +16,20 @@ export const createOrder = async (req: Request, res: Response) => {
 
     const { order, items } = req.body;
 
-    const newOrder = await db.order.create({
-      data: {
-        ...order,
-        customerId: userId,
-        status: "placed",
-        deliveryAddress: JSON.stringify(order.deliveryAddress),
-      },
-    });
+    // ✅ Drizzle का उपयोग करके एक नया ऑर्डर डालें
+    const newOrder = await db.insert(orders).values({
+      ...order,
+      customerId: userId,
+      status: "placed",
+      deliveryAddress: JSON.stringify(order.deliveryAddress),
+    }).returning({ id: orders.id }); // ID वापस पाएं
 
-    const orderItems = items.map((item: any) => ({
+    const orderId = newOrder[0].id; // डालें गए ऑर्डर की ID
+
+    // ✅ Drizzle का उपयोग करके ऑर्डर आइटम डालें
+    const orderItemsData = items.map((item: any) => ({
       ...item,
-      orderId: newOrder.id,
+      orderId: orderId,
       productId: item.productId,
       sellerId: item.sellerId,
       quantity: item.quantity,
@@ -34,20 +37,14 @@ export const createOrder = async (req: Request, res: Response) => {
       totalPrice: item.totalPrice,
     }));
 
-    await db.orderItem.createMany({
-      data: orderItems,
-    });
+    await db.insert(orderItems).values(orderItemsData);
 
-    // Clear the cart after a successful order
-    await db.cartItem.deleteMany({
-      where: {
-        userId: userId,
-      },
-    });
+    // ✅ Drizzle का उपयोग करके कार्ट को साफ़ करें
+    await db.delete(cartItems).where(eq(cartItems.userId, userId));
 
     res.status(201).json({
       message: "Order placed successfully!",
-      orderId: newOrder.id,
+      orderId: orderId,
     });
 
   } catch (error) {
@@ -64,19 +61,20 @@ export const getUserOrders = async (req: Request, res: Response) => {
       return res.status(401).json({ message: "Unauthorized" });
     }
 
-    const orders = await db.order.findMany({
-      where: { customerId: userId },
-      include: {
+    // ✅ Drizzle का उपयोग करके ऑर्डर प्राप्त करें
+    const ordersWithItems = await db.query.orders.findMany({
+      where: eq(orders.customerId, userId),
+      with: {
         items: {
-          include: {
+          with: {
             product: true,
           },
         },
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: (orders, { desc }) => [desc(orders.createdAt)],
     });
 
-    res.status(200).json(orders);
+    res.status(200).json(ordersWithItems);
   } catch (error) {
     console.error("Error fetching orders:", error);
     res.status(500).json({ message: "Failed to fetch orders." });
