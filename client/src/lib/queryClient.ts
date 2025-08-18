@@ -47,12 +47,29 @@ export async function apiRequest(
   const url = `${BASE_URL}${path}`;
   console.log(`[API Request] Sending ${method} request to: ${url}`);
 
+  const user = auth.currentUser;
+  let token = null;
+
+  // ✅ केवल तभी टोकन प्राप्त करें जब उपयोगकर्ता मौजूद हो
+  if (user) {
+    try {
+      token = await user.getIdToken();
+    } catch (error) {
+      console.error("Firebase ID टोकन प्राप्त करने में त्रुटि:", error);
+      throw new Error("प्रमाणीकरण टोकन प्राप्त करने में विफल। कृपया पुनः प्रयास करें।");
+    }
+  }
+
   const headers: HeadersInit = {
     ...(requestOptions?.headers || {}),
   };
 
+  // ✅ यदि टोकन मौजूद है, तो उसे headers में जोड़ें
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
   let body: BodyInit | undefined;
-  // ✅ यहाँ बदलाव किया गया है: GET और HEAD रिक्वेस्ट में body नहीं होनी चाहिए
   if (method !== 'GET' && method !== 'HEAD') {
     if (data instanceof FormData) {
       body = data;
@@ -60,19 +77,6 @@ export async function apiRequest(
       headers['Content-Type'] = 'application/json';
       body = JSON.stringify(data);
     }
-  }
-
-  const user = auth.currentUser;
-  if (user) {
-    try {
-      const token = await user.getIdToken();
-      headers['Authorization'] = `Bearer ${token}`;
-    } catch (error) {
-      console.error("Firebase ID टोकन प्राप्त करने में त्रुटि:", error);
-      throw new Error("प्रमाणीकरण टोकन प्राप्त करने में विफल। कृपया पुनः प्रयास करें।");
-    }
-  } else if (path !== '/api/auth/login' && path !== '/api/auth/signup') {
-    console.warn(`API request to ${path} made without an authentication token.`);
   }
 
   const config: RequestInit = {
@@ -92,7 +96,6 @@ export async function apiRequest(
       return null;
     }
     return JSON.parse(responseText);
-
   } catch (error) {
     console.error(`Error during API request to ${url}:`, error);
     throw error;
