@@ -21,7 +21,7 @@ export const createOrder = async (req: Request, res: Response) => {
       ...order,
       customerId: userId,
       status: "placed",
-      deliveryAddress: JSON.stringify(order.deliveryAddress),
+      deliveryAddress: JSON.stringify(order.deliveryAddress),createdAt: new Date(),
     }).returning({ id: orders.id }); // ID वापस पाएं
 
     const orderId = newOrder[0].id; // डालें गए ऑर्डर की ID
