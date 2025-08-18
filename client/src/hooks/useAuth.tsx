@@ -92,15 +92,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [authError, setAuthError] = useState<AuthError | null>(null);
   const [idToken, setIdToken] = useState<string | null>(null);
   const queryClient = useQueryClient();
-
-  const { data: user, isLoading: isLoadingUser, error: queryError, refetch } = useQuery({
+const { data: user, isLoading: isLoadingUser, error: queryError, refetch } = useQuery({
     queryKey: ['userProfile', firebaseUser?.uid],
     queryFn: async () => {
-      if (!firebaseUser || !idToken) return null;
+      // ✅ अब `idToken` को queryFn के अंदर ही प्राप्त करें
+      if (!firebaseUser) return null;
+      const token = await firebaseUser.getIdToken();
 
       try {
-        const res = await authenticatedApiRequest("GET", `/api/users/me`, undefined, idToken);
-        // ✅ यहाँ बदलाव किया गया है। API से सीधे `user` ऑब्जेक्ट को एक्सट्रैक्ट करें।
+        const res = await authenticatedApiRequest("GET", `/api/users/me`, undefined, token);
         const dbUserData = await res.json();
         
         const role = dbUserData?.role || 'customer'; 
@@ -111,12 +111,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           email: firebaseUser.email || dbUserData?.email,
           name: firebaseUser.displayName || dbUserData?.name,
           role: role,
-          idToken: idToken,
+          idToken: token, // ✅ यहाँ नया टोकन असाइन करें
           sellerProfile: dbUserData?.sellerProfile || null,
         };
         
         return currentUser;
       } catch (e: any) {
+  
         if (e.status === 404) {
           console.warn("User profile not found in DB. Creating a new user.");
           try {
@@ -154,7 +155,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         throw e;
       }
     },
-    enabled: !!firebaseUser && !!idToken,
+    enabled: !!firebaseUser && !isLoadingFirebase,
     staleTime: 1000 * 60 * 5,
     retry: false,
   });
@@ -169,14 +170,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     };
     checkRedirectResult();
     
-    const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
+    const unsubscribe = onAuthStateChanged(auth, (fbUser) => {
       setFirebaseUser(fbUser);
       setIsLoadingFirebase(false);
-      if (fbUser) {
-        const idToken = await fbUser.getIdToken();
-        setIdToken(idToken);
-      } else {
-        setIdToken(null);
+      // ✅ अब idToken को यहाँ सेट करने की ज़रूरत नहीं है
+      if (!fbUser) {
         queryClient.clear();
       }
     });
