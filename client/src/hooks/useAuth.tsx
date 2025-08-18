@@ -2,7 +2,7 @@
 
 import { useEffect, useState, createContext, useContext, useCallback } from "react";
 import { User as FirebaseUser } from "firebase/auth";
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
 import { 
   auth,
   onAuthStateChanged,
@@ -11,6 +11,7 @@ import {
   signOutUser,
   AuthError,
 } from "@/lib/firebase";
+import { apiRequest } from "@/lib/queryClient";
 
 // --- आपके प्रकारों को ठीक करें ---
 export interface SellerInfo {
@@ -45,120 +46,12 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// यह फ़ंक्शन API रिक्वेस्ट को handle करता है
-export async function authenticatedApiRequest(method: 'GET' | 'POST' | 'PUT' | 'DELETE', url: string, data?: any, idToken?: string) {
-  if (!idToken) {
-    throw new Error("Authentication token is missing for API request.");
-  }
-
-  const headers = {
-    'Content-Type': 'application/json',
-    'Authorization': `Bearer ${idToken}`,
-  };
-
-  const options: RequestInit = {
-    method,
-    headers,
-    body: data ? JSON.stringify(data) : undefined,
-  };
-
-  const response = await fetch(url, options);
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    let errorData = null;
-    try {
-      errorData = JSON.parse(errorText);
-    } catch (e) {
-      // JSON parse error को संभालें
-    }
-    const errorMessage = errorData?.error || errorData?.message || errorText || `API Error: ${response.status} ${response.statusText}`;
-    
-    const error = new Error(errorMessage);
-    (error as any).status = response.status; // status को error object में जोड़ें
-    throw error;
-  }
-  
-  if (response.status === 204) {
-    return { ok: true, json: () => Promise.resolve({}) };
-  }
-
-  return response;
-}
-
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
-  const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
-  const [isLoadingFirebase, setIsLoadingFirebase] = useState(true);
+  const [user, setUser] = useState<User | null>(null);
+  const [isLoadingAuth, setIsLoadingAuth] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [authError, setAuthError] = useState<AuthError | null>(null);
-  const [idToken, setIdToken] = useState<string | null>(null);
   const queryClient = useQueryClient();
-const { data: user, isLoading: isLoadingUser, error: queryError, refetch } = useQuery({
-    queryKey: ['userProfile', firebaseUser?.uid],
-    queryFn: async () => {
-      // ✅ अब `idToken` को queryFn के अंदर ही प्राप्त करें
-      if (!firebaseUser) return null;
-      const token = await firebaseUser.getIdToken();
-
-      try {
-        const res = await authenticatedApiRequest("GET", `/api/users/me`, undefined, token);
-        const dbUserData = await res.json();
-        
-        const role = dbUserData?.role || 'customer'; 
-        
-        const currentUser: User = {
-          uid: firebaseUser.uid,
-          id: dbUserData?.id,
-          email: firebaseUser.email || dbUserData?.email,
-          name: firebaseUser.displayName || dbUserData?.name,
-          role: role,
-          idToken: token, // ✅ यहाँ नया टोकन असाइन करें
-          sellerProfile: dbUserData?.sellerProfile || null,
-        };
-        
-        return currentUser;
-      } catch (e: any) {
-  
-        if (e.status === 404) {
-          console.warn("User profile not found in DB. Creating a new user.");
-          try {
-            const newUserProfile = await authenticatedApiRequest("POST", `/api/register`, {
-              firebaseUid: firebaseUser.uid,
-              email: firebaseUser.email,
-              name: firebaseUser.displayName,
-              role: "customer",
-              firstName: '',
-              lastName: '',
-              phone: '',
-              address: '',
-              city: '',
-              pincode: '',
-            }, idToken);
-
-            const newDbUserData = await newUserProfile.json();
-
-            const newUser: User = {
-              uid: firebaseUser.uid,
-              id: newDbUserData?.id, 
-              email: firebaseUser.email,
-              name: firebaseUser.displayName,
-              role: "customer",
-              idToken: idToken,
-              sellerProfile: null,
-            };
-            return newUser;
-          } catch (createError) {
-            console.error("Failed to create new user in DB:", createError);
-            throw createError;
-          }
-        }
-        console.error("Failed to fetch user data from DB:", e);
-        throw e;
-      }
-    },
-    enabled: !!firebaseUser && !isLoadingFirebase,
-    staleTime: 1000 * 60 * 5,
-    retry: false,
-  });
 
   useEffect(() => {
     const checkRedirectResult = async () => {
@@ -170,30 +63,88 @@ const { data: user, isLoading: isLoadingUser, error: queryError, refetch } = use
     };
     checkRedirectResult();
     
-    const unsubscribe = onAuthStateChanged(auth, (fbUser) => {
-      setFirebaseUser(fbUser);
-      setIsLoadingFirebase(false);
-      // ✅ अब idToken को यहाँ सेट करने की ज़रूरत नहीं है
-      if (!fbUser) {
+    const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
+      if (fbUser) {
+        try {
+          // ✅ यहाँ सीधे apiRequest का उपयोग करें
+          const res = await apiRequest("GET", `/api/users/me`);
+          const dbUserData = res;
+          
+          const role = dbUserData?.role || 'customer'; 
+          
+          const currentUser: User = {
+            uid: fbUser.uid,
+            id: dbUserData?.id,
+            email: fbUser.email || dbUserData?.email,
+            name: fbUser.displayName || dbUserData?.name,
+            role: role,
+            idToken: await fbUser.getIdToken(),
+            sellerProfile: dbUserData?.sellerProfile || null,
+          };
+          
+          setUser(currentUser);
+          setIsAuthenticated(true);
+          
+        } catch (e: any) {
+          if (e.status === 404) {
+            console.warn("User profile not found in DB. Creating a new user.");
+            try {
+              const newUserProfile = await apiRequest("POST", `/api/register`, {
+                firebaseUid: fbUser.uid,
+                email: fbUser.email,
+                name: fbUser.displayName,
+                role: "customer",
+                firstName: '',
+                lastName: '',
+                phone: '',
+                address: '',
+                city: '',
+                pincode: '',
+              });
+              const newDbUserData = newUserProfile;
+              
+              const newUser: User = {
+                uid: fbUser.uid,
+                id: newDbUserData?.id, 
+                email: fbUser.email,
+                name: fbUser.displayName,
+                role: "customer",
+                idToken: await fbUser.getIdToken(),
+                sellerProfile: null,
+              };
+              setUser(newUser);
+              setIsAuthenticated(true);
+            } catch (createError) {
+              console.error("Failed to create new user in DB:", createError);
+              setAuthError(createError as AuthError);
+              setIsAuthenticated(false);
+            }
+          } else {
+            console.error("Failed to fetch user data from DB:", e);
+            setAuthError(e as AuthError);
+            setIsAuthenticated(false);
+          }
+        }
+      } else {
+        setUser(null);
+        setIsAuthenticated(false);
         queryClient.clear();
       }
+      setIsLoadingAuth(false);
     });
 
     return () => unsubscribe();
   }, [queryClient]);
 
-  const isLoadingAuth = isLoadingFirebase || (!!firebaseUser && isLoadingUser);
-  const isAuthenticated = !!user && !!idToken;
-
   const signIn = useCallback(async (usePopup: boolean = false): Promise<FirebaseUser | null> => {
-    setIsLoadingFirebase(true);
+    setIsLoadingAuth(true);
     setAuthError(null);
     try {
       const fbUser = await firebaseSignInWithGoogle(usePopup);
       return fbUser;
     } catch (err: any) {
       setAuthError(err as AuthError);
-      setIsLoadingFirebase(false);
+      setIsLoadingAuth(false);
       throw err;
     }
   }, []);
@@ -202,8 +153,8 @@ const { data: user, isLoading: isLoadingUser, error: queryError, refetch } = use
     try {
       await signOutUser();
       setAuthError(null);
-      setFirebaseUser(null);
-      setIdToken(null);
+      setUser(null);
+      setIsAuthenticated(false);
       queryClient.clear();
     } catch (err: any) {
       setAuthError(err as AuthError);
@@ -215,15 +166,46 @@ const { data: user, isLoading: isLoadingUser, error: queryError, refetch } = use
     setAuthError(null);
   }, []);
 
+  const refetchUser = useCallback(async () => {
+    // यह फ़ंक्शन user डेटा को मैन्युअल रूप से रिफ्रेश करने के लिए है।
+    setIsLoadingAuth(true);
+    const fbUser = auth.currentUser;
+    if (fbUser) {
+      try {
+        const res = await apiRequest("GET", `/api/users/me`);
+        const dbUserData = res;
+        
+        const role = dbUserData?.role || 'customer'; 
+        
+        const currentUser: User = {
+          uid: fbUser.uid,
+          id: dbUserData?.id,
+          email: fbUser.email || dbUserData?.email,
+          name: fbUser.displayName || dbUserData?.name,
+          role: role,
+          idToken: await fbUser.getIdToken(),
+          sellerProfile: dbUserData?.sellerProfile || null,
+        };
+        setUser(currentUser);
+        setIsAuthenticated(true);
+      } catch (e) {
+        console.error("Failed to refetch user data:", e);
+        setAuthError(e as AuthError);
+        setIsAuthenticated(false);
+      }
+    }
+    setIsLoadingAuth(false);
+  }, []);
+
   const authContextValue = {
     user,
     isLoadingAuth,
     isAuthenticated,
-    error: authError || queryError,
+    error: authError,
     clearError,
     signIn,
     signOut,
-    refetchUser: refetch,
+    refetchUser,
   };
 
   return (
@@ -238,4 +220,3 @@ export const useAuth = () => {
   if (!ctx) throw new Error("useAuth must be used within an AuthProvider");
   return ctx;
 };
-    
