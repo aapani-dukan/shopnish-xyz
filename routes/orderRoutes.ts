@@ -1,16 +1,14 @@
-// server/routes/ordersRoutes.ts
+//routes/orderRoutes.ts
 
 import { Router } from 'express';
-import { createOrder, getUserOrders } from '../server/controllers/orderController.ts';
+import { createOrder, getUserOrders } from '../controllers/orderController';
+import { requireAuth } from '../server/middleware/authMiddleware.ts'; // ✅ मिडलवेयर को आयात करें
 
-const router = Router();
+const ordersRouter = Router();
 
-// POST route to create a new order
-// This will handle requests to /api/orders
-router.post('/', createOrder);
+// POST और GET रूट्स पर `requireAuth` मिडलवेयर लागू करें
+// यह सुनिश्चित करता है कि अनुरोध भेजने से पहले उपयोगकर्ता प्रमाणित हो
+ordersRouter.post('/', requireAuth, createOrder);
+ordersRouter.get('/', requireAuth, getUserOrders);
 
-// GET route to fetch a user's orders
-// This will handle requests to /api/orders
-router.get('/', getUserOrders);
-
-export default router;
+export default ordersRouter;
