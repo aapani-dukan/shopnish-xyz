@@ -6,6 +6,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { Link } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
+// ✅ `useAuth` से `isLoadingAuth` को भी इंपोर्ट करें
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 
@@ -31,17 +32,20 @@ interface CartModalProps {
 }
 
 export default function CartModal({ isOpen, onClose }: CartModalProps) {
-  const { isAuthenticated } = useAuth();
+  // ✅ `isLoadingAuth` को `useAuth` से प्राप्त करें
+  const { isAuthenticated, isLoadingAuth } = useAuth();
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
   const { data, isLoading, error } = useQuery<CartResponse>({
     queryKey: ["/api/cart"],
     queryFn: () => apiRequest("GET", "/api/cart"),
-    enabled: isAuthenticated,
+    // ✅ `enabled` प्रॉपर्टी को अपडेट करें
+    // यह सुनिश्चित करता है कि क्वेरी तभी चले जब उपयोगकर्ता प्रमाणित हो और Firebase Auth लोड हो चुका हो
+    enabled: isAuthenticated && !isLoadingAuth,
   });
 
-  // ✅ यह बदलाव करें: सुनिश्चित करें कि items एक एरे है
+  // ✅ यह सुनिश्चित करें कि items हमेशा एक एरे है
   const items = Array.isArray(data?.items) ? data.items : [];
   const total = items.reduce((sum, item) => sum + (parseFloat(item.product.price) * item.quantity), 0);
 
@@ -83,6 +87,23 @@ export default function CartModal({ isOpen, onClose }: CartModalProps) {
     }
   };
 
+  // जब Auth लोड हो रहा हो
+  if (isLoadingAuth) {
+    return (
+      <Sheet open={isOpen} onOpenChange={onClose}>
+        <SheetContent className="w-full max-w-md">
+          <SheetHeader>
+            <SheetTitle>Shopping Cart</SheetTitle>
+          </SheetHeader>
+          <div className="flex justify-center items-center h-96">
+            <p>Loading user authentication...</p>
+          </div>
+        </SheetContent>
+      </Sheet>
+    );
+  }
+
+  // जब कार्ट डेटा लोड हो रहा हो
   if (isLoading) {
     return (
       <Sheet open={isOpen} onOpenChange={onClose}>
@@ -91,7 +112,7 @@ export default function CartModal({ isOpen, onClose }: CartModalProps) {
             <SheetTitle>Shopping Cart</SheetTitle>
           </SheetHeader>
           <div className="flex justify-center items-center h-96">
-            Loading cart...
+            <p>Loading cart data...</p>
           </div>
         </SheetContent>
       </Sheet>
