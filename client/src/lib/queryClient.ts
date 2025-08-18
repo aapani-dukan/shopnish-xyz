@@ -2,8 +2,8 @@
 
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
 import { auth } from './firebase.ts';
-
 import { signOutUser } from "@/lib/firebase";
+
 /**
  * जाँचता है कि क्या रिस्पॉन्स ठीक है, और अगर नहीं, तो एक विस्तृत एरर थ्रो करता है।
  * यह JSON और टेक्स्ट रिस्पॉन्स दोनों को हैंडल करता है।
@@ -25,7 +25,9 @@ async function throwIfResNotOk(res: Response): Promise<void> {
     } catch (parseError) {
       console.error(`Error parsing non-OK response (status: ${res.status}):`, parseError);
     }
-    throw new Error(`${res.status}: ${errorDetail}`);
+    const error = new Error(`${res.status}: ${errorDetail}`);
+    (error as any).status = res.status;
+    throw error;
   }
 }
 
@@ -50,7 +52,6 @@ export async function apiRequest(
   const user = auth.currentUser;
   let token = null;
 
-  // ✅ केवल तभी टोकन प्राप्त करें जब उपयोगकर्ता मौजूद हो
   if (user) {
     try {
       token = await user.getIdToken();
@@ -64,7 +65,6 @@ export async function apiRequest(
     ...(requestOptions?.headers || {}),
   };
 
-  // ✅ यदि टोकन मौजूद है, तो उसे headers में जोड़ें
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
   }
@@ -104,36 +104,6 @@ export async function apiRequest(
 
 type UnauthorizedBehavior = "returnNull" | "throw";
 
-
-
-export const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      queryFn: getQueryFn({ on401: "throw" }),
-      refetchInterval: false,
-      refetchOnWindowFocus: false,
-      staleTime: 1000 * 60 * 5, // ✅ staleTime को 5 मिनट पर सेट करें
-      retry: (failureCount, error) => {
-        // ✅ यह लॉजिक 401 एरर पर री-लॉगिन की कोशिश करेगा।
-        const status = (error as any).status;
-        if (status === 401 && failureCount < 1) {
-            console.log("401 Error detected. Attempting to refresh token...");
-            // आप यहाँ टोकन को मैन्युअल रूप से रिफ्रेश करने का लॉजिक जोड़ सकते हैं
-            // या एक और तरीका:
-            //signOutUser(); // यह उपयोगकर्ता को लॉगआउट कर देगा, जो एक सख्त उपाय है।
-            return true; // दोबारा कोशिश करें
-        }
-        return false;
-      },
-    },
-    mutations: {
-      retry: false,
-    },
-  },
-});
-
-type UnauthorizedBehavior = "returnNull" | "throw";
-
 export const getQueryFn: <T>(options: {
   on401: UnauthorizedBehavior;
 }) => QueryFunction<T | null> =
@@ -141,7 +111,6 @@ export const getQueryFn: <T>(options: {
   async ({ queryKey, signal }) => {
     const path = queryKey[0] as string; 
     
-    // ✅ यहाँ try-catch ब्लॉक जोड़ें
     try {
         const res = await apiRequest(
           "GET", 
@@ -157,3 +126,25 @@ export const getQueryFn: <T>(options: {
         throw error;
     }
   };
+
+export const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      queryFn: getQueryFn({ on401: "throw" }),
+      refetchInterval: false,
+      refetchOnWindowFocus: false,
+      staleTime: 1000 * 60 * 5,
+      retry: (failureCount, error) => {
+        const status = (error as any).status;
+        if (status === 401 && failureCount < 1) {
+            console.log("401 Error detected. Attempting to refresh token...");
+            return true;
+        }
+        return false;
+      },
+    },
+    mutations: {
+      retry: false,
+    },
+  },
+});
