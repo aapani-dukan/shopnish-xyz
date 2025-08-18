@@ -1,93 +1,108 @@
-// server/controllers/orderController.ts
+// controllers/orderController.ts
+import { Request, Response } from "express";
+import { db } from "../server/db";
+import { orders, orderItems, cart, cartItems, products } from "../shared/backend/schema";
+import { eq } from "drizzle-orm";
 
-import { Request, Response } from 'express';
-import { db } from '../db.ts';
-import { orders, orderItems, cartItems } from '../../shared/backend/schema.ts';
-import { eq, desc } from 'drizzle-orm';
-
-// ✅ Helper: Parse date safely
-function toDate(value: any): Date {
-  return value instanceof Date ? value : new Date(value);
-}
-
-// Function to create a new order
-export const createOrder = async (req: Request, res: Response) => {
+// Place Order
+export const placeOrder = async (req: Request, res: Response) => {
   try {
-    const userId = req.user?.id;
+    const userId = req.user?.uid; // Firebase से आने वाला userId
 
     if (!userId) {
-      return res.status(401).json({ message: "Unauthorized: User not logged in." });
+      return res.status(401).json({ error: "Unauthorized" });
     }
 
-    const { order, items } = req.body;
+    // 1. Get user cart
+    const userCart = await db
+      .select()
+      .from(cart)
+      .where(eq(cart.userId, userId))
+      .limit(1);
 
-    if (!order || !items || !Array.isArray(items)) {
-      return res.status(400).json({ message: "Invalid order payload." });
+    if (!userCart.length) {
+      return res.status(400).json({ error: "Cart not found" });
     }
 
-    // ✅ Insert order
-    const newOrder = await db.insert(orders).values({
-      customerId: userId,
-      status: "placed",
-      deliveryAddress: JSON.stringify(order.deliveryAddress || {}),
-      // ✅ Ensure proper Date objects
-      createdAt: toDate(order.createdAt || new Date()),
-      updatedAt: toDate(order.updatedAt || new Date()),
-    }).returning({ id: orders.id });
+    const cartId = userCart[0].id;
 
-    const orderId = newOrder[0].id;
+    // 2. Get cart items
+    const items = await db
+      .select({
+        productId: cartItems.productId,
+        quantity: cartItems.quantity,
+        price: products.price,
+      })
+      .from(cartItems)
+      .innerJoin(products, eq(cartItems.productId, products.id))
+      .where(eq(cartItems.cartId, cartId));
 
-    // ✅ Insert order items
-    const orderItemsData = items.map((item: any) => ({
-      orderId,
-      productId: item.productId,
-      sellerId: item.sellerId,
-      quantity: item.quantity,
-      unitPrice: item.unitPrice,
-      totalPrice: item.totalPrice,
-    }));
-
-    if (orderItemsData.length > 0) {
-      await db.insert(orderItems).values(orderItemsData);
+    if (!items.length) {
+      return res.status(400).json({ error: "Cart is empty" });
     }
 
-    // ✅ Clear user's cart
-    await db.delete(cartItems).where(eq(cartItems.userId, userId));
+    // 3. Calculate total amount
+    const totalAmount = items.reduce(
+      (sum, item) => sum + item.price * item.quantity,
+      0
+    );
 
-    res.status(201).json({
-      message: "Order placed successfully!",
-      orderId,
+    // 4. Create new order
+    const [newOrder] = await db
+      .insert(orders)
+      .values({
+        userId,
+        status: "pending",
+        totalAmount,
+        createdAt: new Date(),
+      })
+      .returning();
+
+    // 5. Insert order items
+    for (const item of items) {
+      await db.insert(orderItems).values({
+        orderId: newOrder.id,
+        productId: item.productId,
+        quantity: item.quantity,
+        price: item.price,
+      });
+    }
+
+    // 6. Empty cart
+    await db.delete(cartItems).where(eq(cartItems.cartId, cartId));
+
+    return res.status(201).json({
+      message: "Order placed successfully",
+      orderId: newOrder.id,
+      totalAmount,
     });
-
   } catch (error) {
-    console.error("Error creating order:", error);
-    res.status(500).json({ message: "Failed to place order." });
+    console.error("Error placing order:", error);
+    res.status(500).json({ error: "Internal Server Error" });
   }
 };
 
-// Function to get a user's orders
+// Get all orders of logged-in user
 export const getUserOrders = async (req: Request, res: Response) => {
   try {
-    const userId = req.user?.id;
-    if (!userId) {
-      return res.status(401).json({ message: "Unauthorized" });
-    }
+    const userId = req.user?.uid;
+    if (!userId) return res.status(401).json({ error: "Unauthorized" });
 
-    const ordersWithItems = await db.query.orders.findMany({
-      where: eq(orders.customerId, userId),
-      with: {
-        items: {
-          with: {
-            product: true,
-          },
-        },
-      },
-      orderBy: [desc(orders.createdAt)],
-    });
-
-    res.status(200).json(ordersWithItems);
+    const userOrders = await db.select().from(orders).where(eq(orders.userId, userId));
+    res.json(userOrders);
   } catch (error) {
-    console.error("Error fetching orders:", error);
-    res.status(500).json({ message: "Failed to fetch orders." });
+    console.error("Error fetching user orders:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+};
+
+// Get all orders (Admin)
+export const getAllOrders = async (_req: Request, res: Response) => {
+  try {
+    const allOrders = await db.select().from(orders);
+    res.json(allOrders);
+  } catch (error) {
+    console.error("Error fetching all orders:", error);
+    res.status(500).json({ error: "Internal Server Error" });
   }
 };
