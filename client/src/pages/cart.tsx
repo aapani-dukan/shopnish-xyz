@@ -6,7 +6,6 @@ import { apiRequest } from "@/lib/queryClient";
 import Header from "@/components/header";
 import Footer from "@/components/footer";
 
-// Interfaces आपके original code के अनुसार हैं
 interface CartItem {
   id: number;
   productId: number;
@@ -19,24 +18,31 @@ interface CartItem {
 }
 
 export default function Cart() {
-  const { data: cartItems, isLoading, error } = useQuery<CartItem[]>({
-    queryKey: ["/api/cart"], // ✅ यही key ProductDetail.tsx में invalidate हो रही है
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["/api/cart"],
     queryFn: async () => {
       const token = await auth.currentUser?.getIdToken();
 
       if (!token) {
-        console.warn("❌ No token found, returning empty cart");
-        return [];
+        console.warn("⚠️ No token found, returning empty cart");
+        return { items: [] }; // हमेशा object return करो
       }
 
       const response = await apiRequest("GET", "/api/cart");
       console.log("🛒 Cart API Raw Response:", response);
 
-      // ✅ हमेशा array लौटाओ ताकि .map पर error न आए
-      return Array.isArray(response.items) ? response.items : [];
+      // अगर response सही structure में नहीं है तो fallback
+      if (!response || !Array.isArray(response.items)) {
+        console.warn("⚠️ Cart API did not return valid items");
+        return { items: [] };
+      }
+
+      return response; // ✅ हमेशा { items: [...] }
     },
-    enabled: !!auth.currentUser, // ✅ जब तक user लॉग इन नहीं होता, query disable
+    enabled: !!auth.currentUser,
   });
+
+  const cartItems: CartItem[] = data?.items ?? [];
 
   if (isLoading) {
     return (
@@ -67,7 +73,7 @@ export default function Cart() {
       <main className="max-w-4xl mx-auto p-4">
         <h2 className="text-2xl font-bold mb-6 text-center">Your Cart</h2>
 
-        {!cartItems || cartItems.length === 0 ? (
+        {cartItems.length === 0 ? (
           <p className="text-center text-gray-500">No items in cart.</p>
         ) : (
           <div className="space-y-4">
