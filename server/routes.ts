@@ -17,7 +17,7 @@ import { AuthenticatedRequest } from './middleware/verifyToken.ts';
 import { requireAuth, requireAdminAuth } from './middleware/authMiddleware.ts';
 import { authAdmin } from './lib/firebaseAdmin.ts';
 
-import orderRoutes from '../routes/ordersRoutes.ts';
+import orderRoutes from '../routes/orderRoutes.ts';
 
 
 // ✅ Sub-route modules को इंपोर्ट करें
