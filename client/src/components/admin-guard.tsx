@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from "react";
 import { Navigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
-import { authenticatedApiRequest } from "@/hooks/useAuth";
+import { apiRequest } from "@/lib/queryClient";
 
 const AdminGuard = ({ children }: { children: React.ReactNode }) => {
   const { user, isLoadingAuth } = useAuth();
@@ -16,7 +16,7 @@ const AdminGuard = ({ children }: { children: React.ReactNode }) => {
           setIsAuthenticated(false);
           return;
         }
-        const res = await authenticatedApiRequest(
+        const res = await apiRequest(
           "GET",
           "/api/users/me",
           undefined,
