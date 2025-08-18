@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useAuth, authenticatedApiRequest } from "../../hooks/useAuth";
+import { useAuth } from "../../hooks/useAuth";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Dialog,
@@ -28,7 +28,7 @@ import {
   FormControl,
   FormMessage,
 } from "@/components/ui/form.js";
-
+import { apiRequest} from "@/lib/queryClient";
 // 📦 Form Validation Schema
 const sellerFormSchema = z.object({
   businessName: z.string().min(3).max(100),
@@ -79,7 +79,7 @@ function useRegisterSeller(onClose: () => void, resetForm: () => void) {
         name: user.name,
       };
 
-      const response = await authenticatedApiRequest(
+      const response = await apiRequest(
         "POST",
         "/api/sellers/apply",
         payload,
