@@ -30,6 +30,7 @@ import adminPasswordRoutes from './roots/admin/admin-password.ts';
 import sellerRouter from '../routes/sellers/sellerRoutes.ts';
 import productsRouter from '../routes/productRoutes.ts';
 import cartRouter from '../routes/cartRoutes.ts';
+import orderConfirmationRouter from '../routes/orderConfirmationRouter';
 const router = Router();
 
 router.get('/', (req: Request, res: Response) => {
@@ -127,6 +128,8 @@ router.use('/sellers', sellerRouter);
 router.use('/cart', cartRouter);
 //orderRouter
 router.use('/orders', orderRoutes);
+//orderConfirmationRouter
+router.use('/order-confirmation', orderConfirmationRouter);
 
 // ✅ Categories
 router.get('/categories', async (req: Request, res: Response) => {
