@@ -1,4 +1,3 @@
-
 // server/controllers/orderController.ts
 
 import { Request, Response } from 'express';
@@ -7,7 +6,7 @@ import { orders, orderItems, cartItems } from '../../shared/backend/schema.ts';
 import { eq } from 'drizzle-orm';
 
 // Function to place a new order
-export const placeOrder = async (req: Request, res: Response) => { // ✅ नाम को placeOrder में बदलें
+export const placeOrder = async (req: Request, res: Response) => {
   try {
     const userId = req.user?.id; 
     
@@ -17,9 +16,14 @@ export const placeOrder = async (req: Request, res: Response) => { // ✅ ना
 
     const { order, items } = req.body;
 
+    // एक अद्वितीय ऑर्डर नंबर जेनरेट करें
+    const orderNumber = `ORD-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+
+    // Drizzle का उपयोग करके एक नया ऑर्डर डालें
     const newOrder = await db.insert(orders).values({
       customerId: userId,
       status: "placed",
+      orderNumber: orderNumber, // ✅ order_number फ़ील्ड जोड़ें
       deliveryAddress: JSON.stringify(order.deliveryAddress ?? {}),
       totalAmount: order.totalAmount ?? 0,
       paymentMethod: order.paymentMethod ?? "COD",
@@ -29,6 +33,7 @@ export const placeOrder = async (req: Request, res: Response) => { // ✅ ना
 
     const orderId = newOrder[0].id;
 
+    // Drizzle का उपयोग करके ऑर्डर आइटम डालें
     const orderItemsData = items.map((item: any) => ({
       orderId: orderId,
       productId: item.productId,
@@ -42,6 +47,7 @@ export const placeOrder = async (req: Request, res: Response) => { // ✅ ना
 
     await db.insert(orderItems).values(orderItemsData);
 
+    // कार्ट को साफ़ करें
     await db.delete(cartItems).where(eq(cartItems.userId, userId));
 
     res.status(201).json({
@@ -50,11 +56,10 @@ export const placeOrder = async (req: Request, res: Response) => { // ✅ ना
     });
 
   } catch (error) {
-    console.error("Error creating order:", error);
+    console.error("Error placing order:", error);
     res.status(500).json({ message: "Failed to place order." });
   }
 };
-
 
 // Function to get a user's orders
 export const getUserOrders = async (req: Request, res: Response) => {
