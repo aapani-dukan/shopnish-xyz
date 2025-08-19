@@ -133,7 +133,7 @@ export default function Checkout() {
   unitPrice: item.product.price,
   totalPrice: (parseFloat(item.product.price) * item.quantity).toString(),
 }))
-
+    };
     createOrderMutation.mutate(orderData);
   };
 
