@@ -1,8 +1,18 @@
 // controllers/orderController.ts
 import { Request, Response } from "express";
-import { db } from "../server/db";
-import { orders, orderItems, cart, cartItems, products } from "../shared/backend/schema";
+import { db } from "../server/db.ts";
+import { orders, orderItems, cart, cartItems, products } from "../../shared/backend/schema.ts";
 import { eq } from "drizzle-orm";
+
+// ✅ Helper function to generate unique order number
+function generateOrderNumber() {
+  const date = new Date();
+  const yyyy = date.getFullYear();
+  const mm = String(date.getMonth() + 1).padStart(2, "0");
+  const dd = String(date.getDate()).padStart(2, "0");
+  const random = Math.floor(1000 + Math.random() * 9000); // 4 digit random
+  return `ORD-${yyyy}${mm}${dd}-${random}`;
+}
 
 // Place Order
 export const placeOrder = async (req: Request, res: Response) => {
@@ -47,11 +57,12 @@ export const placeOrder = async (req: Request, res: Response) => {
       0
     );
 
-    // 4. Create new order
+    // 4. Create new order (✅ orderNumber added)
     const [newOrder] = await db
       .insert(orders)
       .values({
         userId,
+        orderNumber: generateOrderNumber(),
         status: "pending",
         totalAmount,
         createdAt: new Date(),
@@ -74,6 +85,7 @@ export const placeOrder = async (req: Request, res: Response) => {
     return res.status(201).json({
       message: "Order placed successfully",
       orderId: newOrder.id,
+      orderNumber: newOrder.orderNumber,
       totalAmount,
     });
   } catch (error) {
