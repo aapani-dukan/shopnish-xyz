@@ -47,6 +47,7 @@ cartRouter.get('/', requireAuth, async (req: AuthenticatedRequest, res: Response
         name: item.product.name,
         price: item.product.price,
         image: item.product.image,
+        sellerId: item.product.sellerId, 
       },
     }));
 
