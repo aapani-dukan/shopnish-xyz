@@ -126,13 +126,12 @@ export default function Checkout() {
         estimatedDeliveryTime: new Date(Date.now() + 60 * 60 * 1000),
       },
       items: cartItems.map(item => ({
-        productId: item.productId,
-        sellerId: 1,
-        quantity: item.quantity,
-        unitPrice: item.product.price,
-        totalPrice: (parseFloat(item.product.price) * item.quantity).toString(),
-      }))
-    };
+  productId: item.productId,
+  sellerId: item.product.sellerId,  // ✅ अब सही sellerId जाएगा
+  quantity: item.quantity,
+  unitPrice: item.product.price,
+  totalPrice: (parseFloat(item.product.price) * item.quantity).toString(),
+}))
 
     createOrderMutation.mutate(orderData);
   };
