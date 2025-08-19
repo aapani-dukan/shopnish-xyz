@@ -5,8 +5,8 @@ import { db } from '../db.ts';
 import { orders, orderItems, cartItems } from '../../shared/backend/schema.ts'; 
 import { eq } from 'drizzle-orm';
 
-// Function to place a new order
-export const placeOrder = async (req: Request, res: Response) => {
+// Function to create a new order
+export const createOrder = async (req: Request, res: Response) => {
   try {
     const userId = req.user?.id; 
     
@@ -16,34 +16,34 @@ export const placeOrder = async (req: Request, res: Response) => {
 
     const { order, items } = req.body;
 
-    // Drizzle का उपयोग करके एक नया ऑर्डर डालें
+    // ✅ Drizzle का उपयोग करके एक नया ऑर्डर डालें
     const newOrder = await db.insert(orders).values({
-      ...order,
       customerId: userId,
       status: "placed",
-      deliveryAddress: JSON.stringify(order.deliveryAddress),
+      deliveryAddress: JSON.stringify(order.deliveryAddress ?? {}),
+      totalAmount: order.totalAmount ?? 0,
+      paymentMethod: order.paymentMethod ?? "COD",
       createdAt: new Date(),
       updatedAt: new Date(),
     }).returning({ id: orders.id });
 
     const orderId = newOrder[0].id;
 
-    // Drizzle का उपयोग करके ऑर्डर आइटम डालें
+    // ✅ Drizzle का उपयोग करके ऑर्डर आइटम डालें
     const orderItemsData = items.map((item: any) => ({
-      ...item,
       orderId: orderId,
       productId: item.productId,
       sellerId: item.sellerId,
       quantity: item.quantity,
       unitPrice: item.unitPrice,
       totalPrice: item.totalPrice,
-      createdAt: new Date(),
+      createdAt: new Date(), // Drizzle के लिए createdAt और updatedAt जोड़ना ज़रूरी है
       updatedAt: new Date(),
     }));
 
     await db.insert(orderItems).values(orderItemsData);
 
-    // कार्ट को साफ़ करें
+    // ✅ कार्ट को साफ़ करें
     await db.delete(cartItems).where(eq(cartItems.userId, userId));
 
     res.status(201).json({
@@ -52,7 +52,7 @@ export const placeOrder = async (req: Request, res: Response) => {
     });
 
   } catch (error) {
-    console.error("Error placing order:", error);
+    console.error("Error creating order:", error);
     res.status(500).json({ message: "Failed to place order." });
   }
 };
