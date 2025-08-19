@@ -46,7 +46,7 @@ export const placeOrder = async (req: Request, res: Response) => {
     const orderItemsData = items.map((item: any) => ({
       orderId: orderId,
       productId: item.productId,
-      sellerId: item.sellerId,
+      sellerId: item.sellerId||1,
       quantity: item.quantity,
       unitPrice: item.unitPrice,
       totalPrice: item.totalPrice,
