@@ -19,11 +19,15 @@ export const placeOrder = async (req: Request, res: Response) => {
     // एक अद्वितीय ऑर्डर नंबर जेनरेट करें
     const orderNumber = `ORD-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
 
+    // सभी आइटम के totalPrice का उपयोग करके subtotal की गणना करें
+    const subtotal = items.reduce((sum: number, item: any) => sum + (item.totalPrice ?? 0), 0);
+
     // Drizzle का उपयोग करके एक नया ऑर्डर डालें
     const newOrder = await db.insert(orders).values({
       customerId: userId,
       status: "placed",
-      orderNumber: orderNumber, // ✅ order_number फ़ील्ड जोड़ें
+      orderNumber: orderNumber,
+      subtotal: subtotal, // ✅ subtotal फ़ील्ड जोड़ें
       deliveryAddress: JSON.stringify(order.deliveryAddress ?? {}),
       totalAmount: order.totalAmount ?? 0,
       paymentMethod: order.paymentMethod ?? "COD",
