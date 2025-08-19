@@ -1,107 +1,86 @@
-// controllers/orderController.ts
-import { Request, Response } from "express";
-import { db } from "../db.ts";
-import { orders, orderItems, cartItems, products } from "../../shared/backend/schema.ts";
-import { eq } from "drizzle-orm";
+// server/controllers/orderController.ts
 
-// ✅ Helper function to generate unique order number
-function generateOrderNumber() {
-  const date = new Date();
-  const yyyy = date.getFullYear();
-  const mm = String(date.getMonth() + 1).padStart(2, "0");
-  const dd = String(date.getDate()).padStart(2, "0");
-  const random = Math.floor(1000 + Math.random() * 9000); // 4 digit random
-  return `ORD-${yyyy}${mm}${dd}-${random}`;
-}
+import { Request, Response } from 'express';
+import { db } from '../db.ts';
+import { orders, orderItems, cartItems } from '../../shared/backend/schema.ts'; 
+import { eq } from 'drizzle-orm';
 
-// Place Order
+// Function to place a new order
 export const placeOrder = async (req: Request, res: Response) => {
   try {
-    const userId = req.user?.uid; // Firebase से आने वाला userId
-
+    const userId = req.user?.id; 
+    
     if (!userId) {
-      return res.status(401).json({ error: "Unauthorized" });
+      return res.status(401).json({ message: "Unauthorized: User not logged in." });
     }
 
-    // 1. Get cart items directly by userId
-    const items = await db
-      .select({
-        productId: cartItems.productId,
-        quantity: cartItems.quantity,
-        price: products.price,
-      })
-      .from(cartItems)
-      .innerJoin(products, eq(cartItems.productId, products.id))
-      .where(eq(cartItems.userId, userId));
+    const { order, items } = req.body;
 
-    if (!items.length) {
-      return res.status(400).json({ error: "Cart is empty" });
-    }
+    // Drizzle का उपयोग करके एक नया ऑर्डर डालें
+    const newOrder = await db.insert(orders).values({
+      ...order,
+      customerId: userId,
+      status: "placed",
+      deliveryAddress: JSON.stringify(order.deliveryAddress),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    }).returning({ id: orders.id });
 
-    // 2. Calculate total amount
-    const totalAmount = items.reduce(
-      (sum, item) => sum + item.price * item.quantity,
-      0
-    );
+    const orderId = newOrder[0].id;
 
-    // 3. Create new order (✅ orderNumber added)
-    const [newOrder] = await db
-      .insert(orders)
-      .values({
-        userId,
-        orderNumber: generateOrderNumber(),
-        status: "pending",
-        totalAmount,
-        createdAt: new Date(),
-      })
-      .returning();
+    // Drizzle का उपयोग करके ऑर्डर आइटम डालें
+    const orderItemsData = items.map((item: any) => ({
+      ...item,
+      orderId: orderId,
+      productId: item.productId,
+      sellerId: item.sellerId,
+      quantity: item.quantity,
+      unitPrice: item.unitPrice,
+      totalPrice: item.totalPrice,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    }));
 
-    // 4. Insert order items
-    for (const item of items) {
-      await db.insert(orderItems).values({
-        orderId: newOrder.id,
-        productId: item.productId,
-        quantity: item.quantity,
-        price: item.price,
-      });
-    }
+    await db.insert(orderItems).values(orderItemsData);
 
-    // 5. Empty cart (delete all cartItems of user)
+    // कार्ट को साफ़ करें
     await db.delete(cartItems).where(eq(cartItems.userId, userId));
 
-    return res.status(201).json({
-      message: "Order placed successfully",
-      orderId: newOrder.id,
-      orderNumber: newOrder.orderNumber,
-      totalAmount,
+    res.status(201).json({
+      message: "Order placed successfully!",
+      orderId: orderId,
     });
+
   } catch (error) {
     console.error("Error placing order:", error);
-    res.status(500).json({ error: "Internal Server Error" });
+    res.status(500).json({ message: "Failed to place order." });
   }
 };
 
-// Get all orders of logged-in user
+// Function to get a user's orders
 export const getUserOrders = async (req: Request, res: Response) => {
   try {
-    const userId = req.user?.uid;
-    if (!userId) return res.status(401).json({ error: "Unauthorized" });
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
 
-    const userOrders = await db.select().from(orders).where(eq(orders.userId, userId));
-    res.json(userOrders);
-  } catch (error) {
-    console.error("Error fetching user orders:", error);
-    res.status(500).json({ error: "Internal Server Error" });
-  }
-};
+    // Drizzle का उपयोग करके ऑर्डर प्राप्त करें
+    const ordersWithItems = await db.query.orders.findMany({
+      where: eq(orders.customerId, userId),
+      with: {
+        items: {
+          with: {
+            product: true,
+          },
+        },
+      },
+      orderBy: (orders, { desc }) => [desc(orders.createdAt)],
+    });
 
-// Get all orders (Admin)
-export const getAllOrders = async (_req: Request, res: Response) => {
-  try {
-    const allOrders = await db.select().from(orders);
-    res.json(allOrders);
+    res.status(200).json(ordersWithItems);
   } catch (error) {
-    console.error("Error fetching all orders:", error);
-    res.status(500).json({ error: "Internal Server Error" });
+    console.error("Error fetching orders:", error);
+    res.status(500).json({ message: "Failed to fetch orders." });
   }
 };
