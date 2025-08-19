@@ -8,7 +8,7 @@ const ordersRouter = Router();
 
 // POST और GET रूट्स पर `requireAuth` मिडलवेयर लागू करें
 // यह सुनिश्चित करता है कि अनुरोध भेजने से पहले उपयोगकर्ता प्रमाणित हो
-ordersRouter.post('/', requireAuth, placrOrder);
+ordersRouter.post('/', requireAuth, placeOrder);
 ordersRouter.get('/', requireAuth, getUserOrders);
 
 
