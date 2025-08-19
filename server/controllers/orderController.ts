@@ -23,20 +23,7 @@ export const placeOrder = async (req: Request, res: Response) => {
       return res.status(401).json({ error: "Unauthorized" });
     }
 
-    // 1. Get user cart
-    const userCart = await db
-      .select()
-      .from(cart)
-      .where(eq(cart.userId, userId))
-      .limit(1);
-
-    if (!userCart.length) {
-      return res.status(400).json({ error: "Cart not found" });
-    }
-
-    const cartId = userCart[0].id;
-
-    // 2. Get cart items
+    // 1. Get cart items directly by userId
     const items = await db
       .select({
         productId: cartItems.productId,
@@ -45,19 +32,19 @@ export const placeOrder = async (req: Request, res: Response) => {
       })
       .from(cartItems)
       .innerJoin(products, eq(cartItems.productId, products.id))
-      .where(eq(cartItems.cartId, cartId));
+      .where(eq(cartItems.userId, userId));
 
     if (!items.length) {
       return res.status(400).json({ error: "Cart is empty" });
     }
 
-    // 3. Calculate total amount
+    // 2. Calculate total amount
     const totalAmount = items.reduce(
       (sum, item) => sum + item.price * item.quantity,
       0
     );
 
-    // 4. Create new order (✅ orderNumber added)
+    // 3. Create new order (✅ orderNumber added)
     const [newOrder] = await db
       .insert(orders)
       .values({
@@ -69,7 +56,7 @@ export const placeOrder = async (req: Request, res: Response) => {
       })
       .returning();
 
-    // 5. Insert order items
+    // 4. Insert order items
     for (const item of items) {
       await db.insert(orderItems).values({
         orderId: newOrder.id,
@@ -79,8 +66,8 @@ export const placeOrder = async (req: Request, res: Response) => {
       });
     }
 
-    // 6. Empty cart
-    await db.delete(cartItems).where(eq(cartItems.cartId, cartId));
+    // 5. Empty cart (delete all cartItems of user)
+    await db.delete(cartItems).where(eq(cartItems.userId, userId));
 
     return res.status(201).json({
       message: "Order placed successfully",
