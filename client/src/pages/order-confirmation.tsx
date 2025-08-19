@@ -1,4 +1,4 @@
-import { useParams, useLocation } from "wouter";
+import { useParams, useNavigate } from "react-router-dom"; // ✅ react-router-dom से हुक आयात करें
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,8 +14,15 @@ interface Order {
   subtotal: string;
   deliveryCharge: string;
   total: string;
-  deliveryAddress: any;
-  deliveryInstructions: string;
+  deliveryAddress: {
+    fullName: string;
+    address: string;
+    city: string;
+    pincode: string;
+    landmark?: string;
+    phone: string;
+  };
+  deliveryInstructions?: string;
   estimatedDeliveryTime: string;
   createdAt: string;
   items: Array<{
@@ -26,7 +33,7 @@ interface Order {
     product: {
       id: number;
       name: string;
-      nameHindi: string;
+      nameHindi?: string;
       image: string;
       unit: string;
       brand: string;
@@ -35,11 +42,18 @@ interface Order {
 }
 
 export default function OrderConfirmation() {
-  const { orderId } = useParams();
-  const [, navigate] = useLocation();
+  const { orderId } = useParams(); // ✅ useParams from react-router-dom
+  const navigate = useNavigate(); // ✅ useNavigate from react-router-dom
 
   const { data: order, isLoading } = useQuery<Order>({
-    queryKey: [`/api/orders/${orderId}`],
+    queryKey: ['order', orderId], // ✅ queryKey को ठीक किया
+    queryFn: async () => {
+      const res = await fetch(`/api/orders/${orderId}`);
+      if (!res.ok) {
+        throw new Error('Network response was not ok');
+      }
+      return res.json();
+    },
     enabled: !!orderId,
   });
 
@@ -58,7 +72,7 @@ export default function OrderConfirmation() {
           <CardContent className="pt-6 text-center">
             <Package className="mx-auto h-12 w-12 text-gray-400 mb-4" />
             <h3 className="text-lg font-medium mb-2">Order not found</h3>
-            <p className="text-gray-600 mb-4">The order you're looking for doesn't exist</p>
+            <p className="text-gray-600 mb-4">The order you're looking for doesn't exist.</p>
             <Button onClick={() => navigate("/")}>Go Home</Button>
           </CardContent>
         </Card>
@@ -66,10 +80,12 @@ export default function OrderConfirmation() {
     );
   }
 
-  const estimatedTime = new Date(order.estimatedDeliveryTime).toLocaleTimeString('en-IN', {
-    hour: '2-digit',
-    minute: '2-digit'
-  });
+  const estimatedTime = order.estimatedDeliveryTime
+    ? new Date(order.estimatedDeliveryTime).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })
+    : 'Not available';
+
+  const deliveryAddress = order.deliveryAddress;
+  const deliveryInstructions = order.deliveryInstructions;
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
@@ -84,7 +100,7 @@ export default function OrderConfirmation() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Order Details */}
           <div className="lg:col-span-2 space-y-6">
-            
+
             {/* Order Info */}
             <Card>
               <CardHeader>
@@ -120,35 +136,37 @@ export default function OrderConfirmation() {
             </Card>
 
             {/* Delivery Address */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <MapPin className="w-5 h-5" />
-                  <span>Delivery Address</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  <p className="font-medium">{order.deliveryAddress.fullName}</p>
-                  <p className="text-gray-600">{order.deliveryAddress.address}</p>
-                  <p className="text-gray-600">{order.deliveryAddress.city}, {order.deliveryAddress.pincode}</p>
-                  {order.deliveryAddress.landmark && (
-                    <p className="text-sm text-gray-500">Landmark: {order.deliveryAddress.landmark}</p>
-                  )}
-                  <div className="flex items-center space-x-2 text-sm text-gray-600">
-                    <Phone className="w-4 h-4" />
-                    <span>{order.deliveryAddress.phone}</span>
-                  </div>
-                  {order.deliveryInstructions && (
-                    <div className="mt-3 p-3 bg-blue-50 rounded-lg">
-                      <p className="text-sm text-blue-800">
-                        <strong>Delivery Instructions:</strong> {order.deliveryInstructions}
-                      </p>
+            {deliveryAddress && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center space-x-2">
+                    <MapPin className="w-5 h-5" />
+                    <span>Delivery Address</span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    <p className="font-medium">{deliveryAddress.fullName}</p>
+                    <p className="text-gray-600">{deliveryAddress.address}</p>
+                    <p className="text-gray-600">{deliveryAddress.city}, {deliveryAddress.pincode}</p>
+                    {deliveryAddress.landmark && (
+                      <p className="text-sm text-gray-500">Landmark: {deliveryAddress.landmark}</p>
+                    )}
+                    <div className="flex items-center space-x-2 text-sm text-gray-600">
+                      <Phone className="w-4 h-4" />
+                      <span>{deliveryAddress.phone}</span>
                     </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
+                    {deliveryInstructions && (
+                      <div className="mt-3 p-3 bg-blue-50 rounded-lg">
+                        <p className="text-sm text-blue-800">
+                          <strong>Delivery Instructions:</strong> {deliveryInstructions}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
 
             {/* Order Items */}
             <Card>
@@ -166,12 +184,12 @@ export default function OrderConfirmation() {
                       />
                       <div className="flex-1">
                         <h3 className="font-medium">{item.product.name}</h3>
-                        <p className="text-sm text-gray-600">{item.product.nameHindi}</p>
+                        {item.product.nameHindi && <p className="text-sm text-gray-600">{item.product.nameHindi}</p>}
                         <p className="text-sm text-gray-500">{item.product.brand} • {item.product.unit}</p>
                       </div>
                       <div className="text-right">
-                        <p className="font-medium">₹{item.unitPrice} × {item.quantity}</p>
-                        <p className="text-sm text-gray-600">₹{item.totalPrice}</p>
+                        <p className="font-medium">₹{Number(item.unitPrice).toFixed(2)} × {item.quantity}</p>
+                        <p className="text-sm text-gray-600">₹{Number(item.totalPrice).toFixed(2)}</p>
                       </div>
                     </div>
                   ))}
@@ -182,7 +200,7 @@ export default function OrderConfirmation() {
 
           {/* Order Summary & Tracking */}
           <div className="space-y-6">
-            
+
             {/* Order Summary */}
             <Card>
               <CardHeader>
@@ -192,16 +210,16 @@ export default function OrderConfirmation() {
                 <div className="space-y-3">
                   <div className="flex justify-between">
                     <span>Subtotal</span>
-                    <span>₹{order.subtotal}</span>
+                    <span>₹{Number(order.subtotal).toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Delivery Charges</span>
-                    <span>{parseFloat(order.deliveryCharge) === 0 ? "FREE" : `₹${order.deliveryCharge}`}</span>
+                    <span>{parseFloat(order.deliveryCharge) === 0 ? "FREE" : `₹${Number(order.deliveryCharge).toFixed(2)}`}</span>
                   </div>
                   <hr />
                   <div className="flex justify-between font-semibold text-lg">
                     <span>Total</span>
-                    <span>₹{order.total}</span>
+                    <span>₹{Number(order.total).toFixed(2)}</span>
                   </div>
                 </div>
               </CardContent>
@@ -246,7 +264,7 @@ export default function OrderConfirmation() {
                     </div>
                   </div>
                 </div>
-                
+
                 <div className="mt-6 p-4 bg-green-50 rounded-lg">
                   <div className="flex items-center space-x-2 text-green-800">
                     <Clock className="w-4 h-4" />
@@ -259,8 +277,8 @@ export default function OrderConfirmation() {
 
             {/* Actions */}
             <div className="space-y-3">
-              <Button 
-                onClick={() => navigate(`/track-order/${order.id}`)} 
+              <Button
+                onClick={() => navigate(`/track-order/${order.id}`)}
                 className="w-full"
                 variant="outline"
               >
@@ -275,4 +293,4 @@ export default function OrderConfirmation() {
       </div>
     </div>
   );
-}
+                          }
