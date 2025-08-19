@@ -1,6 +1,6 @@
 // controllers/orderController.ts
 import { Request, Response } from "express";
-import { db } from "../server/db.ts";
+import { db } from "../db.ts";
 import { orders, orderItems, cart, cartItems, products } from "../../shared/backend/schema.ts";
 import { eq } from "drizzle-orm";
 
