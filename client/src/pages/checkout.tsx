@@ -27,6 +27,7 @@ interface CartItem {
     image: string;
     unit: string;
     brand: string;
+   sellerId: number;   
   };
 }
 
