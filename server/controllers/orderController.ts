@@ -6,30 +6,33 @@ import { orders, orderItems, cartItems } from '../../shared/backend/schema.ts';
 import { eq } from 'drizzle-orm';
 
 // Function to place a new order
+ // Function to place a new order
 export const placeOrder = async (req: Request, res: Response) => {
   try {
-    const userId = req.user?.id; 
-    
+    const userId = req.user?.id;
+
     if (!userId) {
       return res.status(401).json({ message: "Unauthorized: User not logged in." });
     }
 
     const { order, items } = req.body;
 
-    // एक अद्वितीय ऑर्डर नंबर जेनरेट करें
     const orderNumber = `ORD-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
 
-    // सभी आइटम के totalPrice का उपयोग करके subtotal की गणना करें
-    const subtotal = items.reduce((sum: number, item: any) => sum + (item.totalPrice ?? 0), 0);
+    // सभी आइटम के totalPrice को Number में बदलकर subtotal की गणना करें
+    const subtotal = items.reduce((sum: number, item: any) => sum + (Number(item.totalPrice) || 0), 0);
+
+    // सुनिश्चित करें कि totalAmount भी एक Number है
+    const totalAmount = Number(order.totalAmount) || 0;
 
     // Drizzle का उपयोग करके एक नया ऑर्डर डालें
     const newOrder = await db.insert(orders).values({
       customerId: userId,
       status: "placed",
       orderNumber: orderNumber,
-      subtotal: subtotal, // ✅ subtotal फ़ील्ड जोड़ें
+      subtotal: subtotal,
+      totalAmount: totalAmount,
       deliveryAddress: JSON.stringify(order.deliveryAddress ?? {}),
-      totalAmount: order.totalAmount ?? 0,
       paymentMethod: order.paymentMethod ?? "COD",
       createdAt: new Date(),
       updatedAt: new Date(),
