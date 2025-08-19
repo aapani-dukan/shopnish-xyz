@@ -1,7 +1,7 @@
 // controllers/orderController.ts
 import { Request, Response } from "express";
 import { db } from "../db.ts";
-import { orders, orderItems, cart, cartItems, products } from "../../shared/backend/schema.ts";
+import { orders, orderItems, cartItems, products } from "../../shared/backend/schema.ts";
 import { eq } from "drizzle-orm";
 
 // ✅ Helper function to generate unique order number
