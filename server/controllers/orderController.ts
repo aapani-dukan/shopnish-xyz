@@ -1,3 +1,4 @@
+
 // server/controllers/orderController.ts
 
 import { Request, Response } from 'express';
@@ -5,8 +6,8 @@ import { db } from '../db.ts';
 import { orders, orderItems, cartItems } from '../../shared/backend/schema.ts'; 
 import { eq } from 'drizzle-orm';
 
-// Function to create a new order
-export const createOrder = async (req: Request, res: Response) => {
+// Function to place a new order
+export const placeOrder = async (req: Request, res: Response) => { // ✅ नाम को placeOrder में बदलें
   try {
     const userId = req.user?.id; 
     
@@ -16,7 +17,6 @@ export const createOrder = async (req: Request, res: Response) => {
 
     const { order, items } = req.body;
 
-    // ✅ Drizzle का उपयोग करके एक नया ऑर्डर डालें
     const newOrder = await db.insert(orders).values({
       customerId: userId,
       status: "placed",
@@ -29,7 +29,6 @@ export const createOrder = async (req: Request, res: Response) => {
 
     const orderId = newOrder[0].id;
 
-    // ✅ Drizzle का उपयोग करके ऑर्डर आइटम डालें
     const orderItemsData = items.map((item: any) => ({
       orderId: orderId,
       productId: item.productId,
@@ -37,13 +36,12 @@ export const createOrder = async (req: Request, res: Response) => {
       quantity: item.quantity,
       unitPrice: item.unitPrice,
       totalPrice: item.totalPrice,
-      createdAt: new Date(), // Drizzle के लिए createdAt और updatedAt जोड़ना ज़रूरी है
+      createdAt: new Date(),
       updatedAt: new Date(),
     }));
 
     await db.insert(orderItems).values(orderItemsData);
 
-    // ✅ कार्ट को साफ़ करें
     await db.delete(cartItems).where(eq(cartItems.userId, userId));
 
     res.status(201).json({
@@ -56,6 +54,7 @@ export const createOrder = async (req: Request, res: Response) => {
     res.status(500).json({ message: "Failed to place order." });
   }
 };
+
 
 // Function to get a user's orders
 export const getUserOrders = async (req: Request, res: Response) => {
