@@ -3,8 +3,11 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
-import { apiRequest } from "@/lib/queryClient";
-import React from "react";
+import { apiRequest } from "@/lib/queryClient"; // ध्यान दें, यह आपकी API request utility है
+import React, { useState } from "react";
+import { useAuth } from "@/providers/auth-provider"; // ✅ नया: AuthProvider से useAuth हुक आयात करें
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { useNavigate } from "react-router-dom"; // ✅ नया: useNavigate हुक आयात करें
 
 interface Product {
   id: number;
@@ -20,6 +23,9 @@ interface ProductCardProps {
 
 const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
   const queryClient = useQueryClient();
+  const { user } = useAuth(); // ✅ नया: उपयोगकर्ता को AuthProvider से प्राप्त करें
+  const navigate = useNavigate(); // ✅ नया: नेविगेशन के लिए हुक
+  const [isLoginPopupOpen, setIsLoginPopupOpen] = useState(false); // ✅ नया: पॉपअप स्थिति
 
   const addToCartMutation = useMutation({
     mutationFn: async ({ productId, quantity }: { productId: number; quantity: number }) => {
@@ -29,26 +35,32 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
     onSuccess: (data) => {
       console.log("✅ Cart API Response (onSuccess):", data);
       
-      // ✅ Cart query को invalidate करें ताकि cart page पर data refresh हो
       queryClient.invalidateQueries({ queryKey: ["/api/cart"] });
-
-      // ✅ Success toast message दिखाएँ
+      
       toast({
         title: "Added to cart",
         description: `${product?.name} has been added to your cart.`,
       });
     },
-    onError: (error) => {
+    onError: (error: any) => { // ✅ त्रुटि का प्रकार निर्दिष्ट करें
       console.error("❌ Error adding to cart:", error);
+      const errorMessage = error.message || "An error occurred while adding the item to your cart.";
+      
       toast({
         title: "Failed to add to cart",
-        description: "An error occurred while adding the item to your cart.",
+        description: errorMessage,
         variant: "destructive",
       });
     },
   });
 
   const handleAddToCart = () => {
+    // ✅ यदि उपयोगकर्ता लॉग इन नहीं है, तो पॉपअप दिखाएं
+    if (!user) {
+      setIsLoginPopupOpen(true);
+      return;
+    }
+
     if (product.stock === 0) {
       toast({
         title: "Out of Stock",
@@ -76,6 +88,25 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
       >
         {addToCartMutation.isPending ? "Adding..." : "Add to Cart"}
       </Button>
+
+      {/* ✅ नया: लॉगिन पॉपअप */}
+      <Dialog open={isLoginPopupOpen} onOpenChange={setIsLoginPopupOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Login Required</DialogTitle>
+            <DialogDescription>
+              Please log in to add items to your cart.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setIsLoginPopupOpen(false)}>Cancel</Button>
+            <Button onClick={() => {
+              setIsLoginPopupOpen(false);
+              navigate("/login");
+            }}>Login</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
