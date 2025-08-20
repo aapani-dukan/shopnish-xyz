@@ -1,10 +1,11 @@
-import { useParams, useNavigate } from "react-router-dom"; // ✅ react-router-dom से हुक आयात करें
+import { useParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { CheckCircle, Package, Truck, MapPin, Clock, Phone } from "lucide-react";
 import { useEffect } from "react";
+
 interface Order {
   id: number;
   orderNumber: string;
@@ -41,50 +42,69 @@ interface Order {
   }>;
 }
 
- export default function OrderConfirmation() {
-    const { orderId } = useParams<{ orderId: string }>(); // ✅ यहाँ string टाइप जोड़ें
-    
-    // ✅ URL से प्राप्त orderId को लॉग करें
-    useEffect(() => {
-        console.log("Order ID from URL:", orderId); 
-    }, [orderId]);
+export default function OrderConfirmation() {
+  const { orderId } = useParams<{ orderId: string }>();
+  const navigate = useNavigate();
 
-    const { data: order, isLoading, isError, error } = useQuery({
-        queryKey: ['order', orderId],
-        queryFn: async () => {
-            if (!orderId) { // ✅ यहाँ एक जाँच जोड़ें
-                throw new Error("Order ID is missing.");
-            }
-            const res = await fetch(`/api/order-confirmation/${orderId}`);
-            if (!res.ok) {
-                const errorData = await res.json();
-                throw new Error(errorData.message || 'Failed to fetch order details.');
-            }
-            return res.json();
-        },
-        enabled: !!orderId, // ✅ केवल तभी क्वेरी चलाएं जब orderId हो
-    });
+  useEffect(() => {
+    console.log("Order ID from URL:", orderId);
+  }, [orderId]);
 
-    if (isLoading) {
-        return (
-            <div className="min-h-screen flex items-center justify-center">
-                <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full"></div>
-            </div>
-        );
-    }
-    
-    if (isError) {
-        // ✅ त्रुटि को अधिक प्रभावी ढंग से संभालें
-        return (
-            <div className="min-h-screen flex items-center justify-center">
-                <p>Error: {error.message}</p>
-            </div>
-        );
-    }
+  const { data: order, isLoading, isError, error } = useQuery({
+    queryKey: ['order', orderId],
+    queryFn: async () => {
+      if (!orderId) {
+        throw new Error("Order ID is missing.");
+      }
+      const res = await fetch(`/api/order-confirmation/${orderId}`);
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.message || 'Failed to fetch order details.');
+      }
+      return res.json();
+    },
+    enabled: !!orderId,
+  });
 
-    if (!order) {
-        
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full"></div>
+      </div>
+    );
+  }
 
+  if (isError) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Card className="w-full max-w-md">
+          <CardContent className="pt-6 text-center">
+            <h3 className="text-lg font-medium mb-2">Error</h3>
+            <p className="text-gray-600 mb-4">{error.message}</p>
+            <Button onClick={() => navigate("/")}>Go Home</Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // ✅ जब ऑर्डर नहीं मिलता है, तो यहां से कंपोनेंट तुरंत बाहर निकल जाएगा।
+  if (!order) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Card className="w-full max-w-md">
+          <CardContent className="pt-6 text-center">
+            <Package className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+            <h3 className="text-lg font-medium mb-2">Order not found</h3>
+            <p className="text-gray-600 mb-4">The order you're looking for doesn't exist.</p>
+            <Button onClick={() => navigate("/")}>Go Home</Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // ✅ अब, जब कोड यहां तक पहुंचता है, तो `order` ऑब्जेक्ट निश्चित रूप से मौजूद होगा।
   const estimatedTime = order.estimatedDeliveryTime
     ? new Date(order.estimatedDeliveryTime).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })
     : 'Not available';
@@ -298,4 +318,4 @@ interface Order {
       </div>
     </div>
   );
-                          }
+}
