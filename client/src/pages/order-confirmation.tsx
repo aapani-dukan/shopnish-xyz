@@ -45,36 +45,34 @@ interface Order {
     };
   }>;
 }
-
 export default function OrderConfirmation() {
   const { orderId } = useParams<{ orderId: string }>();
   const navigate = useNavigate();
-  const { isAuthenticated } = useAuth(); // ✅ नया: उपयोगकर्ता की प्रमाणीकरण स्थिति प्राप्त करें
+  // ✅ useAuth से दोनों state प्राप्त करें
+  const { isAuthenticated, isLoadingAuth } = useAuth(); 
 
-  useEffect(() => {
-    console.log("Order ID from URL:", orderId);
-  }, [orderId]);
-
+  // ✅ जब तक orderId मौजूद नहीं है, उपयोगकर्ता प्रमाणित नहीं है, या प्रमाणीकरण लोड हो रहा है, तब तक क्वेरी न चलाएं।
   const { data: order, isLoading, isError, error } = useQuery({
     queryKey: ['order', orderId],
     queryFn: async () => {
       if (!orderId) {
         throw new Error("Order ID is missing.");
       }
-      // ✅ apiRequest का उपयोग करें, जो टोकन को स्वचालित रूप से जोड़ता है
       return await apiRequest("GET", `/api/order-confirmation/${orderId}`);
     },
-    // ✅ केवल तभी क्वेरी चलाएं जब orderId मौजूद हो और उपयोगकर्ता प्रमाणित हो
-    enabled: !!orderId && isAuthenticated,
+    enabled: !!orderId && isAuthenticated && !isLoadingAuth,
   });
 
-  if (isLoading || !isAuthenticated) { // ✅ जब तक प्रमाणित न हो, लोडिंग दिखाएं
+  // ✅ यह सबसे महत्वपूर्ण शर्त है। यह सुनिश्चित करती है कि कंपोनेंट तब तक लोडिंग अवस्था में रहे जब तक दोनों हुक तैयार न हो जाएं।
+  if (isLoading || isLoadingAuth) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full"></div>
       </div>
     );
   }
+
+
 
   if (isError) {
     return (
