@@ -5,7 +5,7 @@ import { toast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { apiRequest } from "@/lib/queryClient"; // ध्यान दें, यह आपकी API request utility है
 import React, { useState } from "react";
-import { useAuth } from "@/providers/auth-provider"; // ✅ नया: AuthProvider से useAuth हुक आयात करें
+import { useAuth } from "@/hooks/useAuth"; // ✅ नया: AuthProvider से useAuth हुक आयात करें
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useNavigate } from "react-router-dom"; // ✅ नया: useNavigate हुक आयात करें
 
