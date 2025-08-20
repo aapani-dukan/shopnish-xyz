@@ -3,9 +3,7 @@
 import { Request, Response } from 'express';
 import { db } from '../db.ts';
 import { orders, orderItems, cartItems } from '../../shared/backend/schema.ts'; 
-import { eq } from 'drizzle-orm';
-
-// Function to place a new order
+import { eq, desc } from 'drizzle-orm'; // ✅ desc को आयात करें
 
 // Function to place a new order
 export const placeOrder = async (req: Request, res: Response) => {
@@ -33,7 +31,7 @@ export const placeOrder = async (req: Request, res: Response) => {
       status: "placed",
       orderNumber: orderNumber,
       subtotal: subtotal,
-      total: total, // ✅ total फ़ील्ड जोड़ें
+      total: total,
       deliveryAddress: JSON.stringify(order.deliveryAddress ?? {}),
       paymentMethod: order.paymentMethod ?? "COD",
       createdAt: new Date(),
@@ -88,7 +86,8 @@ export const getUserOrders = async (req: Request, res: Response) => {
           },
         },
       },
-      orderBy: (orders, { desc }) => [desc(orders.createdAt)],
+      // ✅ यह लाइन अब सही है
+      orderBy: [desc(orders.createdAt)],
     });
 
     res.status(200).json(ordersWithItems);
