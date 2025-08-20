@@ -1,4 +1,3 @@
-// client/src/pages/seller-dashboard.tsx
 
 import Header from "@/components/header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,7 +14,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-// ✅ ध्यान दें: यहाँ insertCategorySchema को इंपोर्ट नहीं करना है, बल्कि अपनी स्कीमा को सीधे नीचे परिभाषित करना है
 import { insertProductSchema, insertSellerSchema } from "@shared/backend/schema";
 import type { Seller, ProductWithSeller, Category, OrderWithItems } from "@shared/backend/schema";
 import { apiRequest } from "@/lib/queryClient";
@@ -38,13 +36,13 @@ import {
   Info
 } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useSocket } from "@/hooks/useSocket";
 import { getAuth } from "firebase/auth";
+import { useAuth } from "@/hooks/useAuth"; 
+import { Bell } from "lucide-react";
 import { z } from "zod";
 
-// ✅ ProductFormSchema सही है
-
 const productFormSchema = insertProductSchema.extend({
-  // ✅ images को हटाकर image को File ऑब्जेक्ट के रूप में वैलिडेट करें
   image: z
     .any()
     .refine((file) => file instanceof File, {
@@ -65,12 +63,62 @@ const productFormSchema = insertProductSchema.extend({
     (val) => (val === "" ? undefined : Number(val)),
     z.number().int("Stock must be an integer").min(0, "Stock cannot be negative").default(0)
   ),
-  // ✅ यहाँ categoryId को स्ट्रिंग से नंबर में बदलें
   categoryId: z.preprocess(
     (val) => (val === "" ? undefined : Number(val)),
     z.number().int("Category ID must be an integer").min(1, "Category ID is required")
   ),
 });
+
+
+export default function SellerDashboard() {
+    const { socket } = useSocket();
+    const { user, isAuthenticated } = useAuth();
+    const { toast } = useToast();
+  
+    useEffect(() => {
+      if (!socket || !isAuthenticated || user?.role !== "seller") {
+        return;
+      }
+  
+      // ✅ Socket.IO इवेंट सुनें
+      socket.on("new-order-for-seller", (order) => {
+        console.log("Received new order for seller:", order);
+  
+        toast({
+          title: "🔔 नया ऑर्डर!",
+          description: `आपको ऑर्डर #${order.id} के लिए एक नया ऑर्डर मिला है।`,
+          duration: 5000,
+          action: (
+            <div className="flex items-center space-x-2">
+              <Bell className="h-4 w-4" />
+              <span>ऑर्डर देखें</span>
+            </div>
+          ),
+        });
+      });
+  
+      // ✅ क्लीनअप फ़ंक्शन
+      return () => {
+        socket.off("new-order-for-seller");
+      };
+    }, [socket, isAuthenticated, user, toast]);
+  
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen p-4 bg-gray-100">
+        <div className="text-center p-8 bg-white rounded-lg shadow-lg max-w-lg">
+          <h1 className="text-3xl font-bold text-gray-800 mb-4">सेलर डैशबोर्ड</h1>
+          <p className="text-gray-600 mb-6">
+            आपको यहाँ नए ऑर्डर्स के लिए वास्तविक समय में सूचनाएँ मिलेंगी।
+          </p>
+          <div className="flex flex-col items-center justify-center">
+            <Bell className="w-16 h-16 text-primary animate-pulse mb-4" />
+            <p className="text-sm text-gray-500">नए ऑर्डर की सूचनाओं का इंतजार है...</p>
+          </div>
+        </div>
+      </div>
+    );
+}
+
 
 
 
@@ -93,13 +141,16 @@ const categoryFormSchema = z.object({
 });
 
 export default function SellerDashboard() {
+  
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isProductDialogOpen, setIsProductDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<ProductWithSeller | null>(null);
   const [isCategoryDialogOpen, setIsCategoryDialogOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("products");
-
+  const { socket } = useSocket();
+  const { user, isAuthenticated } = useAuth();
+  
   // Fetch seller profile
   const { data: seller, isLoading: sellerLoading, error: sellerError } = useQuery<Seller>({
     queryKey: ["/api/sellers/me"],
