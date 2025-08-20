@@ -30,7 +30,7 @@ import DeliveryApplyPage from "@/pages/delivery-apply";
 import AuthRedirectGuard from "@/components/auth-redirect-guard";
 import AdminGuard from "@/components/admin-guard";
 import AdminLogin from "@/pages/admin-login";
-
+import OrderConfirmation from "@/pages/OrderConfirmation';
 function App() {
   const [isCartModalOpen, setIsCartModalOpen] = useState(false);
 
@@ -59,7 +59,7 @@ function App() {
 
               {/* Protected - Admin */}
               <Route path="/admin-dashboard" element={<AdminGuard><AdminDashboard /></AdminGuard>} />
-
+              <Route path="/order-confirmation/:orderId" element={<OrderConfirmation />} />
               {/* 404 */}
               <Route path="*" element={<NotFound />} />
             </Routes>
