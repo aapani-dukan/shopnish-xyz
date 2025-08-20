@@ -30,7 +30,7 @@ import DeliveryApplyPage from "@/pages/delivery-apply";
 import AuthRedirectGuard from "@/components/auth-redirect-guard";
 import AdminGuard from "@/components/admin-guard";
 import AdminLogin from "@/pages/admin-login";
-import OrderConfirmation from "@/pages/OrderConfirmation";
+import OrderConfirmation from "@/pages/order-confirmation";
 function App() {
   const [isCartModalOpen, setIsCartModalOpen] = useState(false);
 
