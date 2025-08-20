@@ -105,7 +105,9 @@ export default function OrderConfirmation() {
       </div>
     );
   }
-
+console.log("Order Data Received:", order);
+console.log("Items:", order.items);
+console.log("Delivery Address:", order.deliveryAddress);
   // ✅ अब, जब कोड यहां तक पहुंचता है, तो `order` ऑब्जेक्ट निश्चित रूप से मौजूद होगा।
   const estimatedTime = order.estimatedDeliveryTime
     ? new Date(order.estimatedDeliveryTime).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })
