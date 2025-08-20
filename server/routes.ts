@@ -12,13 +12,12 @@ import {
   approvalStatusEnum,
   sellersPgTable,
 } from '../shared/backend/schema.ts';
-
 import { AuthenticatedRequest } from './middleware/verifyToken.ts';
 import { requireAuth, requireAdminAuth } from './middleware/authMiddleware.ts';
 import { authAdmin } from './lib/firebaseAdmin.ts';
 
+// ✅ अब orderRoutes को io ऑब्जेक्ट पास किया जाएगा
 import orderRoutes from '../routes/orderRoutes.ts';
-
 
 // ✅ Sub-route modules को इंपोर्ट करें
 import apiAuthLoginRouter from './roots/apiAuthLogin.ts';
@@ -31,7 +30,16 @@ import sellerRouter from '../routes/sellers/sellerRoutes.ts';
 import productsRouter from '../routes/productRoutes.ts';
 import cartRouter from '../routes/cartRoutes.ts';
 import orderConfirmationRouter from '../routes/orderConfirmationRouter';
+
 const router = Router();
+let ioInstance: any; // ✅ io इंस्टेंस को होल्ड करने के लिए एक वेरिएबल
+
+// ✅ io को सेट करने के लिए एक फ़ंक्शन
+export function setIo(io: any) {
+  ioInstance = io;
+  // ✅ ऑर्डर रूट्स को io इंस्टेंस पास करें
+  orderRoutes.setIo(ioInstance);
+}
 
 router.get('/', (req: Request, res: Response) => {
   res.status(200).json({ message: 'API is running' });
@@ -44,11 +52,9 @@ router.get('/health', (req: Request, res: Response) => {
 router.post('/register', async (req: Request, res: Response) => {
   try {
     const userData = req.body;
-
     if (!userData.firebaseUid || !userData.email) {
       return res.status(400).json({ error: 'Firebase UID and email are required.' });
     }
-
     const [newUser] = await db.insert(users).values({
       firebaseUid: userData.firebaseUid,
       email: userData.email,
@@ -63,7 +69,6 @@ router.post('/register', async (req: Request, res: Response) => {
       city: userData.city || '',
       pincode: userData.pincode || '',
     }).returning();
-
     res.status(201).json(newUser);
   } catch (error: any) {
     console.error('User registration failed:', error);
@@ -81,12 +86,10 @@ router.get('/users/me', requireAuth, async (req: AuthenticatedRequest, res: Resp
     if (!userUuid) {
       return res.status(401).json({ error: 'Not authenticated.' });
     }
-
     const [user] = await db.select().from(users).where(eq(users.firebaseUid, userUuid));
     if (!user) {
       return res.status(404).json({ error: 'User not found.' });
     }
-
     let sellerInfo;
     if (user.role === 'seller') {
       const [record] = await db.select({
@@ -98,7 +101,6 @@ router.get('/users/me', requireAuth, async (req: AuthenticatedRequest, res: Resp
       }).from(sellersPgTable).where(eq(sellersPgTable.userId, user.id));
       if (record) sellerInfo = record;
     }
-
     res.status(200).json({ ...user, sellerProfile: sellerInfo || null });
   } catch (error: any) {
     console.error(error);
@@ -109,7 +111,6 @@ router.get('/users/me', requireAuth, async (req: AuthenticatedRequest, res: Resp
 router.post('/auth/logout', async (req, res) => {
   const sessionCookie = req.cookies?.__session || '';
   res.clearCookie('__session');
-
   try {
     if (sessionCookie) {
       const decoded = await authAdmin.auth().verifySessionCookie(sessionCookie);
@@ -144,16 +145,12 @@ router.get('/categories', async (req: Request, res: Response) => {
 
 // ✅ Products
 // GET /api/products
-
 router.use('/products', productsRouter);
-
-
 
 // ✅ Delivery Boy
 router.post('/delivery-boys/register', async (req: Request, res: Response) => {
   try {
     const { email, firebaseUid, name, vehicleType } = req.body;
-
     const [newDeliveryBoy] = await db.insert(deliveryBoys).values({
       firebaseUid: firebaseUid,
       email,
@@ -161,7 +158,6 @@ router.post('/delivery-boys/register', async (req: Request, res: Response) => {
       vehicleType,
       approvalStatus: approvalStatusEnum.enumValues[0],
     }).returning();
-
     res.status(201).json(newDeliveryBoy);
   } catch (error: any) {
     console.error(error);
@@ -174,17 +170,11 @@ router.post('/delivery-boys/register', async (req: Request, res: Response) => {
 // ---
 const adminRouter = Router();
 adminRouter.use(requireAdminAuth); // ✅ सभी एडमिन राउट्स के लिए ऑथेंटिकेशन
-
 adminRouter.use('/products/approve', adminApproveProductRoutes);
 adminRouter.use('/products/reject', adminRejectProductRoutes);
 adminRouter.use('/products', adminProductsRoutes);
 adminRouter.use('/password', adminPasswordRoutes);
-
-// ✅ vendors.ts से राउट्स को जोड़ें। ये /admin/vendors के तहत उपलब्ध होंगे।
 adminRouter.use('/vendors', adminVendorsRoutes);
-
-// ✅ यहाँ से अनावश्यक और conflicting राउट्स हटा दिए गए हैं।
-
 router.use('/admin', adminRouter);
 
 export default router;
