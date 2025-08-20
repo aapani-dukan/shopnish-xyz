@@ -1,23 +1,39 @@
 // server/routes/orderConfirmationRouter.ts
 
 import { Router } from 'express';
-import { db } from '../server/db.ts'; // Assuming your db connection is in a file named db.ts
-import { orders } from '../shared/backend/schema.ts'; // Assuming schema.ts is located here
+import { db } from '../db.ts';
+import { orders, orderItems, products, users } from '../../shared/backend/schema.ts';
 import { eq } from 'drizzle-orm';
+import { AuthenticatedRequest, requireAuth } from '../middleware/authMiddleware.ts';
 
 const router = Router();
 
-// GET /api/orders/:orderId
-// This endpoint fetches a single order by its ID for the confirmation page
-router.get('/:orderId', async (req, res) => {
+// ✅ GET /api/order-confirmation/:orderId
+// यह एंडपॉइंट एक विशिष्ट ऑर्डर आईडी के लिए ऑर्डर और उसके आइटम को लाता है।
+router.get('/:orderId', requireAuth, async (req: AuthenticatedRequest, res) => {
   try {
+    console.log(`🔍 [API] Received GET request for order ID: ${req.params.orderId}`);
+    const firebaseUid = req.user?.firebaseUid;
     const { orderId } = req.params;
 
-    // Validate that orderId is a valid number
-    if (!orderId || isNaN(parseInt(orderId))) {
-      return res.status(400).json({ message: "Invalid order ID." });
+    if (!firebaseUid) {
+      return res.status(401).json({ message: "Unauthorized: Missing user UUID." });
     }
 
+    if (!orderId || isNaN(parseInt(orderId))) {
+      return res.status(400).json({ message: "Invalid order ID provided." });
+    }
+
+    // ✅ उपयोगकर्ता आईडी के साथ ऑर्डर की जाँच करें
+    const user = await db.query.users.findFirst({
+        where: eq(users.firebaseUid, firebaseUid),
+    });
+
+    if (!user) {
+        return res.status(404).json({ message: "User not found." });
+    }
+
+    // ✅ Drizzle का उपयोग करके ऑर्डर को उसके ID और ग्राहक ID के साथ खोजें
     const order = await db.query.orders.findFirst({
       where: eq(orders.id, parseInt(orderId)),
       with: {
@@ -29,15 +45,17 @@ router.get('/:orderId', async (req, res) => {
       },
     });
 
-    if (!order) {
+    if (!order || order.customerId !== user.id) {
+      console.log(`❌ [API] Order not found for ID: ${orderId} or does not belong to user.`);
       return res.status(404).json({ message: "Order not found." });
     }
 
+    console.log(`✅ [API] Sending order details for ID: ${order.id}`);
     res.status(200).json(order);
 
   } catch (error) {
-    console.error("Error fetching order confirmation details:", error);
-    res.status(500).json({ message: "Failed to fetch order details." });
+    console.error("❌ [API] Error fetching order confirmation details:", error);
+    res.status(500).json({ message: "Failed to fetch order details. An unexpected error occurred." });
   }
 });
 
