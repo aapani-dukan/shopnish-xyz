@@ -200,28 +200,38 @@ console.log("Delivery Address:", order.deliveryAddress);
               <CardHeader>
                 <CardTitle>Order Items</CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {order.items.map((item) => (
-                    <div key={item.id} className="flex items-center space-x-4 py-4 border-b last:border-b-0">
-                      <img
-                        src={item.product.image}
-                        alt={item.product.name}
-                        className="w-16 h-16 object-cover rounded-lg"
-                      />
-                      <div className="flex-1">
-                        <h3 className="font-medium">{item.product.name}</h3>
-                        {item.product.nameHindi && <p className="text-sm text-gray-600">{item.product.nameHindi}</p>}
-                        <p className="text-sm text-gray-500">{item.product.brand} • {item.product.unit}</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-medium">₹{Number(item.unitPrice).toFixed(2)} × {item.quantity}</p>
-                        <p className="text-sm text-gray-600">₹{Number(item.totalPrice).toFixed(2)}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
+              
+<CardContent>
+  <div className="space-y-4">
+    {order.items.map((item) => (
+      // ✅ यह जांचें कि item और item.product दोनों मौजूद हैं
+      <div key={item.id} className="flex items-center space-x-4 py-4 border-b last:border-b-0">
+        {item.product && (
+          <img
+            src={item.product.image}
+            alt={item.product.name}
+            className="w-16 h-16 object-cover rounded-lg"
+          />
+        )}
+        <div className="flex-1">
+          {/* ✅ item.product की जाँच करें */}
+          {item.product && (
+            <>
+              <h3 className="font-medium">{item.product.name}</h3>
+              {item.product.nameHindi && <p className="text-sm text-gray-600">{item.product.nameHindi}</p>}
+              <p className="text-sm text-gray-500">{item.product.brand} • {item.product.unit}</p>
+            </>
+          )}
+        </div>
+        <div className="text-right">
+          <p className="font-medium">₹{Number(item.unitPrice).toFixed(2)} × {item.quantity}</p>
+          <p className="text-sm text-gray-600">₹{Number(item.totalPrice).toFixed(2)}</p>
+        </div>
+      </div>
+    ))}
+  </div>
+</CardContent>
+
             </Card>
           </div>
 
