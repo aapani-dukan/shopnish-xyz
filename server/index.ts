@@ -5,6 +5,7 @@ import cors from "cors";
 import apiRouter from "./routes.ts";
 import "./lib/firebaseAdmin.ts";
 import { createServer, type Server } from "http";
+import { Server as SocketIOServer } from "socket.io"; // ✅ Socket.IO Server आयात करें
 import { drizzle } from "drizzle-orm/node-postgres";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
 import { Pool } from "pg";
@@ -18,12 +19,12 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app: Express = express();
-let server: Server;
+let server: Server; // http server
+let io: SocketIOServer; // ✅ Socket.IO server
 
 app.use(
   cors({
-    
-    origin: ["https://https://shopnish-lzrf.onrender.com", "http://localhost:5173"], 
+    origin: ["https://shopnish-lzrf.onrender.com", "http://localhost:5173"], // ✅ https:// को एक बार ही लिखा गया है
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     credentials: true,
   })
@@ -98,14 +99,12 @@ async function runMigrations() {
   });
 
   // Register all routes
-    app.use("/api", apiRouter);
-
+  app.use("/api", apiRouter);
 
   // Serve static files (production only)
   if (isProd) {
     app.use(express.static(path.resolve(__dirname, "..", "dist", "public")));
     
-    // ✅ यह लाइन 'app.get("")' की जगह पर लगाएं
     app.get('*', (req, res) => {
       res.sendFile(path.resolve(__dirname, "..", "dist", "public", "index.html"));
     });
@@ -143,7 +142,27 @@ async function runMigrations() {
 
   const port = process.env.PORT || 5001;
   server = createServer(app);
+
+  // ✅ Socket.IO को HTTP सर्वर से जोड़ें
+  io = new SocketIOServer(server, {
+    cors: {
+      origin: "*", 
+      methods: ["GET", "POST"]
+    }
+  });
+
+  // ✅ Socket.IO कनेक्शन हैंडलर
+  io.on('connection', (socket) => {
+    console.log('A user connected:', socket.id);
+
+    socket.on('disconnect', () => {
+      console.log('User disconnected:', socket.id);
+    });
+  });
+
   server.listen({ port, host: "0.0.0.0" }, () =>
     console.log(`🚀 Server listening on port ${port} in ${isProd ? "production" : "development"} mode`)
   );
 })();
+
+export { io }; // ✅ io को एक्सपोर्ट करें ताकि इसे routes में उपयोग किया जा सके
