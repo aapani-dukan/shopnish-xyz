@@ -1,4 +1,3 @@
-
 import Header from "@/components/header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -69,71 +68,12 @@ const productFormSchema = insertProductSchema.extend({
   ),
 });
 
-
-export default function SellerDashboard() {
-    const { socket } = useSocket();
-    const { user, isAuthenticated } = useAuth();
-    const { toast } = useToast();
-  
-    useEffect(() => {
-      if (!socket || !isAuthenticated || user?.role !== "seller") {
-        return;
-      }
-  
-      // ✅ Socket.IO इवेंट सुनें
-      socket.on("new-order-for-seller", (order) => {
-        console.log("Received new order for seller:", order);
-  
-        toast({
-          title: "🔔 नया ऑर्डर!",
-          description: `आपको ऑर्डर #${order.id} के लिए एक नया ऑर्डर मिला है।`,
-          duration: 5000,
-          action: (
-            <div className="flex items-center space-x-2">
-              <Bell className="h-4 w-4" />
-              <span>ऑर्डर देखें</span>
-            </div>
-          ),
-        });
-      });
-  
-      // ✅ क्लीनअप फ़ंक्शन
-      return () => {
-        socket.off("new-order-for-seller");
-      };
-    }, [socket, isAuthenticated, user, toast]);
-  
-    return (
-      <div className="flex flex-col items-center justify-center min-h-screen p-4 bg-gray-100">
-        <div className="text-center p-8 bg-white rounded-lg shadow-lg max-w-lg">
-          <h1 className="text-3xl font-bold text-gray-800 mb-4">सेलर डैशबोर्ड</h1>
-          <p className="text-gray-600 mb-6">
-            आपको यहाँ नए ऑर्डर्स के लिए वास्तविक समय में सूचनाएँ मिलेंगी।
-          </p>
-          <div className="flex flex-col items-center justify-center">
-            <Bell className="w-16 h-16 text-primary animate-pulse mb-4" />
-            <p className="text-sm text-gray-500">नए ऑर्डर की सूचनाओं का इंतजार है...</p>
-          </div>
-        </div>
-      </div>
-    );
-}
-
-
-
-
-// ✅ SellerFormSchema सही है
 const sellerFormSchema = insertSellerSchema.omit({ userId: true });
 
-// ---
-// ✅ **यह मुख्य बदलाव है:** `insertCategorySchema` को सीधे उपयोग करने के बजाय,
-//    हम एक नई `zod` स्कीमा बनाते हैं जो इमेज अपलोड को सही ढंग से संभाल सके।
-// ---
 const categoryFormSchema = z.object({
   name: z.string().min(2, { message: "Category name must be at least 2 characters." }),
   slug: z.string().min(2, { message: "Slug must be at least 2 characters." }),
   description: z.string().optional(),
-  // ✅ Image फ़ाइल के लिए स्कीमा। यह `File` ऑब्जेक्ट की उम्मीद करता है, स्ट्रिंग की नहीं।
   image: z.any().refine(file => file instanceof File, {
     message: "An image file is required.",
   }),
@@ -151,6 +91,39 @@ export default function SellerDashboard() {
   const { socket } = useSocket();
   const { user, isAuthenticated } = useAuth();
   
+  // ✅ Socket.IO लॉजिक को यहाँ जोड़ें
+  useEffect(() => {
+    if (!socket || !isAuthenticated || user?.role !== "seller") {
+      return;
+    }
+
+    // ✅ Socket.IO इवेंट सुनें
+    socket.on("new-order-for-seller", (order) => {
+      console.log("Received new order for seller:", order);
+      
+      // ✅ React Query को अपडेट करने के लिए इनवैलिडेट करें
+      queryClient.invalidateQueries({ queryKey: ["/api/sellers/orders"] });
+
+      toast({
+        title: "🔔 नया ऑर्डर!",
+        description: `आपको ऑर्डर #${order.id} के लिए एक नया ऑर्डर मिला है।`,
+        duration: 5000,
+        action: (
+          <div className="flex items-center space-x-2">
+            <Bell className="h-4 w-4" />
+            <span>ऑर्डर देखें</span>
+          </div>
+        ),
+      });
+    });
+
+    // ✅ क्लीनअप फ़ंक्शन
+    return () => {
+      socket.off("new-order-for-seller");
+    };
+  }, [socket, isAuthenticated, user, toast, queryClient]);
+
+
   // Fetch seller profile
   const { data: seller, isLoading: sellerLoading, error: sellerError } = useQuery<Seller>({
     queryKey: ["/api/sellers/me"],
@@ -181,6 +154,7 @@ export default function SellerDashboard() {
     queryFn: () => apiRequest("GET", "/api/categories"),
     staleTime: Infinity,
   });
+
 
   // Product form
   const productForm = useForm<z.infer<typeof productFormSchema>>({
