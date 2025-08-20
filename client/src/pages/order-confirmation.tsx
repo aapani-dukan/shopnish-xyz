@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { CheckCircle, Package, Truck, MapPin, Clock, Phone } from "lucide-react";
-
+import { useEffect } from "react";
 interface Order {
   id: number;
   orderNumber: string;
@@ -41,44 +41,49 @@ interface Order {
   }>;
 }
 
-export default function OrderConfirmation() {
-  const { orderId } = useParams(); // ✅ useParams from react-router-dom
-  const navigate = useNavigate(); // ✅ useNavigate from react-router-dom
+ export default function OrderConfirmation() {
+    const { orderId } = useParams<{ orderId: string }>(); // ✅ यहाँ string टाइप जोड़ें
+    
+    // ✅ URL से प्राप्त orderId को लॉग करें
+    useEffect(() => {
+        console.log("Order ID from URL:", orderId); 
+    }, [orderId]);
 
-  const { data: order, isLoading } = useQuery<Order>({
-    queryKey: ['order', orderId], // ✅ queryKey को ठीक किया
-    queryFn: async () => {
-      const res = await fetch(`/api/orders/${orderId}`);
-      if (!res.ok) {
-        throw new Error('Network response was not ok');
-      }
-      return res.json();
-    },
-    enabled: !!orderId,
-  });
+    const { data: order, isLoading, isError, error } = useQuery({
+        queryKey: ['order', orderId],
+        queryFn: async () => {
+            if (!orderId) { // ✅ यहाँ एक जाँच जोड़ें
+                throw new Error("Order ID is missing.");
+            }
+            const res = await fetch(`/api/order-confirmation/${orderId}`);
+            if (!res.ok) {
+                const errorData = await res.json();
+                throw new Error(errorData.message || 'Failed to fetch order details.');
+            }
+            return res.json();
+        },
+        enabled: !!orderId, // ✅ केवल तभी क्वेरी चलाएं जब orderId हो
+    });
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full"></div>
-      </div>
-    );
-  }
+    if (isLoading) {
+        return (
+            <div className="min-h-screen flex items-center justify-center">
+                <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full"></div>
+            </div>
+        );
+    }
+    
+    if (isError) {
+        // ✅ त्रुटि को अधिक प्रभावी ढंग से संभालें
+        return (
+            <div className="min-h-screen flex items-center justify-center">
+                <p>Error: {error.message}</p>
+            </div>
+        );
+    }
 
-  if (!order) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Card className="w-full max-w-md">
-          <CardContent className="pt-6 text-center">
-            <Package className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-            <h3 className="text-lg font-medium mb-2">Order not found</h3>
-            <p className="text-gray-600 mb-4">The order you're looking for doesn't exist.</p>
-            <Button onClick={() => navigate("/")}>Go Home</Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
+    if (!order) {
+        
 
   const estimatedTime = order.estimatedDeliveryTime
     ? new Date(order.estimatedDeliveryTime).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })
