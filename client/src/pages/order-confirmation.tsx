@@ -1,3 +1,5 @@
+// client/src/pages/order-confirmation.tsx
+
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -5,6 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { CheckCircle, Package, Truck, MapPin, Clock, Phone } from "lucide-react";
 import { useEffect } from "react";
+import { useAuth } from "@/providers/auth-provider"; // ✅ नया: AuthProvider से useAuth हुक आयात करें
+import { apiRequest } from "@/lib/queryClient"; // ✅ नया: API request utility आयात करें
 
 interface Order {
   id: number;
@@ -45,6 +49,7 @@ interface Order {
 export default function OrderConfirmation() {
   const { orderId } = useParams<{ orderId: string }>();
   const navigate = useNavigate();
+  const { isAuthenticated } = useAuth(); // ✅ नया: उपयोगकर्ता की प्रमाणीकरण स्थिति प्राप्त करें
 
   useEffect(() => {
     console.log("Order ID from URL:", orderId);
@@ -56,17 +61,14 @@ export default function OrderConfirmation() {
       if (!orderId) {
         throw new Error("Order ID is missing.");
       }
-      const res = await fetch(`/api/order-confirmation/${orderId}`);
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.message || 'Failed to fetch order details.');
-      }
-      return res.json();
+      // ✅ apiRequest का उपयोग करें, जो टोकन को स्वचालित रूप से जोड़ता है
+      return await apiRequest("GET", `/api/order-confirmation/${orderId}`);
     },
-    enabled: !!orderId,
+    // ✅ केवल तभी क्वेरी चलाएं जब orderId मौजूद हो और उपयोगकर्ता प्रमाणित हो
+    enabled: !!orderId && isAuthenticated,
   });
 
-  if (isLoading) {
+  if (isLoading || !isAuthenticated) { // ✅ जब तक प्रमाणित न हो, लोडिंग दिखाएं
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full"></div>
@@ -122,7 +124,7 @@ export default function OrderConfirmation() {
           <p className="text-lg text-gray-600">Thank you for your order. We'll deliver it within 1 hour.</p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 lg:col-span-3 lg:grid-cols-3 gap-8">
           {/* Order Details */}
           <div className="lg:col-span-2 space-y-6">
 
@@ -318,4 +320,5 @@ export default function OrderConfirmation() {
       </div>
     </div>
   );
-}
+                        }
+                          
