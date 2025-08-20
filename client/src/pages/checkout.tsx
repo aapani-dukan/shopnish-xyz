@@ -80,7 +80,9 @@ export default function Checkout() {
   const total = subtotal + deliveryCharge;
 
   // Create order mutation
-  const createOrderMutation = useMutation({
+
+// ✅ आपका अपडेटेड createOrderMutation
+const createOrderMutation = useMutation({
     mutationFn: async (orderData: any) => {
       return await apiRequest("POST", "/api/orders", orderData);
     },
@@ -90,7 +92,8 @@ export default function Checkout() {
         description: `Order #${data.orderNumber} has been confirmed`,
       });
       queryClient.invalidateQueries({ queryKey: ["/api/cart"] });
-      navigate(`/order-confirmation/${data.id}`);
+      // ✅ `data.id` को `data.orderId` में बदलें
+      navigate(`/order-confirmation/${data.orderId}`);
     },
     onError: (error) => {
       toast({
@@ -99,43 +102,44 @@ export default function Checkout() {
         variant: "destructive",
       });
     },
-  });
+});
 
-  const handlePlaceOrder = () => {
-    if (!deliveryAddress.fullName || !deliveryAddress.phone || !deliveryAddress.address || !deliveryAddress.pincode) {
-      toast({
-        title: "Address Required",
-        description: "Please fill in all delivery address fields",
-        variant: "destructive",
-      });
-      return;
-    }
+// ✅ आपका अपडेटेड handlePlaceOrder
+const handlePlaceOrder = () => {
+  if (!deliveryAddress.fullName || !deliveryAddress.phone || !deliveryAddress.address || !deliveryAddress.pincode) {
+    toast({
+      title: "Address Required",
+      description: "Please fill in all delivery address fields",
+      variant: "destructive",
+    });
+    return;
+  }
 
-    const orderNumber = `ORD${Date.now()}`;
-    const orderData = {
-      order: {
-        orderNumber,
-        customerId: null,
-        subtotal: subtotal.toString(),
-        deliveryCharge: deliveryCharge.toString(),
-        total: total.toString(),
-        paymentMethod,
-        paymentStatus: paymentMethod === "cod" ? "pending" : "paid",
-        status: "placed",
-        deliveryAddress,
-        deliveryInstructions,
-        estimatedDeliveryTime: new Date(Date.now() + 60 * 60 * 1000),
-      },
-      items: cartItems.map(item => ({
-  productId: item.productId,
-  sellerId: item.product.sellerId,  // ✅ अब सही sellerId जाएगा
-  quantity: item.quantity,
-  unitPrice: item.product.price,
-  totalPrice: (parseFloat(item.product.price) * item.quantity).toString(),
-}))
-    };
-    createOrderMutation.mutate(orderData);
+  const orderNumber = `ORD${Date.now()}`;
+  const orderData = {
+    order: {
+      orderNumber,
+      customerId: null,
+      subtotal: subtotal.toString(),
+      deliveryCharge: deliveryCharge.toString(),
+      total: total.toString(),
+      paymentMethod,
+      paymentStatus: paymentMethod === "cod" ? "pending" : "paid",
+      status: "placed",
+      deliveryAddress,
+      deliveryInstructions,
+      estimatedDeliveryTime: new Date(Date.now() + 60 * 60 * 1000),
+    },
+    items: cartItems.map(item => ({
+      productId: item.productId,
+      sellerId: item.product.sellerId,
+      quantity: item.quantity,
+      unitPrice: item.product.price,
+      totalPrice: (parseFloat(item.product.price) * item.quantity).toString(),
+    }))
   };
+  createOrderMutation.mutate(orderData);
+};
 
   if (isLoading) {
     return (
