@@ -1,10 +1,10 @@
 // server/routes/orderConfirmationRouter.ts
 
 import { Router } from 'express';
-import { db } from '../db.ts';
-import { orders, orderItems, products, users } from '../../shared/backend/schema.ts';
+import { db } from '../server/db.ts';
+import { orders, orderItems, products, users } from '../shared/backend/schema.ts';
 import { eq } from 'drizzle-orm';
-import { AuthenticatedRequest, requireAuth } from '../middleware/authMiddleware.ts';
+import { AuthenticatedRequest, requireAuth } from '../server/middleware/authMiddleware.ts';
 
 const router = Router();
 
