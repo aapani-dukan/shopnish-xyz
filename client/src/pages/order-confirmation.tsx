@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { CheckCircle, Package, Truck, MapPin, Clock, Phone } from "lucide-react";
 import { useEffect } from "react";
-import { useAuth } from "@/providers/auth-provider"; // ✅ नया: AuthProvider से useAuth हुक आयात करें
+import { useAuth } from "@/hooks/useAuth"; // ✅ नया: AuthProvider से useAuth हुक आयात करें
 import { apiRequest } from "@/lib/queryClient"; // ✅ नया: API request utility आयात करें
 
 interface Order {
