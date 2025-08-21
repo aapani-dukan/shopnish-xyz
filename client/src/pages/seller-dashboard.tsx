@@ -409,7 +409,7 @@ const onCategorySubmit = (data: z.infer<typeof categoryFormSchema>) => {
 
   // Calculate dashboard metrics
   const totalRevenue = orders?.reduce((sum, order) =>
-    sum + order.orderItems.reduce((itemSum, item) =>
+    sum + order.items.reduce((itemSum, item) =>
       itemSum + (typeof item.total === 'string' ? parseFloat(item.total) : item.total), 0
     ), 0
   ) || 0;
