@@ -15,7 +15,7 @@ import {
 } from '../../shared/backend/schema.ts';
 import { requireSellerAuth } from '../../server/middleware/authMiddleware.ts';
 import { AuthenticatedRequest, verifyToken } from '../../server/middleware/verifyToken.ts';
-import { eq, desc, inArray } from 'drizzle-orm';
+import { eq,desc,exists,and,inArray } from 'drizzle-orm';
 import multer from 'multer';
 import { uploadImage } from '../../server/cloudStorage.ts'; 
 
@@ -23,36 +23,63 @@ const sellerRouter = Router();
 const upload = multer({ dest: 'uploads/' });
 
 // ✅ GET /api/sellers/me
-// इस राउट को ठीक किया गया है
-sellerRouter.get('/me', requireSellerAuth, async (req: AuthenticatedRequest, res: Response) => {
+
+
+sellerRouter.get('/orders', requireSellerAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const firebaseUid = req.user?.firebaseUid;
     if (!firebaseUid) {
-      return res.status(401).json({ error: 'Unauthorized: Missing user UUID' });
+        return res.status(401).json({ error: 'Unauthorized: User not authenticated.' });
     }
 
-    const [dbUser] = await db
-      .select({ id: users.id })
-      .from(users)
-      .where(eq(users.firebaseUid, firebaseUid));
-
+    const [dbUser] = await db.select().from(users).where(eq(users.firebaseUid, firebaseUid));
     if (!dbUser) {
-      return res.status(404).json({ error: 'User not found.' });
+        return res.status(404).json({ error: 'User not found.' });
     }
 
-    const [seller] = await db
-      .select()
-      .from(sellersPgTable)
-      .where(eq(sellersPgTable.userId, dbUser.id));
+    const [sellerProfile] = await db
+        .select()
+        .from(sellersPgTable)
+        .where(eq(sellersPgTable.userId, dbUser.id));
 
-    if (!seller) {
-      return res.status(404).json({ message: 'Seller profile not found.' });
+    if (!sellerProfile) {
+        return res.status(404).json({ error: 'Seller profile not found.' });
     }
+    const sellerId = sellerProfile.id;
 
-    return res.status(200).json(seller);
+    console.log('✅ /sellers/orders: Received request for sellerId:', sellerId);
+
+    // ✅ Drizzle का उपयोग करके सही और कुशल क्वेरी
+    // हम सीधे 'orders' को क्वेरी करते हैं और 'orderItems' में विक्रेता के मौजूद होने पर फ़िल्टर करते हैं।
+    const sellerOrders = await db.query.orders.findMany({
+        where: (orders, { exists, eq, and }) => and(
+            exists(db.select().from(orderItems).where(
+                and(
+                    eq(orderItems.orderId, orders.id),
+                    eq(orderItems.sellerId, sellerId)
+                )
+            ))
+        ),
+        with: {
+            customer: true,
+            deliveryBoy: true,
+            items: {
+                with: {
+                    product: true,
+                },
+                where: (orderItems, { eq }) => eq(orderItems.sellerId, sellerId)
+            },
+            tracking: true,
+        },
+        orderBy: (orders, { desc }) => [desc(orders.createdAt)],
+    });
+
+    console.log('✅ /sellers/orders: Orders fetched successfully. Count:', sellerOrders.length);
+    return res.status(200).json(sellerOrders);
   } catch (error: any) {
-    console.error('❌ Error in GET /api/sellers/me:', error);
-    return res.status(500).json({ error: 'Internal server error.' });
+    console.error('❌ Error in GET /api/sellers/orders:', error);
+    console.error(error); 
+    return res.status(500).json({ error: 'Failed to fetch seller orders.' });
   }
 });
 
