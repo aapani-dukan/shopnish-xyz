@@ -15,7 +15,7 @@ import {
 import { requireSellerAuth } from '../../server/middleware/authMiddleware';
 import { AuthenticatedRequest, verifyToken } from '../../server/middleware/verifyToken';
 // ✅ 'desc' को हटा दें और 'sql' जोड़ें
-import { eq, and, sql } from 'drizzle-orm'; 
+import { eq, and, sql, desc } from 'drizzle-orm'; 
 import multer from 'multer';
 import { uploadImage } from '../../server/cloudStorage'; 
 import { orderStatusEnum } from '../../shared/backend/schema'; 
