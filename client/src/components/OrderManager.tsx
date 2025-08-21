@@ -6,6 +6,7 @@ import { useQueryClient, useMutation } from "@tanstack/react-query";
 import { OrderWithItems, Seller } from "@shared/backend/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { Truck, PackageCheck, Ban } from "lucide-react"; // ✅ नए आइकन्स जोड़ें
 
 interface OrderManagerProps {
   orders: OrderWithItems[] | undefined;
@@ -20,6 +21,7 @@ export default function OrderManager({ orders, isLoading, error, seller }: Order
 
   const handleStatusUpdateMutation = useMutation({
     mutationFn: async ({ orderId, newStatus }: { orderId: number; newStatus: string }) => {
+      // ✅ API कॉल को अपडेट करें
       const response = await apiRequest("PATCH", `/api/sellers/orders/${orderId}/status`, { newStatus });
       return response;
     },
@@ -43,6 +45,25 @@ export default function OrderManager({ orders, isLoading, error, seller }: Order
     handleStatusUpdateMutation.mutate({ orderId, newStatus });
   };
 
+  const getStatusBadgeVariant = (status: string) => {
+    switch (status) {
+      case "pending":
+      case "accepted":
+        return "secondary";
+      case "completed":
+        return "default";
+      case "cancelled":
+      case "rejected":
+        return "destructive";
+      case "preparing":
+      case "ready_for_pickup":
+      case "out_for_delivery":
+        return "outline";
+      default:
+        return "default";
+    }
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -63,18 +84,12 @@ export default function OrderManager({ orders, isLoading, error, seller }: Order
           <div className="space-y-4">
             {orders?.map((order) => (
               <Card key={order.id} className="p-4">
-                <div className="flex justify-between items-center mb-2">
-                  <h4 className="font-semibold">Order ID: {order.id}</h4>
+                <div className="flex flex-wrap justify-between items-center mb-2 gap-2">
+                  <h4 className="font-semibold">Order ID: #{order.id}</h4>
                   {order.customer?.name && (
                     <p className="text-sm font-medium">Customer: {order.customer.name}</p>
                   )}
-                  <Badge variant={
-                    order.status === "pending"
-                      ? "secondary"
-                      : order.status === "completed"
-                      ? "default"
-                      : "destructive"
-                  }>
+                  <Badge variant={getStatusBadgeVariant(order.status)}>
                     {order.status}
                   </Badge>
                 </div>
@@ -82,43 +97,58 @@ export default function OrderManager({ orders, isLoading, error, seller }: Order
                 <p className="text-sm text-muted-foreground">Ordered On: {new Date(order.createdAt).toLocaleString()}</p>
                 <div className="mt-2">
                   <h5 className="font-medium text-sm mb-1">Items:</h5>
-                  // ...
-<ul className="list-disc list-inside text-sm">
-  {order.items.map((item) => (
-    // ✅ सुनिश्चित करें कि item.product मौजूद है
-    <li key={item.id}>
-      {item.product ? (
-        <>
-          {item.product.name} ({item.quantity} x ₹{item.product.price})
-        </>
-      ) : (
-        // ✅ यदि प्रोडक्ट null है, तो एक वैकल्पिक टेक्स्ट दिखाएँ
-        `Product details not available (x${item.quantity})`
-      )}
-    </li>
-  ))}
-</ul>
-// ...
-                  
+                  <ul className="list-disc list-inside text-sm">
+                    {order.items.map((item) => (
+                      <li key={item.id}>
+                        {item.product ? (
+                          `${item.product.name} (${item.quantity} x ₹${item.product.price})`
+                        ) : (
+                          `Product ID #${item.id} not found (${item.quantity} x ₹?)`
+                        )}
+                      </li>
+                    ))}
+                  </ul>
                 </div>
-                {order.status === 'pending' && (
-                  <div className="flex mt-4 space-x-2">
+
+                {/* ✅ डायनेमिक बटन्स */}
+                <div className="flex mt-4 space-x-2">
+                  {order.status === "pending" && (
+                    <>
+                      <Button
+                        className="bg-green-500 text-white px-4 py-2 rounded-md hover:bg-green-600 transition-colors"
+                        onClick={() => handleStatusUpdate(order.id, 'accepted')}
+                        disabled={handleStatusUpdateMutation.isPending}
+                      >
+                        Accept
+                      </Button>
+                      <Button
+                        className="bg-red-500 text-white px-4 py-2 rounded-md hover:bg-red-600 transition-colors"
+                        onClick={() => handleStatusUpdate(order.id, 'rejected')}
+                        disabled={handleStatusUpdateMutation.isPending}
+                      >
+                        Reject
+                      </Button>
+                    </>
+                  )}
+                  {order.status === "accepted" && (
                     <Button
-                      className="bg-green-500 text-white px-4 py-2 rounded-md hover:bg-green-600 transition-colors"
-                      onClick={() => handleStatusUpdate(order.id, 'accepted')}
+                      className="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 transition-colors"
+                      onClick={() => handleStatusUpdate(order.id, 'preparing')}
                       disabled={handleStatusUpdateMutation.isPending}
                     >
-                      Accept
+                      Prepare Order
                     </Button>
+                  )}
+                  {order.status === "preparing" && (
                     <Button
-                      className="bg-red-500 text-white px-4 py-2 rounded-md hover:bg-red-600 transition-colors"
-                      onClick={() => handleStatusUpdate(order.id, 'rejected')}
+                      className="bg-yellow-500 text-white px-4 py-2 rounded-md hover:bg-yellow-600 transition-colors"
+                      onClick={() => handleStatusUpdate(order.id, 'ready_for_pickup')}
                       disabled={handleStatusUpdateMutation.isPending}
                     >
-                      Reject
+                      Ready for Pickup
                     </Button>
-                  </div>
-                )}
+                  )}
+                </div>
               </Card>
             ))}
           </div>
