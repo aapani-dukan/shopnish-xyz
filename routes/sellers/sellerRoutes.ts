@@ -15,7 +15,7 @@ import {
 import { requireSellerAuth } from '../../server/middleware/authMiddleware';
 import { AuthenticatedRequest, verifyToken } from '../../server/middleware/verifyToken';
 // ✅ 'desc' को हटा दें और 'sql' जोड़ें
-import { eq, and, sql, desc } from 'drizzle-orm'; 
+import { eq, and, sql } from 'drizzle-orm'; 
 import multer from 'multer';
 import { uploadImage } from '../../server/cloudStorage'; 
 import { orderStatusEnum } from '../../shared/backend/schema'; 
@@ -90,7 +90,7 @@ sellerRouter.get('/orders', requireSellerAuth, async (req: AuthenticatedRequest,
         product: true,
       },
       // ✅ `sql` का उपयोग करके orderBy को ठीक करें
-    orderBy: [desc(orderItems.createdAt)],
+  orderBy: sql`${orderItems.createdAt} desc`,
     });
 
     const groupedOrders: any = {};
