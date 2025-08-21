@@ -38,47 +38,14 @@ import { useEffect, useState } from "react";
 import { useSocket } from "@/hooks/useSocket";
 import { getAuth } from "firebase/auth";
 import { useAuth } from "@/hooks/useAuth"; 
+import ProductManager from "./ProductManager"; // ✅ नया कॉम्पोनेंट
+import OrderManager from "./OrderManager";   // ✅ नया कॉम्पोनेंट
+import ProfileManager from "./ProfileManager"; // ✅ नया कॉम्पोनेंट
 import { Bell } from "lucide-react";
 import { z } from "zod";
 
-const productFormSchema = insertProductSchema.extend({
-  image: z
-    .any()
-    .refine((file) => file instanceof File, {
-      message: "An image file is required.",
-    })
-    .refine((file) => file.size < 5000000, {
-      message: "Image size must be less than 5MB.",
-    }),
-  price: z.preprocess(
-    (val) => (val === "" ? undefined : Number(val)),
-    z.number().min(0.01, "Price must be a positive number")
-  ),
-  originalPrice: z.preprocess(
-    (val) => (val === "" ? undefined : Number(val)),
-    z.number().min(0.01, "Original price must be a positive number").optional()
-  ),
-  stock: z.preprocess(
-    (val) => (val === "" ? undefined : Number(val)),
-    z.number().int("Stock must be an integer").min(0, "Stock cannot be negative").default(0)
-  ),
-  categoryId: z.preprocess(
-    (val) => (val === "" ? undefined : Number(val)),
-    z.number().int("Category ID must be an integer").min(1, "Category ID is required")
-  ),
-});
 
-const sellerFormSchema = insertSellerSchema.omit({ userId: true });
 
-const categoryFormSchema = z.object({
-  name: z.string().min(2, { message: "Category name must be at least 2 characters." }),
-  slug: z.string().min(2, { message: "Slug must be at least 2 characters." }),
-  description: z.string().optional(),
-  image: z.any().refine(file => file instanceof File, {
-    message: "An image file is required.",
-  }),
-  isActive: z.boolean().default(true),
-});
 
 export default function SellerDashboard() {
   
@@ -204,137 +171,6 @@ export default function SellerDashboard() {
     },
   });
 
-const productMutation = useMutation({
-  mutationFn: async (data: z.infer<typeof productFormSchema>) => {
-    // ✅ हर बार एक नया, वैध टोकन प्राप्त करें
-    const auth = getAuth();
-    const user = auth.currentUser;
-
-    if (!user) {
-      throw new Error("User not authenticated.");
-    }
-    
-    // ✅ Firebase SDK से सीधा टोकन प्राप्त करें
-    const token = await user.getIdToken();
-
-    const formData = new FormData();
-    formData.append('image', data.image); 
-
-    for (const key in data) {
-      if (data[key] !== null && data[key] !== undefined && key !== 'image') {
-         formData.append(key, data[key]);
-      }
-    }
-    
-    const response = await fetch("/api/sellers/products", {
-      method: "POST",
-      body: formData,
-      headers: {
-        'Authorization': `Bearer ${token}`,
-      },
-    });
-    
-    
-  
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || errorData.message || "Failed to create product");
-      }
-      return response.json();
-    
-  },
-  
-  
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/products"] });
-      toast({
-        title: editingProduct ? "Product updated" : "Product created",
-        description: `Product has been ${editingProduct ? "updated" : "created"} successfully`,
-      });
-      setIsProductDialogOpen(false);
-      setEditingProduct(null);
-      productForm.reset();
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Error",
-        description: error.message || `Failed to ${editingProduct ? "update" : "create"} product`,
-        variant: "destructive",
-      });
-    },
-  });
-  
-
-
-  // Update seller mutation
-  const sellerMutation = useMutation({
-    mutationFn: async (data: z.infer<typeof sellerFormSchema>) => {
-      return await apiRequest("PUT", "/api/sellers/me", data);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/sellers/me"] });
-      toast({
-        title: "Profile updated",
-        description: "Your seller profile has been updated successfully",
-      });
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Error",
-        description: error.response?.data?.message || "Failed to update seller profile",
-        variant: "destructive",
-      });
-    },
-  });
-
-  // Delete product mutation
-  const deleteProductMutation = useMutation({
-    mutationFn: async (productId: number) => {
-      return await apiRequest("DELETE", `/api/products/${productId}`);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/products"] });
-      toast({
-        title: "Product deleted",
-        description: "Product has been deleted successfully",
-      });
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Error",
-        description: error.response?.data?.message || "Failed to delete product",
-        variant: "destructive",
-      });
-    },
-  });
-
-  // ---
-  // ✅ **यह categoryMutation हुक है:** इसे FormData स्वीकार करने के लिए अपडेट किया गया है
-  // ---
-  const categoryMutation = useMutation({
-    // ✅ data का प्रकार `FormData` होना चाहिए
-    mutationFn: async (data: FormData) => {
-      // ✅ सीधे FormData को apiRequest में भेजें
-      return await apiRequest("POST", "/api/sellers/categories", data);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/categories"] });
-      toast({
-        title: "Category created",
-        description: "Category has been created successfully",
-      });
-      setIsCategoryDialogOpen(false);
-      categoryForm.reset();
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Error",
-        description: error.response?.data?.message || "Failed to create category",
-        variant: "destructive",
-      });
-    },
-  });
 
 
   const onProductSubmit = (data: z.infer<typeof productFormSchema>) => {
