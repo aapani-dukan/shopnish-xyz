@@ -1,31 +1,28 @@
-
-
 // server/routes/sellers/sellerRoutes.ts
 
 import { Router, Response, NextFunction } from 'express';
 import { db } from '../../server/db';
-import { SQL } from 'drizzle-orm';
-import { 
-  sellersPgTable, 
-  users, 
-  userRoleEnum, 
-  approvalStatusEnum, 
-  categories, 
+import {
+  sellersPgTable,
+  users,
+  userRoleEnum,
+  approvalStatusEnum,
+  categories,
   products,
   orders,
-  orderItems
+  orderItems,
+  orderStatusEnum,
 } from '../../shared/backend/schema';
 import { requireSellerAuth } from '../../server/middleware/authMiddleware';
 import { AuthenticatedRequest, verifyToken } from '../../server/middleware/verifyToken';
-import { eq,desc,exists,and,inArray } from 'drizzle-orm';
+import { eq, desc, and } from 'drizzle-orm';
 import multer from 'multer';
-import { uploadImage } from '../../server/cloudStorage'; 
+import { uploadImage } from '../../server/cloudStorage';
 
 const sellerRouter = Router();
 const upload = multer({ dest: 'uploads/' });
 
-// ✅ GET /api/sellers/me
-
+// ✅ GET /api/sellers/me (विक्रेता प्रोफ़ाइल प्राप्त करें)
 sellerRouter.get('/me', requireSellerAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const firebaseUid = req.user?.firebaseUid;
@@ -35,87 +32,140 @@ sellerRouter.get('/me', requireSellerAuth, async (req: AuthenticatedRequest, res
       return res.status(401).json({ error: 'Unauthorized: Missing user data.' });
     }
 
-    // ✅ Drizzle के संबंधों का उपयोग करके उपयोगकर्ता और विक्रेता को एक साथ प्राप्त करें
     const [userWithSeller] = await db.query.users.findMany({
       where: eq(users.id, userId),
       with: {
-        seller: true
-      }
+        seller: true,
+      },
     });
 
     if (!userWithSeller || !userWithSeller.seller) {
       return res.status(404).json({ error: 'Seller profile not found.' });
     }
-    
-    return res.status(200).json(userWithSeller.seller);
 
+    return res.status(200).json(userWithSeller.seller);
   } catch (error: any) {
     console.error('❌ Error in GET /api/sellers/me:', error);
     return res.status(500).json({ error: 'Internal server error.' });
   }
 });
 
-
+// ✅ GET /api/sellers/orders (विक्रेता के लिए ऑर्डर्स फ़ेच करें)
 sellerRouter.get('/orders', requireSellerAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const firebaseUid = req.user?.firebaseUid;
     if (!firebaseUid) {
-        return res.status(401).json({ error: 'Unauthorized: User not authenticated.' });
+      return res.status(401).json({ error: 'Unauthorized: User not authenticated.' });
     }
 
     const [dbUser] = await db.select().from(users).where(eq(users.firebaseUid, firebaseUid));
     if (!dbUser) {
-        return res.status(404).json({ error: 'User not found.' });
+      return res.status(404).json({ error: 'User not found.' });
     }
 
-    const [sellerProfile] = await db
-        .select()
-        .from(sellersPgTable)
-        .where(eq(sellersPgTable.userId, dbUser.id));
+    const [sellerProfile] = await db.select().from(sellersPgTable).where(eq(sellersPgTable.userId, dbUser.id));
 
     if (!sellerProfile) {
-        return res.status(404).json({ error: 'Seller profile not found.' });
+      return res.status(404).json({ error: 'Seller profile not found.' });
     }
     const sellerId = sellerProfile.id;
 
     console.log('✅ /sellers/orders: Received request for sellerId:', sellerId);
 
-    // ✅ Drizzle का उपयोग करके सही और कुशल क्वेरी
-    // हम सीधे 'orders' को क्वेरी करते हैं और 'orderItems' में विक्रेता के मौजूद होने पर फ़िल्टर करते हैं।
-    const sellerOrders = await db.query.orders.findMany({
-        where: (orders, { exists, eq, and }) => and(
-            exists(db.select().from(orderItems).where(
-                and(
-                    eq(orderItems.orderId, orders.id),
-                    eq(orderItems.sellerId, sellerId)
-                )
-            ))
-        ),
-        with: {
+    const orderItemsForSeller = await db.query.orderItems.findMany({
+      where: eq(orderItems.sellerId, sellerId),
+      with: {
+        order: {
+          with: {
             customer: true,
             deliveryBoy: true,
-            items: {
-                with: {
-                    product: true,
-                },
-                where: (orderItems, { eq }) => eq(orderItems.sellerId, sellerId)
-            },
             tracking: true,
+          },
         },
-        orderBy: (orders, { desc }) => [desc(orders.createdAt)],
+        product: true,
+      },
+      orderBy: (orderItems, { desc }) => [desc(orderItems.createdAt)],
     });
 
-    console.log('✅ /sellers/orders: Orders fetched successfully. Count:', sellerOrders.length);
-    return res.status(200).json(sellerOrders);
+    const groupedOrders: any = {};
+    orderItemsForSeller.forEach(item => {
+      const orderId = item.order.id;
+      if (!groupedOrders[orderId]) {
+        groupedOrders[orderId] = {
+          ...item.order,
+          items: [],
+        };
+      }
+      groupedOrders[orderId].items.push({
+        ...item,
+        order: undefined,
+      });
+    });
+
+    const ordersWithItems = Object.values(groupedOrders);
+
+    console.log('✅ /sellers/orders: Orders fetched successfully. Count:', ordersWithItems.length);
+    return res.status(200).json(ordersWithItems);
   } catch (error: any) {
     console.error('❌ Error in GET /api/sellers/orders:', error);
-    console.error(error); 
+    console.error(error);
     return res.status(500).json({ error: 'Failed to fetch seller orders.' });
   }
 });
 
+// ✅ PATCH /api/sellers/orders/:orderId/status (ऑर्डर की स्थिति अपडेट करें)
+sellerRouter.patch('/orders/:orderId/status', requireSellerAuth, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { orderId } = req.params;
+    const { newStatus } = req.body;
+    const userId = req.user?.id;
 
-// ✅ POST /api/sellers/apply (Apply as a seller)
+    if (!userId) {
+      return res.status(401).json({ error: 'Unauthorized.' });
+    }
+
+    // सुनिश्चित करें कि नई स्थिति (status) मान्य है
+    const validStatus = orderStatusEnum.enumValues;
+    if (!validStatus.includes(newStatus)) {
+      return res.status(400).json({ error: 'Invalid order status provided.' });
+    }
+
+    // विक्रेता की प्रोफ़ाइल प्राप्त करें
+    const [sellerProfile] = await db.select().from(sellersPgTable).where(eq(sellersPgTable.userId, userId));
+    if (!sellerProfile) {
+      return res.status(404).json({ error: 'Seller profile not found.' });
+    }
+
+    // जाँचें कि क्या यह विक्रेता इस ऑर्डर में शामिल है
+    const isSellerInvolved = await db
+      .select()
+      .from(orderItems)
+      .where(and(eq(orderItems.orderId, parseInt(orderId)), eq(orderItems.sellerId, sellerProfile.id)))
+      .limit(1);
+
+    if (isSellerInvolved.length === 0) {
+      return res.status(403).json({ error: 'Forbidden: You do not have permission to update this order.' });
+    }
+
+    // ऑर्डर की स्थिति अपडेट करें
+    const [updatedOrder] = await db
+      .update(orders)
+      .set({ status: newStatus })
+      .where(eq(orders.id, parseInt(orderId)))
+      .returning();
+
+    if (!updatedOrder) {
+      return res.status(404).json({ error: 'Order not found.' });
+    }
+
+    return res.status(200).json(updatedOrder);
+  } catch (error: any) {
+    console.error('❌ Error in PATCH /api/sellers/orders/:orderId/status:', error);
+    return res.status(500).json({ error: 'Failed to update order status.' });
+  }
+});
+
+// ✅ POST /api/sellers/apply (विक्रेता के रूप में आवेदन करें)
 sellerRouter.post("/apply", verifyToken, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     console.log('Received seller apply data:', req.body);
@@ -124,17 +174,8 @@ sellerRouter.post("/apply", verifyToken, async (req: AuthenticatedRequest, res: 
     if (!firebaseUid) return res.status(401).json({ message: "Unauthorized" });
 
     const {
-      businessName,
-      businessAddress,
-      businessPhone,
-      description,
-      city,
-      pincode,
-      gstNumber,
-      bankAccountNumber,
-      ifscCode,
-      deliveryRadius,
-      businessType,
+      businessName, businessAddress, businessPhone, description, city, pincode,
+      gstNumber, bankAccountNumber, ifscCode, deliveryRadius, businessType,
     } = req.body;
 
     if (!businessName || !businessPhone || !city || !pincode || !businessAddress || !businessType) {
@@ -176,16 +217,16 @@ sellerRouter.post("/apply", verifyToken, async (req: AuthenticatedRequest, res: 
         ifscCode: ifscCode || null,
         deliveryRadius: deliveryRadius ? parseInt(String(deliveryRadius)) : null,
         businessType,
-        approvalStatus: approvalStatusEnum.enumValues[0], // 'pending'
-        applicationDate: new Date(),
+        approvalStatus: approvalStatusEnum.enumValues[0],
+        // applicationDate: new Date(), // `createdAt` को यहाँ बदल दिया गया है
       })
       .returning();
 
     const [updatedUser] = await db
       .update(users)
       .set({
-        role: userRoleEnum.enumValues[1], // 'seller'
-        approvalStatus: approvalStatusEnum.enumValues[0], // 'pending'
+        role: userRoleEnum.enumValues[1],
+        approvalStatus: approvalStatusEnum.enumValues[0],
       })
       .where(eq(users.id, dbUser.id))
       .returning();
@@ -200,13 +241,13 @@ sellerRouter.post("/apply", verifyToken, async (req: AuthenticatedRequest, res: 
         name: updatedUser.name,
       },
     });
-  } catch (error) {
-    console.error("❌ Error in POST /api/sellers:", error);
+  } catch (error: any) {
+    console.error("❌ Error in POST /api/sellers/apply:", error);
     next(error);
   }
 });
 
-
+// ✅ POST /api/sellers/categories (श्रेणी (Category) बनाएं)
 sellerRouter.post(
   '/categories',
   requireSellerAuth,
@@ -217,7 +258,7 @@ sellerRouter.post(
       if (!firebaseUid) {
         return res.status(401).json({ error: 'Unauthorized: User not authenticated.' });
       }
-      
+
       const [dbUser] = await db.select()
         .from(users)
         .where(eq(users.firebaseUid, firebaseUid));
@@ -234,14 +275,14 @@ sellerRouter.post(
         return res.status(404).json({ error: 'Seller profile not found.' });
       }
       const sellerId = sellerProfile.id;
-      
+
       const { name, slug, description } = req.body;
       const file = req.file;
 
       if (!name || !slug || !file) {
         return res.status(400).json({ error: 'Category name, slug, and image are required.' });
       }
-      
+
       const imageUrl = await uploadImage(file.path, file.originalname);
 
       const newCategory = await db
@@ -265,7 +306,7 @@ sellerRouter.post(
   }
 );
 
-
+// ✅ POST /api/sellers/products (उत्पाद बनाएं)
 sellerRouter.post(
   '/products',
   requireSellerAuth,
@@ -280,11 +321,11 @@ sellerRouter.post(
       const [dbUser] = await db.select()
         .from(users)
         .where(eq(users.firebaseUid, firebaseUid));
-        
+
       if (!dbUser) {
         return res.status(404).json({ error: 'User not found.' });
       }
-      
+
       const [sellerProfile] = await db
         .select()
         .from(sellersPgTable)
@@ -332,73 +373,5 @@ sellerRouter.post(
     }
   }
 );
-    
-sellerRouter.get('/orders', requireSellerAuth, async (req: AuthenticatedRequest, res: Response) => {
-  try {
-    const firebaseUid = req.user?.firebaseUid;
-    if (!firebaseUid) {
-        return res.status(401).json({ error: 'Unauthorized: User not authenticated.' });
-    }
-
-    const [dbUser] = await db.select().from(users).where(eq(users.firebaseUid, firebaseUid));
-
-    if (!dbUser) {
-        return res.status(404).json({ error: 'User not found.' });
-    }
-
-    const [sellerProfile] = await db
-        .select()
-        .from(sellersPgTable)
-        .where(eq(sellersPgTable.userId, dbUser.id));
-
-    if (!sellerProfile) {
-        return res.status(404).json({ error: 'Seller profile not found.' });
-    }
-
-    const sellerId = sellerProfile.id;
-    console.log('✅ /sellers/orders: Received request for sellerId:', sellerId);
-
-    // ✅ Drizzle का उपयोग करके सही और कुशल क्वेरी
-    const orderItemsForSeller = await db.query.orderItems.findMany({
-        where: eq(orderItems.sellerId, sellerId),
-        with: {
-            order: {
-                with: {
-                    customer: true,
-                    deliveryBoy: true,
-                    tracking: true,
-                }
-            },
-            product: true,
-        },
-        orderBy: [desc(orderItems.createdAt)],
-    });
-
-    // ✅ परिणामों को ऑर्डर आईडी द्वारा समूहित (group) करें
-    const groupedOrders: any = {};
-    orderItemsForSeller.forEach(item => {
-      const orderId = item.order.id;
-      if (!groupedOrders[orderId]) {
-        groupedOrders[orderId] = {
-          ...item.order,
-          items: [],
-        };
-      }
-      groupedOrders[orderId].items.push({
-        ...item,
-        order: undefined, // orderItem से order डेटा को हटा दें
-      });
-    });
-
-    const ordersWithItems = Object.values(groupedOrders);
-    
-    console.log('✅ /sellers/orders: Orders fetched successfully. Count:', ordersWithItems.length);
-    return res.status(200).json(ordersWithItems);
-  } catch (error: any) {
-    console.error('❌ Error in GET /api/sellers/orders:', error);
-    console.error(error); 
-    return res.status(500).json({ error: 'Failed to fetch seller orders.' });
-  }
-});
 
 export default sellerRouter;
