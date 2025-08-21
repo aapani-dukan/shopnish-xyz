@@ -6,6 +6,15 @@ import { relations } from 'drizzle-orm';
 import { z } from "zod";
 
 // --- Drizzle ORM Table Definitions ---
+export const orderStatusEnum = pgEnum('order_status', [
+  'pending',
+  'accepted',
+  'preparing',
+  'out_for_delivery',
+  'delivered',
+  'cancelled',
+  'rejected',
+]);
 
 // Drizzle PG Enums - ये सीधे डेटाबेस में ENUM प्रकार बनाएंगे
 export const userRoleEnum = pgEnum("user_role", ["customer", "seller", "admin", "delivery_boy"]);
@@ -141,6 +150,7 @@ export const cartItems = pgTable("cart_items", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+
 export const orders = pgTable("orders", {
   id: serial("id").primaryKey(),
   customerId: integer("customer_id").references(() => users.id),
@@ -152,7 +162,8 @@ export const orders = pgTable("orders", {
   total: decimal("total", { precision: 10, scale: 2 }).notNull(),
   paymentMethod: text("payment_method").notNull(),
   paymentStatus: text("payment_status").default("pending"),
-  status: text("status").notNull().default("placed"),
+  // ✅ यह लाइन बिल्कुल सही जगह पर है और पुरानी को बदल देती है।
+  status: orderStatusEnum('status').default('pending').notNull(),
   deliveryAddress: json("delivery_address").notNull(),
   deliveryInstructions: text("delivery_instructions"),
   estimatedDeliveryTime: timestamp("estimated_delivery_time"),
@@ -161,6 +172,7 @@ export const orders = pgTable("orders", {
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
+
 
 export const orderItems = pgTable("order_items", {
   id: serial("id").primaryKey(),
