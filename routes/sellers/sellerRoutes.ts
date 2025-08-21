@@ -23,6 +23,35 @@ const sellerRouter = Router();
 const upload = multer({ dest: 'uploads/' });
 
 // ✅ GET /api/sellers/me
+✅ GET /api/sellers/me
+sellerRouter.get('/me', requireSellerAuth, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const firebaseUid = req.user?.firebaseUid;
+    const userId = req.user?.id;
+
+    if (!firebaseUid || !userId) {
+      return res.status(401).json({ error: 'Unauthorized: Missing user data.' });
+    }
+
+    // ✅ Drizzle के संबंधों का उपयोग करके उपयोगकर्ता और विक्रेता को एक साथ प्राप्त करें
+    const [userWithSeller] = await db.query.users.findMany({
+      where: eq(users.id, userId),
+      with: {
+        seller: true
+      }
+    });
+
+    if (!userWithSeller || !userWithSeller.seller) {
+      return res.status(404).json({ error: 'Seller profile not found.' });
+    }
+    
+    return res.status(200).json(userWithSeller.seller);
+
+  } catch (error: any) {
+    console.error('❌ Error in GET /api/sellers/me:', error);
+    return res.status(500).json({ error: 'Internal server error.' });
+  }
+});
 
 
 sellerRouter.get('/orders', requireSellerAuth, async (req: AuthenticatedRequest, res: Response) => {
