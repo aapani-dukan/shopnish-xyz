@@ -77,8 +77,8 @@ sellerRouter.get('/orders', requireSellerAuth, async (req: AuthenticatedRequest,
 
     console.log('✅ /sellers/orders: Received request for sellerId:', sellerId);
 
-    const orderItemsForSeller = await db.query.orderItems.findMany({
-      where: eq(orderItems.sellerId, sellerId),
+    const orderItemsForSeller = await db.query.items.findMany({
+      where: eq(items.sellerId, sellerId),
       with: {
         order: {
           with: {
@@ -90,7 +90,7 @@ sellerRouter.get('/orders', requireSellerAuth, async (req: AuthenticatedRequest,
         product: true,
       },
       // ✅ `sql` का उपयोग करके orderBy को ठीक करें
-  orderBy: sql`${orderItems.createdAt} desc`,
+  orderBy: sql`${items.createdAt} desc`,
     });
 
     const groupedOrders: any = {};
