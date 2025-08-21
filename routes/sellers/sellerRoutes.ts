@@ -90,7 +90,7 @@ sellerRouter.get('/orders', requireSellerAuth, async (req: AuthenticatedRequest,
         product: true,
       },
       // ✅ `sql` का उपयोग करके orderBy को ठीक करें
-      orderBy: sql`${orderItems.createdAt} desc`,
+    orderBy: [desc(orderItems.createdAt)],
     });
 
     const groupedOrders: any = {};
