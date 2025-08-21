@@ -924,7 +924,7 @@ const onCategorySubmit = (data: z.infer<typeof categoryFormSchema>) => {
                         <div className="mt-2">
                           <h5 className="font-medium text-sm mb-1">Items:</h5>
                           <ul className="list-disc list-inside text-sm">
-                            {order.orderItems.map((item) => (
+                            {order.items.map((item) => (
                               <li key={item.id}>{item.productName} ({item.quantity} x ₹{item.price})</li>
                             ))}
                           </ul>
