@@ -2,6 +2,7 @@
 
 import { Router, Response, NextFunction } from 'express';
 import { db } from '../../server/db.ts';
+import { SQL } from 'drizzle-orm';
 import { 
   sellersPgTable, 
   users, 
