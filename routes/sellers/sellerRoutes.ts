@@ -77,18 +77,19 @@ sellerRouter.get('/orders', requireSellerAuth, async (req: AuthenticatedRequest,
     console.log('✅ /sellers/orders: Received request for sellerId:', sellerId);
 
     const orderItemsForSeller = await db.query.orderItems.findMany({
-        where: eq(orderItems.sellerId, sellerId),
-        with: {
-            order: {
-                with: {
-                    customer: true,
-                    deliveryBoy: true,
-                    tracking: true,
-                }
-            },
-            product: true,
+      where: eq(orderItems.sellerId, sellerId),
+      with: {
+        order: {
+          with: {
+            customer: true,
+            deliveryBoy: true,
+            tracking: true,
+          },
         },
-        orderBy: [desc(orderItems.createdAt)],
+        product: true,
+      },
+      // ✅ अब यह सही है
+      orderBy: (orderItems, { desc }) => [desc(orderItems.createdAt)],
     });
 
     const groupedOrders: any = {};
