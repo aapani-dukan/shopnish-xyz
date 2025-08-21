@@ -288,7 +288,7 @@ sellerRouter.post(
 
 
 //POST /api/sellers/products**
----
+
 sellerRouter.post(
   '/products',
   requireSellerAuth,
