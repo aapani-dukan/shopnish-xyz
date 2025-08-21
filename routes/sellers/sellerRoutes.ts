@@ -1,7 +1,7 @@
-link&// server/routes/sellers/sellerRoutes.ts
+// server/routes/sellers/sellerRoutes.ts
 
 import { Router, Response, NextFunction } from 'express';
-import { db } from '../../server/db.ts';
+import { db } from '../../server/db';
 import { SQL } from 'drizzle-orm';
 import { 
   sellersPgTable, 
@@ -12,12 +12,12 @@ import {
   products,
   orders,
   orderItems
-} from '../../shared/backend/schema.ts';
-import { requireSellerAuth } from '../../server/middleware/authMiddleware.ts';
-import { AuthenticatedRequest, verifyToken } from '../../server/middleware/verifyToken.ts';
+} from '../../shared/backend/schema';
+import { requireSellerAuth } from '../../server/middleware/authMiddleware';
+import { AuthenticatedRequest, verifyToken } from '../../server/middleware/verifyToken';
 import { eq,desc,exists,and,inArray } from 'drizzle-orm';
 import multer from 'multer';
-import { uploadImage } from '../../server/cloudStorage.ts'; 
+import { uploadImage } from '../../server/cloudStorage'; 
 
 const sellerRouter = Router();
 const upload = multer({ dest: 'uploads/' });
