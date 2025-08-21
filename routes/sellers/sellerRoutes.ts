@@ -14,10 +14,11 @@ import {
 } from '../../shared/backend/schema';
 import { requireSellerAuth } from '../../server/middleware/authMiddleware';
 import { AuthenticatedRequest, verifyToken } from '../../server/middleware/verifyToken';
-import { eq, desc, and } from 'drizzle-orm';
+// ✅ 'desc' को हटा दें और 'sql' जोड़ें
+import { eq, and, sql } from 'drizzle-orm'; 
 import multer from 'multer';
 import { uploadImage } from '../../server/cloudStorage'; 
-import { orderStatusEnum } from '../../shared/backend/schema'; // ✅ नया आयात (import)
+import { orderStatusEnum } from '../../shared/backend/schema'; 
 
 const sellerRouter = Router();
 const upload = multer({ dest: 'uploads/' });
@@ -88,8 +89,8 @@ sellerRouter.get('/orders', requireSellerAuth, async (req: AuthenticatedRequest,
         },
         product: true,
       },
-      // ✅ अब यह सही है
-      orderBy: (orderItems, { desc }) => [desc(orderItems.createdAt)],
+      // ✅ `sql` का उपयोग करके orderBy को ठीक करें
+      orderBy: sql`${orderItems.createdAt} desc`,
     });
 
     const groupedOrders: any = {};
@@ -130,25 +131,21 @@ sellerRouter.patch('/orders/:orderId/status', requireSellerAuth, async (req: Aut
       return res.status(401).json({ error: 'Unauthorized.' });
     }
 
-    // सुनिश्चित करें कि नई स्थिति (status) मान्य है
     const validStatus = orderStatusEnum.enumValues;
     if (!validStatus.includes(newStatus)) {
       return res.status(400).json({ error: 'Invalid order status provided.' });
     }
 
-    // विक्रेता की प्रोफ़ाइल की जाँच करें
     const [sellerProfile] = await db.select().from(sellersPgTable).where(eq(sellersPgTable.userId, userId));
     if (!sellerProfile) {
       return res.status(404).json({ error: 'Seller profile not found.' });
     }
 
-    // ऑर्डर की जाँच करें
     const [orderToUpdate] = await db.select().from(orders).where(eq(orders.id, parseInt(orderId)));
     if (!orderToUpdate) {
       return res.status(404).json({ error: 'Order not found.' });
     }
 
-    // केवल तभी अपडेट करें जब विक्रेता इस ऑर्डर से जुड़ा हो
     const isSellerInvolved = await db.select().from(orderItems)
       .where(and(eq(orderItems.orderId, parseInt(orderId)), eq(orderItems.sellerId, sellerProfile.id)))
       .limit(1);
@@ -157,7 +154,6 @@ sellerRouter.patch('/orders/:orderId/status', requireSellerAuth, async (req: Aut
       return res.status(403).json({ error: 'Forbidden: You do not have permission to update this order.' });
     }
 
-    // ऑर्डर की स्थिति को अपडेट करें
     const [updatedOrder] = await db.update(orders)
       .set({ status: newStatus })
       .where(eq(orders.id, parseInt(orderId)))
@@ -383,3 +379,4 @@ sellerRouter.post(
 );
     
 export default sellerRouter;
+    
