@@ -1,6 +1,3 @@
-//client/src/pages/seller-dashboard.tsx
-
-
 import Header from "@/components/header";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -26,7 +23,7 @@ import { useEffect, useState } from "react";
 import { useSocket } from "@/hooks/useSocket";
 import { useAuth } from "@/hooks/useAuth";
 import ProductManager from "./ProductManager";
-import OrderManager from "./OrderManager";
+import OrderManager from "../components/OrderManager";
 import ProfileManager from "./ProfileManager";
 
 export default function SellerDashboard() {
