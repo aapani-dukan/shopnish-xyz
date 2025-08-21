@@ -22,9 +22,9 @@ import {
 import { useEffect, useState } from "react";
 import { useSocket } from "@/hooks/useSocket";
 import { useAuth } from "@/hooks/useAuth";
-import ProductManager from "./ProductManager";
+import ProductManager from "../components/ProductManager";
 import OrderManager from "../components/OrderManager";
-import ProfileManager from "./ProfileManager";
+import ProfileManager from "../components/ProfileManager";
 
 export default function SellerDashboard() {
   const { toast } = useToast();
