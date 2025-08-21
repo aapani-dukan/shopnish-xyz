@@ -1,4 +1,4 @@
-// server/routes/sellers/sellerRoutes.ts
+link&// server/routes/sellers/sellerRoutes.ts
 
 import { Router, Response, NextFunction } from 'express';
 import { db } from '../../server/db.ts';
@@ -23,7 +23,7 @@ const sellerRouter = Router();
 const upload = multer({ dest: 'uploads/' });
 
 // ✅ GET /api/sellers/me
-✅ GET /api/sellers/me
+
 sellerRouter.get('/me', requireSellerAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const firebaseUid = req.user?.firebaseUid;
