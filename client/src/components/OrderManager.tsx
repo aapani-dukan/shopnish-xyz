@@ -82,11 +82,24 @@ export default function OrderManager({ orders, isLoading, error, seller }: Order
                 <p className="text-sm text-muted-foreground">Ordered On: {new Date(order.createdAt).toLocaleString()}</p>
                 <div className="mt-2">
                   <h5 className="font-medium text-sm mb-1">Items:</h5>
-                  <ul className="list-disc list-inside text-sm">
-                    {order.items.map((item) => (
-                      <li key={item.id}>{item.product.name} ({item.quantity} x ₹{item.product.price})</li>
-                    ))}
-                  </ul>
+                  // ...
+<ul className="list-disc list-inside text-sm">
+  {order.items.map((item) => (
+    // ✅ सुनिश्चित करें कि item.product मौजूद है
+    <li key={item.id}>
+      {item.product ? (
+        <>
+          {item.product.name} ({item.quantity} x ₹{item.product.price})
+        </>
+      ) : (
+        // ✅ यदि प्रोडक्ट null है, तो एक वैकल्पिक टेक्स्ट दिखाएँ
+        `Product details not available (x${item.quantity})`
+      )}
+    </li>
+  ))}
+</ul>
+// ...
+                  
                 </div>
                 {order.status === 'pending' && (
                   <div className="flex mt-4 space-x-2">
