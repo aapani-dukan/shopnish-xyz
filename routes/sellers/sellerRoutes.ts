@@ -15,15 +15,14 @@ import {
 } from '../../shared/backend/schema';
 import { requireSellerAuth } from '../../server/middleware/authMiddleware';
 import { AuthenticatedRequest, verifyToken } from '../../server/middleware/verifyToken';
-// ✅ यहाँ 'desc' के बजाय 'sql' को आयात करें
-import { eq, and, sql } from 'drizzle-orm';
+import { eq, desc, and } from 'drizzle-orm';
 import multer from 'multer';
 import { uploadImage } from '../../server/cloudStorage';
 
 const sellerRouter = Router();
 const upload = multer({ dest: 'uploads/' });
 
-// ✅ GET /api/sellers/me (विक्रेता प्रोफ़ाइल प्राप्त करें)
+// ✅ GET /api/sellers/me
 sellerRouter.get('/me', requireSellerAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const firebaseUid = req.user?.firebaseUid;
@@ -85,10 +84,11 @@ sellerRouter.get('/orders', requireSellerAuth, async (req: AuthenticatedRequest,
         },
         product: true,
       },
-      // ✅ `sql` टेंपलेट लिटरल का उपयोग करके 'desc' एरर को ठीक करें
-      orderBy: sql`${orderItems.createdAt} desc`,
+      // ✅ अब यह सही है
+      orderBy: (orderItems, { desc }) => [desc(orderItems.createdAt)],
     });
 
+    // ✅ परिणामों को ऑर्डर आईडी द्वारा समूहित (group) करें
     const groupedOrders: any = {};
     orderItemsForSeller.forEach(item => {
       const orderId = item.order.id;
@@ -100,7 +100,7 @@ sellerRouter.get('/orders', requireSellerAuth, async (req: AuthenticatedRequest,
       }
       groupedOrders[orderId].items.push({
         ...item,
-        order: undefined,
+        order: undefined, // orderItem से order डेटा को हटा दें
       });
     });
 
@@ -152,10 +152,6 @@ sellerRouter.patch('/orders/:orderId/status', requireSellerAuth, async (req: Aut
       .where(eq(orders.id, parseInt(orderId)))
       .returning();
 
-    if (!updatedOrder) {
-      return res.status(404).json({ error: 'Order not found.' });
-    }
-
     return res.status(200).json(updatedOrder);
   } catch (error: any) {
     console.error('❌ Error in PATCH /api/sellers/orders/:orderId/status:', error);
@@ -163,7 +159,7 @@ sellerRouter.patch('/orders/:orderId/status', requireSellerAuth, async (req: Aut
   }
 });
 
-// ✅ POST /api/sellers/apply (विक्रेता के रूप में आवेदन करें)
+// ✅ POST /api/sellers/apply (Apply as a seller)
 sellerRouter.post("/apply", verifyToken, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     console.log('Received seller apply data:', req.body);
@@ -216,7 +212,7 @@ sellerRouter.post("/apply", verifyToken, async (req: AuthenticatedRequest, res: 
         deliveryRadius: deliveryRadius ? parseInt(String(deliveryRadius)) : null,
         businessType,
         approvalStatus: approvalStatusEnum.enumValues[0],
-        // applicationDate: new Date(),
+        applicationDate: new Date(),
       })
       .returning();
 
@@ -239,13 +235,13 @@ sellerRouter.post("/apply", verifyToken, async (req: AuthenticatedRequest, res: 
         name: updatedUser.name,
       },
     });
-  } catch (error: any) {
-    console.error("❌ Error in POST /api/sellers/apply:", error);
+  } catch (error) {
+    console.error("❌ Error in POST /api/sellers:", error);
     next(error);
   }
 });
 
-// ✅ POST /api/sellers/categories (श्रेणी (Category) बनाएं)
+// ✅ POST /api/sellers/categories
 sellerRouter.post(
   '/categories',
   requireSellerAuth,
@@ -304,7 +300,7 @@ sellerRouter.post(
   }
 );
 
-// ✅ POST /api/sellers/products (उत्पाद बनाएं)
+// ✅ POST /api/sellers/products
 sellerRouter.post(
   '/products',
   requireSellerAuth,
@@ -373,4 +369,3 @@ sellerRouter.post(
 );
 
 export default sellerRouter;
-                
