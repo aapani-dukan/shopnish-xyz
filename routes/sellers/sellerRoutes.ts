@@ -305,7 +305,8 @@ sellerRouter.get('/orders', requireSellerAuth, async (req: AuthenticatedRequest,
         },
         product: true,
       },
-      orderBy: [desc(orderItems.createdAt)],
+      orderBy: (orderItems, { desc }) => [desc(orderItems.createdAt)], // ✅
+     // orderBy: [desc(orderItems.createdAt)],
     });
 
     const groupedOrders: any = {};
