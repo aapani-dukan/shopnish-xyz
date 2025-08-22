@@ -53,7 +53,7 @@ sellerRouter.get('/me', requireSellerAuth, async (req: AuthenticatedRequest, res
 });
 
 /**
- * ✅ GET /api/sellers/orders (विक्रेता के लिए ऑर्डर्स फ़ेच करें, जिसमें ऑर्डर विवरण और भुगतान स्थिति शामिल हो)
+ * ✅ GET /api/sellers/orders (विक्रेता के लिए ऑर्डर्स फ़ेच करें)
  */
 sellerRouter.get('/orders', requireSellerAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
@@ -79,8 +79,6 @@ sellerRouter.get('/orders', requireSellerAuth, async (req: AuthenticatedRequest,
 
     console.log('✅ /sellers/orders: Received request for sellerId:', sellerId);
 
-    // Drizzle का उपयोग करके सही और कुशल क्वेरी
-    // हम सीधे 'orders' को क्वेरी करते हैं और 'orderItems' में विक्रेता के मौजूद होने पर फ़िल्टर करते हैं।
     const sellerOrders = await db.query.orders.findMany({
         where: (orders, { exists, eq, and }) => and(
             exists(db.select().from(orderItems).where(
@@ -113,8 +111,67 @@ sellerRouter.get('/orders', requireSellerAuth, async (req: AuthenticatedRequest,
 });
 
 /**
+ * ✅ GET /api/sellers/products (केवल वर्तमान सेलर के प्रोडक्ट फ़ेच करें)
+ */
+sellerRouter.get('/products', requireSellerAuth, async (req: AuthenticatedRequest, res: Response) => {
+    try {
+        const userId = req.user?.id;
+        if (!userId) {
+            return res.status(401).json({ error: 'Unauthorized.' });
+        }
+
+        const [sellerProfile] = await db.select().from(sellersPgTable).where(eq(sellersPgTable.userId, userId));
+        if (!sellerProfile) {
+            return res.status(404).json({ error: 'Seller profile not found.' });
+        }
+        const sellerId = sellerProfile.id;
+
+        const sellerProducts = await db.query.products.findMany({
+            where: eq(products.sellerId, sellerId),
+            with: {
+                category: true,
+            },
+            orderBy: desc(products.createdAt),
+        });
+
+        return res.status(200).json(sellerProducts);
+    } catch (error: any) {
+        console.error('❌ Error in GET /api/sellers/products:', error);
+        return res.status(500).json({ error: 'Failed to fetch seller products.' });
+    }
+});
+
+/**
+ * ✅ GET /api/sellers/categories (केवल वर्तमान सेलर की कैटेगरी फ़ेच करें)
+ */
+sellerRouter.get('/categories', requireSellerAuth, async (req: AuthenticatedRequest, res: Response) => {
+    try {
+        const userId = req.user?.id;
+        if (!userId) {
+            return res.status(401).json({ error: 'Unauthorized.' });
+        }
+
+        const [sellerProfile] = await db.select().from(sellersPgTable).where(eq(sellersPgTable.userId, userId));
+        if (!sellerProfile) {
+            return res.status(404).json({ error: 'Seller profile not found.' });
+        }
+        const sellerId = sellerProfile.id;
+
+        const sellerCategories = await db.query.categories.findMany({
+            where: eq(categories.sellerId, sellerId),
+            orderBy: desc(categories.createdAt),
+        });
+
+        return res.status(200).json(sellerCategories);
+    } catch (error: any) {
+        console.error('❌ Error in GET /api/sellers/categories:', error);
+        return res.status(500).json({ error: 'Failed to fetch seller categories.' });
+    }
+});
+
+
+/**
  * ✅ PATCH /api/sellers/orders/:orderId/status (ऑर्डर की स्थिति अपडेट करें)
- * इसमें accept/reject logic जोड़ा गया है
  */
 sellerRouter.patch('/orders/:orderId/status', requireSellerAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
@@ -126,19 +183,16 @@ sellerRouter.patch('/orders/:orderId/status', requireSellerAuth, async (req: Aut
       return res.status(401).json({ error: 'Unauthorized.' });
     }
 
-    // सुनिश्चित करें कि नई स्थिति (status) मान्य है
     const validStatus = orderStatusEnum.enumValues;
     if (!validStatus.includes(newStatus)) {
       return res.status(400).json({ error: 'Invalid order status provided.' });
     }
 
-    // विक्रेता की प्रोफ़ाइल प्राप्त करें
     const [sellerProfile] = await db.select().from(sellersPgTable).where(eq(sellersPgTable.userId, userId));
     if (!sellerProfile) {
       return res.status(404).json({ error: 'Seller profile not found.' });
     }
 
-    // जाँचें कि क्या यह विक्रेता इस ऑर्डर में शामिल है
     const isSellerInvolved = await db
       .select()
       .from(orderItems)
@@ -149,7 +203,6 @@ sellerRouter.patch('/orders/:orderId/status', requireSellerAuth, async (req: Aut
       return res.status(403).json({ error: 'Forbidden: You do not have permission to update this order.' });
     }
 
-    // ऑर्डर की स्थिति अपडेट करें
     const [updatedOrder] = await db
       .update(orders)
       .set({ status: newStatus })
@@ -390,3 +443,4 @@ sellerRouter.post(
 );
 
 export default sellerRouter;
+    
