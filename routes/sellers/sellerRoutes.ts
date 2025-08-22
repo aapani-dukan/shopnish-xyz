@@ -79,6 +79,7 @@ sellerRouter.get('/orders', requireSellerAuth, async (req: AuthenticatedRequest,
 
     console.log('✅ /sellers/orders: Received request for sellerId:', sellerId);
 
+    // यह क्वेरी अब ऑर्डर, उसके आइटम और प्रत्येक आइटम के लिए सही प्रोडक्ट विवरण फ़ेच करेगी।
     const sellerOrders = await db.query.orders.findMany({
         where: (orders, { exists, eq, and }) => and(
             exists(db.select().from(orderItems).where(
@@ -93,7 +94,7 @@ sellerRouter.get('/orders', requireSellerAuth, async (req: AuthenticatedRequest,
             deliveryBoy: true,
             items: {
                 with: {
-                    product: true,
+                    product: true, // ✅ यह लाइन सुनिश्चित करती है कि प्रोडक्ट डेटा फ़ेच हो
                 },
                 where: (orderItems, { eq }) => eq(orderItems.sellerId, sellerId)
             },
@@ -312,67 +313,6 @@ sellerRouter.post("/apply", verifyToken, async (req: AuthenticatedRequest, res: 
 });
 
 /**
- * ✅ POST /api/sellers/categories
- */
-sellerRouter.post(
-  '/categories',
-  requireSellerAuth,
-  upload.single('image'),
-  async (req: AuthenticatedRequest, res: Response) => {
-    try {
-      const firebaseUid = req.user?.firebaseUid;
-      if (!firebaseUid) {
-        return res.status(401).json({ error: 'Unauthorized: User not authenticated.' });
-      }
-
-      const [dbUser] = await db.select()
-        .from(users)
-        .where(eq(users.firebaseUid, firebaseUid));
-
-      if (!dbUser) {
-        return res.status(404).json({ error: 'User not found.' });
-      }
-
-      const [sellerProfile] = await db.select()
-        .from(sellersPgTable)
-        .where(eq(sellersPgTable.userId, dbUser.id));
-
-      if (!sellerProfile) {
-        return res.status(404).json({ error: 'Seller profile not found.' });
-      }
-      const sellerId = sellerProfile.id;
-
-      const { name, slug, description } = req.body;
-      const file = req.file;
-
-      if (!name || !slug || !file) {
-        return res.status(400).json({ error: 'Category name, slug, and image are required.' });
-      }
-
-      const imageUrl = await uploadImage(file.path, file.originalname);
-
-      const newCategory = await db
-        .insert(categories)
-        .values({
-          name,
-          slug,
-          image: imageUrl,
-          sellerId: sellerId,
-        })
-        .returning();
-
-      return res.status(201).json(newCategory[0]);
-    } catch (error: any) {
-      console.error('❌ Error in POST /api/sellers/categories:', error);
-      if (error.message && error.message.includes('duplicate key')) {
-        return res.status(409).json({ error: 'Category with this slug already exists.' });
-      }
-      return res.status(500).json({ error: 'Failed to create category.' });
-    }
-  }
-);
-
-/**
  * ✅ POST /api/sellers/products
  */
 sellerRouter.post(
@@ -443,4 +383,3 @@ sellerRouter.post(
 );
 
 export default sellerRouter;
-    
