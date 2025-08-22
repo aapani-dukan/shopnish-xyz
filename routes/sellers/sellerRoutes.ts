@@ -132,7 +132,7 @@ return res.status(500).json({ error: 'Failed to fetch seller orders.' });
 //console.log('✅ /sellers/orders: Orders fetched successfully. Count:', sellerOrders.length);
 //return res.status(200).json(sellerOrders);
 
-/} catch (error: any) {
+//} catch (error: any) {
 //console.error('❌ Error in GET /api/sellers/orders:', error);
 //console.error(error);
 //return res.status(500).json({ error: 'Failed to fetch seller orders.' });
