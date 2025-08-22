@@ -1,4 +1,4 @@
-// server/routes/sellers/sellerRoutes.ts
+/// server/routes/sellers/sellerRoutes.ts
 
 import { Router, Response, NextFunction } from 'express';
 import { db } from '../../server/db';
@@ -102,35 +102,25 @@ tracking: true,
 orderBy: (orders, { desc }) => [desc(orders.createdAt)],
 });
 // ✅ परिणामों को ऑर्डर आईडी द्वारा समूहित (group) करें
-const groupedOrders: any = {};
-orderItemsForSeller.forEach(item => {
-const orderId = item.order.id;
-if (!groupedOrders[orderId]) {
-groupedOrders[orderId] = {
-...item.order,
-items: [],
-};
-}
-groupedOrders[orderId].items.push({
-...item,
-order: undefined, // orderItem से order डेटा को हटा दें
-});
-});
+//const groupedOrders: any = {};
+//orderItemsForSeller.forEach(item => {
+//const orderId = item.order.id;
+//if (!groupedOrders[orderId]) {
+//groupedOrders[orderId] = {
+//...item.order,
+//items: [],
+//};
+//}
+//groupedOrders[orderId].items.push({
+//...item,
+//order: undefined, // orderItem से order डेटा को हटा दें
+//});
+//});
 
-const ordersWithItems = Object.values(groupedOrders);
+//const ordersWithItems = Object.values(groupedOrders);
 
-console.log('✅ /sellers/orders: Orders fetched successfully. Count:', ordersWithItems.length);
-return res.status(200).json(ordersWithItems);
-
-} catch (error: any) {
-console.error('❌ Error in GET /api/sellers/orders:', error);
-console.error(error);
-return res.status(500).json({ error: 'Failed to fetch seller orders.' });
-}
-});
-
-//console.log('✅ /sellers/orders: Orders fetched successfully. Count:', sellerOrders.length);
-//return res.status(200).json(sellerOrders);
+//console.log('✅ /sellers/orders: Orders fetched successfully. Count:', ordersWithItems.length);
+//return res.status(200).json(ordersWithItems);
 
 //} catch (error: any) {
 //console.error('❌ Error in GET /api/sellers/orders:', error);
@@ -138,6 +128,16 @@ return res.status(500).json({ error: 'Failed to fetch seller orders.' });
 //return res.status(500).json({ error: 'Failed to fetch seller orders.' });
 //}
 //});
+
+console.log('✅ /sellers/orders: Orders fetched successfully. Count:', sellerOrders.length);
+return res.status(200).json(sellerOrders);
+
+} catch (error: any) {
+console.error('❌ Error in GET /api/sellers/orders:', error);
+console.error(error);
+return res.status(500).json({ error: 'Failed to fetch seller orders.' });
+}
+});
 
 // ✅ POST /api/sellers/apply (Apply as a seller)
 sellerRouter.post("/apply", verifyToken, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
