@@ -1,5 +1,3 @@
-// OrderManager.tsx
-
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -91,57 +89,65 @@ export default function OrderManager({ orders, isLoading, error, seller }: Order
           <p className="text-muted-foreground">No orders yet.</p>
         ) : (
           <div className="space-y-4">
-            {orders?.map((order) => (
-              <Card key={order.id} className="p-4">
-                <div className="flex justify-between items-center mb-2">
-                  <h4 className="font-semibold">Order ID: {order.id}</h4>
-                  {order.customer?.name && (
-                    <p className="text-sm font-medium">Customer: {order.customer.name}</p>
-                  )}
-                  <Badge variant={getStatusBadgeVariant(order.status as any)}>
-                    {order.status}
-                  </Badge>
-                </div>
-                {/* ✅ order.total को order.totalAmount से बदलें */}
-                <p className="text-sm text-muted-foreground">Total: ₹{order.totalAmount.toLocaleString()}</p>
-                <p className="text-sm text-muted-foreground">Ordered On: {new Date(order.createdAt).toLocaleString()}</p>
-                <div className="mt-2">
-                  <h5 className="font-medium text-sm mb-1">Items:</h5>
-                  <ul className="list-disc list-inside text-sm">
-                    {order.items.map((item) => (
-                      <li key={item.id}>
-                        {item.product ? (
-                          <>{item.product.name} ({item.quantity} x ₹{item.product.price})</>
-                        ) : (
-                          `Product details not available (x${item.quantity})`
+            {orders?.map((order) => {
+                // ✅ क्लाइंट-साइड पर कुल राशि की गणना करें
+                const totalAmount = order.items.reduce((total, item) => {
+                    const price = item.product?.price ?? 0;
+                    return total + (price * item.quantity);
+                }, 0);
+
+                return (
+                    <Card key={order.id} className="p-4">
+                        <div className="flex justify-between items-center mb-2">
+                            <h4 className="font-semibold">Order ID: {order.id}</h4>
+                            {order.customer?.name && (
+                                <p className="text-sm font-medium">Customer: {order.customer.name}</p>
+                            )}
+                            <Badge variant={getStatusBadgeVariant(order.status as any)}>
+                                {order.status}
+                            </Badge>
+                        </div>
+                        <p className="text-sm text-muted-foreground">Total: ₹{totalAmount.toFixed(2)}</p>
+                        <p className="text-sm text-muted-foreground">Ordered On: {new Date(order.createdAt).toLocaleString()}</p>
+                        <div className="mt-2">
+                            <h5 className="font-medium text-sm mb-1">Items:</h5>
+                            <ul className="list-disc list-inside text-sm">
+                                {order.items.map((item) => (
+                                    <li key={item.id}>
+                                        {item.product ? (
+                                            <>{item.product.name} ({item.quantity} x ₹{item.product.price})</>
+                                        ) : (
+                                            `Product details not available (x${item.quantity})`
+                                        )}
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
+                        {order.status === 'pending' && (
+                            <div className="flex mt-4 space-x-2">
+                                <Button
+                                    className="bg-green-500 text-white px-4 py-2 rounded-md hover:bg-green-600 transition-colors"
+                                    onClick={() => handleStatusUpdate(order.id, 'accepted')}
+                                    disabled={isPending}
+                                >
+                                    Accept
+                                </Button>
+                                <Button
+                                    className="bg-red-500 text-white px-4 py-2 rounded-md hover:bg-red-600 transition-colors"
+                                    onClick={() => handleStatusUpdate(order.id, 'rejected')}
+                                    disabled={isPending}
+                                >
+                                    Reject
+                                </Button>
+                            </div>
                         )}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-                {order.status === 'pending' && (
-                  <div className="flex mt-4 space-x-2">
-                    <Button
-                      className="bg-green-500 text-white px-4 py-2 rounded-md hover:bg-green-600 transition-colors"
-                      onClick={() => handleStatusUpdate(order.id, 'accepted')}
-                      disabled={isPending}
-                    >
-                      Accept
-                    </Button>
-                    <Button
-                      className="bg-red-500 text-white px-4 py-2 rounded-md hover:bg-red-600 transition-colors"
-                      onClick={() => handleStatusUpdate(order.id, 'rejected')}
-                      disabled={isPending}
-                    >
-                      Reject
-                    </Button>
-                  </div>
-                )}
-              </Card>
-            ))}
+                    </Card>
+                );
+            })}
           </div>
         )}
       </CardContent>
     </Card>
   );
 }
+
