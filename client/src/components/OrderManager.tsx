@@ -17,32 +17,47 @@ interface OrderManagerProps {
 
 const getStatusBadgeVariant = (status: string) => {
   switch (status) {
-    case 'pending':
-    case 'preparing':
-      return 'secondary';
-    case 'accepted':
-    case 'out_for_delivery':
-      return 'info';
-    case 'delivered':
-      return 'success';
-    case 'cancelled':
-    case 'rejected':
-      return 'destructive';
+    case "pending":
+    case "preparing":
+      return "secondary";
+    case "accepted":
+    case "out_for_delivery":
+      return "info";
+    case "delivered":
+      return "success";
+    case "cancelled":
+    case "rejected":
+      return "destructive";
     default:
-      return 'secondary';
+      return "secondary";
   }
 };
 
-export default function OrderManager({ orders, isLoading, error, seller }: OrderManagerProps) {
+export default function OrderManager({
+  orders,
+  isLoading,
+  error,
+  seller,
+}: OrderManagerProps) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
   const { mutate, isPending } = useMutation({
-    mutationFn: async ({ orderId, newStatus }: { orderId: number; newStatus: string }) => {
+    mutationFn: async ({
+      orderId,
+      newStatus,
+    }: {
+      orderId: number;
+      newStatus: string;
+    }) => {
       if (!orderStatusEnum.enumValues.includes(newStatus as any)) {
         throw new Error("Invalid order status provided.");
       }
-      const response = await apiRequest("PATCH", `/api/sellers/orders/${orderId}/status`, { newStatus });
+      const response = await apiRequest(
+        "PATCH",
+        `/api/sellers/orders/${orderId}/status`,
+        { newStatus }
+      );
       return response;
     },
     onSuccess: () => {
@@ -84,7 +99,9 @@ export default function OrderManager({ orders, isLoading, error, seller }: Order
             ))}
           </div>
         ) : error ? (
-          <p className="text-red-500">Error loading orders: {error.message}</p>
+          <p className="text-red-500">
+            Error loading orders: {error.message}
+          </p>
         ) : orders && orders.length === 0 ? (
           <p className="text-muted-foreground">No orders yet.</p>
         ) : (
@@ -93,42 +110,61 @@ export default function OrderManager({ orders, isLoading, error, seller }: Order
               <Card key={order.id} className="p-4">
                 <div className="flex justify-between items-center mb-2">
                   <h4 className="font-semibold">Order ID: {order.id}</h4>
-                  {order.customer?.name && (
-                    <p className="text-sm font-medium">Customer: {order.customer.name}</p>
-                  )}
                   <Badge variant={getStatusBadgeVariant(order.status as any)}>
                     {order.status}
                   </Badge>
                 </div>
-                {/* ✅ order.totalAmount को order.total से बदलें */}
-                <p className="text-sm text-muted-foreground">Total: ₹{parseFloat(order.total).toLocaleString()}</p>
-                <p className="text-sm text-muted-foreground">Ordered On: {new Date(order.createdAt).toLocaleString()}</p>
+
+                {/* ✅ Customer Info */}
+                {order.customer && (
+                  <p className="text-sm">
+                    Customer: {order.customer.name}{" "}
+                    {order.customer.phone && `(${order.customer.phone})`}
+                  </p>
+                )}
+
+                {/* ✅ Payment Info */}
+                <p className="text-sm text-muted-foreground">
+                  Payment: {order.paymentMethod || "N/A"} (
+                  {order.paymentStatus || "Pending"})
+                </p>
+
+                {/* ✅ Total + Date */}
+                <p className="text-sm text-muted-foreground">
+                  Total: ₹{parseFloat(order.total).toLocaleString()}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Ordered On:{" "}
+                  {new Date(order.createdAt).toLocaleString()}
+                </p>
+
+                {/* ✅ Items */}
                 <div className="mt-2">
                   <h5 className="font-medium text-sm mb-1">Items:</h5>
                   <ul className="list-disc list-inside text-sm">
                     {order.items.map((item) => (
                       <li key={item.id}>
-                        {item.product ? (
-                          <>{item.product.name} ({item.quantity} x ₹{item.product.price})</>
-                        ) : (
-                          `Product details not available (x${item.quantity})`
-                        )}
+                        {item.product?.name || item.name} (
+                        {item.quantity} × ₹
+                        {item.product?.price || item.price})
                       </li>
                     ))}
                   </ul>
                 </div>
-                {order.status === 'pending' && (
+
+                {/* ✅ Status Actions */}
+                {order.status === "pending" && (
                   <div className="flex mt-4 space-x-2">
                     <Button
                       className="bg-green-500 text-white px-4 py-2 rounded-md hover:bg-green-600 transition-colors"
-                      onClick={() => handleStatusUpdate(order.id, 'accepted')}
+                      onClick={() => handleStatusUpdate(order.id, "accepted")}
                       disabled={isPending}
                     >
                       Accept
                     </Button>
                     <Button
                       className="bg-red-500 text-white px-4 py-2 rounded-md hover:bg-red-600 transition-colors"
-                      onClick={() => handleStatusUpdate(order.id, 'rejected')}
+                      onClick={() => handleStatusUpdate(order.id, "rejected")}
                       disabled={isPending}
                     >
                       Reject
