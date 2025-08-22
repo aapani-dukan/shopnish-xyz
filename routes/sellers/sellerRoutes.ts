@@ -10,7 +10,8 @@ import {
   categories,
   products,
   orders,
-  orderItems
+  orderItems,
+  orderStatusEnum,
 } from '../../shared/backend/schema';
 import { requireSellerAuth } from '../../server/middleware/authMiddleware';
 import { AuthenticatedRequest, verifyToken } from '../../server/middleware/verifyToken';
@@ -52,8 +53,7 @@ sellerRouter.get('/me', requireSellerAuth, async (req: AuthenticatedRequest, res
 });
 
 /**
- * ✅ GET /api/sellers/orders
- * (अब बिना grouping के सीधे seller के orders fetch होंगे)
+ * ✅ GET /api/sellers/orders (विक्रेता के लिए ऑर्डर्स फ़ेच करें, जिसमें ऑर्डर विवरण और भुगतान स्थिति शामिल हो)
  */
 sellerRouter.get('/orders', requireSellerAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
@@ -79,28 +79,29 @@ sellerRouter.get('/orders', requireSellerAuth, async (req: AuthenticatedRequest,
 
     console.log('✅ /sellers/orders: Received request for sellerId:', sellerId);
 
-    // ✅ अब grouping हटाकर सीधे seller के orders fetch कर रहे हैं
+    // Drizzle का उपयोग करके सही और कुशल क्वेरी
+    // हम सीधे 'orders' को क्वेरी करते हैं और 'orderItems' में विक्रेता के मौजूद होने पर फ़िल्टर करते हैं।
     const sellerOrders = await db.query.orders.findMany({
-      where: (orders, { exists, eq, and }) => and(
-        exists(
-          db.select().from(orderItems).where(
-            and(
-              eq(orderItems.orderId, orders.id),
-              eq(orderItems.sellerId, sellerId)
-            )
-          )
-        )
-      ),
-      with: {
-        customer: true,
-        deliveryBoy: true,
-        items: {
-          with: { product: true },
-          where: (orderItems, { eq }) => eq(orderItems.sellerId, sellerId)
+        where: (orders, { exists, eq, and }) => and(
+            exists(db.select().from(orderItems).where(
+                and(
+                    eq(orderItems.orderId, orders.id),
+                    eq(orderItems.sellerId, sellerId)
+                )
+            ))
+        ),
+        with: {
+            customer: true,
+            deliveryBoy: true,
+            items: {
+                with: {
+                    product: true,
+                },
+                where: (orderItems, { eq }) => eq(orderItems.sellerId, sellerId)
+            },
+            tracking: true,
         },
-        tracking: true,
-      },
-      orderBy: (orders, { desc }) => [desc(orders.createdAt)],
+        orderBy: (orders, { desc }) => [desc(orders.createdAt)],
     });
 
     console.log('✅ /sellers/orders: Orders fetched successfully. Count:', sellerOrders.length);
@@ -112,12 +113,65 @@ sellerRouter.get('/orders', requireSellerAuth, async (req: AuthenticatedRequest,
 });
 
 /**
+ * ✅ PATCH /api/sellers/orders/:orderId/status (ऑर्डर की स्थिति अपडेट करें)
+ * इसमें accept/reject logic जोड़ा गया है
+ */
+sellerRouter.patch('/orders/:orderId/status', requireSellerAuth, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { orderId } = req.params;
+    const { newStatus } = req.body;
+    const userId = req.user?.id;
+
+    if (!userId) {
+      return res.status(401).json({ error: 'Unauthorized.' });
+    }
+
+    // सुनिश्चित करें कि नई स्थिति (status) मान्य है
+    const validStatus = orderStatusEnum.enumValues;
+    if (!validStatus.includes(newStatus)) {
+      return res.status(400).json({ error: 'Invalid order status provided.' });
+    }
+
+    // विक्रेता की प्रोफ़ाइल प्राप्त करें
+    const [sellerProfile] = await db.select().from(sellersPgTable).where(eq(sellersPgTable.userId, userId));
+    if (!sellerProfile) {
+      return res.status(404).json({ error: 'Seller profile not found.' });
+    }
+
+    // जाँचें कि क्या यह विक्रेता इस ऑर्डर में शामिल है
+    const isSellerInvolved = await db
+      .select()
+      .from(orderItems)
+      .where(and(eq(orderItems.orderId, parseInt(orderId)), eq(orderItems.sellerId, sellerProfile.id)))
+      .limit(1);
+
+    if (isSellerInvolved.length === 0) {
+      return res.status(403).json({ error: 'Forbidden: You do not have permission to update this order.' });
+    }
+
+    // ऑर्डर की स्थिति अपडेट करें
+    const [updatedOrder] = await db
+      .update(orders)
+      .set({ status: newStatus })
+      .where(eq(orders.id, parseInt(orderId)))
+      .returning();
+
+    if (!updatedOrder) {
+      return res.status(404).json({ error: 'Order not found.' });
+    }
+
+    return res.status(200).json(updatedOrder);
+  } catch (error: any) {
+    console.error('❌ Error in PATCH /api/sellers/orders/:orderId/status:', error);
+    return res.status(500).json({ error: 'Failed to update order status.' });
+  }
+});
+
+/**
  * ✅ POST /api/sellers/apply
  */
 sellerRouter.post("/apply", verifyToken, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
-    console.log('Received seller apply data:', req.body);
-
     const firebaseUid = req.user?.firebaseUid;
     if (!firebaseUid) return res.status(401).json({ message: "Unauthorized" });
 
@@ -198,7 +252,7 @@ sellerRouter.post("/apply", verifyToken, async (req: AuthenticatedRequest, res: 
         name: updatedUser.name,
       },
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error("❌ Error in POST /api/sellers:", error);
     next(error);
   }
