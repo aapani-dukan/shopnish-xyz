@@ -1,3 +1,5 @@
+// OrderManager.tsx
+
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -15,7 +17,6 @@ interface OrderManagerProps {
   seller: Seller;
 }
 
-// ✅ एक हेल्पर फ़ंक्शन जो स्थिति (status) के आधार पर रंग देता है
 const getStatusBadgeVariant = (status: string) => {
   switch (status) {
     case 'pending':
@@ -23,9 +24,9 @@ const getStatusBadgeVariant = (status: string) => {
       return 'secondary';
     case 'accepted':
     case 'out_for_delivery':
-      return 'info'; // एक नया, अधिक उपयुक्त रंग
+      return 'info';
     case 'delivered':
-      return 'success'; // मान लें कि आपके पास 'success' वेरिएंट है
+      return 'success';
     case 'cancelled':
     case 'rejected':
       return 'destructive';
@@ -40,7 +41,6 @@ export default function OrderManager({ orders, isLoading, error, seller }: Order
 
   const { mutate, isPending } = useMutation({
     mutationFn: async ({ orderId, newStatus }: { orderId: number; newStatus: string }) => {
-      // ✅ सुनिश्चित करें कि नई स्थिति मान्य है
       if (!orderStatusEnum.enumValues.includes(newStatus as any)) {
         throw new Error("Invalid order status provided.");
       }
@@ -67,7 +67,6 @@ export default function OrderManager({ orders, isLoading, error, seller }: Order
     mutate({ orderId, newStatus });
   };
 
-  // ✅ डिबगिंग के लिए, देखें कि डेटा का स्वरूप कैसा है
   useEffect(() => {
     if (orders) {
       console.log("Received orders data:", orders);
@@ -103,8 +102,8 @@ export default function OrderManager({ orders, isLoading, error, seller }: Order
                     {order.status}
                   </Badge>
                 </div>
-                {/* ✅ total को सही से डिस्प्ले करें */}
-                <p className="text-sm text-muted-foreground">Total: ₹{order.total.toLocaleString()}</p>
+                {/* ✅ order.total को order.totalAmount से बदलें */}
+                <p className="text-sm text-muted-foreground">Total: ₹{order.totalAmount.toLocaleString()}</p>
                 <p className="text-sm text-muted-foreground">Ordered On: {new Date(order.createdAt).toLocaleString()}</p>
                 <div className="mt-2">
                   <h5 className="font-medium text-sm mb-1">Items:</h5>
@@ -114,14 +113,12 @@ export default function OrderManager({ orders, isLoading, error, seller }: Order
                         {item.product ? (
                           <>{item.product.name} ({item.quantity} x ₹{item.product.price})</>
                         ) : (
-                          // ✅ यदि प्रोडक्ट विवरण उपलब्ध नहीं है, तो भी मात्रा दिखाएं
                           `Product details not available (x${item.quantity})`
                         )}
                       </li>
                     ))}
                   </ul>
                 </div>
-                {/* ✅ केवल तभी बटन दिखाएं जब स्थिति 'pending' हो */}
                 {order.status === 'pending' && (
                   <div className="flex mt-4 space-x-2">
                     <Button
