@@ -3,9 +3,10 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useQueryClient, useMutation } from "@tanstack/react-query";
-import { OrderWithItems, Seller, orderStatusEnum } from "@shared/backend/schema"; // ✅ orderStatusEnum को आयात करें
+import { OrderWithItems, Seller, orderStatusEnum } from "@shared/backend/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useEffect } from "react";
 
 interface OrderManagerProps {
   orders: OrderWithItems[] | undefined;
@@ -18,12 +19,13 @@ interface OrderManagerProps {
 const getStatusBadgeVariant = (status: string) => {
   switch (status) {
     case 'pending':
-    case 'accepted':
     case 'preparing':
-    case 'out_for_delivery':
       return 'secondary';
+    case 'accepted':
+    case 'out_for_delivery':
+      return 'info'; // एक नया, अधिक उपयुक्त रंग
     case 'delivered':
-      return 'default'; // या कोई अन्य सफलता का रंग
+      return 'success'; // मान लें कि आपके पास 'success' वेरिएंट है
     case 'cancelled':
     case 'rejected':
       return 'destructive';
@@ -36,7 +38,7 @@ export default function OrderManager({ orders, isLoading, error, seller }: Order
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  const { mutate, isPending } = useMutation({ // ✅ isPending का उपयोग करें
+  const { mutate, isPending } = useMutation({
     mutationFn: async ({ orderId, newStatus }: { orderId: number; newStatus: string }) => {
       // ✅ सुनिश्चित करें कि नई स्थिति मान्य है
       if (!orderStatusEnum.enumValues.includes(newStatus as any)) {
@@ -65,6 +67,13 @@ export default function OrderManager({ orders, isLoading, error, seller }: Order
     mutate({ orderId, newStatus });
   };
 
+  // ✅ डिबगिंग के लिए, देखें कि डेटा का स्वरूप कैसा है
+  useEffect(() => {
+    if (orders) {
+      console.log("Received orders data:", orders);
+    }
+  }, [orders]);
+
   return (
     <Card>
       <CardHeader>
@@ -90,12 +99,12 @@ export default function OrderManager({ orders, isLoading, error, seller }: Order
                   {order.customer?.name && (
                     <p className="text-sm font-medium">Customer: {order.customer.name}</p>
                   )}
-                  {/* ✅ अब, स्थिति के आधार पर सही रंग दिखाएं */}
-                  <Badge variant={getStatusBadgeVariant(order.status)}>
+                  <Badge variant={getStatusBadgeVariant(order.status as any)}>
                     {order.status}
                   </Badge>
                 </div>
-                <p className="text-sm text-muted-foreground">Total: ₹{parseFloat(order.total).toLocaleString()}</p>
+                {/* ✅ total को सही से डिस्प्ले करें */}
+                <p className="text-sm text-muted-foreground">Total: ₹{order.total.toLocaleString()}</p>
                 <p className="text-sm text-muted-foreground">Ordered On: {new Date(order.createdAt).toLocaleString()}</p>
                 <div className="mt-2">
                   <h5 className="font-medium text-sm mb-1">Items:</h5>
@@ -105,6 +114,7 @@ export default function OrderManager({ orders, isLoading, error, seller }: Order
                         {item.product ? (
                           <>{item.product.name} ({item.quantity} x ₹{item.product.price})</>
                         ) : (
+                          // ✅ यदि प्रोडक्ट विवरण उपलब्ध नहीं है, तो भी मात्रा दिखाएं
                           `Product details not available (x${item.quantity})`
                         )}
                       </li>
