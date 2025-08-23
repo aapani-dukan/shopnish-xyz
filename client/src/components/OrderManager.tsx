@@ -1,5 +1,3 @@
-// client/src/components/seller/OrderManager.tsx
-
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -8,7 +6,6 @@ import { useQueryClient, useMutation } from "@tanstack/react-query";
 import { OrderWithItems, Seller, orderStatusEnum } from "@shared/backend/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { useEffect } from "react";
 
 interface OrderManagerProps {
   orders: OrderWithItems[] | undefined;
@@ -22,7 +19,6 @@ const getStatusBadgeVariant = (status: string) => {
     case "pending":
       return "secondary";
     case "accepted":
-      return "info";
     case "out_for_delivery":
       return "info";
     case "delivered":
@@ -52,12 +48,10 @@ export default function OrderManager({
       orderId: number;
       newStatus: string;
     }) => {
-      // ✅ Validate status against enum
       if (!(orderStatusEnum.enumValues as unknown as string[]).includes(newStatus)) {
         throw new Error("Invalid order status provided.");
       }
 
-      // ✅ Fix API call template string
       const response = await apiRequest(
         "PATCH",
         `/api/sellers/orders/${orderId}/status`,
@@ -85,11 +79,118 @@ export default function OrderManager({
     mutate({ orderId, newStatus });
   };
 
-  useEffect(() => {
-    if (orders) {
-      console.log("Received orders data:", orders);
+  const renderStatusActions = (order: OrderWithItems) => {
+    switch (order.status) {
+      case "pending":
+        return (
+          <>
+            <Button
+              variant="success"
+              onClick={() => handleStatusUpdate(order.id, "accepted")}
+              disabled={isPending}
+            >
+              Accept
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => handleStatusUpdate(order.id, "rejected")}
+              disabled={isPending}
+            >
+              Reject
+            </Button>
+          </>
+        );
+      case "accepted":
+        return (
+          <Button
+            onClick={() => handleStatusUpdate(order.id, "out_for_delivery")}
+            disabled={isPending}
+          >
+            Out for Delivery
+          </Button>
+        );
+      case "out_for_delivery":
+        return (
+          <Button
+            onClick={() => handleStatusUpdate(order.id, "delivered")}
+            disabled={isPending}
+          >
+            Delivered
+          </Button>
+        );
+      default:
+        return null;
     }
-  }, [orders]);
+  };
+
+  const renderContent = () => {
+    if (isLoading) {
+      return (
+        <div className="space-y-4">
+          {[...Array(3)].map((_, i) => (
+            <Skeleton key={i} className="h-24 w-full rounded-lg" />
+          ))}
+        </div>
+      );
+    }
+
+    if (error) {
+      return <p className="text-red-500">Error loading orders: {error.message}</p>;
+    }
+
+    if (!orders || orders.length === 0) {
+      return <p className="text-muted-foreground">No orders yet.</p>;
+    }
+
+    return (
+      <div className="space-y-4">
+        {orders.map((order) => (
+          <Card key={order.id} className="p-4">
+            <div className="flex flex-col md:flex-row md:justify-between md:items-center mb-2">
+              <h4 className="font-semibold text-lg">Order ID: {order.id}</h4>
+              <Badge variant={getStatusBadgeVariant(order.status as string)}>
+                {order.status}
+              </Badge>
+            </div>
+
+            {order.customer && (
+              <p className="text-sm">
+                Customer: **{order.customer.name}**{" "}
+                {order.customer.phone && `(${order.customer.phone})`}
+              </p>
+            )}
+
+            <p className="text-sm text-muted-foreground">
+              Payment: **{order.paymentMethod || "N/A"}** ({order.paymentStatus || "Pending"})
+            </p>
+            <p className="text-sm text-muted-foreground">
+              Total: **₹{Number(order.total).toLocaleString()}**
+            </p>
+            <p className="text-sm text-muted-foreground">
+              Ordered On: {new Date(order.createdAt).toLocaleString()}
+            </p>
+
+            <div className="mt-4">
+              <h5 className="font-medium text-sm mb-2">Items:</h5>
+              <ul className="list-disc list-inside text-sm space-y-1">
+                {order.items.map((item) => (
+                  <li key={item.id}>
+                    {item.product?.name || item.name} (
+                    {item.quantity} × ₹
+                    {Number(item.product?.price || item.price)})
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <div className="flex mt-6 space-x-2">
+              {renderStatusActions(order)}
+            </div>
+          </Card>
+        ))}
+      </div>
+    );
+  };
 
   return (
     <Card>
@@ -97,105 +198,9 @@ export default function OrderManager({
         <CardTitle>Your Orders</CardTitle>
       </CardHeader>
       <CardContent>
-        {isLoading ? (
-          <div className="space-y-4">
-            {[...Array(3)].map((_, i) => (
-              <Skeleton key={i} className="h-24 w-full rounded-lg" />
-            ))}
-          </div>
-        ) : error ? (
-          <p className="text-red-500">Error loading orders: {error.message}</p>
-        ) : orders && orders.length === 0 ? (
-          <p className="text-muted-foreground">No orders yet.</p>
-        ) : (
-          <div className="space-y-4">
-            {orders?.map((order) => (
-              <Card key={order.id} className="p-4">
-                <div className="flex justify-between items-center mb-2">
-                  <h4 className="font-semibold">Order ID: {order.id}</h4>
-                  <Badge variant={getStatusBadgeVariant(order.status as any)}>
-                    {order.status}
-                  </Badge>
-                </div>
-
-                {/* ✅ Customer Info */}
-                {order.customer && (
-                  <p className="text-sm">
-                    Customer: {order.customer.name}{" "}
-                    {order.customer.phone && `(${order.customer.phone})`}
-                  </p>
-                )}
-
-                {/* ✅ Payment Info */}
-                <p className="text-sm text-muted-foreground">
-                  Payment: {order.paymentMethod || "N/A"} (
-                  {order.paymentStatus || "Pending"})
-                </p>
-
-                {/* ✅ Total + Date */}
-                <p className="text-sm text-muted-foreground">
-                  Total: ₹{Number(order.total).toLocaleString()}
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  Ordered On: {new Date(order.createdAt).toLocaleString()}
-                </p>
-
-                {/* ✅ Items */}
-                <div className="mt-2">
-                  <h5 className="font-medium text-sm mb-1">Items:</h5>
-                  <ul className="list-disc list-inside text-sm">
-                    {order.items.map((item) => (
-                      <li key={item.id}>
-                        {item.product?.name || item.name} (
-                        {item.quantity} × ₹
-                        {Number(item.product?.price || item.price)})
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-
-                {/* ✅ Status Actions */}
-                <div className="flex mt-4 space-x-2">
-                    {order.status === "pending" && (
-                      <>
-                        <Button
-                          className="bg-green-500 text-white px-4 py-2 rounded-md hover:bg-green-600 transition-colors"
-                          onClick={() => handleStatusUpdate(order.id, "accepted")}
-                          disabled={isPending}
-                        >
-                          Accept
-                        </Button>
-                        <Button
-                          className="bg-red-500 text-white px-4 py-2 rounded-md hover:bg-red-600 transition-colors"
-                          onClick={() => handleStatusUpdate(order.id, "rejected")}
-                          disabled={isPending}
-                        >
-                          Reject
-                        </Button>
-                      </>
-                    )}
-                    {order.status === "accepted" && (
-                       <Button
-                         onClick={() => handleStatusUpdate(order.id, "out_for_delivery")}
-                         disabled={isPending}
-                       >
-                         Out for Delivery
-                       </Button>
-                    )}
-                    {order.status === "out_for_delivery" && (
-                      <Button
-                        onClick={() => handleStatusUpdate(order.id, "delivered")}
-                        disabled={isPending}
-                      >
-                        Delivered
-                      </Button>
-                    )}
-                </div>
-              </Card>
-            ))}
-          </div>
-        )}
+        {renderContent()}
       </CardContent>
     </Card>
   );
 }
+
