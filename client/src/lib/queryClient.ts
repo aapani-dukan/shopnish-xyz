@@ -1,104 +1,37 @@
 // client/src/lib/queryClient.ts
 
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
-import { auth } from './firebase.ts';
+import api from "./api"; // ✅ axios इंस्टेंस को यहाँ आयात करें
 import { signOutUser } from "@/lib/firebase";
 
 /**
- * जाँचता है कि क्या रिस्पॉन्स ठीक है, और अगर नहीं, तो एक विस्तृत एरर थ्रो करता है।
- * यह JSON और टेक्स्ट रिस्पॉन्स दोनों को हैंडल करता है।
- */
-async function throwIfResNotOk(res: Response): Promise<void> {
-  if (!res.ok) {
-    let errorDetail = res.statusText;
-    try {
-      const responseText = await res.text();
-      if (responseText.trim() !== '') {
-        const contentType = res.headers.get('content-type');
-        if (contentType && contentType.includes('application/json')) {
-          const errorData = JSON.parse(responseText);
-          errorDetail = errorData.message || errorData.error || JSON.stringify(errorData);
-        } else {
-          errorDetail = responseText;
-        }
-      }
-    } catch (parseError) {
-      console.error(`Error parsing non-OK response (status: ${res.status}):`, parseError);
-    }
-    const error = new Error(`${res.status}: ${errorDetail}`);
-    (error as any).status = res.status;
-    throw error;
-  }
-}
-
-/**
- * एक सामान्य API अनुरोध फ़ंक्शन जो Firebase Auth टोकन जोड़ता है
- * और FormData या JSON डेटा को सही ढंग से हैंडल करता है।
+ * एक सामान्य API अनुरोध फ़ंक्शन जो `axios` का उपयोग करता है।
+ * Axios स्वचालित रूप से हेडर में Firebase टोकन को इंटरसेप्टर के माध्यम से जोड़ता है।
  */
 export async function apiRequest(
   method: 'GET' | 'POST' | 'PUT' | 'DELETE',
   path: string,
-  data?: unknown | FormData,
-  requestOptions?: RequestInit
+  data?: unknown | FormData
 ): Promise<any> {
-  const BASE_URL = import.meta.env.VITE_BACKEND_URL;
-  if (!BASE_URL) {
-    throw new Error('API_BACKEND_URL पर्यावरण वैरिएबल में परिभाषित नहीं है।');
-  }
-
-  const url = `${BASE_URL}${path}`;
-  console.log(`[API Request] Sending ${method} request to: ${url}`);
-
-  const user = auth.currentUser;
-  let token = null;
-
-  if (user) {
-    try {
-      token = await user.getIdToken();
-    } catch (error) {
-      console.error("Firebase ID टोकन प्राप्त करने में त्रुटि:", error);
-      throw new Error("प्रमाणीकरण टोकन प्राप्त करने में विफल। कृपया पुनः प्रयास करें।");
-    }
-  }
-
-  const headers: HeadersInit = {
-    ...(requestOptions?.headers || {}),
-  };
-
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
-  }
-
-  let body: BodyInit | undefined;
-  if (method !== 'GET' && method !== 'HEAD') {
-    if (data instanceof FormData) {
-      body = data;
-    } else if (data !== undefined) {
-      headers['Content-Type'] = 'application/json';
-      body = JSON.stringify(data);
-    }
-  }
-
-  const config: RequestInit = {
-    method,
-    headers,
-    body,
-    credentials: "include",
-    ...requestOptions,
-  };
-
   try {
-    const res = await fetch(url, config);
-    await throwIfResNotOk(res);
-    
-    const responseText = await res.text();
-    if (responseText.trim() === '') {
-      return null;
+    const config = {
+      method,
+      url: path,
+      data,
+    };
+    const res = await api(config);
+    return res.data;
+  } catch (error: any) {
+    if (error.response) {
+      // 401 Unauthorized एरर को हैंडल करें
+      if (error.response.status === 401) {
+        console.error("401 Unauthorized: Logging out user.");
+        signOutUser(); // या जो भी आपका लॉगआउट फ़ंक्शन है
+        throw new Error("Unauthorized: Please log in again.");
+      }
+      throw new Error(error.response.data.message || error.response.data.error || 'API request failed');
     }
-    return JSON.parse(responseText);
-  } catch (error) {
-    console.error(`Error during API request to ${url}:`, error);
-    throw error;
+    throw new Error('An unexpected error occurred.');
   }
 }
 
@@ -116,7 +49,6 @@ export const getQueryFn: <T>(options: {
           "GET", 
           path, 
           undefined,
-          { signal }
         );
         return res as T;
     } catch (error: any) {
