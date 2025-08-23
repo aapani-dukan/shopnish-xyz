@@ -105,6 +105,11 @@ const createOrderMutation = useMutation({
 });
 
 // ✅ आपका अपडेटेड handlePlaceOrder
+    
+// client/src/pages/checkout.tsx
+
+// ... (अन्य आयात और कोड)
+
 const handlePlaceOrder = () => {
   if (!deliveryAddress.fullName || !deliveryAddress.phone || !deliveryAddress.address || !deliveryAddress.pincode) {
     toast({
@@ -115,39 +120,26 @@ const handlePlaceOrder = () => {
     return;
   }
 
-  const orderNumber = `ORD${Date.now()}`;
+  // ✅ डेटा संरचना को सर्वर-साइड से मैच करने के लिए अपडेट करें
   const orderData = {
-    order: {
-      orderNumber,
-      customerId: null,
-      subtotal: subtotal.toString(),
-      deliveryCharge: deliveryCharge.toString(),
-      total: total.toString(),
-      paymentMethod,
-      paymentStatus: paymentMethod === "cod" ? "pending" : "paid",
-      status: "placed",
-      deliveryAddress,
-      deliveryInstructions,
-      estimatedDeliveryTime: new Date(Date.now() + 60 * 60 * 1000),
-    },
+    deliveryAddress,
+    paymentMethod,
+    subtotal: subtotal.toFixed(2), // ✅ सीधे मुख्य ऑब्जेक्ट में
+    total: total.toFixed(2),       // ✅ सीधे मुख्य ऑब्जेक्ट में
+    deliveryCharge: deliveryCharge.toFixed(2), // ✅ सीधे मुख्य ऑब्जेक्ट में
+    deliveryInstructions,
     items: cartItems.map(item => ({
       productId: item.productId,
       sellerId: item.product.sellerId,
       quantity: item.quantity,
       unitPrice: item.product.price,
-      totalPrice: (parseFloat(item.product.price) * item.quantity).toString(),
+      totalPrice: (parseFloat(item.product.price) * item.quantity).toFixed(2),
     }))
   };
+
   createOrderMutation.mutate(orderData);
 };
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full"></div>
-      </div>
-    );
-  }
 
   // ✅ `cartItems` अब एक एरे है, इसलिए `length` काम करेगा।
   if (cartItems.length === 0) {
