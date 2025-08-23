@@ -174,6 +174,11 @@ sellerRouter.get('/categories', requireSellerAuth, async (req: AuthenticatedRequ
 /**
  * ✅ PATCH /api/sellers/orders/:orderId/status (ऑर्डर की स्थिति अपडेट करें)
  */
+
+
+/**
+ * ✅ PATCH /api/sellers/orders/:orderId/status (ऑर्डर की स्थिति अपडेट करें)
+ */
 sellerRouter.patch('/orders/:orderId/status', requireSellerAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { orderId } = req.params;
@@ -193,17 +198,37 @@ sellerRouter.patch('/orders/:orderId/status', requireSellerAuth, async (req: Aut
     if (!sellerProfile) {
       return res.status(404).json({ error: 'Seller profile not found.' });
     }
+    const sellerId = sellerProfile.id;
 
-    const isSellerInvolved = await db
-      .select()
-      .from(orderItems)
-      .where(and(eq(orderItems.orderId, parseInt(orderId)), eq(orderItems.sellerId, sellerProfile.id)))
-      .limit(1);
+    // 1. ऑर्डर को उसके ID और sellerId के साथ फ़ेच करें
+    const orderToUpdate = await db.query.orders.findFirst({
+        where: eq(orders.id, parseInt(orderId)),
+        with: {
+            items: {
+                where: eq(orderItems.sellerId, sellerId),
+            }
+        }
+    });
 
-    if (isSellerInvolved.length === 0) {
-      return res.status(403).json({ error: 'Forbidden: You do not have permission to update this order.' });
+    if (!orderToUpdate || orderToUpdate.items.length === 0) {
+        return res.status(403).json({ error: 'Forbidden: You do not have permission to update this order.' });
     }
 
+    // 2. स्थिति अपडेट करने के लिए लॉजिक
+    // सुनिश्चित करें कि केवल सही स्थितियाँ ही अपडेट हो सकें।
+    if (orderToUpdate.status === 'placed' && newStatus === 'accepted') {
+        // 'placed' से 'accepted' में बदलाव
+    } else if (orderToUpdate.status === 'placed' && newStatus === 'rejected') {
+        // 'placed' से 'rejected' में बदलाव
+    } else if (orderToUpdate.status === 'accepted' && newStatus === 'out_for_delivery') {
+        // 'accepted' से 'out_for_delivery' में बदलाव
+    } else if (orderToUpdate.status === 'out_for_delivery' && newStatus === 'delivered') {
+        // 'out_for_delivery' से 'delivered' में बदलाव
+    } else {
+        return res.status(400).json({ error: 'Invalid status transition.' });
+    }
+    
+    // 3. डेटाबेस में स्थिति अपडेट करें
     const [updatedOrder] = await db
       .update(orders)
       .set({ status: newStatus })
@@ -220,6 +245,7 @@ sellerRouter.patch('/orders/:orderId/status', requireSellerAuth, async (req: Aut
     return res.status(500).json({ error: 'Failed to update order status.' });
   }
 });
+
 
 /**
  * ✅ POST /api/sellers/apply
