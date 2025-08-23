@@ -58,7 +58,7 @@ sellerRouter.get('/me', requireSellerAuth, async (req: AuthenticatedRequest, res
  */
 
 
-orderRouter.post("/", requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+ordersRouter.post("/", requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { customerId, items, subtotal, deliveryCharge, discount, total, paymentMethod, deliveryAddress } = req.body;
 
