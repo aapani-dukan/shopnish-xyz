@@ -7,7 +7,7 @@ import { queryClient } from "./lib/queryClient";
 import { Toaster } from "@/components/ui/toaster";
 import { AuthProvider } from "@/hooks/useAuth";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { SocketProvider } from "@/hooks/useSocket"; // ✅ SocketProvider को आयात करें
+import { SocketProvider } from "@/hooks/useSocket";
 
 // Layouts and components
 import Header from "./components/header";
@@ -40,7 +40,7 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <AuthProvider>
-          <SocketProvider> {/* ✅ SocketProvider को यहाँ जोड़ें */}
+          <SocketProvider>
             <Toaster />
             <Header onCartClick={() => setIsCartModalOpen(true)} />
             <main className="min-h-screen">
@@ -62,13 +62,16 @@ function App() {
 
                 {/* Protected - Admin */}
                 <Route path="/admin-dashboard" element={<AdminGuard><AdminDashboard /></AdminGuard>} />
+                
+                {/* ✅ यहाँ `:orderId` पैरामीटर जोड़ा गया है */}
                 <Route path="/order-confirmation/:orderId" element={<OrderConfirmation />} />
+
                 {/* 404 */}
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </main>
             <CartModal isOpen={isCartModalOpen} onClose={() => setIsCartModalOpen(false)} />
-          </SocketProvider> {/* ✅ SocketProvider को यहाँ बंद करें */}
+          </SocketProvider>
         </AuthProvider>
       </TooltipProvider>
     </QueryClientProvider>
@@ -76,4 +79,3 @@ function App() {
 }
 
 export default App;
-
