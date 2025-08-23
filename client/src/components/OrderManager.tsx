@@ -1,3 +1,5 @@
+// client/src/components/seller/OrderManager.tsx
+
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -18,9 +20,9 @@ interface OrderManagerProps {
 const getStatusBadgeVariant = (status: string) => {
   switch (status) {
     case "pending":
-    case "preparing":
       return "secondary";
     case "accepted":
+      return "info";
     case "out_for_delivery":
       return "info";
     case "delivered":
@@ -153,24 +155,42 @@ export default function OrderManager({
                 </div>
 
                 {/* ✅ Status Actions */}
-                {order.status === "pending" && (
-                  <div className="flex mt-4 space-x-2">
-                    <Button
-                      className="bg-green-500 text-white px-4 py-2 rounded-md hover:bg-green-600 transition-colors"
-                      onClick={() => handleStatusUpdate(order.id, "accepted")}
-                      disabled={isPending}
-                    >
-                      Accept
-                    </Button>
-                    <Button
-                      className="bg-red-500 text-white px-4 py-2 rounded-md hover:bg-red-600 transition-colors"
-                      onClick={() => handleStatusUpdate(order.id, "rejected")}
-                      disabled={isPending}
-                    >
-                      Reject
-                    </Button>
-                  </div>
-                )}
+                <div className="flex mt-4 space-x-2">
+                    {order.status === "pending" && (
+                      <>
+                        <Button
+                          className="bg-green-500 text-white px-4 py-2 rounded-md hover:bg-green-600 transition-colors"
+                          onClick={() => handleStatusUpdate(order.id, "accepted")}
+                          disabled={isPending}
+                        >
+                          Accept
+                        </Button>
+                        <Button
+                          className="bg-red-500 text-white px-4 py-2 rounded-md hover:bg-red-600 transition-colors"
+                          onClick={() => handleStatusUpdate(order.id, "rejected")}
+                          disabled={isPending}
+                        >
+                          Reject
+                        </Button>
+                      </>
+                    )}
+                    {order.status === "accepted" && (
+                       <Button
+                         onClick={() => handleStatusUpdate(order.id, "out_for_delivery")}
+                         disabled={isPending}
+                       >
+                         Out for Delivery
+                       </Button>
+                    )}
+                    {order.status === "out_for_delivery" && (
+                      <Button
+                        onClick={() => handleStatusUpdate(order.id, "delivered")}
+                        disabled={isPending}
+                      >
+                        Delivered
+                      </Button>
+                    )}
+                </div>
               </Card>
             ))}
           </div>
