@@ -17,7 +17,7 @@ import { requireAuth, requireAdminAuth } from './middleware/authMiddleware.ts';
 import { authAdmin } from './lib/firebaseAdmin.ts';
 
 // ✅ अब orderRoutes को io ऑब्जेक्ट पास किया जाएगा
-import ordersRouter from '../routes/orderRoutes';
+import orderRoutes from '../routes/orderRoutes';
 
 // ✅ Sub-route modules को इंपोर्ट करें
 import apiAuthLoginRouter from './roots/apiAuthLogin.ts';
