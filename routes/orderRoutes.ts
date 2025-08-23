@@ -1,13 +1,13 @@
 // server/routes/orderRoutes.ts
 
 import { Router, Response } from "express";
-import { AuthenticatedRequest } from "../middleware/authMiddleware";
-import { db } from '../../server/db';
-import { orders, orderItems } from '../../shared/backend/schema';
+import { AuthenticatedRequest } from "../server/middleware/authMiddleware";
+import { db } from '../server/db';
+import { orders, orderItems } from '../shared/backend/schema';
 import { v4 as uuidv4 } from "uuid";
 // ✅ सुनिश्चित करें कि ये इंपोर्ट सही हैं
-import { requireAuth } from "../middleware/authMiddleware";
-import { getUserOrders } from "../controllers/orderController";
+import { requireAuth } from "../server/middleware/authMiddleware";
+import { getUserOrders } from "../server/controllers/orderController";
 
 const ordersRouter = Router();
 
