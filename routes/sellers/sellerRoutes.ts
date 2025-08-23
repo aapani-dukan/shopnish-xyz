@@ -19,7 +19,7 @@ import { eq, desc, and, exists } from 'drizzle-orm';
 import multer from 'multer';
 import { uploadImage } from '../../server/cloudStorage';
 import { v4 as uuidv4 } from "uuid";
-import ordersRouter from "../orderRoutes";
+// ✅ ordersRouter का इंपोर्ट यहाँ से हटा दिया गया है
 const sellerRouter = Router();
 const upload = multer({ dest: 'uploads/' });
 
@@ -53,55 +53,8 @@ sellerRouter.get('/me', requireSellerAuth, async (req: AuthenticatedRequest, res
   }
 });
 
-/**
- * ✅ GET /api/sellers/orders (विक्रेता के लिए ऑर्डर्स फ़ेच करें)
- */
-
-
-ordersRouter.post("/", requireAuth, async (req: AuthenticatedRequest, res: Response) => {
-  try {
-    const { customerId, items, subtotal, deliveryCharge, discount, total, paymentMethod, deliveryAddress } = req.body;
-
-    if (!customerId || !items || items.length === 0 || !subtotal || !total || !paymentMethod || !deliveryAddress) {
-      return res.status(400).json({ error: "Invalid order data" });
-    }
-
-    // ✅ unique order number generate करें
-    const orderNumber = `ORD-${uuidv4().slice(0, 8).toUpperCase()}`;
-
-    const [order] = await db
-      .insert(orders)
-      .values({
-        customerId,
-        orderNumber,
-        subtotal,
-        deliveryCharge: deliveryCharge || 0,
-        discount: discount || 0,
-        total,
-        paymentMethod,
-        deliveryAddress,
-        paymentStatus: "pending",
-        status: "pending",
-      })
-      .returning();
-
-    for (const item of items) {
-      await db.insert(orderItems).values({
-        orderId: order.id,
-        productId: item.productId,
-        sellerId: item.sellerId,
-        quantity: item.quantity,
-        unitPrice: item.unitPrice,
-        totalPrice: item.totalPrice,
-      });
-    }
-
-    return res.status(201).json({ message: "Order placed successfully!", orderId: order.id });
-  } catch (error) {
-    console.error("❌ Error creating order:", error);
-    return res.status(500).json({ error: "Failed to place order." });
-  }
-});
+// ✅ यहाँ से ordersRouter का कोड हटा दिया गया है
+// यह सुनिश्चित करता है कि यह फ़ाइल केवल सेलर रूट्स को हैंडल करे।
 
 /**
  * ✅ GET /api/sellers/products (केवल वर्तमान सेलर के प्रोडक्ट फ़ेच करें)
@@ -161,12 +114,6 @@ sellerRouter.get('/categories', requireSellerAuth, async (req: AuthenticatedRequ
         return res.status(500).json({ error: 'Failed to fetch seller categories.' });
     }
 });
-
-
-/**
- * ✅ PATCH /api/sellers/orders/:orderId/status (ऑर्डर की स्थिति अपडेट करें)
- */
-
 
 /**
  * ✅ PATCH /api/sellers/orders/:orderId/status (ऑर्डर की स्थिति अपडेट करें)
@@ -237,7 +184,6 @@ sellerRouter.patch('/orders/:orderId/status', requireSellerAuth, async (req: Aut
     return res.status(500).json({ error: 'Failed to update order status.' });
   }
 });
-
 
 /**
  * ✅ POST /api/sellers/apply
@@ -401,3 +347,4 @@ sellerRouter.post(
 );
 
 export default sellerRouter;
+    
