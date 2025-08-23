@@ -2,28 +2,27 @@
 
 import { Request, Response } from 'express';
 import { db } from '../db.ts';
-import { orders, orderItems, cartItems } from '../../shared/backend/schema.ts'; 
-import { eq, desc } from 'drizzle-orm'; // ✅ desc को आयात करें
+import { orders, orderItems, cartItems, products } from '../../shared/backend/schema.ts';
+import { eq, desc } from 'drizzle-orm';
+import { AuthenticatedRequest } from '../middleware/authMiddleware.ts';
 
-// Function to place a new order
-export const placeOrder = async (req: Request, res: Response) => {
+// ✅ Function to place a new order
+export const placeOrder = async (req: AuthenticatedRequest, res: Response) => {
   try {
     const userId = req.user?.id;
-
     if (!userId) {
       return res.status(401).json({ message: "Unauthorized: User not logged in." });
     }
 
-    const { order, items } = req.body;
+    const { deliveryAddress, paymentMethod, items, subtotal, total, deliveryCharge } = req.body;
+
+    // ✅ डेटा सत्यापन
+    if (!items || items.length === 0) {
+      return res.status(400).json({ message: "No items in order." });
+    }
 
     // एक अद्वितीय ऑर्डर नंबर जेनरेट करें
     const orderNumber = `ORD-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
-
-    // सभी आइटम के totalPrice को Number में बदलकर subtotal की गणना करें
-    const subtotal = items.reduce((sum: number, item: any) => sum + (Number(item.totalPrice) || 0), 0);
-
-    // कुल राशि की गणना करें (subtotal + shipping)
-    const total = subtotal + (order.shippingFee || 0);
 
     // Drizzle का उपयोग करके एक नया ऑर्डर डालें
     const newOrder = await db.insert(orders).values({
@@ -32,8 +31,9 @@ export const placeOrder = async (req: Request, res: Response) => {
       orderNumber: orderNumber,
       subtotal: subtotal,
       total: total,
-      deliveryAddress: JSON.stringify(order.deliveryAddress ?? {}),
-      paymentMethod: order.paymentMethod ?? "COD",
+      deliveryAddress: JSON.stringify(deliveryAddress),
+      paymentMethod: paymentMethod,
+      deliveryCharge: deliveryCharge,
       createdAt: new Date(),
       updatedAt: new Date(),
     }).returning({ id: orders.id });
@@ -43,7 +43,7 @@ export const placeOrder = async (req: Request, res: Response) => {
     // Drizzle का उपयोग करके ऑर्डर आइटम डालें
     const orderItemsData = items.map((item: any) => ({
       orderId: orderId,
-      productId: item.productId,
+      productId: item.productId, // ✅ यह सुनिश्चित करता है कि productId सही से भरा जाए
       sellerId: item.sellerId,
       quantity: item.quantity,
       unitPrice: item.unitPrice,
@@ -52,6 +52,7 @@ export const placeOrder = async (req: Request, res: Response) => {
       updatedAt: new Date(),
     }));
 
+    // ✅ Drizzle में batch insertion का उपयोग करें
     await db.insert(orderItems).values(orderItemsData);
 
     // कार्ट को साफ़ करें
@@ -63,13 +64,13 @@ export const placeOrder = async (req: Request, res: Response) => {
     });
 
   } catch (error) {
-    console.error("Error placing order:", error);
+    console.error("❌ Error placing order:", error);
     res.status(500).json({ message: "Failed to place order." });
   }
 };
 
-// Function to get a user's orders
-export const getUserOrders = async (req: Request, res: Response) => {
+// ✅ Function to get a user's orders
+export const getUserOrders = async (req: AuthenticatedRequest, res: Response) => {
   try {
     const userId = req.user?.id;
     if (!userId) {
@@ -82,17 +83,16 @@ export const getUserOrders = async (req: Request, res: Response) => {
       with: {
         items: {
           with: {
-            product: true,
+            product: true, // ✅ यह सुनिश्चित करता है कि प्रोडक्ट डेटा फ़ेच हो
           },
         },
       },
-      // ✅ यह लाइन अब सही है
       orderBy: [desc(orders.createdAt)],
     });
 
     res.status(200).json(ordersWithItems);
   } catch (error) {
-    console.error("Error fetching orders:", error);
+    console.error("❌ Error fetching orders:", error);
     res.status(500).json({ message: "Failed to fetch orders." });
   }
 };
