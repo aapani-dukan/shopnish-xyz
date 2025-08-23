@@ -6,7 +6,9 @@ import { orders, orderItems, cartItems, products } from '../../shared/backend/sc
 import { eq, desc } from 'drizzle-orm';
 import { AuthenticatedRequest } from '../middleware/authMiddleware.ts';
 
-// ✅ Function to place a new order
+/**
+ * ✅ Function to place a new order
+ */
 export const placeOrder = async (req: AuthenticatedRequest, res: Response) => {
   try {
     const userId = req.user?.id;
@@ -17,8 +19,8 @@ export const placeOrder = async (req: AuthenticatedRequest, res: Response) => {
     const { deliveryAddress, paymentMethod, items, subtotal, total, deliveryCharge } = req.body;
 
     // ✅ डेटा सत्यापन
-    if (!items || items.length === 0) {
-      return res.status(400).json({ message: "No items in order." });
+    if (!items || items.length === 0 || subtotal === undefined || total === undefined) {
+      return res.status(400).json({ message: "Missing required order details." });
     }
 
     // एक अद्वितीय ऑर्डर नंबर जेनरेट करें
@@ -29,11 +31,12 @@ export const placeOrder = async (req: AuthenticatedRequest, res: Response) => {
       customerId: userId,
       status: "placed",
       orderNumber: orderNumber,
-      subtotal: subtotal,
-      total: total,
+      // ✅ अब `parseFloat` का उपयोग करके मानों को Number में बदलें
+      subtotal: parseFloat(subtotal),
+      total: parseFloat(total),
+      deliveryCharge: parseFloat(deliveryCharge || 0),
       deliveryAddress: JSON.stringify(deliveryAddress),
       paymentMethod: paymentMethod,
-      deliveryCharge: deliveryCharge,
       createdAt: new Date(),
       updatedAt: new Date(),
     }).returning({ id: orders.id });
@@ -43,7 +46,7 @@ export const placeOrder = async (req: AuthenticatedRequest, res: Response) => {
     // Drizzle का उपयोग करके ऑर्डर आइटम डालें
     const orderItemsData = items.map((item: any) => ({
       orderId: orderId,
-      productId: item.productId, // ✅ यह सुनिश्चित करता है कि productId सही से भरा जाए
+      productId: item.productId,
       sellerId: item.sellerId,
       quantity: item.quantity,
       unitPrice: item.unitPrice,
@@ -52,7 +55,6 @@ export const placeOrder = async (req: AuthenticatedRequest, res: Response) => {
       updatedAt: new Date(),
     }));
 
-    // ✅ Drizzle में batch insertion का उपयोग करें
     await db.insert(orderItems).values(orderItemsData);
 
     // कार्ट को साफ़ करें
@@ -69,7 +71,9 @@ export const placeOrder = async (req: AuthenticatedRequest, res: Response) => {
   }
 };
 
-// ✅ Function to get a user's orders
+/**
+ * ✅ Function to get a user's orders
+ */
 export const getUserOrders = async (req: AuthenticatedRequest, res: Response) => {
   try {
     const userId = req.user?.id;
@@ -77,13 +81,12 @@ export const getUserOrders = async (req: AuthenticatedRequest, res: Response) =>
       return res.status(401).json({ message: "Unauthorized" });
     }
 
-    // Drizzle का उपयोग करके ऑर्डर प्राप्त करें
     const ordersWithItems = await db.query.orders.findMany({
       where: eq(orders.customerId, userId),
       with: {
         items: {
           with: {
-            product: true, // ✅ यह सुनिश्चित करता है कि प्रोडक्ट डेटा फ़ेच हो
+            product: true,
           },
         },
       },
