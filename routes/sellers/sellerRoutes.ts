@@ -19,7 +19,7 @@ import { eq, desc, and, exists } from 'drizzle-orm';
 import multer from 'multer';
 import { uploadImage } from '../../server/cloudStorage';
 import { v4 as uuidv4 } from "uuid";
-// ✅ ordersRouter का इंपोर्ट यहाँ से हटा दिया गया है
+
 const sellerRouter = Router();
 const upload = multer({ dest: 'uploads/' });
 
@@ -53,8 +53,49 @@ sellerRouter.get('/me', requireSellerAuth, async (req: AuthenticatedRequest, res
   }
 });
 
-// ✅ यहाँ से ordersRouter का कोड हटा दिया गया है
-// यह सुनिश्चित करता है कि यह फ़ाइल केवल सेलर रूट्स को हैंडल करे।
+/**
+ * ✅ GET /api/sellers/orders (विक्रेता के लिए ऑर्डर्स फ़ेच करें)
+ */
+sellerRouter.get('/orders', requireSellerAuth, async (req: AuthenticatedRequest, res: Response) => {
+    try {
+        const userId = req.user?.id;
+        if (!userId) {
+            return res.status(401).json({ error: 'Unauthorized.' });
+        }
+
+        const [sellerProfile] = await db.select().from(sellersPgTable).where(eq(sellersPgTable.userId, userId));
+        if (!sellerProfile) {
+            return res.status(404).json({ error: 'Seller profile not found.' });
+        }
+        const sellerId = sellerProfile.id;
+
+        // सेलर के सभी ऑर्डर्स को फ़ेच करें
+        const sellerOrders = await db.query.orders.findMany({
+            where: exists(
+                db.select().from(orderItems).where(
+                    and(
+                        eq(orderItems.sellerId, sellerId),
+                        eq(orderItems.orderId, orders.id)
+                    )
+                )
+            ),
+            with: {
+                customer: true,
+                items: {
+                    with: {
+                        product: true
+                    }
+                }
+            },
+            orderBy: desc(orders.createdAt),
+        });
+
+        return res.status(200).json(sellerOrders);
+    } catch (error: any) {
+        console.error('❌ Error in GET /api/sellers/orders:', error);
+        return res.status(500).json({ error: 'Failed to fetch seller orders.' });
+    }
+});
 
 /**
  * ✅ GET /api/sellers/products (केवल वर्तमान सेलर के प्रोडक्ट फ़ेच करें)
@@ -347,4 +388,4 @@ sellerRouter.post(
 );
 
 export default sellerRouter;
-    
+  
