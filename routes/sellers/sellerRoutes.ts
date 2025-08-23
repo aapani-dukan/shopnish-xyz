@@ -19,7 +19,7 @@ import { eq, desc, and, exists } from 'drizzle-orm';
 import multer from 'multer';
 import { uploadImage } from '../../server/cloudStorage';
 import { v4 as uuidv4 } from "uuid";
-import ordersRouter from '../orderRoutes
+import ordersRouter from "../orderRoutes";
 const sellerRouter = Router();
 const upload = multer({ dest: 'uploads/' });
 
