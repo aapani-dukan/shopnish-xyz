@@ -2,7 +2,7 @@
 
 import { Router } from "express";
 import { placeOrder, getUserOrders } from "../server/controllers/orderController";
-import { requireAuth } from "@server/middleware/authMiddleware";
+import { requireAuth } from "../server/middleware/authMiddleware";
 
 const ordersRouter = Router();
 
