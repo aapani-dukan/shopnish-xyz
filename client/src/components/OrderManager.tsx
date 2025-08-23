@@ -50,9 +50,12 @@ export default function OrderManager({
       orderId: number;
       newStatus: string;
     }) => {
-      if (!orderStatusEnum.enumValues.includes(newStatus as any)) {
+      // ✅ Validate status against enum
+      if (!(orderStatusEnum.enumValues as unknown as string[]).includes(newStatus)) {
         throw new Error("Invalid order status provided.");
       }
+
+      // ✅ Fix API call template string
       const response = await apiRequest(
         "PATCH",
         `/api/sellers/orders/${orderId}/status`,
@@ -99,9 +102,7 @@ export default function OrderManager({
             ))}
           </div>
         ) : error ? (
-          <p className="text-red-500">
-            Error loading orders: {error.message}
-          </p>
+          <p className="text-red-500">Error loading orders: {error.message}</p>
         ) : orders && orders.length === 0 ? (
           <p className="text-muted-foreground">No orders yet.</p>
         ) : (
@@ -131,11 +132,10 @@ export default function OrderManager({
 
                 {/* ✅ Total + Date */}
                 <p className="text-sm text-muted-foreground">
-                  Total: ₹{parseFloat(order.total).toLocaleString()}
+                  Total: ₹{Number(order.total).toLocaleString()}
                 </p>
                 <p className="text-sm text-muted-foreground">
-                  Ordered On:{" "}
-                  {new Date(order.createdAt).toLocaleString()}
+                  Ordered On: {new Date(order.createdAt).toLocaleString()}
                 </p>
 
                 {/* ✅ Items */}
@@ -146,7 +146,7 @@ export default function OrderManager({
                       <li key={item.id}>
                         {item.product?.name || item.name} (
                         {item.quantity} × ₹
-                        {item.product?.price || item.price})
+                        {Number(item.product?.price || item.price)})
                       </li>
                     ))}
                   </ul>
