@@ -196,9 +196,9 @@ sellerRouter.patch('/orders/:orderId/status', requireSellerAuth, async (req: Aut
 
     // 2. स्थिति अपडेट करने के लिए लॉजिक
     // सुनिश्चित करें कि केवल सही स्थितियाँ ही अपडेट हो सकें।
-    if (orderToUpdate.status === 'placed' && newStatus === 'accepted') {
+    if (orderToUpdate.status === 'pending' && newStatus === 'accepted') {
         // 'placed' से 'accepted' में बदलाव
-    } else if (orderToUpdate.status === 'placed' && newStatus === 'rejected') {
+    } else if (orderToUpdate.status === 'pending' && newStatus === 'rejected') {
         // 'placed' से 'rejected' में बदलाव
     } else if (orderToUpdate.status === 'accepted' && newStatus === 'out_for_delivery') {
         // 'accepted' से 'out_for_delivery' में बदलाव
