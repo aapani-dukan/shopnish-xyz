@@ -13,7 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { ShoppingCart, MapPin, CreditCard, Check } from "lucide-react";
 import { Link } from "react-router-dom";
-import { useAuth } from "@/hooks/useAuth"; // ✅ useAuth को इंपोर्ट करें
+import { useAuth } from "@/hooks/useAuth"; 
 
 interface CartItem {
   id: number;
@@ -49,7 +49,7 @@ export default function Checkout() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { isAuthenticated } = useAuth(); // ✅ useAuth हुक का उपयोग करें
+  const { isAuthenticated, user } = useAuth(); // ✅ user को useAuth से निकालें
 
   const [currentStep, setCurrentStep] = useState(1);
   const [deliveryAddress, setDeliveryAddress] = useState<DeliveryAddress>({
@@ -67,7 +67,7 @@ export default function Checkout() {
   const { data, isLoading } = useQuery<ApiResponse>({
     queryKey: ["/api/cart"],
     queryFn: () => apiRequest("GET", "/api/cart"),
-    enabled: isAuthenticated, // ✅ API कॉल को केवल तभी चलाएं जब उपयोगकर्ता प्रमाणित हो
+    enabled: isAuthenticated, 
   });
   
   const cartItems = data?.items || [];
@@ -80,8 +80,6 @@ export default function Checkout() {
   const total = subtotal + deliveryCharge;
 
   // Create order mutation
-
-// ✅ आपका अपडेटेड createOrderMutation
 const createOrderMutation = useMutation({
     mutationFn: async (orderData: any) => {
       return await apiRequest("POST", "/api/orders", orderData);
@@ -92,7 +90,6 @@ const createOrderMutation = useMutation({
         description: `Order #${data.orderNumber} has been confirmed`,
       });
       queryClient.invalidateQueries({ queryKey: ["/api/cart"] });
-      // ✅ `data.id` को `data.orderId` में बदलें
       navigate(`/order-confirmation/${data.orderId}`);
     },
     onError: (error) => {
@@ -104,13 +101,17 @@ const createOrderMutation = useMutation({
     },
 });
 
-// ✅ आपका अपडेटेड handlePlaceOrder
-    
-// client/src/pages/checkout.tsx
-
-// ... (अन्य आयात और कोड)
-
 const handlePlaceOrder = () => {
+  // ✅ ग्राहक डेटा की जाँच करें
+  if (!user || !user.id) {
+    toast({
+      title: "Authentication Error",
+      description: "You must be logged in to place an order.",
+      variant: "destructive",
+    });
+    return;
+  }
+  
   if (!deliveryAddress.fullName || !deliveryAddress.phone || !deliveryAddress.address || !deliveryAddress.pincode) {
     toast({
       title: "Address Required",
@@ -119,14 +120,24 @@ const handlePlaceOrder = () => {
     });
     return;
   }
+  
+  if (!cartItems || cartItems.length === 0) {
+    toast({
+      title: "Cart is Empty",
+      description: "Please add items to your cart before placing an order.",
+      variant: "destructive",
+    });
+    return;
+  }
 
-  // ✅ डेटा संरचना को सर्वर-साइड से मैच करने के लिए अपडेट करें
   const orderData = {
+    // ✅ customerId को user.id से जोड़ें
+    customerId: user.id,
     deliveryAddress,
     paymentMethod,
-    subtotal: subtotal.toFixed(2), // ✅ सीधे मुख्य ऑब्जेक्ट में
-    total: total.toFixed(2),       // ✅ सीधे मुख्य ऑब्जेक्ट में
-    deliveryCharge: deliveryCharge.toFixed(2), // ✅ सीधे मुख्य ऑब्जेक्ट में
+    subtotal: subtotal.toFixed(2), 
+    total: total.toFixed(2),       
+    deliveryCharge: deliveryCharge.toFixed(2), 
     deliveryInstructions,
     items: cartItems.map(item => ({
       productId: item.productId,
@@ -141,7 +152,6 @@ const handlePlaceOrder = () => {
 };
 
 
-  // ✅ `cartItems` अब एक एरे है, इसलिए `length` काम करेगा।
   if (cartItems.length === 0) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -174,7 +184,7 @@ const handlePlaceOrder = () => {
               >
                 <div
                   className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                    currentStep >= step ? "bg-green-600 text-white" : "bg-gray-200"
+                    currentStep > step ? <Check className="w-4 h-4" /> : "bg-gray-200"
                   }`}
                 >
                   {currentStep > step ? <Check className="w-4 h-4" /> : step}
@@ -404,3 +414,4 @@ const handlePlaceOrder = () => {
     </div>
   );
 }
+
