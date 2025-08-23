@@ -18,7 +18,7 @@ import { AuthenticatedRequest, verifyToken } from '../../server/middleware/verif
 import { eq, desc, and, exists } from 'drizzle-orm';
 import multer from 'multer';
 import { uploadImage } from '../../server/cloudStorage';
-
+import { v4 as uuidv4 } from "uuid";
 const sellerRouter = Router();
 const upload = multer({ dest: 'uploads/' });
 
@@ -55,59 +55,50 @@ sellerRouter.get('/me', requireSellerAuth, async (req: AuthenticatedRequest, res
 /**
  * ✅ GET /api/sellers/orders (विक्रेता के लिए ऑर्डर्स फ़ेच करें)
  */
-sellerRouter.get('/orders', requireSellerAuth, async (req: AuthenticatedRequest, res: Response) => {
+
+
+orderRouter.post("/", requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const firebaseUid = req.user?.firebaseUid;
-    if (!firebaseUid) {
-      return res.status(401).json({ error: 'Unauthorized: User not authenticated.' });
+    const { customerId, items, subtotal, deliveryCharge, discount, total, paymentMethod, deliveryAddress } = req.body;
+
+    if (!customerId || !items || items.length === 0 || !subtotal || !total || !paymentMethod || !deliveryAddress) {
+      return res.status(400).json({ error: "Invalid order data" });
     }
 
-    const [dbUser] = await db.select().from(users).where(eq(users.firebaseUid, firebaseUid));
-    if (!dbUser) {
-      return res.status(404).json({ error: 'User not found.' });
+    // ✅ unique order number generate करें
+    const orderNumber = `ORD-${uuidv4().slice(0, 8).toUpperCase()}`;
+
+    const [order] = await db
+      .insert(orders)
+      .values({
+        customerId,
+        orderNumber,
+        subtotal,
+        deliveryCharge: deliveryCharge || 0,
+        discount: discount || 0,
+        total,
+        paymentMethod,
+        deliveryAddress,
+        paymentStatus: "pending",
+        status: "pending",
+      })
+      .returning();
+
+    for (const item of items) {
+      await db.insert(orderItems).values({
+        orderId: order.id,
+        productId: item.productId,
+        sellerId: item.sellerId,
+        quantity: item.quantity,
+        unitPrice: item.unitPrice,
+        totalPrice: item.totalPrice,
+      });
     }
 
-    const [sellerProfile] = await db
-      .select()
-      .from(sellersPgTable)
-      .where(eq(sellersPgTable.userId, dbUser.id));
-
-    if (!sellerProfile) {
-      return res.status(404).json({ error: 'Seller profile not found.' });
-    }
-    const sellerId = sellerProfile.id;
-
-    console.log('✅ /sellers/orders: Received request for sellerId:', sellerId);
-
-    // यह क्वेरी अब ऑर्डर, उसके आइटम और प्रत्येक आइटम के लिए सही प्रोडक्ट विवरण फ़ेच करेगी।
-    const sellerOrders = await db.query.orders.findMany({
-        where: (orders, { exists, eq, and }) => and(
-            exists(db.select().from(orderItems).where(
-                and(
-                    eq(orderItems.orderId, orders.id),
-                    eq(orderItems.sellerId, sellerId)
-                )
-            ))
-        ),
-        with: {
-            customer: true,
-            deliveryBoy: true,
-            items: {
-                with: {
-                    product: true, // ✅ यह लाइन सुनिश्चित करती है कि प्रोडक्ट डेटा फ़ेच हो
-                },
-                where: (orderItems, { eq }) => eq(orderItems.sellerId, sellerId)
-            },
-            tracking: true,
-        },
-        orderBy: (orders, { desc }) => [desc(orders.createdAt)],
-    });
-
-    console.log('✅ /sellers/orders: Orders fetched successfully. Count:', sellerOrders.length);
-    return res.status(200).json(sellerOrders);
-  } catch (error: any) {
-    console.error('❌ Error in GET /api/sellers/orders:', error);
-    return res.status(500).json({ error: 'Failed to fetch seller orders.' });
+    return res.status(201).json({ message: "Order placed successfully!", orderId: order.id });
+  } catch (error) {
+    console.error("❌ Error creating order:", error);
+    return res.status(500).json({ error: "Failed to place order." });
   }
 });
 
