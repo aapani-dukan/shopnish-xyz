@@ -2,12 +2,15 @@
 
 import { Request, Response } from 'express';
 import { db } from '../db.ts';
-import { orders, orderItems, cartItems, products } from '../../shared/backend/schema.ts';
+import { orders, orderItems, cartItems } from '../../shared/backend/schema.ts';
 import { eq, desc } from 'drizzle-orm';
 import { AuthenticatedRequest } from '../middleware/authMiddleware.ts';
 
+// ✅ नया इम्पोर्ट
+import { v4 as uuidv4 } from 'uuid';
+
 /**
- * ✅ Function to place a new order
+ * Function to place a new order
  */
 export const placeOrder = async (req: AuthenticatedRequest, res: Response) => {
   try {
@@ -23,25 +26,25 @@ export const placeOrder = async (req: AuthenticatedRequest, res: Response) => {
       return res.status(400).json({ message: "Missing required order details." });
     }
 
-    // एक अद्वितीय ऑर्डर नंबर जेनरेट करें
-    const orderNumber = `ORD-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+    // ✅ एक अद्वितीय ऑर्डर नंबर जेनरेट करने के लिए uuid का उपयोग करें
+    const orderNumber = `ORD-${uuidv4()}`;
 
-    // Drizzle का उपयोग करके एक नया ऑर्डर डालें
-    const newOrder = await db.insert(orders).values({
+    // ✅ Drizzle का उपयोग करके एक नया ऑर्डर डालें
+    const [newOrder] = await db.insert(orders).values({
       customerId: userId,
       status: "placed",
       orderNumber: orderNumber,
-      // ✅ अब `parseFloat` का उपयोग करके मानों को Number में बदलें
-      subtotal: parseFloat(subtotal),
-      total: parseFloat(total),
-      deliveryCharge: parseFloat(deliveryCharge || 0),
+      // ✅ सुनिश्चित करें कि सभी संख्यात्मक मान parseFloat के बजाय सीधे आते हैं
+      subtotal: total - (deliveryCharge || 0),
+      total: total,
+      deliveryCharge: deliveryCharge || 0,
       deliveryAddress: JSON.stringify(deliveryAddress),
       paymentMethod: paymentMethod,
       createdAt: new Date(),
       updatedAt: new Date(),
-    }).returning({ id: orders.id });
+    }).returning();
 
-    const orderId = newOrder[0].id;
+    const orderId = newOrder.id;
 
     // Drizzle का उपयोग करके ऑर्डर आइटम डालें
     const orderItemsData = items.map((item: any) => ({
@@ -66,19 +69,20 @@ export const placeOrder = async (req: AuthenticatedRequest, res: Response) => {
     });
 
   } catch (error) {
-    console.error("❌ Error placing order:", error);
+            console.error("❌ Error placing order:", error);
     res.status(500).json({ message: "Failed to place order." });
   }
 };
 
 /**
- * ✅ Function to get a user's orders
+ * Function to get a user's orders
+ * GET /api/customers/orders
  */
 export const getUserOrders = async (req: AuthenticatedRequest, res: Response) => {
   try {
     const userId = req.user?.id;
     if (!userId) {
-      return res.status(401).json({ message: "Unauthorized" });
+      return res.status(401).json({ message: "Unauthorized: User not logged in." });
     }
 
     const ordersWithItems = await db.query.orders.findMany({
@@ -86,7 +90,8 @@ export const getUserOrders = async (req: AuthenticatedRequest, res: Response) =>
       with: {
         items: {
           with: {
-            product: true,
+            // ✅ `product` के साथ `seller` को भी शामिल करें ताकि आप विक्रेता का नाम दिखा सकें
+            product: { with: { seller: true } },
           },
         },
       },
