@@ -2,7 +2,7 @@
 
 import { Request, Response } from "express";
 import { db } from "../db.ts";
-import { orders, orderItems, cartItems, carts, products } from "../../shared/backend/schema.ts";
+import { orders, orderItems, cartItems, products } from "../../shared/backend/schema.ts";
 import { eq, desc } from "drizzle-orm";
 import { AuthenticatedRequest } from "../middleware/authMiddleware.ts";
 import { v4 as uuidv4 } from "uuid";
@@ -57,14 +57,8 @@ export const placeOrder = async (req: AuthenticatedRequest, res: Response) => {
       }));
       await tx.insert(orderItems).values(orderItemsData);
 
-      // 3. कार्ट को साफ़ करें (पहले user का cart ढूँढो फिर उसके items हटाओ)
-      const userCart = await tx.query.carts.findFirst({
-        where: eq(carts.user_id, userId),
-      });
-
-      if (userCart) {
-        await tx.delete(cartItems).where(eq(cartItems.cart_id, userCart.id));
-      }
+      // 3. ✅ यूज़र का cart साफ़ करो
+      await tx.delete(cartItems).where(eq(cartItems.user_id, userId));
 
       return newOrder;
     });
