@@ -4,7 +4,7 @@ import { Router, Response } from 'express';
 import { db } from '../server/db.ts';
 import {
   users,
-  orderItems,
+  orderItems, // cartItems की जगह orderItems का उपयोग करें
   products
 } from '../shared/backend/schema.ts';
 import { eq, and } from 'drizzle-orm';
@@ -22,7 +22,6 @@ cartRouter.get('/', requireAuth, async (req: AuthenticatedRequest, res: Response
       return res.status(401).json({ error: 'Unauthorized: Missing user ID' });
     }
 
-    // यहाँ त्रुटि को ठीक किया गया है
     const cartItemsData = await db.query.orderItems.findMany({
       where: and(eq(orderItems.userId, userId), eq(orderItems.status, 'in_cart')),
       with: {
@@ -78,7 +77,6 @@ cartRouter.post('/add', requireAuth, async (req: AuthenticatedRequest, res: Resp
     const unitPrice = parseFloat(product.price);
     const totalPrice = unitPrice * quantity;
 
-    // ✅ If the item exists in the cart, update it
     const [existingItem] = await db
       .select()
       .from(orderItems)
@@ -95,7 +93,6 @@ cartRouter.post('/add', requireAuth, async (req: AuthenticatedRequest, res: Resp
         .returning();
       return res.status(200).json({ message: 'Cart item quantity updated.', item: updatedItem[0] });
     } else {
-      // ✅ If the item does not exist, create a new cart entry
       const newItem = await db
         .insert(orderItems)
         .values({
@@ -173,3 +170,4 @@ cartRouter.delete('/:cartItemId', requireAuth, async (req: AuthenticatedRequest,
 });
 
 export default cartRouter;
+                                                  
