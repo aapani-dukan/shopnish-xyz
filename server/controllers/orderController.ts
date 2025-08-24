@@ -24,54 +24,56 @@ export const placeOrder = async (req: AuthenticatedRequest, res: Response) => {
       return res.status(400).json({ message: "Missing required order details." });
     }
 
-    // ✅ एक अद्वितीय ऑर्डर नंबर जेनरेट करने के लिए uuid का उपयोग करें
-    const orderNumber = `ORD-${uuidv4()}`;
+    // ✅ ट्रांजेक्शन शुरू करें
+    await db.transaction(async (tx) => {
+      // ✅ एक अद्वितीय ऑर्डर नंबर जेनरेट करें
+      const orderNumber = `ORD-${uuidv4()}`;
 
-    // ✅ Drizzle का उपयोग करके एक नया ऑर्डर डालें
-    const [newOrder] = await db.insert(orders).values({
-      customerId: userId,
-      status: "placed",
-      orderNumber: orderNumber,
-      // ✅ सुनिश्चित करें कि सभी संख्यात्मक मान parseFloat के बजाय सीधे आते हैं
-      subtotal: total - (deliveryCharge || 0),
-      total: total,
-      deliveryCharge: deliveryCharge || 0,
-      deliveryAddress: JSON.stringify(deliveryAddress),
-      paymentMethod: paymentMethod,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    }).returning();
+      // ✅ एक नया ऑर्डर डालें
+      const [newOrder] = await tx.insert(orders).values({
+        customerId: userId,
+        status: "placed",
+        orderNumber: orderNumber,
+        subtotal: total - (deliveryCharge || 0),
+        total: total,
+        deliveryCharge: deliveryCharge || 0,
+        deliveryAddress: JSON.stringify(deliveryAddress),
+        paymentMethod: paymentMethod,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      }).returning();
 
-    const orderId = newOrder.id;
+      const orderId = newOrder.id;
 
-    // Drizzle का उपयोग करके ऑर्डर आइटम डालें
-    const orderItemsData = items.map((item: any) => ({
-      orderId: orderId,
-      productId: item.productId,
-      sellerId: item.sellerId,
-      quantity: item.quantity,
-      unitPrice: item.unitPrice,
-      totalPrice: item.totalPrice,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    }));
+      // ✅ ऑर्डर आइटम डालें
+      const orderItemsData = items.map((item: any) => ({
+        orderId: orderId,
+        productId: item.productId,
+        sellerId: item.sellerId,
+        quantity: item.quantity,
+        unitPrice: item.unitPrice,
+        totalPrice: item.totalPrice,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      }));
+      await tx.insert(orderItems).values(orderItemsData);
 
-    await db.insert(orderItems).values(orderItemsData);
-
-    // कार्ट को साफ़ करें
-    await db.delete(cartItems).where(eq(cartItems.userId, userId));
+      // ✅ कार्ट को साफ़ करें
+      await tx.delete(cartItems).where(eq(cartItems.userId, userId));
+      
+    });
 
     res.status(201).json({
       message: "Order placed successfully!",
-      orderId: orderId,
+      // ✅ अब orderId को response में शामिल न करें क्योंकि transaction से बाहर है
+      // orderId: newOrder.id,
     });
 
   } catch (error) {
-            console.error("❌ Error placing order:", error);
+    console.error("❌ Error placing order:", error);
     res.status(500).json({ message: "Failed to place order." });
   }
 };
-
 
 /**
  * Function to get a user's orders
