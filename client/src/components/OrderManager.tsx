@@ -124,77 +124,82 @@ export default function OrderManager({
         return null;
     }
   };
-
-  const renderContent = () => {
-    if (isLoading) {
-      return (
-        <div className="space-y-4">
-          {[...Array(3)].map((_, i) => (
-            <Skeleton key={i} className="h-24 w-full rounded-lg" />
-          ))}
-        </div>
-      );
-    }
-
-    if (error) {
-      return <p className="text-red-500">Error loading orders: {error.message}</p>;
-    }
-
-    if (!orders || orders.length === 0) {
-      return <p className="text-muted-foreground">No orders yet.</p>;
-    }
-
+const renderContent = () => {
+  if (isLoading) {
     return (
       <div className="space-y-4">
-        {orders.map((order) => (
-          <Card key={order.id} className="p-4">
-            <div className="flex flex-col md:flex-row md:justify-between md:items-center mb-2">
-              <h4 className="font-semibold text-lg">Order ID: {order.id}</h4>
-              <Badge variant={getStatusBadgeVariant(order.status as string)}>
-                {order.status}
-              </Badge>
-            </div>
-
-            {order.customer && (
-              <p className="text-sm">
-                Customer: **{order.customer.name}**{" "}
-                {order.customer.phone && `(${order.customer.phone})`}
-              </p>
-            )}
-
-            <p className="text-sm text-muted-foreground">
-              Payment: **{order.paymentMethod || "N/A"}** ({order.paymentStatus || "Pending"})
-            </p>
-            <p className="text-sm text-muted-foreground">
-              Total: **₹{Number(order.total).toLocaleString()}**
-            </p>
-            <p className="text-sm text-muted-foreground">
-              Ordered On: {new Date(order.createdAt).toLocaleString()}
-            </p>
-
-            <div className="mt-4">
-              <h5 className="font-medium text-sm mb-2">Items:</h5>
-              <ul className="list-disc list-inside text-sm space-y-1">
-                {order.items.map((item) => (
-                  <li key={item.id}>
-                    {/* ✅ आइटम का नाम और कीमत को ठीक करें */}
-                    {item.product?.name || item.name || 'N/A'} (
-                    {item.quantity} × ₹
-                    {Number(item.product?.price || item.unitPrice).toLocaleString()}
-                    )
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            <div className="flex mt-6 space-x-2">
-              {renderStatusActions(order)}
-            </div>
-          </Card>
+        {[...Array(3)].map((_, i) => (
+          <Skeleton key={i} className="h-24 w-full rounded-lg" />
         ))}
       </div>
     );
-  };
+  }
+
+  if (error) {
+    return <p className="text-red-500">Error loading orders: {error.message}</p>;
+  }
+
+  if (!orders || orders.length === 0) {
+    return <p className="text-muted-foreground">No orders yet.</p>;
+  }
+
+  return (
+    <div className="space-y-4">
+      {orders.map((order) => (
+        <div key={order.id} className="border rounded-lg p-4 mb-4">
+          <div className="flex flex-col md:flex-row md:justify-between md:items-center mb-2">
+            <h2 className="font-bold text-lg">Order #{order.orderNumber || order.id}</h2>
+            <Badge variant={getStatusBadgeVariant(order.status as string)}>
+              {order.status}
+            </Badge>
+          </div>
+
+          {order.customer && (
+            <p className="text-sm">
+              Customer: <strong>{order.customer.name}</strong>{" "}
+              {order.customer.phone && `(${order.customer.phone})`}
+            </p>
+          )}
+
+          <p className="text-sm text-muted-foreground">
+            Payment: <strong>{order.paymentMethod || "N/A"}</strong> (
+            {order.paymentStatus || "Pending"})
+          </p>
+          <p className="text-sm text-muted-foreground">
+            Total: <strong>₹{Number(order.total).toLocaleString()}</strong>
+          </p>
+          <p className="text-sm text-muted-foreground">
+            Ordered On: {new Date(order.createdAt).toLocaleString()}
+          </p>
+
+          <div className="mt-4 space-y-3">
+            {order.items.map((item) => (
+              <div key={item.id} className="flex items-center space-x-4">
+                <img
+                  src={item.product?.image || "/placeholder.png"}
+                  alt={item.product?.name || item.name || "Product"}
+                  className="w-12 h-12 object-cover rounded"
+                />
+                <div>
+                  <p className="font-semibold">{item.product?.name || item.name}</p>
+                  <p className="text-sm text-gray-500">
+                    Qty: {item.quantity} × ₹
+                    {Number(item.unitPrice || item.product?.price).toLocaleString()}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="flex mt-6 space-x-2">
+            {renderStatusActions(order)}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+};
+  
 
   return (
     <Card>
