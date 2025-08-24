@@ -83,6 +83,7 @@ export default function OrderManager({
   const renderStatusActions = (order: OrderWithItems) => {
     switch (order.status) {
       case "pending":
+      case "placed":
         return (
           <>
             <Button
