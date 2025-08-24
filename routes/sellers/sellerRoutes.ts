@@ -56,54 +56,52 @@ sellerRouter.get('/me', requireSellerAuth, async (req: AuthenticatedRequest, res
 /**
  * ✅ GET /api/sellers/orders (विक्रेता के लिए ऑर्डर्स फ़ेच करें)
  */
-sellerRouter.get('/orders', requireSellerAuth, async (req: AuthenticatedRequest, res: Response) => {
-    try {
-        const userId = req.user?.id;
-        if (!userId) {
-            return res.status(401).json({ error: 'Unauthorized.' });
-        }
-
-        const [sellerProfile] = await db.select().from(sellersPgTable).where(eq(sellersPgTable.userId, userId));
-        if (!sellerProfile) {
-            return res.status(404).json({ error: 'Seller profile not found.' });
-        }
-        const sellerId = sellerProfile.id;
-
-        // सेलर के सभी ऑर्डर्स को फ़ेच करें
-        const sellerOrders = await db.query.orders.findMany({
-            where: exists(
-                db.select().from(orderItems).where(
-                    and(
-                        eq(orderItems.sellerId, sellerId),
-                        eq(orderItems.orderId, orders.id)
-                    )
-                )
-            ),
-            with: {
-                customer: true,
-                items: {
-                    with: {
-                        product: {
-                            // ✅ यह सुनिश्चित करेगा कि नाम और कीमत हमेशा मिले
-                            columns: {
-                                name: true,
-                                price: true,
-                              product: true,
-                            }
-                        }
-                    }
-                }
-            },
-            orderBy: desc(orders.createdAt),
-        });
-
-        return res.status(200).json(sellerOrders);
-    } catch (error: any) {
-        console.error('❌ Error in GET /api/sellers/orders:', error);
-        return res.status(500).json({ error: 'Failed to fetch seller orders.' });
+ sellerRouter.get("/orders", requireSellerAuth, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ error: "Unauthorized." });
     }
-});
 
+    // Seller profile nikal lo
+    const [sellerProfile] = await db
+      .select()
+      .from(sellersPgTable)
+      .where(eq(sellersPgTable.userId, userId));
+
+    if (!sellerProfile) {
+      return res.status(404).json({ error: "Seller profile not found." });
+    }
+    const sellerId = sellerProfile.id;
+
+    // ✅ Sirf us seller ke orders fetch karo jisme uske products hain
+    const sellerOrders = await db.query.orders.findMany({
+      where: exists(
+        db.select().from(orderItems).where(
+          and(
+            eq(orderItems.sellerId, sellerId),
+            eq(orderItems.orderId, orders.id)
+          )
+        )
+      ),
+      with: {
+        customer: true, // customer details milegi
+        items: {
+          where: eq(orderItems.sellerId, sellerId), // ✅ filter lagaya
+          with: {
+            product: true, // ✅ full product object (name, price, description, images...)
+          },
+        },
+      },
+      orderBy: desc(orders.createdAt),
+    });
+
+    return res.status(200).json(sellerOrders);
+  } catch (error: any) {
+    console.error("❌ Error in GET /api/sellers/orders:", error);
+    return res.status(500).json({ error: "Failed to fetch seller orders." });
+  }
+});
 /**
  * ✅ GET /api/sellers/products (केवल वर्तमान सेलर के प्रोडक्ट फ़ेच करें)
  */
