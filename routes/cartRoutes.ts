@@ -4,7 +4,7 @@ import { Router, Response } from 'express';
 import { db } from '../server/db.ts';
 import {
   users,
-  orderItems, // cartItems की जगह orderItems का उपयोग करें
+  orderItems, // Use orderItems for cart functionality
   products
 } from '../shared/backend/schema.ts';
 import { eq, and } from 'drizzle-orm';
@@ -32,7 +32,6 @@ cartRouter.get('/', requireAuth, async (req: AuthenticatedRequest, res: Response
       return res.status(404).json({ error: 'User not found.' });
     }
 
-    // `orderItems` से कार्ट आइटम्स को फ़ेच करें जिनकी स्थिति 'in_cart' है
     const cartItemsData = await db.query.orderItems.findMany({
       where: and(eq(orderItems.userId, dbUser.id), eq(orderItems.status, 'in_cart')),
       with: {
@@ -88,7 +87,7 @@ cartRouter.post('/add', requireAuth, async (req: AuthenticatedRequest, res: Resp
     const unitPrice = parseFloat(product.price);
     const totalPrice = unitPrice * quantity;
 
-    // ✅ यदि आइटम मौजूद है, तो अपडेट करें
+    // ✅ If the item exists in the cart, update it
     const [existingItem] = await db
       .select()
       .from(orderItems)
@@ -105,7 +104,7 @@ cartRouter.post('/add', requireAuth, async (req: AuthenticatedRequest, res: Resp
         .returning();
       return res.status(200).json({ message: 'Cart item quantity updated.', item: updatedItem[0] });
     } else {
-      // ✅ यदि आइटम मौजूद नहीं है, तो नई एंट्री बनाएं
+      // ✅ If the item does not exist, create a new cart entry
       const newItem = await db
         .insert(orderItems)
         .values({
@@ -126,7 +125,7 @@ cartRouter.post('/add', requireAuth, async (req: AuthenticatedRequest, res: Resp
   }
 });
 
-// ✅ नया PUT रूट: /api/cart/:cartItemId - Update quantity of a single item
+// ✅ PUT /api/cart/:cartItemId - Update quantity of a single item
 cartRouter.put('/:cartItemId', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
     console.log("🔄 [API] Received PUT request to update cart item.");
     try {
@@ -155,7 +154,7 @@ cartRouter.put('/:cartItemId', requireAuth, async (req: AuthenticatedRequest, re
     }
 });
 
-// ✅ नया DELETE रूट: /api/cart/:cartItemId - Remove a single item
+// ✅ DELETE /api/cart/:cartItemId - Remove a single item
 cartRouter.delete('/:cartItemId', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
     console.log("🗑️ [API] Received DELETE request to remove cart item.");
     try {
@@ -181,5 +180,6 @@ cartRouter.delete('/:cartItemId', requireAuth, async (req: AuthenticatedRequest,
         return res.status(500).json({ error: 'Failed to remove item from cart.' });
     }
 });
+
 
 export default cartRouter;
