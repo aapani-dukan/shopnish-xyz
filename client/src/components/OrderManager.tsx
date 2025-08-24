@@ -6,7 +6,6 @@ import { useQueryClient, useMutation } from "@tanstack/react-query";
 import { OrderWithItems, Seller, orderStatusEnum } from "@shared/backend/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { Link } from "react-router-dom"; // ✅ Link इंपोर्ट करें
 
 interface OrderManagerProps {
   orders: OrderWithItems[] | undefined;
@@ -124,91 +123,97 @@ export default function OrderManager({
         return null;
     }
   };
-const renderContent = () => {
-  if (isLoading) {
+
+  const renderContent = () => {
+    if (isLoading) {
+      return (
+        <div className="space-y-4">
+          {[...Array(3)].map((_, i) => (
+            <Skeleton key={i} className="h-24 w-full rounded-lg" />
+          ))}
+        </div>
+      );
+    }
+
+    if (error) {
+      return <p className="text-red-500">Error loading orders: {error.message}</p>;
+    }
+
+    if (!orders || orders.length === 0) {
+      return <p className="text-muted-foreground">No orders yet.</p>;
+    }
+
     return (
       <div className="space-y-4">
-        {[...Array(3)].map((_, i) => (
-          <Skeleton key={i} className="h-24 w-full rounded-lg" />
+        {orders.map((order) => (
+          <div key={order.id} className="border rounded-lg p-4 mb-4">
+            <div className="flex flex-col md:flex-row md:justify-between md:items-center mb-2">
+              <h2 className="font-bold text-lg">
+                Order #{order.orderNumber || order.id}
+              </h2>
+              <Badge variant={getStatusBadgeVariant(order.status as string)}>
+                {order.status}
+              </Badge>
+            </div>
+
+            {/* ✅ Customer */}
+            {order.customer && (
+              <p className="text-sm">
+                Customer: <strong>{order.customer.name}</strong>{" "}
+                {order.customer.phone && `(${order.customer.phone})`}
+              </p>
+            )}
+
+            {/* ✅ Payment Info */}
+            <p className="text-sm text-muted-foreground">
+              Payment: <strong>{order.paymentMethod || "N/A"}</strong> (
+              {order.paymentStatus || "Pending"})
+            </p>
+            <p className="text-sm text-muted-foreground">
+              Total: <strong>₹{Number(order.total).toLocaleString()}</strong>
+            </p>
+            <p className="text-sm text-muted-foreground">
+              Ordered On: {new Date(order.createdAt).toLocaleString()}
+            </p>
+
+            {/* ✅ Items */}
+            <div className="mt-4 space-y-3">
+              {order.items.map((item) => (
+                <div key={item.id} className="flex items-center space-x-4">
+                  <img
+                    src={item.product?.image || "/placeholder.png"}
+                    alt={item.product?.name || item.name || "Product"}
+                    className="w-12 h-12 object-cover rounded"
+                  />
+                  <div>
+                    <p className="font-semibold">
+                      {item.product?.name || item.name || "Unnamed Product"}
+                    </p>
+                    <p className="text-sm text-gray-500">
+                      Qty: {item.quantity} × ₹
+                      {Number(item.unitPrice || item.product?.price).toLocaleString()}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* ✅ Actions */}
+            <div className="flex mt-6 space-x-2">
+              {renderStatusActions(order)}
+            </div>
+          </div>
         ))}
       </div>
     );
-  }
-
-  if (error) {
-    return <p className="text-red-500">Error loading orders: {error.message}</p>;
-  }
-
-  if (!orders || orders.length === 0) {
-    return <p className="text-muted-foreground">No orders yet.</p>;
-  }
-
-  return (
-    <div className="space-y-4">
-      {orders.map((order) => (
-        <div key={order.id} className="border rounded-lg p-4 mb-4">
-          <div className="flex flex-col md:flex-row md:justify-between md:items-center mb-2">
-            <h2 className="font-bold text-lg">Order #{order.orderNumber || order.id}</h2>
-            <Badge variant={getStatusBadgeVariant(order.status as string)}>
-              {order.status}
-            </Badge>
-          </div>
-
-          {order.customer && (
-            <p className="text-sm">
-              Customer: <strong>{order.customer.name}</strong>{" "}
-              {order.customer.phone && `(${order.customer.phone})`}
-            </p>
-          )}
-
-          <p className="text-sm text-muted-foreground">
-            Payment: <strong>{order.paymentMethod || "N/A"}</strong> (
-            {order.paymentStatus || "Pending"})
-          </p>
-          <p className="text-sm text-muted-foreground">
-            Total: <strong>₹{Number(order.total).toLocaleString()}</strong>
-          </p>
-          <p className="text-sm text-muted-foreground">
-            Ordered On: {new Date(order.createdAt).toLocaleString()}
-          </p>
-
-          <div className="mt-4 space-y-3">
-            {order.items.map((item) => (
-              <div key={item.id} className="flex items-center space-x-4">
-                <img
-                  src={item.product?.image || "/placeholder.png"}
-                  alt={item.product?.name || item.name || "Product"}
-                  className="w-12 h-12 object-cover rounded"
-                />
-                <div>
-                  <p className="font-semibold">{item.product?.name || item.name}</p>
-                  <p className="text-sm text-gray-500">
-                    Qty: {item.quantity} × ₹
-                    {Number(item.unitPrice || item.product?.price).toLocaleString()}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <div className="flex mt-6 space-x-2">
-            {renderStatusActions(order)}
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-};
-  
+  };
 
   return (
     <Card>
       <CardHeader>
         <CardTitle>Your Orders</CardTitle>
       </CardHeader>
-      <CardContent>
-        {renderContent()}
-      </CardContent>
+      <CardContent>{renderContent()}</CardContent>
     </Card>
   );
-}
+                  }
