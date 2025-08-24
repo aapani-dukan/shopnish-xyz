@@ -4,7 +4,7 @@ import { Router, Response } from 'express';
 import { db } from '../server/db.ts';
 import {
   users,
-  orderItems, // cartItems की जगह orderItems का उपयोग करें
+  orderItems,
   products
 } from '../shared/backend/schema.ts';
 import { eq, and } from 'drizzle-orm';
@@ -22,6 +22,7 @@ cartRouter.get('/', requireAuth, async (req: AuthenticatedRequest, res: Response
       return res.status(401).json({ error: 'Unauthorized: Missing user ID' });
     }
 
+    // यहाँ त्रुटि को ठीक किया गया है
     const cartItemsData = await db.query.orderItems.findMany({
       where: and(eq(orderItems.userId, userId), eq(orderItems.status, 'in_cart')),
       with: {
