@@ -159,7 +159,7 @@ export default function OrderManager({
             {/* ✅ Customer */}
             {order.customer && (
               <p className="text-sm">
-                Customer: <strong>{order.customer.name}</strong>{" "}
+                Customer: <strong>{order.customer.name || "Unknown"}</strong>{" "}
                 {order.customer.phone && `(${order.customer.phone})`}
               </p>
             )}
@@ -170,7 +170,7 @@ export default function OrderManager({
               {order.paymentStatus || "Pending"})
             </p>
             <p className="text-sm text-muted-foreground">
-              Total: <strong>₹{Number(order.total).toLocaleString()}</strong>
+              Total: <strong>₹{Number(order.total ?? 0).toLocaleString()}</strong>
             </p>
             <p className="text-sm text-muted-foreground">
               Ordered On: {new Date(order.createdAt).toLocaleString()}
@@ -191,7 +191,7 @@ export default function OrderManager({
                     </p>
                     <p className="text-sm text-gray-500">
                       Qty: {item.quantity} × ₹
-                      {Number(item.unitPrice || item.product?.price).toLocaleString()}
+                      {Number(item.unitPrice ?? item.product?.price ?? 0).toLocaleString()}
                     </p>
                   </div>
                 </div>
@@ -216,4 +216,4 @@ export default function OrderManager({
       <CardContent>{renderContent()}</CardContent>
     </Card>
   );
-                  }
+}
