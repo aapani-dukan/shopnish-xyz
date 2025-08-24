@@ -2,7 +2,7 @@
 
 import { Request, Response } from 'express';
 import { db } from '../db.ts';
-import { orders, orderItems, cartItems } from '../../shared/backend/schema.ts';
+import { orders, orderItems, cartItems, products } from '../../shared/backend/schema.ts';
 import { eq, desc } from 'drizzle-orm';
 import { AuthenticatedRequest } from '../middleware/authMiddleware.ts';
 
@@ -71,36 +71,5 @@ export const placeOrder = async (req: AuthenticatedRequest, res: Response) => {
   } catch (error) {
             console.error("❌ Error placing order:", error);
     res.status(500).json({ message: "Failed to place order." });
-  }
-};
-
-/**
- * Function to get a user's orders
- * GET /api/customers/orders
- */
-export const getUserOrders = async (req: AuthenticatedRequest, res: Response) => {
-  try {
-    const userId = req.user?.id;
-    if (!userId) {
-      return res.status(401).json({ message: "Unauthorized: User not logged in." });
-    }
-
-    const ordersWithItems = await db.query.orders.findMany({
-      where: eq(orders.customerId, userId),
-      with: {
-        items: {
-          with: {
-            // ✅ `product` के साथ `seller` को भी शामिल करें ताकि आप विक्रेता का नाम दिखा सकें
-            product: { with: { seller: true } },
-          },
-        },
-      },
-      orderBy: [desc(orders.createdAt)],
-    });
-
-    res.status(200).json(ordersWithItems);
-  } catch (error) {
-    console.error("❌ Error fetching orders:", error);
-    res.status(500).json({ message: "Failed to fetch orders." });
   }
 };
