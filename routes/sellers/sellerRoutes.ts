@@ -83,7 +83,13 @@ sellerRouter.get('/orders', requireSellerAuth, async (req: AuthenticatedRequest,
                 customer: true,
                 items: {
                     with: {
-                        product: true
+                        product: {
+                            // ✅ यह सुनिश्चित करेगा कि नाम और कीमत हमेशा मिले
+                            columns: {
+                                name: true,
+                                price: true,
+                            }
+                        }
                     }
                 }
             },
@@ -196,13 +202,10 @@ sellerRouter.patch('/orders/:orderId/status', requireSellerAuth, async (req: Aut
 
     // 2. स्थिति अपडेट करने के लिए लॉजिक
     // सुनिश्चित करें कि केवल सही स्थितियाँ ही अपडेट हो सकें।
-
-        // 'placed' से 'accepted' में बदलाव
-        if ((orderToUpdate.status === 'placed' || orderToUpdate.status === 'pending') && newStatus === 'accepted') {
-        
+    if ((orderToUpdate.status === 'placed' || orderToUpdate.status === 'pending') && newStatus === 'accepted') {
+        // 'placed' या 'pending' से 'accepted' में बदलाव
     } else if ((orderToUpdate.status === 'placed' || orderToUpdate.status === 'pending') && newStatus === 'rejected') {
-    
-        // 'placed' से 'rejected' में बदलाव
+        // 'placed' या 'pending' से 'rejected' में बदलाव
     } else if (orderToUpdate.status === 'accepted' && newStatus === 'out_for_delivery') {
         // 'accepted' से 'out_for_delivery' में बदलाव
     } else if (orderToUpdate.status === 'out_for_delivery' && newStatus === 'delivered') {
@@ -391,4 +394,3 @@ sellerRouter.post(
 );
 
 export default sellerRouter;
-  
