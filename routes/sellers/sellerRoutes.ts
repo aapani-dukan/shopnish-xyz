@@ -88,7 +88,7 @@ sellerRouter.get('/orders', requireSellerAuth, async (req: AuthenticatedRequest,
                             columns: {
                                 name: true,
                                 price: true,
-                              products: true,
+                              product: true,
                             }
                         }
                     }
