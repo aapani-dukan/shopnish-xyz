@@ -32,6 +32,7 @@ import AuthRedirectGuard from "@/components/auth-redirect-guard";
 import AdminGuard from "@/components/admin-guard";
 import AdminLogin from "@/pages/admin-login";
 import OrderConfirmation from "@/pages/order-confirmation";
+import CustomerOrdersPage from "@/pages/customer/orders"; // ✅ यह नया इम्पोर्ट जोड़ा गया है
 
 function App() {
   const [isCartModalOpen, setIsCartModalOpen] = useState(false);
@@ -59,6 +60,9 @@ function App() {
                 <Route path="/seller-status" element={<AuthRedirectGuard><SellerStatusPage /></AuthRedirectGuard>} />
                 <Route path="/delivery-dashboard" element={<AuthRedirectGuard><DeliveryDashboard /></AuthRedirectGuard>} />
                 <Route path="/delivery-apply" element={<AuthRedirectGuard><DeliveryApplyPage /></AuthRedirectGuard>} />
+                
+                {/* ✅ यह नया राउट जोड़ा गया है */}
+                <Route path="/customer/orders" element={<AuthRedirectGuard><CustomerOrdersPage /></AuthRedirectGuard>} />
 
                 {/* Protected - Admin */}
                 <Route path="/admin-dashboard" element={<AdminGuard><AdminDashboard /></AdminGuard>} />
