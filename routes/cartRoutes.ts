@@ -4,7 +4,7 @@ import { Router, Response } from 'express';
 import { db } from '../server/db.ts';
 import {
   users,
-  orderItems, // Use orderItems for cart functionality
+  orderItems, // cartItems की जगह orderItems का उपयोग करें
   products
 } from '../shared/backend/schema.ts';
 import { eq, and } from 'drizzle-orm';
@@ -16,24 +16,14 @@ const cartRouter = Router();
 cartRouter.get('/', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     console.log("🛒 [API] Received GET request for cart.");
-    const firebaseUid = req.user?.firebaseUid;
-    if (!firebaseUid) {
-      console.log("❌ [API] Unauthorized: Missing user UUID.");
-      return res.status(401).json({ error: 'Unauthorized: Missing user UUID' });
-    }
-
-    const [dbUser] = await db
-      .select({ id: users.id })
-      .from(users)
-      .where(eq(users.firebaseUid, firebaseUid));
-
-    if (!dbUser) {
-      console.log("❌ [API] User not found for UUID:", firebaseUid);
-      return res.status(404).json({ error: 'User not found.' });
+    const userId = req.user?.id;
+    if (!userId) {
+      console.log("❌ [API] Unauthorized: Missing user ID.");
+      return res.status(401).json({ error: 'Unauthorized: Missing user ID' });
     }
 
     const cartItemsData = await db.query.orderItems.findMany({
-      where: and(eq(orderItems.userId, dbUser.id), eq(orderItems.status, 'in_cart')),
+      where: and(eq(orderItems.userId, userId), eq(orderItems.status, 'in_cart')),
       with: {
         product: {
           columns: {
@@ -180,6 +170,5 @@ cartRouter.delete('/:cartItemId', requireAuth, async (req: AuthenticatedRequest,
         return res.status(500).json({ error: 'Failed to remove item from cart.' });
     }
 });
-
 
 export default cartRouter;
