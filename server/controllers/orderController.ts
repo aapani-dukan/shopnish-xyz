@@ -58,7 +58,7 @@ export const placeOrder = async (req: AuthenticatedRequest, res: Response) => {
       await tx.insert(orderItems).values(orderItemsData);
 
       // 3. ✅ यूज़र का cart साफ़ करो
-      await tx.delete(cartItems).where(eq(cartItems.user_id, userId));
+      await tx.delete(cartItems).where(eq(cartItems.userId, userId));
 
       return newOrder;
     });
