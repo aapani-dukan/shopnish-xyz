@@ -6,6 +6,7 @@ import { useQueryClient, useMutation } from "@tanstack/react-query";
 import { OrderWithItems, Seller, orderStatusEnum } from "@shared/backend/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { Link } from "react-router-dom"; // ✅ Link इंपोर्ट करें
 
 interface OrderManagerProps {
   orders: OrderWithItems[] | undefined;
@@ -175,9 +176,11 @@ export default function OrderManager({
               <ul className="list-disc list-inside text-sm space-y-1">
                 {order.items.map((item) => (
                   <li key={item.id}>
-                     {item.product?.name || item.name || 'N/A'} (
-        {item.quantity} × ₹
-                       {Number(item.product?.price || item.unitPrice).toLocaleString()}
+                    {/* ✅ आइटम का नाम और कीमत को ठीक करें */}
+                    {item.product?.name || item.name || 'N/A'} (
+                    {item.quantity} × ₹
+                    {Number(item.product?.price || item.unitPrice).toLocaleString()}
+                    )
                   </li>
                 ))}
               </ul>
@@ -203,4 +206,3 @@ export default function OrderManager({
     </Card>
   );
 }
-
