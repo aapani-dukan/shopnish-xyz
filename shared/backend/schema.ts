@@ -573,6 +573,42 @@ export const insertReviewSchema = createInsertSchema(reviews).omit({
 });
 
 // --- Types ---
+export type OrderItemWithProduct = {
+  id: number;
+  orderId: number;
+  productId: number;
+  sellerId: number;
+  quantity: number;
+  unitPrice: string;
+  totalPrice: string;
+  product: {
+    id: number;
+    name: string;
+    nameHindi?: string;
+    description?: string;
+    descriptionHindi?: string;
+    price: string;
+    image: string;
+    unit: string;
+    brand?: string;
+    stock: number;
+  };
+};
+
+export type OrderWithItems = {
+  id: number;
+  orderNumber: string;
+  subtotal: string;
+  total: string;
+  status: string;
+  createdAt: string;
+  customer: {
+    id: number;
+    name: string;
+    email: string;
+  };
+  items: OrderItemWithProduct[];
+};
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
 
