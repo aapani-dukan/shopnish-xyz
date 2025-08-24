@@ -98,4 +98,3 @@ export const getUserOrders = async (req: AuthenticatedRequest, res: Response) =>
     res.status(500).json({ message: "Failed to fetch orders." });
   }
 };
-
