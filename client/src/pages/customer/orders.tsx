@@ -42,7 +42,7 @@ export default function CustomerOrdersPage() {
     queryKey: ["customerOrders"],
     queryFn: async () => {
       // ✅ API route to be created on the backend
-      const response = await apiRequest("GET", "/api/customers/orders");
+      const response = await apiRequest("GET", "/api/orders");
       return response;
     },
   });
