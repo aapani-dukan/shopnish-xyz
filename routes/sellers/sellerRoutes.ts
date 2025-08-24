@@ -71,38 +71,26 @@ sellerRouter.get('/orders', requireSellerAuth, async (req: AuthenticatedRequest,
 
         // सेलर के सभी ऑर्डर्स को फ़ेच करें
         const sellerOrders = await db.query.orders.findMany({
-            where: exists(
-                db.select().from(orderItems).where(
-                    and(
-                        eq(orderItems.sellerId, sellerId),
-                        eq(orderItems.orderId, orders.id)
-                    )
-                )
-            ),
-            with: {
-                customer: true,
-                items: {
-                    with: {
-                        product: {
-                            // ✅ यह सुनिश्चित करेगा कि नाम और कीमत हमेशा मिले
-                            columns: {
-                                name: true,
-                                price: true,
-                            }
-                        }
-                    }
-                }
-            },
-            orderBy: desc(orders.createdAt),
-        });
-
-        return res.status(200).json(sellerOrders);
-    } catch (error: any) {
-        console.error('❌ Error in GET /api/sellers/orders:', error);
-        return res.status(500).json({ error: 'Failed to fetch seller orders.' });
+  where: exists(
+    db.select().from(orderItems).where(
+      and(
+        eq(orderItems.sellerId, sellerId),
+        eq(orderItems.orderId, orders.id)
+      )
+    )
+  ),
+  with: {
+    customer: true,
+    items: {
+      with: {
+        product: true   // ✅ पूरा product भेजो
+      }
     }
+  },
+  orderBy: desc(orders.createdAt),
 });
 
+return res.status(200).json(sellerOrders);
 /**
  * ✅ GET /api/sellers/products (केवल वर्तमान सेलर के प्रोडक्ट फ़ेच करें)
  */
