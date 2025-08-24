@@ -75,27 +75,35 @@ sellerRouter.get('/me', requireSellerAuth, async (req: AuthenticatedRequest, res
     const sellerId = sellerProfile.id;
 
     // ✅ Sirf us seller ke orders fetch karo jisme uske products hain
-    const sellerOrders = await db.query.orders.findMany({
-      where: exists(
-        db.select().from(orderItems).where(
-          and(
-            eq(orderItems.sellerId, sellerId),
-            eq(orderItems.orderId, orders.id)
-          )
-        )
-      ),
+    
+const sellerOrders = await db.query.orders.findMany({
+  where: exists(
+    db.select().from(orderItems).where(
+      and(
+        eq(orderItems.sellerId, sellerId),
+        eq(orderItems.orderId, orders.id)
+      )
+    )
+  ),
+  with: {
+    customer: true,
+    items: {
+      where: eq(orderItems.sellerId, sellerId),
       with: {
-        customer: true, // customer details milegi
-        items: {
-          where: eq(orderItems.sellerId, sellerId), // ✅ filter lagaya
-          with: {
-            product: true, // ✅ full product object (name, price, description, images...)
-          },
-        },
+        product: {
+          columns: {
+            id: true,
+            name: true,        // ✅ force include name
+            price: true,
+            image: true,
+            description: true, // optional
+          }
+        }
       },
-      orderBy: desc(orders.createdAt),
-    });
-
+    },
+  },
+  orderBy: desc(orders.createdAt),
+});
     return res.status(200).json(sellerOrders);
   } catch (error: any) {
     console.error("❌ Error in GET /api/sellers/orders:", error);
