@@ -27,35 +27,35 @@ export const placeOrder = async (req: AuthenticatedRequest, res: Response) => {
     const order = await db.transaction(async (tx) => {
       const orderNumber = `ORD-${uuidv4()}`;
 
-      // 1. एक नया ऑर्डर डालें
+      // 1. नया ऑर्डर डालें
       const [newOrder] = await tx.insert(orders).values({
-        customerId: userId,
+        user_id: userId, // ✅ अब सही कॉलम
         status: "placed",
-        orderNumber: orderNumber,
+        order_number: orderNumber,
         subtotal: total - (deliveryCharge || 0),
         total: total,
-        deliveryCharge: deliveryCharge || 0,
-        deliveryAddress: JSON.stringify(deliveryAddress),
-        paymentMethod: paymentMethod,
-        createdAt: new Date(),
-        updatedAt: new Date(),
+        delivery_charge: deliveryCharge || 0,
+        delivery_address: JSON.stringify(deliveryAddress),
+        payment_method: paymentMethod,
+        created_at: new Date(),
+        updated_at: new Date(),
       }).returning();
 
       // 2. ऑर्डर आइटम डालें
       const orderItemsData = items.map((item: any) => ({
-        orderId: newOrder.id,
-        productId: item.productId,
-        sellerId: item.sellerId,
+        order_id: newOrder.id,
+        product_id: item.productId,
+        seller_id: item.sellerId,
         quantity: item.quantity,
-        unitPrice: item.unitPrice,
-        totalPrice: item.totalPrice,
-        createdAt: new Date(),
-        updatedAt: new Date(),
+        unit_price: item.unitPrice,
+        total_price: item.totalPrice,
+        created_at: new Date(),
+        updated_at: new Date(),
       }));
       await tx.insert(orderItems).values(orderItemsData);
 
       // 3. कार्ट को साफ़ करें
-      await tx.delete(cartItems).where(eq(cartItems.userId, userId));
+      await tx.delete(cartItems).where(eq(cartItems.user_id, userId));
 
       return newOrder;
     });
@@ -81,7 +81,7 @@ export const getUserOrders = async (req: AuthenticatedRequest, res: Response) =>
     }
 
     const ordersWithItems = await db.query.orders.findMany({
-      where: eq(orders.customerId, userId),
+      where: eq(orders.user_id, userId), // ✅ अब सही कॉलम
       with: {
         items: {
           with: {
@@ -89,7 +89,7 @@ export const getUserOrders = async (req: AuthenticatedRequest, res: Response) =>
           },
         },
       },
-      orderBy: [desc(orders.createdAt)],
+      orderBy: [desc(orders.created_at)],
     });
 
     res.status(200).json(ordersWithItems);
