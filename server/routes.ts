@@ -30,7 +30,7 @@ import sellerRouter from '../routes/sellers/sellerRoutes.ts';
 import productsRouter from '../routes/productRoutes.ts';
 import cartRouter from '../routes/cartRoutes.ts';
 import orderConfirmationRouter from '../routes/orderConfirmationRouter';
-
+import { verifyToken } from "./middleware/verifyToken"; 
 const router = Router();
 let ioInstance: any; // ✅ io इंस्टेंस को होल्ड करने के लिए एक वेरिएबल
 
@@ -124,13 +124,14 @@ router.post('/auth/logout', async (req, res) => {
 });
 
 // ✅ Seller-specific routes
-router.use('/sellers', sellerRouter);
+
 //cartRourer
 router.use('/cart', cartRouter);
 //orderRouter
 router.use('/orders', orderRoutes);
 //orderConfirmationRouter
 router.use('/order-confirmation', orderConfirmationRouter);
+router.use("/sellers", verifyToken, sellerRoutes);
 
 // ✅ Categories
 router.get('/categories', async (req: Request, res: Response) => {
