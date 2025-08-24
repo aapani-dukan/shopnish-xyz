@@ -175,9 +175,8 @@ export default function OrderManager({
               <ul className="list-disc list-inside text-sm space-y-1">
                 {order.items.map((item) => (
                   <li key={item.id}>
-                    {item.product?.name || item.name} (
-                    {item.quantity} × ₹
-                    {Number(item.product?.price || item.price)})
+                    {item.product?.name } ({item.quantity} × ₹
+                       {Number(item.product?.price || item.unitPrice).toLocaleString()}
                   </li>
                 ))}
               </ul>
