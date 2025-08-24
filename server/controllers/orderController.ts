@@ -60,13 +60,7 @@ export const placeOrder = async (req: AuthenticatedRequest, res: Response) => {
       // 3. ✅ यूज़र का cart साफ़ करो
       
 
-await tx.delete(cartItems).where(
-  or(
-    eq(cartItems.userId, userId),
-    eq(cartItems.sessionId, req.sessionID) // अगर session based cart है
-  )
-);
-
+db.delete(cartItems).where(eq(cartItems.userId, userId));
       return newOrder;
     });
 
