@@ -3,7 +3,7 @@
 import { Request, Response } from "express";
 import { db } from "../db.ts";
 import { orders, orderItems, cartItems, products } from "../../shared/backend/schema.ts";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, and, or } from "drizzle-orm";
 import { AuthenticatedRequest } from "../middleware/authMiddleware.ts";
 import { v4 as uuidv4 } from "uuid";
 
@@ -58,7 +58,14 @@ export const placeOrder = async (req: AuthenticatedRequest, res: Response) => {
       await tx.insert(orderItems).values(orderItemsData);
 
       // 3. ✅ यूज़र का cart साफ़ करो
-      await tx.delete(cartItems).where(eq(cartItems.userId, userId));
+      
+
+await tx.delete(cartItems).where(
+  or(
+    eq(cartItems.userId, userId),
+    eq(cartItems.sessionId, req.sessionID) // अगर session based cart है
+  )
+);
 
       return newOrder;
     });
