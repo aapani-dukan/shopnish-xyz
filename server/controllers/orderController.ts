@@ -1,11 +1,11 @@
 // server/controllers/orderController.ts
 
-import { Request, Response } from 'express';
-import { db } from '../db.ts';
-import { orders, orderItems, cartItems, products } from '../../shared/backend/schema.ts';
-import { eq, desc } from 'drizzle-orm';
-import { AuthenticatedRequest } from '../middleware/authMiddleware.ts';
-import { v4 as uuidv4 } from 'uuid';
+import { Request, Response } from "express";
+import { db } from "../db.ts";
+import { orders, orderItems, cartItems, carts, products } from "../../shared/backend/schema.ts";
+import { eq, desc } from "drizzle-orm";
+import { AuthenticatedRequest } from "../middleware/authMiddleware.ts";
+import { v4 as uuidv4 } from "uuid";
 
 /**
  * Function to place a new order
@@ -28,18 +28,21 @@ export const placeOrder = async (req: AuthenticatedRequest, res: Response) => {
       const orderNumber = `ORD-${uuidv4()}`;
 
       // 1. नया ऑर्डर डालें
-      const [newOrder] = await tx.insert(orders).values({
-        user_id: userId, // ✅ अब सही कॉलम
-        status: "placed",
-        order_number: orderNumber,
-        subtotal: total - (deliveryCharge || 0),
-        total: total,
-        delivery_charge: deliveryCharge || 0,
-        delivery_address: JSON.stringify(deliveryAddress),
-        payment_method: paymentMethod,
-        created_at: new Date(),
-        updated_at: new Date(),
-      }).returning();
+      const [newOrder] = await tx
+        .insert(orders)
+        .values({
+          user_id: userId,
+          status: "placed",
+          order_number: orderNumber,
+          subtotal: total - (deliveryCharge || 0),
+          total: total,
+          delivery_charge: deliveryCharge || 0,
+          delivery_address: JSON.stringify(deliveryAddress),
+          payment_method: paymentMethod,
+          created_at: new Date(),
+          updated_at: new Date(),
+        })
+        .returning();
 
       // 2. ऑर्डर आइटम डालें
       const orderItemsData = items.map((item: any) => ({
@@ -54,8 +57,14 @@ export const placeOrder = async (req: AuthenticatedRequest, res: Response) => {
       }));
       await tx.insert(orderItems).values(orderItemsData);
 
-      // 3. कार्ट को साफ़ करें
-      await tx.delete(cartItems).where(eq(cartItems.user_id, userId));
+      // 3. कार्ट को साफ़ करें (पहले user का cart ढूँढो फिर उसके items हटाओ)
+      const userCart = await tx.query.carts.findFirst({
+        where: eq(carts.user_id, userId),
+      });
+
+      if (userCart) {
+        await tx.delete(cartItems).where(eq(cartItems.cart_id, userCart.id));
+      }
 
       return newOrder;
     });
@@ -81,7 +90,7 @@ export const getUserOrders = async (req: AuthenticatedRequest, res: Response) =>
     }
 
     const ordersWithItems = await db.query.orders.findMany({
-      where: eq(orders.user_id, userId), // ✅ अब सही कॉलम
+      where: eq(orders.user_id, userId),
       with: {
         items: {
           with: {
