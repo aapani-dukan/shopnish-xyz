@@ -71,6 +71,7 @@ export default function CustomerOrdersPage() {
     );
   }
 
+  // ✅ यह ब्लॉक जोड़ा गया है जो खाली डेटा को हैंडल करता है।
   if (!orders || orders.length === 0) {
     return (
       <div className="container mx-auto p-4 text-center">
