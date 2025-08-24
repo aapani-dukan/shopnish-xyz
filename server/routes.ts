@@ -131,7 +131,7 @@ router.use('/cart', cartRouter);
 router.use('/orders', orderRoutes);
 //orderConfirmationRouter
 router.use('/order-confirmation', orderConfirmationRouter);
-router.use("/sellers", verifyToken, sellerRoutes);
+router.use("/sellers", verifyToken, sellerRouter);
 
 // ✅ Categories
 router.get('/categories', async (req: Request, res: Response) => {
