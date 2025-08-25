@@ -79,6 +79,8 @@ export const placeOrder = async (req: AuthenticatedRequest, res: Response) => {
  * Function to get a user's orders (This part of your code seems fine)
  */
 
+
+
 export const getUserOrders = async (req: AuthenticatedRequest, res: Response) => {
   try {
     const sellerId = req.user?.id;
@@ -88,50 +90,49 @@ export const getUserOrders = async (req: AuthenticatedRequest, res: Response) =>
 
     const [seller] = await db.select().from(sellers).where(eq(sellers.id, sellerId));
     if (!seller) {
-        return res.status(404).json({ message: "Seller not found." });
+      return res.status(404).json({ message: "Seller not found." });
     }
 
-    // ✅ डेटाबेस से order items के साथ order और customer data भी फ़ेच करें
     const ordersWithItems = await db.query.orderItems.findMany({
-        where: and(
-            eq(orderItems.sellerId, seller.id),
-            eq(orderItems.status, 'pending')
-        ),
-        with: {
-            order: {
-                with: {
-                    customer: { // ✅ अब हम firstName, lastName और phone को सही से फ़ेच करेंगे
-                        columns: {
-                            id: true,
-                            firstName: true,
-                            lastName: true,
-                            phone: true
-                        }
-                    }
-                }
-            },
-            product: true
-        }
+      where: and(
+        eq(orderItems.sellerId, seller.id),
+        eq(orderItems.status, 'pending')
+      ),
+      with: {
+        order: {
+          with: {
+            customer: {
+              // ✅ अब हम केवल firstName और phone को फ़ेच कर रहे हैं
+              columns: {
+                id: true,
+                firstName: true,
+                phone: true
+              }
+            }
+          }
+        },
+        product: true
+      }
     });
 
     const groupedOrders = ordersWithItems.reduce((acc, item) => {
-        const orderId = item.orderId;
-        if (!acc[orderId]) {
-            // ✅ यहाँ हम customer name को firstName और lastName से जोड़ रहे हैं
-            const customerName = `${item.order.customer.firstName} ${item.order.customer.lastName}`;
-            const customerPhone = item.order.customer.phone;
+      const orderId = item.orderId;
+      if (!acc[orderId]) {
+        // ✅ यहाँ customerName केवल firstName है
+        const customerName = item.order.customer.firstName;
+        const customerPhone = item.order.customer.phone;
 
-            acc[orderId] = {
-                ...item.order,
-                customerName: customerName,
-                customerPhone: customerPhone,
-                items: [],
-            };
-        }
-        acc[orderId].items.push(item);
-        return acc;
+        acc[orderId] = {
+          ...item.order,
+          customerName: customerName,
+          customerPhone: customerPhone,
+          items: [],
+        };
+      }
+      acc[orderId].items.push(item);
+      return acc;
     }, {});
-    
+
     const finalOrders = Object.values(groupedOrders);
 
     res.status(200).json(finalOrders);
