@@ -4,7 +4,7 @@ import { Router, Response } from 'express';
 import { db } from '../server/db.ts';
 import {
   users,
-  orderItems, // केवल orderItems का उपयोग करें
+  orderItems,
   products
 } from '../shared/backend/schema.ts';
 import { eq, and } from 'drizzle-orm';
@@ -32,7 +32,7 @@ cartRouter.get('/', requireAuth, async (req: AuthenticatedRequest, res: Response
       return res.status(404).json({ error: 'User not found.' });
     }
 
-    // यहाँ otderItems को orderItems से ठीक किया गया है
+    // ✅ यहाँ क्वेरी में 'status' को जोड़ा गया है
     const cartItemsData = await db.query.orderItems.findMany({
       where: and(eq(orderItems.userId, dbUser.id), eq(orderItems.status, 'in_cart')),
       with: {
@@ -86,7 +86,7 @@ cartRouter.post('/add', requireAuth, async (req: AuthenticatedRequest, res: Resp
       return res.status(404).json({ error: 'User not found.' });
     }
     
-    // ✅ यदि आइटम मौजूद है, तो 200 (OK) रिस्पॉन्स के साथ अपडेट करें।
+    // ✅ यहाँ क्वेरी में 'status' को जोड़ा गया है
     const [existingItem] = await db
       .select()
       .from(orderItems)
@@ -102,7 +102,7 @@ cartRouter.post('/add', requireAuth, async (req: AuthenticatedRequest, res: Resp
         .returning();
       return res.status(200).json({ message: 'order item quantity updated.', item: updatedItem[0] });
     } else {
-      // ✅ यदि आइटम मौजूद नहीं है, तो 201 (Created) रिस्पॉन्स के साथ एक नई एंट्री बनाएं
+      // ✅ नई एंट्री के लिए 'status' को 'in_cart' पर सेट किया गया है
       const newItem = await db
         .insert(orderItems)
         .values({
@@ -120,7 +120,7 @@ cartRouter.post('/add', requireAuth, async (req: AuthenticatedRequest, res: Resp
   }
 });
 
-// ✅ नया PUT रूट: /api/cart/:cartItemId - Update quantity of a single item
+// ✅ PUT /api/cart/:cartItemId - Update quantity of a single item
 cartRouter.put('/:cartItemId', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
     console.log("🔄 [API] Received PUT request to update cart item.");
     try {
@@ -141,7 +141,7 @@ cartRouter.put('/:cartItemId', requireAuth, async (req: AuthenticatedRequest, re
             return res.status(404).json({ error: 'User not found.' });
         }
         
-        // यहाँ cartItems को orderItems से ठीक किया गया है
+        // ✅ यहाँ क्वेरी में 'status' को जोड़ा गया है
         const [updatedItem] = await db.update(orderItems)
             .set({ quantity: quantity })
             .where(and(eq(orderItems.id, parseInt(cartItemId)), eq(orderItems.userId, dbUser.id), eq(orderItems.status, 'in_cart')))
@@ -159,7 +159,7 @@ cartRouter.put('/:cartItemId', requireAuth, async (req: AuthenticatedRequest, re
     }
 });
 
-// ✅ नया DELETE रूट: /api/cart/:cartItemId - Remove a single item
+// ✅ DELETE /api/cart/:cartItemId - Remove a single item
 cartRouter.delete('/:cartItemId', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
     console.log("🗑️ [API] Received DELETE request to remove cart item.");
     try {
@@ -179,7 +179,7 @@ cartRouter.delete('/:cartItemId', requireAuth, async (req: AuthenticatedRequest,
             return res.status(404).json({ error: 'User not found.' });
         }
 
-        // यहाँ cartItems को orderItems से ठीक किया गया है
+        // ✅ यहाँ क्वेरी में 'status' को जोड़ा गया है
         const [deletedItem] = await db.delete(orderItems)
             .where(and(eq(orderItems.id, parseInt(cartItemId)), eq(orderItems.userId, dbUser.id), eq(orderItems.status, 'in_cart')))
             .returning();
@@ -195,6 +195,5 @@ cartRouter.delete('/:cartItemId', requireAuth, async (req: AuthenticatedRequest,
         return res.status(500).json({ error: 'Failed to remove item from cart.' });
     }
 });
-
 
 export default cartRouter;
