@@ -1,15 +1,7 @@
-// server/controllers/orderController.ts (Corrected Logic)
+// server/controllers/orderController.ts
 
-import { Request, Response } from 'express';
-import { db } from '../db.ts';
-import { orders, orderItems, products, users } from '../../shared/backend/schema.ts';
-import { eq, and, desc } from 'drizzle-orm';
-import { AuthenticatedRequest } from '../middleware/authMiddleware.ts';
-import { v4 as uuidv4 } from 'uuid';
+// ... (अन्य सभी imports और फ़ंक्शंस)
 
-/**
- * Function to place a new order
- */
 export const placeOrder = async (req: AuthenticatedRequest, res: Response) => {
   try {
     const userId = req.user?.id;
@@ -17,7 +9,6 @@ export const placeOrder = async (req: AuthenticatedRequest, res: Response) => {
       return res.status(401).json({ message: "Unauthorized: User not logged in." });
     }
 
-    // ✅ 1. डेटाबेस से सीधे "in_cart" वाले आइटम को फ़ेच करें
     const cartItems = await db.query.orderItems.findMany({
       where: and(
         eq(orderItems.userId, userId),
@@ -30,31 +21,30 @@ export const placeOrder = async (req: AuthenticatedRequest, res: Response) => {
       return res.status(400).json({ message: "Cart is empty, cannot place an order." });
     }
 
-    // ✅ 2. टोटल और सबटोटल की गणना करें
     const subtotal = cartItems.reduce((sum, item) => sum + parseFloat(item.totalPrice), 0);
-    // यहाँ आप डिलीवरी चार्ज, डिस्काउंट आदि जोड़ सकते हैं
     const total = subtotal;
 
-    // ✅ डेटाबेस ट्रांजेक्शन शुरू करें
+    let orderId; // ✅ orderId को परिभाषित करें
+
     await db.transaction(async (tx) => {
       const orderNumber = `ORD-${uuidv4()}`;
 
-      // 3. एक नया ऑर्डर डालें
       const [newOrder] = await tx.insert(orders).values({
         customerId: userId,
-        status: "pending", // ✅ स्टेटस को 'placed' के बजाय 'pending' पर सेट करें
+        status: "pending",
         orderNumber: orderNumber,
         subtotal: subtotal.toFixed(2),
         total: total.toFixed(2),
-        paymentMethod: 'COD', // उदाहरण के लिए
+        paymentMethod: 'COD',
         deliveryAddress: req.body.deliveryAddress,
       }).returning();
+      
+      orderId = newOrder.id; // ✅ transaction के अंदर orderId को सेट करें
 
-      // 4. ऑर्डर आइटम का स्टेटस बदलें और उन्हें नए ऑर्डर से जोड़ें
       await tx.update(orderItems)
         .set({
-          status: 'pending', // ✅ आइटम का स्टेटस 'pending' करें
-          orderId: newOrder.id, // ✅ आइटम को नए ऑर्डर से जोड़ें
+          status: 'pending',
+          orderId: newOrder.id,
           updatedAt: new Date(),
         })
         .where(and(
@@ -63,14 +53,14 @@ export const placeOrder = async (req: AuthenticatedRequest, res: Response) => {
         ));
     });
 
-    res.status(201).json({ message: "Order placed successfully!" });
+    // ✅ सफल रिस्पांस में orderId को वापस भेजें
+    res.status(201).json({ message: "Order placed successfully!", orderId: orderId });
 
   } catch (error) {
     console.error("❌ Error placing order:", error);
     res.status(500).json({ message: "Failed to place order." });
   }
 };
-
 
 
 /**
