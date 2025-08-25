@@ -1,10 +1,11 @@
+
 // routes/cartRoutes.ts
 
 import { Router, Response } from 'express';
 import { db } from '../server/db.ts';
 import {
   users,
-  orderItems, // cartItems की जगह orderItems का उपयोग करें
+  cartItems,
   products
 } from '../shared/backend/schema.ts';
 import { eq, and } from 'drizzle-orm';
@@ -14,33 +15,42 @@ const cartRouter = Router();
 
 // ✅ GET /api/cart - Get user's cart
 cartRouter.get('/', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+  // ... (आपका मौजूदा GET रूट)
   try {
     console.log("🛒 [API] Received GET request for cart.");
-    const userId = req.user?.id;
-    if (!userId) {
-      console.log("❌ [API] Unauthorized: Missing user ID.");
-      return res.status(401).json({ error: 'Unauthorized: Missing user ID' });
+    const firebaseUid = req.user?.firebaseUid;
+    if (!firebaseUid) {
+      console.log("❌ [API] Unauthorized: Missing user UUID.");
+      return res.status(401).json({ error: 'Unauthorized: Missing user UUID' });
     }
 
-    const cartItemsData = await db.query.orderItems.findMany({
-      where: and(eq(orderItems.userId, userId), eq(orderItems.status, 'in_cart')),
+    const [dbUser] = await db
+      .select({ id: users.id })
+      .from(users)
+      .where(eq(users.firebaseUid, firebaseUid));
+
+    if (!dbUser) {
+      console.log("❌ [API] User not found for UUID:", firebaseUid);
+      return res.status(404).json({ error: 'User not found.' });
+    }
+
+    const cartItemsData = await db.query.cartItems.findMany({
+      where: eq(cartItems.userId, dbUser.id),
       with: {
-        product: {
-          columns: {
-            id: true,
-            name: true,
-            price: true,
-            image: true,
-            sellerId: true
-          }
-        },
+        product: true,
       },
     });
 
     const cleanedCartData = cartItemsData.map(item => ({
       id: item.id,
       quantity: item.quantity,
-      product: item.product,
+      product: {
+        id: item.product.id,
+        name: item.product.name,
+        price: item.product.price,
+        image: item.product.image,
+        sellerId: item.product.sellerId, 
+      },
     }));
 
     if (cleanedCartData.length === 0) {
@@ -51,7 +61,7 @@ cartRouter.get('/', requireAuth, async (req: AuthenticatedRequest, res: Response
     console.log(`✅ [API] Sending cart with ${cleanedCartData.length} items.`);
     return res.status(200).json({ message: "Cart fetched successfully", items: cleanedCartData });
 
-  } catch (error: any) {
+  } catch (error) {
     console.error('❌ [API] Error fetching cart:', error);
     return res.status(500).json({ error: 'Failed to fetch cart. An unexpected error occurred.' });
   }
@@ -61,75 +71,79 @@ cartRouter.get('/', requireAuth, async (req: AuthenticatedRequest, res: Response
 cartRouter.post('/add', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   console.log("🚀 [API] Received POST request to add item to cart.");
   try {
-    const userId = req.user?.id;
-    const { productId, quantity } = req.body;
+    const firebaseUid = req.user?.firebaseUid;
+    const { productId, quantity , product name} = req.body;
     
-    if (!userId || !productId || !quantity) {
+    if (!firebaseUid || !productId || !quantity || ! product name) {
       return res.status(400).json({ error: 'Missing required fields.' });
     }
 
-    const [product] = await db.select().from(products).where(eq(products.id, productId)).limit(1);
-    
-    if (!product) {
-      return res.status(404).json({ error: 'Product not found.' });
+    const [dbUser] = await db
+      .select({ id: users.id })
+      .from(users)
+      .where(eq(users.firebaseUid, firebaseUid));
+
+    if (!dbUser) {
+      return res.status(404).json({ error: 'User not found.' });
     }
     
-    const unitPrice = parseFloat(product.price);
-    const totalPrice = unitPrice * quantity;
-
-    // ✅ If the item exists in the cart, update it
+    // ✅ यदि आइटम मौजूद है, तो 200 (OK) रिस्पॉन्स के साथ अपडेट करें।
     const [existingItem] = await db
       .select()
-      .from(orderItems)
-      .where(and(eq(orderItems.userId, userId), eq(orderItems.productId, productId), eq(orderItems.status, 'in_cart')));
+      .from(cartItems)
+      .where(and(eq(orderItems.userId, dbUser.id), eq(orderItems.productId, productId)));
 
     if (existingItem) {
       const updatedItem = await db
         .update(orderItems)
         .set({
           quantity: existingItem.quantity + quantity,
-          totalPrice: existingItem.totalPrice + totalPrice,
         })
         .where(eq(orderItems.id, existingItem.id))
         .returning();
-      return res.status(200).json({ message: 'Cart item quantity updated.', item: updatedItem[0] });
+      return res.status(200).json({ message: 'order item quantity updated.', item: updatedItem[0] });
     } else {
-      // ✅ If the item does not exist, create a new cart entry
+      // ✅ यदि आइटम मौजूद नहीं है, तो 201 (Created) रिस्पॉन्स के साथ एक नई एंट्री बनाएं
       const newItem = await db
         .insert(orderItems)
         .values({
-          userId: userId,
+          userId: dbUser.id,
           productId: productId,
-          sellerId: product.sellerId,
           quantity: quantity,
-          unitPrice: unitPrice,
-          totalPrice: totalPrice,
-          status: 'in_cart',
         })
         .returning();
       return res.status(201).json({ message: 'Item added to cart.', item: newItem[0] });
     }
-  } catch (error: any) {
+  } catch (error) {
     console.error('❌ [API] Error adding item to cart:', error);
     return res.status(500).json({ error: 'Failed to add item to cart.' });
   }
 });
 
-// ✅ PUT /api/cart/:cartItemId - Update quantity of a single item
+// ✅ नया PUT रूट: /api/cart/:cartItemId - Update quantity of a single item
 cartRouter.put('/:cartItemId', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
     console.log("🔄 [API] Received PUT request to update cart item.");
     try {
-        const userId = req.user?.id;
+        const firebaseUid = req.user?.firebaseUid;
         const { cartItemId } = req.params;
         const { quantity } = req.body;
 
-        if (!userId || !quantity || isNaN(parseInt(cartItemId))) {
+        if (!firebaseUid || !quantity || isNaN(parseInt(cartItemId))) {
             return res.status(400).json({ error: 'Invalid or missing fields.' });
         }
         
-        const [updatedItem] = await db.update(orderItems)
+        const [dbUser] = await db
+            .select({ id: users.id })
+            .from(users)
+            .where(eq(users.firebaseUid, firebaseUid));
+
+        if (!dbUser) {
+            return res.status(404).json({ error: 'User not found.' });
+        }
+        
+        const [updatedItem] = await db.update(cartItems)
             .set({ quantity: quantity })
-            .where(and(eq(orderItems.id, parseInt(cartItemId)), eq(orderItems.userId, userId), eq(orderItems.status, 'in_cart')))
+            .where(and(eq(cartItems.id, parseInt(cartItemId)), eq(cartItems.userId, dbUser.id)))
             .returning();
         
         if (!updatedItem) {
@@ -138,25 +152,34 @@ cartRouter.put('/:cartItemId', requireAuth, async (req: AuthenticatedRequest, re
 
         return res.status(200).json({ message: 'Cart item updated successfully.', item: updatedItem });
 
-    } catch (error: any) {
+    } catch (error) {
         console.error('❌ [API] Error updating cart item:', error);
         return res.status(500).json({ error: 'Failed to update cart item.' });
     }
 });
 
-// ✅ DELETE /api/cart/:cartItemId - Remove a single item
+// ✅ नया DELETE रूट: /api/cart/:cartItemId - Remove a single item
 cartRouter.delete('/:cartItemId', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
     console.log("🗑️ [API] Received DELETE request to remove cart item.");
     try {
-        const userId = req.user?.id;
+        const firebaseUid = req.user?.firebaseUid;
         const { cartItemId } = req.params;
         
-        if (!userId || isNaN(parseInt(cartItemId))) {
+        if (!firebaseUid || isNaN(parseInt(cartItemId))) {
             return res.status(400).json({ error: 'Invalid or missing cart item ID.' });
         }
 
-        const [deletedItem] = await db.delete(orderItems)
-            .where(and(eq(orderItems.id, parseInt(cartItemId)), eq(orderItems.userId, userId), eq(orderItems.status, 'in_cart')))
+        const [dbUser] = await db
+            .select({ id: users.id })
+            .from(users)
+            .where(eq(users.firebaseUid, firebaseUid));
+
+        if (!dbUser) {
+            return res.status(404).json({ error: 'User not found.' });
+        }
+
+        const [deletedItem] = await db.delete(cartItems)
+            .where(and(eq(cartItems.id, parseInt(cartItemId)), eq(cartItems.userId, dbUser.id)))
             .returning();
         
         if (!deletedItem) {
@@ -165,10 +188,11 @@ cartRouter.delete('/:cartItemId', requireAuth, async (req: AuthenticatedRequest,
 
         return res.status(200).json({ message: 'Cart item removed successfully.' });
 
-    } catch (error: any) {
+    } catch (error) {
         console.error('❌ [API] Error removing cart item:', error);
         return res.status(500).json({ error: 'Failed to remove item from cart.' });
     }
 });
+
 
 export default cartRouter;
