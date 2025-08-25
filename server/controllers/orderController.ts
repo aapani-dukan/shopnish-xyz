@@ -78,8 +78,7 @@ export const placeOrder = async (req: AuthenticatedRequest, res: Response) => {
 /**
  * Function to get a user's orders (This part of your code seems fine)
  */
-Function to get a user's orders (This has been updated to fix the name issue)
- */
+
 export const getUserOrders = async (req: AuthenticatedRequest, res: Response) => {
   try {
     const sellerId = req.user?.id;
