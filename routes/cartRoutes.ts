@@ -34,14 +34,14 @@ cartRouter.get('/', requireAuth, async (req: AuthenticatedRequest, res: Response
       return res.status(404).json({ error: 'User not found.' });
     }
 
-    const cartItemsData = await db.query.cartItems.findMany({
-      where: eq(cartItems.userId, dbUser.id),
+    const cartItemsData = await db.query.otderItems.findMany({
+      where: eq(orderItems.userId, dbUser.id),
       with: {
         product: true,
       },
     });
 
-    const cleanedCartData = cartItemsData.map(item => ({
+    const cleanedCartData = orderItemsData.map(item => ({
       id: item.id,
       quantity: item.quantity,
       product: {
@@ -72,9 +72,9 @@ cartRouter.post('/add', requireAuth, async (req: AuthenticatedRequest, res: Resp
   console.log("🚀 [API] Received POST request to add item to cart.");
   try {
     const firebaseUid = req.user?.firebaseUid;
-    const { productId, quantity , product name} = req.body;
+    const { productId, quantity } = req.body;
     
-    if (!firebaseUid || !productId || !quantity || ! product name) {
+    if (!firebaseUid || !productId || !quantity ) {
       return res.status(400).json({ error: 'Missing required fields.' });
     }
 
@@ -90,7 +90,7 @@ cartRouter.post('/add', requireAuth, async (req: AuthenticatedRequest, res: Resp
     // ✅ यदि आइटम मौजूद है, तो 200 (OK) रिस्पॉन्स के साथ अपडेट करें।
     const [existingItem] = await db
       .select()
-      .from(cartItems)
+      .from(orderItems)
       .where(and(eq(orderItems.userId, dbUser.id), eq(orderItems.productId, productId)));
 
     if (existingItem) {
