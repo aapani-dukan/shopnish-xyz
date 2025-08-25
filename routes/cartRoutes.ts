@@ -66,6 +66,8 @@ cartRouter.get('/', requireAuth, async (req: AuthenticatedRequest, res: Response
   }
 });
 
+
+
 // ✅ POST /api/cart/add - Add a new item to cart
 cartRouter.post('/add', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   console.log("🚀 [API] Received POST request to add item to cart.");
@@ -73,7 +75,7 @@ cartRouter.post('/add', requireAuth, async (req: AuthenticatedRequest, res: Resp
     const firebaseUid = req.user?.firebaseUid;
     const { productId, quantity } = req.body;
     
-    if (!firebaseUid || !productId || !quantity ) {
+    if (!firebaseUid || !productId || !quantity) {
       return res.status(400).json({ error: 'Missing required fields.' });
     }
 
@@ -86,7 +88,17 @@ cartRouter.post('/add', requireAuth, async (req: AuthenticatedRequest, res: Resp
       return res.status(404).json({ error: 'User not found.' });
     }
     
-    // ✅ यहाँ क्वेरी में 'status' को जोड़ा गया है
+    // ✅ यहाँ product की जानकारी प्राप्त की जा रही है
+    const [product] = await db.select().from(products).where(eq(products.id, productId)).limit(1);
+    
+    if (!product) {
+        return res.status(404).json({ error: 'Product not found.' });
+    }
+
+    const unitPrice = parseFloat(product.price);
+    const totalPrice = unitPrice * quantity;
+
+    // ✅ यदि आइटम मौजूद है, तो 200 (OK) रिस्पॉन्स के साथ अपडेट करें।
     const [existingItem] = await db
       .select()
       .from(orderItems)
@@ -97,18 +109,21 @@ cartRouter.post('/add', requireAuth, async (req: AuthenticatedRequest, res: Resp
         .update(orderItems)
         .set({
           quantity: existingItem.quantity + quantity,
+          totalPrice: existingItem.totalPrice + totalPrice,
         })
         .where(eq(orderItems.id, existingItem.id))
         .returning();
       return res.status(200).json({ message: 'order item quantity updated.', item: updatedItem[0] });
     } else {
-      // ✅ नई एंट्री के लिए 'status' को 'in_cart' पर सेट किया गया है
+      // ✅ यदि आइटम मौजूद नहीं है, तो 201 (Created) रिस्पॉन्स के साथ एक नई एंट्री बनाएं
       const newItem = await db
         .insert(orderItems)
         .values({
           userId: dbUser.id,
           productId: productId,
           quantity: quantity,
+          unitPrice: unitPrice, // ✅ यहाँ unitPrice जोड़ा गया है
+          totalPrice: totalPrice, // ✅ यहाँ totalPrice जोड़ा गया है
           status: 'in_cart',
         })
         .returning();
@@ -119,6 +134,7 @@ cartRouter.post('/add', requireAuth, async (req: AuthenticatedRequest, res: Resp
     return res.status(500).json({ error: 'Failed to add item to cart.' });
   }
 });
+
 
 // ✅ PUT /api/cart/:cartItemId - Update quantity of a single item
 cartRouter.put('/:cartItemId', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
