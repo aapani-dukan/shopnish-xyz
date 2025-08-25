@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 // ✅ db का सही पथ (Path) सुनिश्चित करें
 import { db } from '../db.ts'; 
-import { orders, orderItems, products, users, sellers } from '../../shared/backend/schema.ts';
+import { orders, orderItems, products, users } from '../../shared/backend/schema.ts';
 import { eq, and, desc } from 'drizzle-orm';
 import { AuthenticatedRequest } from '../middleware/authMiddleware.ts';
 import { v4 as uuidv4 } from 'uuid';
