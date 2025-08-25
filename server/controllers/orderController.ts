@@ -71,12 +71,6 @@ export const placeOrder = async (req: AuthenticatedRequest, res: Response) => {
   }
 };
 
-/**
- * Function to get a user's orders (This part of your code seems fine)
- */
-export const getUserOrders = async (req: AuthenticatedRequest, res: Response) => {
-    // ... (Your original getUserOrders function)
-};
 
 
 /**
