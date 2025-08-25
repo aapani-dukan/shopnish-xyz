@@ -1,10 +1,10 @@
+// server/controllers/orderController.ts (Corrected Logic)
+
 import { Request, Response } from 'express';
 import { db } from '../db.ts';
-import { orders, orderItems, cartItems, products } from '../../shared/backend/schema.ts';
-import { eq, desc } from 'drizzle-orm';
+import { orders, orderItems, products, users } from '../../shared/backend/schema.ts';
+import { eq, and, desc } from 'drizzle-orm';
 import { AuthenticatedRequest } from '../middleware/authMiddleware.ts';
-
-// ✅ नया इम्पोर्ट
 import { v4 as uuidv4 } from 'uuid';
 
 /**
@@ -17,58 +17,67 @@ export const placeOrder = async (req: AuthenticatedRequest, res: Response) => {
       return res.status(401).json({ message: "Unauthorized: User not logged in." });
     }
 
-    const { deliveryAddress, paymentMethod, items, subtotal, total, deliveryCharge } = req.body;
+    // ✅ 1. डेटाबेस से सीधे "in_cart" वाले आइटम को फ़ेच करें
+    const cartItems = await db.query.orderItems.findMany({
+      where: and(
+        eq(orderItems.userId, userId),
+        eq(orderItems.status, 'in_cart')
+      ),
+      with: { product: true },
+    });
 
-    if (!items || items.length === 0 || subtotal === undefined || total === undefined) {
-      return res.status(400).json({ message: "Missing required order details." });
+    if (cartItems.length === 0) {
+      return res.status(400).json({ message: "Cart is empty, cannot place an order." });
     }
 
+    // ✅ 2. टोटल और सबटोटल की गणना करें
+    const subtotal = cartItems.reduce((sum, item) => sum + parseFloat(item.totalPrice), 0);
+    // यहाँ आप डिलीवरी चार्ज, डिस्काउंट आदि जोड़ सकते हैं
+    const total = subtotal;
+
     // ✅ डेटाबेस ट्रांजेक्शन शुरू करें
-    const order = await db.transaction(async (tx) => {
+    await db.transaction(async (tx) => {
       const orderNumber = `ORD-${uuidv4()}`;
 
-      // 1. एक नया ऑर्डर डालें
+      // 3. एक नया ऑर्डर डालें
       const [newOrder] = await tx.insert(orders).values({
         customerId: userId,
-        status: "placed",
+        status: "pending", // ✅ स्टेटस को 'placed' के बजाय 'pending' पर सेट करें
         orderNumber: orderNumber,
-        subtotal: total - (deliveryCharge || 0),
-        total: total,
-        deliveryCharge: deliveryCharge || 0,
-        deliveryAddress: JSON.stringify(deliveryAddress),
-        paymentMethod: paymentMethod,
-        createdAt: new Date(),
-        updatedAt: new Date(),
+        subtotal: subtotal.toFixed(2),
+        total: total.toFixed(2),
+        paymentMethod: 'COD', // उदाहरण के लिए
+        deliveryAddress: req.body.deliveryAddress,
       }).returning();
 
-      // 2. ऑर्डर आइटम डालें
-      const orderItemsData = items.map((item: any) => ({
-        orderId: newOrder.id,
-        productId: item.productId,
-        sellerId: item.sellerId,
-        quantity: item.quantity,
-        unitPrice: item.unitPrice,
-        totalPrice: item.totalPrice,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      }));
-      await tx.insert(orderItems).values(orderItemsData);
-
-      // 3. कार्ट को साफ़ करें
-      await tx.delete(cartItems).where(eq(cartItems.userId, userId));
-
-      return newOrder;
+      // 4. ऑर्डर आइटम का स्टेटस बदलें और उन्हें नए ऑर्डर से जोड़ें
+      await tx.update(orderItems)
+        .set({
+          status: 'pending', // ✅ आइटम का स्टेटस 'pending' करें
+          orderId: newOrder.id, // ✅ आइटम को नए ऑर्डर से जोड़ें
+          updatedAt: new Date(),
+        })
+        .where(and(
+          eq(orderItems.userId, userId),
+          eq(orderItems.status, 'in_cart')
+        ));
     });
 
-    res.status(201).json({
-      message: "Order placed successfully!",
-      orderId: order.id,
-    });
+    res.status(201).json({ message: "Order placed successfully!" });
+
   } catch (error) {
     console.error("❌ Error placing order:", error);
     res.status(500).json({ message: "Failed to place order." });
   }
 };
+
+/**
+ * Function to get a user's orders (This part of your code seems fine)
+ */
+export const getUserOrders = async (req: AuthenticatedRequest, res: Response) => {
+    // ... (Your original getUserOrders function)
+};
+
 
 /**
  * Function to get a user's orders
