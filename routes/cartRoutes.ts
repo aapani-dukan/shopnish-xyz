@@ -77,6 +77,7 @@ cartRouter.post('/add', requireAuth, async (req: AuthenticatedRequest, res: Resp
     const unitPrice = parseFloat(product.price);
     const totalPrice = unitPrice * quantity;
 
+    // ✅ यदि आइटम मौजूद है, तो अपडेट करें
     const [existingItem] = await db
       .select()
       .from(orderItems)
@@ -93,6 +94,7 @@ cartRouter.post('/add', requireAuth, async (req: AuthenticatedRequest, res: Resp
         .returning();
       return res.status(200).json({ message: 'Cart item quantity updated.', item: updatedItem[0] });
     } else {
+      // ✅ यदि आइटम मौजूद नहीं है, तो नई एंट्री बनाएं
       const newItem = await db
         .insert(orderItems)
         .values({
@@ -170,4 +172,3 @@ cartRouter.delete('/:cartItemId', requireAuth, async (req: AuthenticatedRequest,
 });
 
 export default cartRouter;
-                                                  
