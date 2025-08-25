@@ -78,34 +78,34 @@ export const placeOrder = async (req: AuthenticatedRequest, res: Response) => {
 /**
  * Function to get a user's orders (This part of your code seems fine)
  */
+Function to get a user's orders (This has been updated to fix the name issue)
+ */
 export const getUserOrders = async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const sellerId = req.user?.id; // यहाँ sellerId प्राप्त करें
+    const sellerId = req.user?.id;
     if (!sellerId) {
       return res.status(401).json({ message: "Unauthorized: Seller not logged in." });
     }
 
-    // ✅ Seller के userId को sellerId से प्राप्त करें
     const [seller] = await db.select().from(sellers).where(eq(sellers.id, sellerId));
     if (!seller) {
         return res.status(404).json({ message: "Seller not found." });
     }
-    const sellerUserId = seller.userId;
 
-    // ✅ यहाँ Drizzle का उपयोग करके orders, orderItems और users को जोड़ें
+    // ✅ डेटाबेस से order items के साथ order और customer data भी फ़ेच करें
     const ordersWithItems = await db.query.orderItems.findMany({
         where: and(
-            eq(orderItems.sellerId, sellerId),
-            eq(orderItems.status, 'pending') // या 'placed'
+            eq(orderItems.sellerId, seller.id),
+            eq(orderItems.status, 'pending')
         ),
         with: {
             order: {
                 with: {
-                    customer: { // ✅ कस्टमर डेटा के लिए users टेबल को जोड़ें
+                    customer: { // ✅ अब हम firstName, lastName और phone को सही से फ़ेच करेंगे
                         columns: {
                             id: true,
-                            name: true,
-                            email: true,
+                            firstName: true,
+                            lastName: true,
                             phone: true
                         }
                     }
@@ -115,12 +115,17 @@ export const getUserOrders = async (req: AuthenticatedRequest, res: Response) =>
         }
     });
 
-    // ✅ डेटा को ग्रुप करें ताकि यह एक ऑर्डर के लिए एक एंट्री बन जाए
     const groupedOrders = ordersWithItems.reduce((acc, item) => {
         const orderId = item.orderId;
         if (!acc[orderId]) {
+            // ✅ यहाँ हम customer name को firstName और lastName से जोड़ रहे हैं
+            const customerName = `${item.order.customer.firstName} ${item.order.customer.lastName}`;
+            const customerPhone = item.order.customer.phone;
+
             acc[orderId] = {
                 ...item.order,
+                customerName: customerName,
+                customerPhone: customerPhone,
                 items: [],
             };
         }
