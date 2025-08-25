@@ -6,6 +6,7 @@ import { db } from '../server/db.ts';
 import {
   users,
   cartItems,
+  orderItems,
   products
 } from '../shared/backend/schema.ts';
 import { eq, and } from 'drizzle-orm';
