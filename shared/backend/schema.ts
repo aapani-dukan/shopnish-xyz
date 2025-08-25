@@ -174,15 +174,21 @@ export const orders = pgTable("orders", {
 });
 
 
+// ✅ final updated orderItems table
 export const orderItems = pgTable("order_items", {
   id: serial("id").primaryKey(),
+  // ✅ यह लाइन जोड़ें
+  userId: integer("user_id").references(() => users.id),
   orderId: integer("order_id").references(() => orders.id),
   productId: integer("product_id").references(() => products.id),
   sellerId: integer("seller_id").references(() => sellersPgTable.id),
   quantity: integer("quantity").notNull(),
   unitPrice: decimal("unit_price", { precision: 10, scale: 2 }).notNull(),
   totalPrice: decimal("total_price", { precision: 10, scale: 2 }).notNull(),
+  // ✅ यह लाइन भी जोड़ें
+  status: orderStatusEnum('status').default('in_cart'),
 });
+
 
 export const orderTracking = pgTable("order_tracking", {
   id: serial("id").primaryKey(),
