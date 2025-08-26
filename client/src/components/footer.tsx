@@ -1,7 +1,8 @@
 import { Facebook, Twitter, Instagram, Linkedin, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Link } from "wouter";
+// ✅ wouter के बजाय react-router-dom से Link इंपोर्ट करें
+import { Link } from "react-router-dom";
 
 export default function Footer() {
   const handleNewsletterSubmit = (e: React.FormEvent) => {
@@ -40,33 +41,34 @@ export default function Footer() {
             <h4 className="text-lg font-semibold mb-4">Quick Links</h4>
             <ul className="space-y-2">
               <li>
-                <Link href="/about" className="text-gray-300 hover:text-white transition-colors">
+                {/* href को to में बदलें */}
+                <Link to="/about" className="text-gray-300 hover:text-white transition-colors">
                   About Us
                 </Link>
               </li>
               <li>
-                <Link href="/contact" className="text-gray-300 hover:text-white transition-colors">
+                <Link to="/contact" className="text-gray-300 hover:text-white transition-colors">
                   Contact
                 </Link>
               </li>
               <li>
-                <Link href="/faq" className="text-gray-300 hover:text-white transition-colors">
+                <Link to="/faq" className="text-gray-300 hover:text-white transition-colors">
                   FAQ
                 </Link>
               </li>
               <li>
-                <Link href="/shipping" className="text-gray-300 hover:text-white transition-colors">
+                <Link to="/shipping" className="text-gray-300 hover:text-white transition-colors">
                   Shipping Info
                 </Link>
               </li>
               <li>
-                <Link href="/returns" className="text-gray-300 hover:text-white transition-colors">
+                <Link to="/returns" className="text-gray-300 hover:text-white transition-colors">
                   Returns
                 </Link>
               </li>
-              {/* ✅ यहाँ नया डिलीवरी बॉय लॉगिन लिंक है */}
+              {/* ✅ Delivery Boy Login Link */}
               <li>
-                <Link href="/delivery-login" className="text-gray-300 hover:text-white transition-colors">
+                <Link to="/delivery-login" className="text-gray-300 hover:text-white transition-colors">
                   Delivery Boy Login
                 </Link>
               </li>
@@ -78,27 +80,28 @@ export default function Footer() {
             <h4 className="text-lg font-semibold mb-4">Categories</h4>
             <ul className="space-y-2">
               <li>
-                <Link href="/?category=1" className="text-gray-300 hover:text-white transition-colors">
+                {/* React Router में क्वेरी पैरामीटर्स के साथ to प्रोप */}
+                <Link to="/?category=1" className="text-gray-300 hover:text-white transition-colors">
                   Electronics
                 </Link>
               </li>
               <li>
-                <Link href="/?category=2" className="text-gray-300 hover:text-white transition-colors">
+                <Link to="/?category=2" className="text-gray-300 hover:text-white transition-colors">
                   Fashion
                 </Link>
               </li>
               <li>
-                <Link href="/?category=3" className="text-gray-300 hover:text-white transition-colors">
+                <Link to="/?category=3" className="text-gray-300 hover:text-white transition-colors">
                   Home & Garden
                 </Link>
               </li>
               <li>
-                <Link href="/?category=4" className="text-gray-300 hover:text-white transition-colors">
+                <Link to="/?category=4" className="text-gray-300 hover:text-white transition-colors">
                   Sports
                 </Link>
               </li>
               <li>
-                <Link href="/?category=6" className="text-gray-300 hover:text-white transition-colors">
+                <Link to="/?category=6" className="text-gray-300 hover:text-white transition-colors">
                   Health & Beauty
                 </Link>
               </li>
@@ -133,13 +136,13 @@ export default function Footer() {
             © 2024 Shopnish. All rights reserved.
           </p>
           <div className="flex space-x-6 mt-4 md:mt-0">
-            <Link href="/privacy" className="text-gray-300 hover:text-white text-sm transition-colors">
+            <Link to="/privacy" className="text-gray-300 hover:text-white text-sm transition-colors">
               Privacy Policy
             </Link>
-            <Link href="/terms" className="text-gray-300 hover:text-white text-sm transition-colors">
+            <Link to="/terms" className="text-gray-300 hover:text-white text-sm transition-colors">
               Terms of Service
             </Link>
-            <Link href="/cookies" className="text-gray-300 hover:text-white text-sm transition-colors">
+            <Link to="/cookies" className="text-gray-300 hover:text-white text-sm transition-colors">
               Cookie Policy
             </Link>
           </div>
