@@ -158,11 +158,15 @@ export default function OrderManager({
 
             {/* ✅ Customer */}
             {order.customer && (
-              <p className="text-sm">
-                Customer: <strong>{order.customer.firsrname || "Unknown"}</strong>{" "}
-                {order.customer.phone && `(${order.customer.phone})`}
-              </p>
-            )}
+  <p className="text-sm">
+    Customer: 
+    <strong>
+      {order.customer.firstName}
+    </strong>{" "}
+    {order.customer.phone && `(${order.customer.phone})`}
+  </p>
+)}
+            
 
             {/* ✅ Payment Info */}
             <p className="text-sm text-muted-foreground">
