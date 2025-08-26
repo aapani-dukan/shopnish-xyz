@@ -79,8 +79,6 @@ export const placeOrder = async (req: AuthenticatedRequest, res: Response) => {
  * Function to get a user's orders (This part of your code seems fine)
  */
 
-
-
 export const getUserOrders = async (req: AuthenticatedRequest, res: Response) => {
   try {
     const sellerId = req.user?.id;
@@ -88,12 +86,13 @@ export const getUserOrders = async (req: AuthenticatedRequest, res: Response) =>
       return res.status(401).json({ message: "Unauthorized: Seller not logged in." });
     }
 
-    const [seller] = await db.select().from(sellers).where(eq(sellers.id, sellerId));
+    // ✅ sellersPgTable का सही उपयोग
+    const [seller] = await db.select().from(sellersPgTable).where(eq(sellersPgTable.id, sellerId));
     if (!seller) {
       return res.status(404).json({ message: "Seller not found." });
     }
 
-    // ✅ Drizzle से ऑर्डर, आइटम और कस्टमर डेटा फ़ेच करें
+    // Drizzle से ऑर्डर, आइटम और कस्टमर डेटा फ़ेच करें
     const ordersWithItems = await db.query.orderItems.findMany({
         where: and(
             eq(orderItems.sellerId, seller.id),
@@ -103,7 +102,6 @@ export const getUserOrders = async (req: AuthenticatedRequest, res: Response) =>
             order: {
                 with: {
                     customer: {
-                        // ✅ यहाँ सिर्फ firstName और phone को चुनें
                         columns: {
                             id: true,
                             firstName: true,
@@ -116,15 +114,17 @@ export const getUserOrders = async (req: AuthenticatedRequest, res: Response) =>
         }
     });
 
-    // ✅ डेटा को ग्रुप करें और customerName व customerPhone को जोड़ें
+    // ✅ डेटा को बेहतर तरीके से ग्रुप करें
     const groupedOrders = ordersWithItems.reduce((acc, item) => {
         const orderId = item.orderId;
         if (!acc[orderId]) {
             acc[orderId] = {
+                // ✅ मैन्युअल रूप से ऑर्डर डेटा को मैप करें
                 ...item.order,
-                // ✅ यहाँ customerName को firstName से बनाएं
-                customerName: item.order.customer.firstName,
-                customerPhone: item.order.customer.phone,
+                customer: {
+                    name: item.order.customer.firstName,
+                    phone: item.order.customer.phone
+                },
                 items: [],
             };
         }
@@ -140,3 +140,5 @@ export const getUserOrders = async (req: AuthenticatedRequest, res: Response) =>
     res.status(500).json({ message: "Failed to fetch orders." });
   }
 };
+
+
