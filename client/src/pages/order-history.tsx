@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
-import { useLocation } from "wouter";
+// ✅ wouter के बजाय react-router-dom से useNavigate इंपोर्ट करें
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -41,7 +42,8 @@ interface Order {
 }
 
 export default function OrderHistory() {
-  const [, navigate] = useLocation();
+  // ✅ useNavigate हुक का उपयोग करें
+  const navigate = useNavigate();
 
   // Fetch order history for customer (using guest ID for demo)
   const { data: orders = [], isLoading } = useQuery<Order[]>({
@@ -265,3 +267,4 @@ export default function OrderHistory() {
     </div>
   );
 }
+
