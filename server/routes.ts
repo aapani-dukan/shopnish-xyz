@@ -29,6 +29,7 @@ import adminPasswordRoutes from './roots/admin/admin-password.ts';
 import sellerRouter from '../routes/sellers/sellerRoutes.ts';
 import productsRouter from '../routes/productRoutes.ts';
 import cartRouter from '../routes/cartRoutes.ts';
+import dBoyRouter from '../routes/dboyRoutes.ts';
 import orderConfirmationRouter from '../routes/orderConfirmationRouter';
 import { verifyToken } from "./middleware/verifyToken"; 
 const router = Router();
@@ -149,26 +150,11 @@ router.get('/categories', async (req: Request, res: Response) => {
 router.use('/products', productsRouter);
 
 // ✅ Delivery Boy
-router.post('/delivery-boys/register', async (req: Request, res: Response) => {
-  try {
-    const { email, firebaseUid, name, vehicleType } = req.body;
-    const [newDeliveryBoy] = await db.insert(deliveryBoys).values({
-      firebaseUid: firebaseUid,
-      email,
-      name: name || 'Delivery Boy',
-      vehicleType,
-      approvalStatus: approvalStatusEnum.enumValues[0],
-    }).returning();
-    res.status(201).json(newDeliveryBoy);
-  } catch (error: any) {
-    console.error(error);
-    res.status(400).json({ error: error.message });
-  }
-});
 
-// ---
-// ## Admin Routes
-// ---
+router.use('/api/delivery-boys', dBoyRouter);
+
+// Admin Routes
+
 const adminRouter = Router();
 adminRouter.use(requireAdminAuth); // ✅ सभी एडमिन राउट्स के लिए ऑथेंटिकेशन
 adminRouter.use('/products/approve', adminApproveProductRoutes);
