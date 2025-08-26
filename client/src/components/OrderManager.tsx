@@ -158,15 +158,19 @@ export default function OrderManager({
 
             {/* ✅ Customer */}
             
-{order.customer && (
+
+{order.customer && order.deliveryAddress && (
   <p className="text-sm">
     Customer: 
     <strong>
-      {order.customer.firstName}
+      {/* पहले customer.firstName का उपयोग करें,
+          अगर वह नहीं है तो deliveryAddress.fullName का उपयोग करें।
+      */}
+      {order.customer.firstName || order.deliveryAddress.fullName || "Unknown"}
     </strong>
-    
   </p>
 )}
+            
             
             
 
