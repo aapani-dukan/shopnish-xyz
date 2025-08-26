@@ -48,6 +48,7 @@ router.post('/register', async (req: Request, res: Response) => {
 // ---
 
 // ✅ Delivery Boy Login Route
+// ✅ Delivery Boy Login Route
 // URL: /api/delivery-boys/login
 router.post('/login', async (req: Request, res: Response) => {
   try {
@@ -87,14 +88,16 @@ router.post('/login', async (req: Request, res: Response) => {
 
   } catch (error: any) {
     console.error("Login failed:", error);
-    if (error.code === 'auth/id-token-expired' || error.code === 'auth/argument-error') {
-      return res.status(401).json({ message: "Authentication failed. Please log in again." });
-    }
-    res.status(500).json({ message: "Failed to authenticate." });
+    // ✅ सुनिश्चित करें कि catch block में हमेशा JSON response ही भेजी जाए
+    const status = (error.code === 'auth/id-token-expired' || error.code === 'auth/argument-error') ? 401 : 500;
+    const message = (error.code === 'auth/id-token-expired' || error.code === 'auth/argument-error') 
+      ? "Authentication failed. Please log in again."
+      : "Failed to authenticate. An unexpected error occurred."; // ✅ एक सामान्य त्रुटि संदेश
+    
+    res.status(status).json({ message });
   }
 });
 
-// ---
 
 // ✅ Get Assigned Orders Route
 // URL: /api/delivery-boys/orders
