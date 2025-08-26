@@ -79,6 +79,19 @@ export const placeOrder = async (req: AuthenticatedRequest, res: Response) => {
  * Function to get a user's orders (This part of your code seems fine)
  */
 
+import { Request, Response } from 'express';
+import { db } from '../db.ts';
+import {
+  users,
+  orderItems,
+  orders,
+  products,
+  sellersPgTable
+} from '../../shared/backend/schema.ts';
+import { eq, and, desc } from 'drizzle-orm';
+import { AuthenticatedRequest } from '../middleware/authMiddleware.ts';
+import { v4 as uuidv4 } from 'uuid';
+
 export const getUserOrders = async (req: AuthenticatedRequest, res: Response) => {
   try {
     const userId = req.user?.id;
@@ -86,46 +99,25 @@ export const getUserOrders = async (req: AuthenticatedRequest, res: Response) =>
       return res.status(401).json({ message: "Unauthorized: User not logged in." });
     }
 
-    // Drizzle से ऑर्डर, आइटम और सेलर डेटा फ़ेच करें
-    const ordersWithItems = await db.query.orderItems.findMany({
-        where: eq(orderItems.userId, userId),
-        with: {
-            order: true,
+    // ✅ Drizzle से ऑर्डर और आइटम डेटा फ़ेच करें
+    const ordersWithItems = await db.query.orders.findMany({
+      where: eq(orders.customerId, userId),
+      with: {
+        items: {
+          with: {
             product: {
-                with: {
-                    seller: true
-                }
-            },
-        },
-        orderBy: desc(orderItems.createdAt),
-    });
-
-    // डेटा को ग्रुप करें
-    const groupedOrders = ordersWithItems.reduce((acc, item) => {
-        const orderId = item.orderId;
-        if (!orderId) return acc;
-
-        if (!acc[orderId]) {
-            acc[orderId] = {
-                ...item.order,
-                items: [],
-                seller: item.product.seller, // सेलर की जानकारी जोड़ें
-            };
-        }
-        
-        acc[orderId].items.push({
-          ...item,
-          product: {
-            ...item.product,
-            seller: undefined, // डुप्लीकेट जानकारी हटाएँ
+              with: {
+                seller: true // ✅ सेलर डेटा फ़ेच करें
+              }
+            }
           }
-        });
-        return acc;
-    }, {});
+        }
+      },
+      orderBy: [desc(orders.createdAt)], // ✅ यहाँ सही सिंटैक्स है
+    });
     
-    const finalOrders = Object.values(groupedOrders);
-
-    res.status(200).json(finalOrders);
+    // ✅ यहाँ हमें ग्रुप करने की ज़रूरत नहीं है क्योंकि क्वेरी सही है
+    res.status(200).json(ordersWithItems);
   } catch (error) {
     console.error("❌ Error fetching orders:", error);
     res.status(500).json({ message: "Failed to fetch orders." });
