@@ -68,12 +68,17 @@ export default function ProductManager({ seller }: ProductManagerProps) {
   const [isCategoryDialogOpen, setIsCategoryDialogOpen] = useState(false);
 
   // Fetch seller's products
+
+    // Fetch seller's products
   const { data: products, isLoading: productsLoading, error: productsError } = useQuery<ProductWithSeller[]>({
-    queryKey: ["/api/products", { sellerId: seller?.id }],
-    queryFn: () => apiRequest("GET", "/api/products", { params: { sellerId: seller?.id } }),
+-   queryKey: ["/api/products", { sellerId: seller?.id }],
+-   queryFn: () => apiRequest("GET", "/api/products", { params: { sellerId: seller?.id } }),
++   queryKey: ["/api/sellers/products"],
++   queryFn: () => apiRequest("GET", "/api/sellers/products"),
     enabled: !!seller?.id,
     staleTime: 5 * 60 * 1000,
   });
+
 
   // Fetch categories for product form
   const { data: categories, isLoading: categoriesLoading, error: categoriesError } = useQuery<Category[]>({
