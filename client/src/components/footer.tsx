@@ -64,6 +64,12 @@ export default function Footer() {
                   Returns
                 </Link>
               </li>
+              {/* ✅ यहाँ नया डिलीवरी बॉय लॉगिन लिंक है */}
+              <li>
+                <Link href="/delivery-login" className="text-gray-300 hover:text-white transition-colors">
+                  Delivery Boy Login
+                </Link>
+              </li>
             </ul>
           </div>
 
@@ -111,7 +117,7 @@ export default function Footer() {
                 placeholder="Enter your email"
                 className="flex-1 rounded-r-none border-gray-600 bg-gray-800 text-white placeholder-gray-400"
               />
-              <Button 
+              <Button
                 type="submit"
                 className="bg-primary hover:bg-primary/90 rounded-l-none"
               >
