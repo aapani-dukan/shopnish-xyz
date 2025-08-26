@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { useParams, useLocation } from "wouter";
+// ✅ wouter के बजाय react-router-dom से useParams और useNavigate इंपोर्ट करें
+import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -37,7 +38,8 @@ interface Order {
 
 export default function ReturnRequest() {
   const { orderId } = useParams();
-  const [, navigate] = useLocation();
+  // ✅ navigate हुक का उपयोग करें
+  const navigate = useNavigate();
   const { toast } = useToast();
   
   const [returnData, setReturnData] = useState({
