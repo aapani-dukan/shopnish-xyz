@@ -93,46 +93,45 @@ export const getUserOrders = async (req: AuthenticatedRequest, res: Response) =>
       return res.status(404).json({ message: "Seller not found." });
     }
 
+    // ✅ Drizzle से ऑर्डर, आइटम और कस्टमर डेटा फ़ेच करें
     const ordersWithItems = await db.query.orderItems.findMany({
-      where: and(
-        eq(orderItems.sellerId, seller.id),
-        eq(orderItems.status, 'pending')
-      ),
-      with: {
-        order: {
-          with: {
-            customer: {
-              // ✅ अब हम केवल firstName और phone को फ़ेच कर रहे हैं
-              columns: {
-                id: true,
-                firstName: true,
-                phone: true
-              }
-            }
-          }
-        },
-        product: true
-      }
+        where: and(
+            eq(orderItems.sellerId, seller.id),
+            eq(orderItems.status, 'pending')
+        ),
+        with: {
+            order: {
+                with: {
+                    customer: {
+                        // ✅ यहाँ सिर्फ firstName और phone को चुनें
+                        columns: {
+                            id: true,
+                            firstName: true,
+                            phone: true
+                        }
+                    }
+                }
+            },
+            product: true
+        }
     });
 
+    // ✅ डेटा को ग्रुप करें और customerName व customerPhone को जोड़ें
     const groupedOrders = ordersWithItems.reduce((acc, item) => {
-      const orderId = item.orderId;
-      if (!acc[orderId]) {
-        // ✅ यहाँ customerName केवल firstName है
-        const customerName = item.order.customer.firstName;
-        const customerPhone = item.order.customer.phone;
-
-        acc[orderId] = {
-          ...item.order,
-          customerName: customerName,
-          customerPhone: customerPhone,
-          items: [],
-        };
-      }
-      acc[orderId].items.push(item);
-      return acc;
+        const orderId = item.orderId;
+        if (!acc[orderId]) {
+            acc[orderId] = {
+                ...item.order,
+                // ✅ यहाँ customerName को firstName से बनाएं
+                customerName: item.order.customer.firstName,
+                customerPhone: item.order.customer.phone,
+                items: [],
+            };
+        }
+        acc[orderId].items.push(item);
+        return acc;
     }, {});
-
+    
     const finalOrders = Object.values(groupedOrders);
 
     res.status(200).json(finalOrders);
