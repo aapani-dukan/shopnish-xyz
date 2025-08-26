@@ -26,7 +26,7 @@ import NotFound from "@/pages/not-found";
 import AdminDashboard from "@/pages/admin-dashboard";
 import DeliveryDashboard from "@/pages/delivery-dashboard";
 import DeliveryApplyPage from "@/pages/delivery-apply";
-import DeliveryLogin from "@/pages/DeliveryLogin";
+import DeliveryLogin from "@/pages/delivery-login";
 // Centralized auth-based routing
 import AuthRedirectGuard from "@/components/auth-redirect-guard";
 import AdminGuard from "@/components/admin-guard";
