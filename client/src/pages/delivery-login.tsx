@@ -2,14 +2,16 @@ import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useLocation } from "wouter";
+// ✅ wouter के बजाय react-router-dom से useNavigate इंपोर्ट करें
+import { useNavigate } from "react-router-dom";
 import { Truck } from "lucide-react";
-// ✅ Firebase से ज़रूरी फंक्शन्स इम्पोर्ट करें
+// ✅ Firebase से ज़रूरी फंक्शन्स इंपोर्ट करें
 import { signInWithPopup, GoogleAuthProvider } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 
 export default function DeliveryLogin() {
-  const [, navigate] = useLocation();
+  // ✅ navigate हुक का उपयोग करें
+  const navigate = useNavigate();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
 
