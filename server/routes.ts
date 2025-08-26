@@ -164,7 +164,7 @@ adminRouter.use('/products/reject', adminRejectProductRoutes);
 adminRouter.use('/products', adminProductsRoutes);
 adminRouter.use('/password', adminPasswordRoutes);
 adminRouter.use('/vendors', adminVendorsRoutes);
-adminRouter.use('/delivery-boys', adminDBoyRouter);
+adminRouter.use('/delivery-boys', admindBoyRouter);
 adminRouter.use('/orders', orderdBoyRouter);
 router.use('/admin', adminRouter);
 
