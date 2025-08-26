@@ -30,6 +30,7 @@ import sellerRouter from '../routes/sellers/sellerRoutes.ts';
 import productsRouter from '../routes/productRoutes.ts';
 import cartRouter from '../routes/cartRoutes.ts';
 import dBoyRouter from '../routes/dboyRoutes.ts';
+import admindBoyRouter from './roots/admin/admindBoyRoutes.ts
 import orderConfirmationRouter from '../routes/orderConfirmationRouter';
 import { verifyToken } from "./middleware/verifyToken"; 
 const router = Router();
@@ -162,6 +163,7 @@ adminRouter.use('/products/reject', adminRejectProductRoutes);
 adminRouter.use('/products', adminProductsRoutes);
 adminRouter.use('/password', adminPasswordRoutes);
 adminRouter.use('/vendors', adminVendorsRoutes);
+adminRouter.use('/delivery-boys', adminDBoyRouter);
 router.use('/admin', adminRouter);
 
 export default router;
