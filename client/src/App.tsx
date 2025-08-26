@@ -26,7 +26,7 @@ import NotFound from "@/pages/not-found";
 import AdminDashboard from "@/pages/admin-dashboard";
 import DeliveryDashboard from "@/pages/delivery-dashboard";
 import DeliveryApplyPage from "@/pages/delivery-apply";
-
+import DeliveryLogin from "@/pages/DeliveryLogin";
 // Centralized auth-based routing
 import AuthRedirectGuard from "@/components/auth-redirect-guard";
 import AdminGuard from "@/components/admin-guard";
@@ -53,7 +53,7 @@ function App() {
                 <Route path="/checkout" element={<Checkout />} />
                 <Route path="/auth" element={<AuthPage />} />
                 <Route path="/admin-login" element={<AdminLogin />} />
-
+               <Route path="/delivery-login" element={<DeliveryLogin />} />
                 {/* Protected - Normal Auth */}
                 <Route path="/seller-dashboard" element={<AuthRedirectGuard><SellerDashboard /></AuthRedirectGuard>} />
                 <Route path="/seller-apply" element={<AuthRedirectGuard><SellerApplyPage /></AuthRedirectGuard>} />
