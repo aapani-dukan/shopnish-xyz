@@ -81,54 +81,45 @@ export const placeOrder = async (req: AuthenticatedRequest, res: Response) => {
 
 export const getUserOrders = async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const sellerId = req.user?.id;
-    if (!sellerId) {
-      return res.status(401).json({ message: "Unauthorized: Seller not logged in." });
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized: User not logged in." });
     }
 
-    // ✅ sellersPgTable का सही उपयोग
-    const [seller] = await db.select().from(sellersPgTable).where(eq(sellersPgTable.id, sellerId));
-    if (!seller) {
-      return res.status(404).json({ message: "Seller not found." });
-    }
-
-    // Drizzle से ऑर्डर, आइटम और कस्टमर डेटा फ़ेच करें
+    // Drizzle से ऑर्डर, आइटम और सेलर डेटा फ़ेच करें
     const ordersWithItems = await db.query.orderItems.findMany({
-        where: and(
-            eq(orderItems.sellerId, seller.id),
-            eq(orderItems.status, 'pending')
-        ),
+        where: eq(orderItems.userId, userId),
         with: {
-            order: {
+            order: true,
+            product: {
                 with: {
-                    customer: {
-                        columns: {
-                            id: true,
-                            firstName: true,
-                            phone: true
-                        }
-                    }
+                    seller: true
                 }
             },
-            product: true
-        }
+        },
+        orderBy: desc(orderItems.createdAt),
     });
 
-    // ✅ डेटा को बेहतर तरीके से ग्रुप करें
+    // डेटा को ग्रुप करें
     const groupedOrders = ordersWithItems.reduce((acc, item) => {
         const orderId = item.orderId;
+        if (!orderId) return acc;
+
         if (!acc[orderId]) {
             acc[orderId] = {
-                // ✅ मैन्युअल रूप से ऑर्डर डेटा को मैप करें
                 ...item.order,
-                customer: {
-                    name: item.order.customer.firstName,
-                    phone: item.order.customer.phone
-                },
                 items: [],
+                seller: item.product.seller, // सेलर की जानकारी जोड़ें
             };
         }
-        acc[orderId].items.push(item);
+        
+        acc[orderId].items.push({
+          ...item,
+          product: {
+            ...item.product,
+            seller: undefined, // डुप्लीकेट जानकारी हटाएँ
+          }
+        });
         return acc;
     }, {});
     
@@ -140,5 +131,3 @@ export const getUserOrders = async (req: AuthenticatedRequest, res: Response) =>
     res.status(500).json({ message: "Failed to fetch orders." });
   }
 };
-
-
