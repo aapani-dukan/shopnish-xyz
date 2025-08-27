@@ -66,7 +66,9 @@ export default function DeliveryApplyPage() {
 
     // 2. Make the API call with the correct Authorization header
     try {
-      const res = await fetch("/api/delivery/apply", {
+      const res = await fetch("/api/delivery-boys/register", {
+  
+
         method: "POST",
         headers: {
           "Content-Type": "application/json",
