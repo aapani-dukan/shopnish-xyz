@@ -7,9 +7,9 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-// Assuming you have a way to get the current Firebase user
 import { getAuth } from "firebase/auth";
 
+// ✅ ईमेल और Firebase UID को स्कीमा में जोड़ा गया है
 const deliveryApplySchema = z.object({
   fullName: z.string().min(2, "Full name is required"),
   phone: z.string().min(10, "Phone number is required"),
@@ -30,15 +30,14 @@ export default function DeliveryApplyPage() {
   } = useForm<DeliveryApplyData>({
     resolver: zodResolver(deliveryApplySchema),
     defaultValues: {
-      fullName: deliveryUser?.name || "", // Assuming deliveryUser.name is the correct field
+      fullName: deliveryUser?.name || "",
       phone: deliveryUser?.phone || "",
       address: deliveryUser?.address || "",
       vehicleType: deliveryUser?.vehicleType || "",
     },
   });
 
-  const onSubmit = async (data: DeliveryApplyData) => {
-    // 1. Get the current authenticated user and their token
+  const onSubmit = async (formData: DeliveryApplyData) => { // ✅ नाम को 'formData' में बदला
     const auth = getAuth();
     const user = auth.currentUser;
 
@@ -50,6 +49,15 @@ export default function DeliveryApplyPage() {
       });
       return;
     }
+
+    const { email, uid: firebaseUid } = user; // ✅ Firebase उपयोगकर्ता से ईमेल और UID प्राप्त करें
+
+    // ✅ डेटा ऑब्जेक्ट में ईमेल और firebaseUid जोड़ें
+    const dataToSend = {
+      ...formData,
+      email,
+      firebaseUid,
+    };
 
     let token;
     try {
@@ -64,28 +72,22 @@ export default function DeliveryApplyPage() {
       return;
     }
 
-    // 2. Make the API call with the correct Authorization header
     try {
       const res = await fetch("/api/delivery-boys/register", {
-  
-
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`, // ✅ Use the correct token here
+          Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(data),
+        body: JSON.stringify(dataToSend), // ✅ 'dataToSend' का उपयोग करें
       });
 
-      // 3. Improve error handling to read the server response properly
       if (!res.ok) {
         let errorMessage = "Application failed. Please try again.";
         try {
-          // Attempt to parse a JSON error message from the server
           const errorData = await res.json();
           errorMessage = errorData.message || errorMessage;
         } catch (jsonError) {
-          // Fallback if the server didn't send JSON
           errorMessage = `Server responded with status ${res.status}.`;
         }
         throw new Error(errorMessage);
@@ -97,10 +99,8 @@ export default function DeliveryApplyPage() {
       });
 
       if (typeof fetchDeliveryUser === 'function') {
-  fetchDeliveryUser();
-}
-
-
+        fetchDeliveryUser();
+      }
     } catch (error: any) {
       console.error("Application submission failed:", error);
       toast({
