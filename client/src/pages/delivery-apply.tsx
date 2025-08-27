@@ -7,6 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+// Assuming you have a way to get the current Firebase user
+import { getAuth } from "firebase/auth";
 
 const deliveryApplySchema = z.object({
   fullName: z.string().min(2, "Full name is required"),
@@ -28,7 +30,7 @@ export default function DeliveryApplyPage() {
   } = useForm<DeliveryApplyData>({
     resolver: zodResolver(deliveryApplySchema),
     defaultValues: {
-      fullName: deliveryUser?.fullName || "",
+      fullName: deliveryUser?.name || "", // Assuming deliveryUser.name is the correct field
       phone: deliveryUser?.phone || "",
       address: deliveryUser?.address || "",
       vehicleType: deliveryUser?.vehicleType || "",
@@ -36,17 +38,56 @@ export default function DeliveryApplyPage() {
   });
 
   const onSubmit = async (data: DeliveryApplyData) => {
+    // 1. Get the current authenticated user and their token
+    const auth = getAuth();
+    const user = auth.currentUser;
+
+    if (!user) {
+      toast({
+        title: "Authentication Required",
+        description: "Please log in to submit your application.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    let token;
+    try {
+      token = await user.getIdToken();
+    } catch (tokenError) {
+      console.error("Failed to get Firebase token:", tokenError);
+      toast({
+        title: "Authentication Error",
+        description: "Could not get user token. Please log in again.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // 2. Make the API call with the correct Authorization header
     try {
       const res = await fetch("/api/delivery/apply", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
+          Authorization: `Bearer ${token}`, // ✅ Use the correct token here
         },
         body: JSON.stringify(data),
       });
 
-      if (!res.ok) throw new Error("Application failed");
+      // 3. Improve error handling to read the server response properly
+      if (!res.ok) {
+        let errorMessage = "Application failed. Please try again.";
+        try {
+          // Attempt to parse a JSON error message from the server
+          const errorData = await res.json();
+          errorMessage = errorData.message || errorMessage;
+        } catch (jsonError) {
+          // Fallback if the server didn't send JSON
+          errorMessage = `Server responded with status ${res.status}.`;
+        }
+        throw new Error(errorMessage);
+      }
 
       toast({
         title: "Application submitted!",
@@ -55,10 +96,11 @@ export default function DeliveryApplyPage() {
 
       fetchDeliveryUser(); // refresh data
 
-    } catch (error) {
+    } catch (error: any) {
+      console.error("Application submission failed:", error);
       toast({
         title: "Something went wrong!",
-        description: "Please try again later.",
+        description: error.message || "Please try again later.",
         variant: "destructive",
       });
     }
@@ -70,32 +112,32 @@ export default function DeliveryApplyPage() {
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         <div>
-          <Label>Full Name</Label>
-          <Input {...register("fullName")} />
+          <Label htmlFor="fullName">Full Name</Label>
+          <Input id="fullName" {...register("fullName")} />
           {errors.fullName && (
             <p className="text-sm text-red-500">{errors.fullName.message}</p>
           )}
         </div>
 
         <div>
-          <Label>Phone Number</Label>
-          <Input type="tel" {...register("phone")} />
+          <Label htmlFor="phone">Phone Number</Label>
+          <Input id="phone" type="tel" {...register("phone")} />
           {errors.phone && (
             <p className="text-sm text-red-500">{errors.phone.message}</p>
           )}
         </div>
 
         <div>
-          <Label>Address</Label>
-          <Textarea rows={3} {...register("address")} />
+          <Label htmlFor="address">Address</Label>
+          <Textarea id="address" rows={3} {...register("address")} />
           {errors.address && (
             <p className="text-sm text-red-500">{errors.address.message}</p>
           )}
         </div>
 
         <div>
-          <Label>Vehicle Type</Label>
-          <Input placeholder="e.g., Bike, Scooter" {...register("vehicleType")} />
+          <Label htmlFor="vehicleType">Vehicle Type</Label>
+          <Input id="vehicleType" placeholder="e.g., Bike, Scooter" {...register("vehicleType")} />
           {errors.vehicleType && (
             <p className="text-sm text-red-500">{errors.vehicleType.message}</p>
           )}
