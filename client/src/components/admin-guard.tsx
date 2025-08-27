@@ -16,7 +16,6 @@ const AdminGuard = ({ children }: { children: React.ReactNode }) => {
           setIsAuthenticated(false);
           return;
         }
-        // ✅ अब apiRequest सीधे JSON डेटा लौटाएगा, response ऑब्जेक्ट नहीं
         const userData = await apiRequest(
           "GET",
           "/api/users/me",
@@ -38,7 +37,7 @@ const AdminGuard = ({ children }: { children: React.ReactNode }) => {
   }, [user?.idToken]);
 
   if (isLoadingAuth || isChecking) {
-    return <div>Loading...</div>; // तुम यहाँ skeleton loader या spinner दे सकते हो
+    return <div>Loading...</div>;
   }
 
   if (!isAuthenticated) {
