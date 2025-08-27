@@ -96,7 +96,10 @@ export default function DeliveryApplyPage() {
         description: "Wait for admin approval.",
       });
 
-      fetchDeliveryUser(); // refresh data
+      if (typeof fetchDeliveryUser === 'function') {
+  fetchDeliveryUser();
+}
+
 
     } catch (error: any) {
       console.error("Application submission failed:", error);
