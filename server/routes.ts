@@ -153,7 +153,7 @@ router.use('/products', productsRouter);
 
 // ✅ Delivery Boy
 
-router.use('/api/delivery-boys', dBoyRouter);
+router.use('/delivery-boys', dBoyRouter);
 
 // Admin Routes
 
