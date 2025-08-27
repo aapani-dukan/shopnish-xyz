@@ -26,7 +26,9 @@ export default function DeliveryLogin() {
         const user = result.user;
         const token = await user.getIdToken();
 
-        const response = await fetch("/api/delivery/login", {
+        const response = await fetch("/api/delivery-boys/login", {
+  
+
           method: "POST",
           headers: {
             "Content-Type": "application/json",
