@@ -1,4 +1,4 @@
-// client/src/components/admin-guard.tsx
+// ✅ client/src/components/admin-guard.tsx (सुधार)
 import React, { useEffect, useState } from "react";
 import { Navigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -16,13 +16,14 @@ const AdminGuard = ({ children }: { children: React.ReactNode }) => {
           setIsAuthenticated(false);
           return;
         }
-        const res = await apiRequest(
+        // ✅ अब apiRequest सीधे JSON डेटा लौटाएगा, response ऑब्जेक्ट नहीं
+        const userData = await apiRequest(
           "GET",
           "/api/users/me",
           undefined,
           user.idToken
         );
-        const userData = await res.json();
+        
         if (userData.role === "admin") {
           setIsAuthenticated(true);
         }
