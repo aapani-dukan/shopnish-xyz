@@ -7,7 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import Header from "@/components/header";
+//import Header from "@/components/header";
 import ProductCard from "@/components/product-card";
 import Footer from "@/components/footer";
 import axios from 'axios'; 
@@ -150,7 +150,7 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-neutral-50">
-      <Header categories={categories} />
+      {/*<Header categories={categories} />*/}
 
       {/* Hero Section - Only show on home page without filters */}
       {!selectedCategory && !searchQuery && (
