@@ -9,7 +9,8 @@ import {
   products,
   deliveryAddresses,
   approvalStatusEnum,
-  orderStatusEnum
+  orderStatusEnum,
+  users // ✅ users table को जोड़ा
 } from '../shared/backend/schema.ts';
 import { eq, sql } from 'drizzle-orm';
 import { getAuth } from 'firebase-admin/auth';
@@ -22,20 +23,49 @@ router.post('/register', async (req: Request, res: Response) => {
   try {
     const { email, firebaseUid, name, vehicleType } = req.body;
 
-    const existingDeliveryBoy = await db.query.deliveryBoys.findFirst({
-      where: eq(deliveryBoys.email, email),
+    const existingUser = await db.query.users.findFirst({
+      where: eq(users.email, email),
     });
 
-    if (existingDeliveryBoy) {
-      return res.status(409).json({ message: "A user with this email is already registered." });
-    }
+    if (existingUser) {
+      // ✅ यदि उपयोगकर्ता पहले से मौजूद है, तो जांचें कि वह डिलीवरी बॉय है या नहीं
+      const existingDeliveryBoy = await db.query.deliveryBoys.findFirst({
+        where: eq(deliveryBoys.email, email),
+      });
 
+      if (existingDeliveryBoy) {
+        return res.status(409).json({ message: "A user with this email is already registered as a delivery boy." });
+      }
+
+      // ✅ यदि उपयोगकर्ता मौजूद है लेकिन डिलीवरी बॉय नहीं है, तो उसका userId उपयोग करें
+      const [newDeliveryBoy] = await db.insert(deliveryBoys).values({
+        firebaseUid,
+        email,
+        name: name || existingUser.name || 'Delivery Boy',
+        vehicleType,
+        approvalStatus: 'pending',
+        userId: existingUser.id, // ✅ मौजूदा उपयोगकर्ता को लिंक करें
+      }).returning();
+      
+      return res.status(201).json(newDeliveryBoy);
+    }
+    
+    // ✅ यदि उपयोगकर्ता मौजूद नहीं है, तो एक नया उपयोगकर्ता और डिलीवरी बॉय रिकॉर्ड बनाएं
+    const [newUser] = await db.insert(users).values({
+      firebaseUid,
+      email,
+      name: name || 'Delivery Boy',
+      role: 'delivery-boy',
+      approvalStatus: 'pending',
+    }).returning();
+    
     const [newDeliveryBoy] = await db.insert(deliveryBoys).values({
-      firebaseUid: firebaseUid,
+      firebaseUid,
       email,
       name: name || 'Delivery Boy',
       vehicleType,
       approvalStatus: 'pending',
+      userId: newUser.id, // ✅ नए उपयोगकर्ता को लिंक करें
     }).returning();
 
     res.status(201).json(newDeliveryBoy);
@@ -47,7 +77,6 @@ router.post('/register', async (req: Request, res: Response) => {
 
 // ---
 
-// ✅ Delivery Boy Login Route
 // ✅ Delivery Boy Login Route
 // URL: /api/delivery-boys/login
 router.post('/login', async (req: Request, res: Response) => {
@@ -67,8 +96,12 @@ router.post('/login', async (req: Request, res: Response) => {
       return res.status(401).json({ message: "Invalid token or email." });
     }
 
+    // ✅ login करते समय users और deliveryBoys दोनों टेबल्स को जॉइन करके डेटा फ़ेच करें
     const deliveryBoy = await db.query.deliveryBoys.findFirst({
       where: eq(deliveryBoys.email, email),
+      with: {
+        user: true, // ✅ users टेबल को डिलीवरी बॉय के रिकॉर्ड के साथ जोड़ें
+      }
     });
 
     if (!deliveryBoy) {
@@ -80,6 +113,13 @@ router.post('/login', async (req: Request, res: Response) => {
         .set({ firebaseUid })
         .where(eq(deliveryBoys.email, email));
     }
+    
+    // ✅ सुनिश्चित करें कि उपयोगकर्ता की भूमिका (role) सही है
+    if (deliveryBoy.user && deliveryBoy.user.role !== 'delivery-boy') {
+        await db.update(users)
+            .set({ role: 'delivery-boy' })
+            .where(eq(users.id, deliveryBoy.user.id));
+    }
 
     res.status(200).json({
       message: "Login successful",
@@ -88,16 +128,14 @@ router.post('/login', async (req: Request, res: Response) => {
 
   } catch (error: any) {
     console.error("Login failed:", error);
-    // ✅ सुनिश्चित करें कि catch block में हमेशा JSON response ही भेजी जाए
     const status = (error.code === 'auth/id-token-expired' || error.code === 'auth/argument-error') ? 401 : 500;
     const message = (error.code === 'auth/id-token-expired' || error.code === 'auth/argument-error') 
       ? "Authentication failed. Please log in again."
-      : "Failed to authenticate. An unexpected error occurred."; // ✅ एक सामान्य त्रुटि संदेश
+      : "Failed to authenticate. An unexpected error occurred.";
     
     res.status(status).json({ message });
   }
 });
-
 
 // ✅ Get Assigned Orders Route
 // URL: /api/delivery-boys/orders
@@ -200,16 +238,14 @@ router.post('/orders/:orderId/complete-delivery', async (req: Request, res: Resp
       return res.status(404).json({ message: "Order not found." });
     }
 
-    // OTP की जाँच करें
     if (order.deliveryOtp !== otp) {
       return res.status(401).json({ message: "Invalid OTP." });
     }
 
-    // यदि OTP सही है, तो स्टेटस को 'delivered' पर अपडेट करें
     const [updatedOrder] = await db.update(orders)
       .set({ 
         status: 'delivered', 
-        deliveryOtp: null // OTP को हटा दें ताकि इसे दोबारा इस्तेमाल न किया जा सके
+        deliveryOtp: null 
       })
       .where(eq(orders.id, orderId))
       .returning();
@@ -225,3 +261,4 @@ router.post('/orders/:orderId/complete-delivery', async (req: Request, res: Resp
 });
 
 export default router;
+      
