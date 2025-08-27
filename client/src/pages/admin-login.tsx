@@ -24,12 +24,14 @@ export default function AdminLogin() {
         body: JSON.stringify({ password }),
       });
 
+      // ✅ res.json() को एक बार ही कॉल करें
+      const data = await res.json();
+
       if (!res.ok) {
-        const data = await res.json();
         throw new Error(data.message || "Login failed");
       }
 
-      const { customToken } = await res.json();
+      const { customToken } = data; // ✅ यहाँ पहले से प्राप्त डेटा का उपयोग करें
 
       // ✅ Firebase में Custom Token से Login करें
       const auth = getAuth();
