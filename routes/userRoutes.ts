@@ -27,13 +27,22 @@ userLoginRouter.post("/login", async (req: Request, res: Response) => {
             .where(eq(users.firebaseUid, firebaseUid));
 
         if (!user) {
+            // ✅ Split the full name into first and last name
+            const nameParts = name ? name.split(' ') : [];
+            const firstName = nameParts[0] || '';
+            const lastName = nameParts.slice(1).join(' ') || '';
+
             const [newUser] = await db.insert(users).values({
                 firebaseUid: firebaseUid,
                 email: email,
                 name: name,
                 role: userRoleEnum.enumValues[0],
-                // ✅ यहाँ password फ़ील्ड को जोड़ें
                 password: '',
+                firstName: firstName,
+                lastName: lastName,
+                // ✅ Add default empty strings for the new not-null columns
+                phone: '',
+                address: '',
             }).returning();
             
             console.log("✅ नया उपयोगकर्ता डेटाबेस में जोड़ा गया।");
