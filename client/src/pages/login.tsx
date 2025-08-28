@@ -2,16 +2,14 @@
 "use client";
 
 import React, { useState } from "react";
-// ✅ navigate करने के लिए useNavigate को react-router-dom से इंपोर्ट करें
-import { useNavigate } from "react-router-dom"; 
-import { signInWithGooglePopup } from "@/lib/firebase"; 
+import { useNavigate } from "react-router-dom";
+import { signInWithGooglePopup } from "@/lib/firebase";
 import { Button } from "@/components/ui/button";
 import GoogleIcon from "@/components/ui/GoogleIcon";
 
 export default function LoginPage() {
   const [loading, setLoading] = useState(false);
-  // ✅ useNavigate हुक का उपयोग करें
-  const navigate = useNavigate(); 
+  const navigate = useNavigate();
 
   const handleGoogleSignIn = async () => {
     if (loading) return;
@@ -21,10 +19,9 @@ export default function LoginPage() {
       const userCredential = await signInWithGooglePopup();
       
       if (userCredential.user) {
-        // Firebase से ID Token प्राप्त करें
         const idToken = await userCredential.user.getIdToken();
 
-        // इस टोकन को Backend API पर भेजें
+        // ✅ Backend API को कॉल करें और उपयोगकर्ता डेटा को प्राप्त करें
         const response = await fetch('/auth/login', {
           method: 'POST',
           headers: {
@@ -40,8 +37,11 @@ export default function LoginPage() {
         const data = await response.json();
         console.log("Backend login successful:", data.message);
 
-        // ✅ navigate फ़ंक्शन का उपयोग करके नेविगेट करें
-        navigate("/"); 
+        // ✅ अब, उपयोगकर्ता का डेटा `data.user` में है
+        console.log("Logged-in User Data:", data.user);
+
+        // ✅ Backend से सफल प्रतिक्रिया मिलने के बाद ही नेविगेट करें
+        navigate("/");
       }
 
     } catch (error) {
