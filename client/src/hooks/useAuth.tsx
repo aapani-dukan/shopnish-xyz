@@ -66,9 +66,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
       if (fbUser) {
         try {
-          // ✅ यहाँ सीधे apiRequest का उपयोग करें
-          const res = await apiRequest("GET", `/api/users/me`);
-          const dbUserData = res;
+          console.log("✅ Firebase auth state changed. Attempting backend login...");
+          const idToken = await fbUser.getIdToken();
+
+          // ✅ यहाँ सीधे '/auth/login' API को कॉल करें
+          const res = await apiRequest("POST", `/auth/login`, { idToken });
+          const dbUserData = res.user; // ✅ Backend से उपयोगकर्ता डेटा लें
           
           const role = dbUserData?.role || 'customer'; 
           
@@ -78,54 +81,24 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             email: fbUser.email || dbUserData?.email,
             name: fbUser.displayName || dbUserData?.name,
             role: role,
-            idToken: await fbUser.getIdToken(),
+            idToken: idToken,
             sellerProfile: dbUserData?.sellerProfile || null,
           };
           
           setUser(currentUser);
           setIsAuthenticated(true);
+          console.log("✅ User successfully authenticated and profile fetched from backend.");
           
         } catch (e: any) {
-          if (e.status === 404) {
-            console.warn("User profile not found in DB. Creating a new user.");
-            try {
-              const newUserProfile = await apiRequest("POST", `/api/register`, {
-                firebaseUid: fbUser.uid,
-                email: fbUser.email,
-                name: fbUser.displayName,
-                role: "customer",
-                firstName: '',
-                lastName: '',
-                phone: '',
-                address: '',
-                city: '',
-                pincode: '',
-              });
-              const newDbUserData = newUserProfile;
-              
-              const newUser: User = {
-                uid: fbUser.uid,
-                id: newDbUserData?.id, 
-                email: fbUser.email,
-                name: fbUser.displayName,
-                role: "customer",
-                idToken: await fbUser.getIdToken(),
-                sellerProfile: null,
-              };
-              setUser(newUser);
-              setIsAuthenticated(true);
-            } catch (createError) {
-              console.error("Failed to create new user in DB:", createError);
-              setAuthError(createError as AuthError);
-              setIsAuthenticated(false);
-            }
-          } else {
-            console.error("Failed to fetch user data from DB:", e);
-            setAuthError(e as AuthError);
-            setIsAuthenticated(false);
-          }
+          console.error("❌ Backend communication failed on auth state change:", e);
+          // Firebase यूजर को लॉग आउट करें अगर Backend में समस्या है
+          await auth.signOut();
+          setAuthError(e as AuthError);
+          setIsAuthenticated(false);
+          setUser(null);
         }
       } else {
+        console.log("❌ Firebase auth state changed: User is logged out.");
         setUser(null);
         setIsAuthenticated(false);
         queryClient.clear();
@@ -168,12 +141,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const refetchUser = useCallback(async () => {
     // यह फ़ंक्शन user डेटा को मैन्युअल रूप से रिफ्रेश करने के लिए है।
+    // इस फ़ंक्शन को अब Backend में '/auth/login' API को कॉल करना चाहिए
     setIsLoadingAuth(true);
     const fbUser = auth.currentUser;
     if (fbUser) {
       try {
-        const res = await apiRequest("GET", `/api/users/me`);
-        const dbUserData = res;
+        const idToken = await fbUser.getIdToken();
+        const res = await apiRequest("POST", `/auth/login`, { idToken });
+        const dbUserData = res.user;
         
         const role = dbUserData?.role || 'customer'; 
         
@@ -183,7 +158,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           email: fbUser.email || dbUserData?.email,
           name: fbUser.displayName || dbUserData?.name,
           role: role,
-          idToken: await fbUser.getIdToken(),
+          idToken: idToken,
           sellerProfile: dbUserData?.sellerProfile || null,
         };
         setUser(currentUser);
