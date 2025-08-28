@@ -277,15 +277,31 @@ export const reviews = pgTable("reviews", {
 
 // --- Drizzle ORM Relations ---
 
-   export const usersRelations = relations(users, ({ one, many }) => ({
-  seller: one(sellersPgTable, {
-    fields: [users.id],
-    references: [sellersPgTable.userId],
-  }),
-  deliveryBoy: one(deliveryBoys, {
-    fields: [users.id],
-    references: [deliveryBoys.userId],
-  }),
+   
+// --- Drizzle ORM Relations ---
+
+import { relations } from 'drizzle-orm';
+import {
+  users,
+  sellersPgTable,
+  deliveryBoys,
+  orders,
+  reviews,
+  serviceProviders,
+  serviceBookings,
+  cartItems,
+  stores,
+  categories,
+  products,
+  orderItems,
+  orderTracking,
+  promoCodes,
+  serviceCategories,
+  services,
+} from './schema'; // सुनिश्चित करें कि आपका स्कीमा ठीक से आयात किया गया है
+
+export const usersRelations = relations(users, ({ one, many }) => ({
+  // ✅ one-to-one संबंध को यहां से हटा दिया गया है
   orders: many(orders),
   reviews: many(reviews),
   serviceProviders: many(serviceProviders),
@@ -294,6 +310,7 @@ export const reviews = pgTable("reviews", {
 }));
 
 export const sellersRelations = relations(sellersPgTable, ({ one, many }) => ({
+  // ✅ 'one' संबंध को यहां रखा गया है
   user: one(users, {
     fields: [sellersPgTable.userId],
     references: [users.id],
@@ -335,6 +352,7 @@ export const productsRelations = relations(products, ({ one, many }) => ({
 }));
 
 export const deliveryBoysRelations = relations(deliveryBoys, ({ one, many }) => ({
+  // ✅ 'one' संबंध को यहां रखा गया है
   user: one(users, {
     fields: [deliveryBoys.userId],
     references: [users.id],
@@ -454,6 +472,7 @@ export const reviewsRelations = relations(reviews, ({ one }) => ({
     references: [orders.id],
   }),
 }));
+
 
 // --- Zod Schemas for Validation
 
