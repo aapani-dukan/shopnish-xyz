@@ -27,12 +27,13 @@ import AdminDashboard from "@/pages/admin-dashboard";
 import DeliveryDashboard from "@/pages/delivery-dashboard";
 import DeliveryApplyPage from "@/pages/delivery-apply";
 import DeliveryLogin from "@/pages/delivery-login";
+import LoginPage from "@/pages/login"; // ✅ यह नया इम्पोर्ट जोड़ा गया है
 // Centralized auth-based routing
 import AuthRedirectGuard from "@/components/auth-redirect-guard";
 import AdminGuard from "@/components/admin-guard";
 import AdminLogin from "@/pages/admin-login";
 import OrderConfirmation from "@/pages/order-confirmation";
-import CustomerOrdersPage from "@/pages/customer/orders"; // ✅ यह नया इम्पोर्ट जोड़ा गया है
+import CustomerOrdersPage from "@/pages/customer/orders";
 
 function App() {
   const [isCartModalOpen, setIsCartModalOpen] = useState(false);
@@ -52,8 +53,9 @@ function App() {
                 <Route path="/cart" element={<Cart />} />
                 <Route path="/checkout" element={<Checkout />} />
                 <Route path="/auth" element={<AuthPage />} />
+                <Route path="/login" element={<LoginPage />} />  {/* ✅ यह राउट जोड़ा गया है */}
                 <Route path="/admin-login" element={<AdminLogin />} />
-               <Route path="/delivery-login" element={<DeliveryLogin />} />
+                <Route path="/delivery-login" element={<DeliveryLogin />} />
                 {/* Protected - Normal Auth */}
                 <Route path="/seller-dashboard" element={<AuthRedirectGuard><SellerDashboard /></AuthRedirectGuard>} />
                 <Route path="/seller-apply" element={<AuthRedirectGuard><SellerApplyPage /></AuthRedirectGuard>} />
@@ -61,13 +63,11 @@ function App() {
                 <Route path="/delivery-dashboard" element={<AuthRedirectGuard><DeliveryDashboard /></AuthRedirectGuard>} />
                 <Route path="/delivery-apply" element={<AuthRedirectGuard><DeliveryApplyPage /></AuthRedirectGuard>} />
                 
-                {/* ✅ यह नया राउट जोड़ा गया है */}
                 <Route path="/customer/orders" element={<AuthRedirectGuard><CustomerOrdersPage /></AuthRedirectGuard>} />
 
                 {/* Protected - Admin */}
                 <Route path="/admin-dashboard" element={<AdminGuard><AdminDashboard /></AdminGuard>} />
                 
-                {/* ✅ यहाँ `:orderId` पैरामीटर जोड़ा गया है */}
                 <Route path="/order-confirmation/:orderId" element={<OrderConfirmation />} />
 
                 {/* 404 */}
