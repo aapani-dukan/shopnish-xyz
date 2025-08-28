@@ -80,11 +80,6 @@ router.post('/register', async (req: Request, res: Response) => {
   }
 });
 
-// ✅ Auth Routes
-router.use('/auth', userLoginRouter);
-
-router.use('/auth', apiAuthLoginRouter);
-
 // ✅ User Profile
 router.get('/users/me', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
@@ -170,5 +165,15 @@ adminRouter.use('/vendors', adminVendorsRoutes);
 adminRouter.use('/delivery-boys', admindBoyRouter);
 adminRouter.use('/orders', orderdBoyRouter);
 router.use('/admin', adminRouter);
+const authRouter = Router();
+
+
+authRouter.use(userLoginRouter); 
+
+
+authRouter.use(apiAuthLoginRouter);
+
+
+router.use('/auth', authRouter); 
 
 export default router;
