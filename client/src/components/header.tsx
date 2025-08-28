@@ -94,6 +94,8 @@ const Header: React.FC<HeaderProps> = ({ categories = [], onCartClick }) => {
     }
   };
 
+
+
   const handleSellerButtonClick = () => {
     console.log("Seller button clicked! isAuthenticated:", isAuthenticated, "user:", user);
 
@@ -107,19 +109,19 @@ const Header: React.FC<HeaderProps> = ({ categories = [], onCartClick }) => {
       return;
     }
 
+    // ✅ लॉजिक को ठीक किया गया
     if (user?.role === "seller") {
       const approvalStatus = user.sellerProfile?.approvalStatus;
       if (approvalStatus === "approved") {
         navigate("/seller-dashboard");
-      } else if (approvalStatus === "pending") {
+      } else { // यह 'pending' या 'null' स्थिति को संभालता है
         navigate("/seller-status");
-      } else {
-        setIsSellerDialogOpen(true);
       }
-    } else {
+    } else { // यह तब चलता है जब उपयोगकर्ता 'customer' या अन्य भूमिका में हो
       setIsSellerDialogOpen(true);
     }
   };
+
 
   const getDashboardLink = () => {
     if (!isAuthenticated || !user) return null;
