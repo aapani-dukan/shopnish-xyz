@@ -32,6 +32,8 @@ userLoginRouter.post("/login", async (req: Request, res: Response) => {
                 email: email,
                 name: name,
                 role: userRoleEnum.enumValues[0],
+                // ✅ यहाँ password फ़ील्ड को जोड़ें
+                password: '',
             }).returning();
             
             console.log("✅ नया उपयोगकर्ता डेटाबेस में जोड़ा गया।");
