@@ -1,8 +1,6 @@
-// routs/userRoutes.ts
-
 import { Router, Request, Response } from 'express';
 import { db } from '../server/db.ts';
-import { users, userRoleEnum } from '../shared/backend/schema.ts';
+import { users, userRoleEnum, sellerProfiles } from '../shared/backend/schema.ts'; // ✅ sellerProfiles को आयात करें
 import { eq } from 'drizzle-orm';
 import { authAdmin } from '../server/lib/firebaseAdmin.ts';
 
@@ -21,13 +19,15 @@ userLoginRouter.post("/login", async (req: Request, res: Response) => {
         const email = decodedToken.email;
         const name = decodedToken.name || null;
 
-        const [user] = await db
-            .select()
-            .from(users)
-            .where(eq(users.firebaseUid, firebaseUid));
+        // ✅ Drizzle का उपयोग करके डेटाबेस में उपयोगकर्ता को खोजें और विक्रेता प्रोफ़ाइल को शामिल करें
+        const user = await db.query.users.findFirst({
+            where: eq(users.firebaseUid, firebaseUid),
+            with: {
+                sellerProfile: true,
+            },
+        });
 
         if (!user) {
-            // ✅ Split the full name into first and last name
             const nameParts = name ? name.split(' ') : [];
             const firstName = nameParts[0] || '';
             const lastName = nameParts.slice(1).join(' ') || '';
@@ -40,7 +40,6 @@ userLoginRouter.post("/login", async (req: Request, res: Response) => {
                 password: '',
                 firstName: firstName,
                 lastName: lastName,
-                // ✅ Add default empty strings for the new not-null columns
                 phone: '',
                 address: '',
             }).returning();
@@ -74,6 +73,7 @@ userLoginRouter.post("/login", async (req: Request, res: Response) => {
                 sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
             });
 
+            // ✅ उपयोगकर्ता और उसकी विक्रेता प्रोफ़ाइल (यदि मौजूद हो) को भेजें
             return res.status(200).json({
                 message: "उपयोगकर्ता लॉगिन सफल",
                 customToken,
