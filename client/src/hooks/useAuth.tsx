@@ -53,6 +53,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [authError, setAuthError] = useState<AuthError | null>(null);
   const queryClient = useQueryClient();
 
+  // ✅ `clearError` को यहाँ ठीक से परिभाषित किया गया है
+  const clearError = useCallback(() => {
+    setAuthError(null);
+  }, []);
+
   useEffect(() => {
     const checkRedirectResult = async () => {
       try {
@@ -77,9 +82,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             id: dbUserData?.id,
             email: fbUser.email || dbUserData?.email,
             name: fbUser.displayName || dbUserData?.name,
-            role: dbUserData?.role || 'customer', // ✅ यहाँ भूमिका को सीधे बैकएंड से असाइन करें
+            role: dbUserData?.role || 'customer',
             idToken: idToken,
-            sellerProfile: dbUserData?.sellerProfile || null, // ✅ यहाँ विक्रेता प्रोफ़ाइल को असाइन करें
+            sellerProfile: dbUserData?.sellerProfile || null,
           };
           
           setUser(currentUser);
@@ -137,7 +142,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     if (fbUser) {
       try {
         const idToken = await fbUser.getIdToken();
-        const res = await apiRequest("POST", `/api/auth/login`, { idToken }); // ✅ API पाथ को ठीक किया
+        const res = await apiRequest("POST", `/api/auth/login`, { idToken });
         const dbUserData = res.user;
         
         const currentUser: User = {
@@ -145,9 +150,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           id: dbUserData?.id,
           email: fbUser.email || dbUserData?.email,
           name: fbUser.displayName || dbUserData?.name,
-          role: dbUserData?.role || 'customer', // ✅ यहाँ भूमिका को सीधे बैकएंड से असाइन करें
+          role: dbUserData?.role || 'customer',
           idToken: idToken,
-          sellerProfile: dbUserData?.sellerProfile || null, // ✅ यहाँ विक्रेता प्रोफ़ाइल को असाइन करें
+          sellerProfile: dbUserData?.sellerProfile || null,
         };
         setUser(currentUser);
         setIsAuthenticated(true);
@@ -165,6 +170,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     isLoadingAuth,
     isAuthenticated,
     error: authError,
+    // ✅ इसे यहां जोड़ा गया है
     clearError,
     signIn,
     signOut,
@@ -183,4 +189,3 @@ export const useAuth = () => {
   if (!ctx) throw new Error("useAuth must be used within an AuthProvider");
   return ctx;
 };
-
