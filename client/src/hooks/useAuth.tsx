@@ -70,7 +70,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           const idToken = await fbUser.getIdToken();
 
           // ✅ यहाँ सीधे '/auth/login' API को कॉल करें
-          const res = await apiRequest("POST", `/auth/login`, { idToken });
+          const res = await apiRequest("POST", '/api/auth/login`, { idToken });
           const dbUserData = res.user; // ✅ Backend से उपयोगकर्ता डेटा लें
           
           const role = dbUserData?.role || 'customer'; 
