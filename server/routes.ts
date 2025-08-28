@@ -124,6 +124,9 @@ router.post('/auth/logout', async (req, res) => {
   }
 });
 
+router.use('/users', userLoginRouter); // '/api/users/login'
+router.use('/auth', userLoginRouter);
+
 // ✅ Seller-specific routes
 
 //cartRourer
@@ -165,15 +168,6 @@ adminRouter.use('/vendors', adminVendorsRoutes);
 adminRouter.use('/delivery-boys', admindBoyRouter);
 adminRouter.use('/orders', orderdBoyRouter);
 router.use('/admin', adminRouter);
-const authRouter = Router();
 
-
-authRouter.use(userLoginRouter); 
-
-
-authRouter.use(apiAuthLoginRouter);
-
-
-router.use('/auth', authRouter); 
 
 export default router;
