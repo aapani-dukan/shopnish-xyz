@@ -74,7 +74,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           console.log("✅ Firebase auth state changed. Attempting backend login...");
           const idToken = await fbUser.getIdToken();
 
-          const res = await apiRequest("POST", `/api/auth/login`, { idToken });
+          const res = await apiRequest("POST", `/api/users/login`, { idToken });
           const dbUserData = res.user; 
           
           const currentUser: User = {
@@ -142,7 +142,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     if (fbUser) {
       try {
         const idToken = await fbUser.getIdToken();
-        const res = await apiRequest("POST", `/api/auth/login`, { idToken });
+        const res = await apiRequest("POST", `/api/users/login`, { idToken });
         const dbUserData = res.user;
         
         const currentUser: User = {
