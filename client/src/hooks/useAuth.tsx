@@ -69,20 +69,17 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           console.log("✅ Firebase auth state changed. Attempting backend login...");
           const idToken = await fbUser.getIdToken();
 
-          // ✅ यहाँ सीधे '/auth/login' API को कॉल करें
           const res = await apiRequest("POST", `/api/auth/login`, { idToken });
-      const dbUserData = res.user; 
-          
-          const role = dbUserData?.role || 'customer'; 
+          const dbUserData = res.user; 
           
           const currentUser: User = {
             uid: fbUser.uid,
             id: dbUserData?.id,
             email: fbUser.email || dbUserData?.email,
             name: fbUser.displayName || dbUserData?.name,
-            role: role,
+            role: dbUserData?.role || 'customer', // ✅ यहाँ भूमिका को सीधे बैकएंड से असाइन करें
             idToken: idToken,
-            sellerProfile: dbUserData?.sellerProfile || null,
+            sellerProfile: dbUserData?.sellerProfile || null, // ✅ यहाँ विक्रेता प्रोफ़ाइल को असाइन करें
           };
           
           setUser(currentUser);
@@ -91,7 +88,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           
         } catch (e: any) {
           console.error("❌ Backend communication failed on auth state change:", e);
-          // Firebase यूजर को लॉग आउट करें अगर Backend में समस्या है
           await auth.signOut();
           setAuthError(e as AuthError);
           setIsAuthenticated(false);
@@ -135,31 +131,23 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   }, [queryClient]);
 
-  const clearError = useCallback(() => {
-    setAuthError(null);
-  }, []);
-
   const refetchUser = useCallback(async () => {
-    // यह फ़ंक्शन user डेटा को मैन्युअल रूप से रिफ्रेश करने के लिए है।
-    // इस फ़ंक्शन को अब Backend में '/auth/login' API को कॉल करना चाहिए
     setIsLoadingAuth(true);
     const fbUser = auth.currentUser;
     if (fbUser) {
       try {
         const idToken = await fbUser.getIdToken();
-        const res = await apiRequest("POST", `/auth/login`, { idToken });
+        const res = await apiRequest("POST", `/api/auth/login`, { idToken }); // ✅ API पाथ को ठीक किया
         const dbUserData = res.user;
-        
-        const role = dbUserData?.role || 'customer'; 
         
         const currentUser: User = {
           uid: fbUser.uid,
           id: dbUserData?.id,
           email: fbUser.email || dbUserData?.email,
           name: fbUser.displayName || dbUserData?.name,
-          role: role,
+          role: dbUserData?.role || 'customer', // ✅ यहाँ भूमिका को सीधे बैकएंड से असाइन करें
           idToken: idToken,
-          sellerProfile: dbUserData?.sellerProfile || null,
+          sellerProfile: dbUserData?.sellerProfile || null, // ✅ यहाँ विक्रेता प्रोफ़ाइल को असाइन करें
         };
         setUser(currentUser);
         setIsAuthenticated(true);
@@ -195,3 +183,4 @@ export const useAuth = () => {
   if (!ctx) throw new Error("useAuth must be used within an AuthProvider");
   return ctx;
 };
+
