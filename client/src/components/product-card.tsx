@@ -76,20 +76,59 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
     });
   };
 
+  const handleBuyNow = () => {
+    // ✅ यदि उपयोगकर्ता लॉग इन नहीं है, तो पॉपअप दिखाएं
+    if (!user) {
+      setIsLoginPopupOpen(true);
+      return;
+    }
+
+    if (product.stock === 0) {
+      toast({
+        title: "Out of Stock",
+        description: "This product is currently unavailable.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // पहले आइटम को कार्ट में जोड़ें
+    addToCartMutation.mutate({
+      productId: product.id,
+      quantity: 1,
+    }, {
+      // onSuccess को ओवरराइड करें ताकि नेविगेट किया जा सके
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ["/api/cart"] });
+        navigate("/cart"); // ✅ सीधे कार्ट पेज पर ले जाएं
+      },
+    });
+  };
+
   return (
     <div className="p-4 border rounded-lg">
       <img src={product.image} alt={product.name} className="h-40 w-full object-cover rounded-lg mb-4" />
       <h3 className="text-lg font-semibold truncate">{product.name}</h3>
       <p className="text-gray-600 mb-2">₹{product.price}</p>
-      <Button 
-        onClick={handleAddToCart} 
-        disabled={addToCartMutation.isPending || product.stock === 0}
-        className="w-full"
-      >
-        {addToCartMutation.isPending ? "Adding..." : "Add to Cart"}
-      </Button>
+      <div className="flex flex-col gap-2">
+        <Button 
+          onClick={handleAddToCart} 
+          disabled={addToCartMutation.isPending || product.stock === 0}
+          className="w-full"
+        >
+          {addToCartMutation.isPending ? "Adding..." : "Add to Cart"}
+        </Button>
+        <Button
+          onClick={handleBuyNow}
+          disabled={addToCartMutation.isPending || product.stock === 0}
+          className="w-full"
+          variant="outline"
+        >
+          Buy Now
+        </Button>
+      </div>
 
-      {/* ✅ नया: लॉगिन पॉपअप */}
+      {/* ✅ लॉगिन पॉपअप */}
       <Dialog open={isLoginPopupOpen} onOpenChange={setIsLoginPopupOpen}>
         <DialogContent>
           <DialogHeader>
