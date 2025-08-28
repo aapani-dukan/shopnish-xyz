@@ -278,27 +278,6 @@ export const reviews = pgTable("reviews", {
 // --- Drizzle ORM Relations ---
 
    
-// --- Drizzle ORM Relations ---
-
-import { relations } from 'drizzle-orm';
-import {
-  users,
-  sellersPgTable,
-  deliveryBoys,
-  orders,
-  reviews,
-  serviceProviders,
-  serviceBookings,
-  cartItems,
-  stores,
-  categories,
-  products,
-  orderItems,
-  orderTracking,
-  promoCodes,
-  serviceCategories,
-  services,
-} from './schema'; // सुनिश्चित करें कि आपका स्कीमा ठीक से आयात किया गया है
 
 export const usersRelations = relations(users, ({ one, many }) => ({
   // ✅ one-to-one संबंध को यहां से हटा दिया गया है
