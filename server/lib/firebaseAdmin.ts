@@ -16,7 +16,11 @@ console.log("-------------------------------");
 const firebaseApps = getApps();
 let app;
 if (!firebaseApps.length) {
-  // ✅ यहां .replace() को वापस जोड़ा गया है
+  // ✅ यहां अतिरिक्त लॉग्स जोड़ें
+  console.log("Initializing Firebase Admin SDK...");
+  console.log("Project ID being used:", process.env.FIREBASE_PROJECT_ID);
+  console.log("Client Email being used:", process.env.FIREBASE_CLIENT_EMAIL);
+
   const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n');
   
   if (!process.env.FIREBASE_PROJECT_ID || !privateKey || !process.env.FIREBASE_CLIENT_EMAIL) {
