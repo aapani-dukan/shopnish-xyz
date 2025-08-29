@@ -125,7 +125,7 @@ router.post('/auth/logout', async (req, res) => {
 });
 
 router.use('/users', userLoginRouter); // '/api/users/login'
-router.use('/auth', userLoginRouter);
+router.use('/auth', apiAuthLoginRouter);
 
 // ✅ Seller-specific routes
 
