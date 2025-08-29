@@ -19,9 +19,10 @@ const firebaseApps = getApps();
 let app;
 
 if (!firebaseApps.length) {
-  // ✅ यहां .replace() को हटा दें।
-  const privateKey = process.env.FIREBASE_PRIVATE_KEY;
-  
+  // ✅ The key is to handle the backslashes correctly.
+  const rawPrivateKey = process.env.FIREBASE_PRIVATE_KEY;
+  const privateKey = rawPrivateKey?.replace(/\\n/g, '\n');
+
   if (!process.env.FIREBASE_PROJECT_ID || !privateKey || !process.env.FIREBASE_CLIENT_EMAIL) {
     console.error("❌ ERROR: Missing Firebase environment variables.");
     process.exit(1);
