@@ -1,5 +1,3 @@
-// server/lib/firebaseAdmin.ts
-
 import { initializeApp, cert, getApps } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 import { getStorage } from 'firebase-admin/storage';
@@ -18,8 +16,8 @@ console.log("-------------------------------");
 const firebaseApps = getApps();
 let app;
 if (!firebaseApps.length) {
-  // ✅ .replace() को हटा दें
-  const privateKey = process.env.FIREBASE_PRIVATE_KEY;
+  // ✅ यहां .replace() को वापस जोड़ा गया है
+  const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n');
   
   if (!process.env.FIREBASE_PROJECT_ID || !privateKey || !process.env.FIREBASE_CLIENT_EMAIL) {
     console.error("❌ ERROR: Missing Firebase environment variables.");
