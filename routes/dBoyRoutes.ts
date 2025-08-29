@@ -18,17 +18,28 @@ import { getAuth } from 'firebase-admin/auth';
 const router = Router();
 
 // ✅ Delivery Boy Registration Route
+
+Delivery Boy Registration Route
 // URL: /api/delivery-boys/register
 router.post('/register', async (req: Request, res: Response) => {
   try {
-    const { email, firebaseUid, name, vehicleType } = req.body;
+    const { email, firebaseUid, fullName, vehicleType } = req.body;
 
+    // ✅ सुनिश्चित करें कि आवश्यक डेटा मौजूद है
+    if (!email || !firebaseUid || !fullName || !vehicleType) {
+        return res.status(400).json({ message: "Missing required fields." });
+    }
+
+    // ✅ Drizzle insert का एक ही ब्लॉक
+    let newDeliveryBoy;
+    
+    // ✅ Check if the user already exists
     const existingUser = await db.query.users.findFirst({
       where: eq(users.email, email),
     });
 
     if (existingUser) {
-      // ✅ यदि उपयोगकर्ता पहले से मौजूद है, तो जांचें कि वह डिलीवरी बॉय है या नहीं
+      // ✅ यदि उपयोगकर्ता पहले से मौजूद है, तो डिलीवरी बॉय रिकॉर्ड बनाएं
       const existingDeliveryBoy = await db.query.deliveryBoys.findFirst({
         where: eq(deliveryBoys.email, email),
       });
@@ -37,45 +48,52 @@ router.post('/register', async (req: Request, res: Response) => {
         return res.status(409).json({ message: "A user with this email is already registered as a delivery boy." });
       }
 
-      // ✅ यदि उपयोगकर्ता मौजूद है लेकिन डिलीवरी बॉय नहीं है, तो उसका userId उपयोग करें
-      const [newDeliveryBoy] = await db.insert(deliveryBoys).values({
+      [newDeliveryBoy] = await db.insert(deliveryBoys).values({
         firebaseUid,
         email,
-        name: name || existingUser.name || 'Delivery Boy',
+        name: fullName, 
         vehicleType,
         approvalStatus: 'pending',
-        userId: existingUser.id, // ✅ मौजूदा उपयोगकर्ता को लिंक करें
+        userId: existingUser.id,
       }).returning();
       
-      return res.status(201).json(newDeliveryBoy);
-    }
-    
-    // ✅ यदि उपयोगकर्ता मौजूद नहीं है, तो एक नया उपयोगकर्ता और डिलीवरी बॉय रिकॉर्ड बनाएं
-    const [newUser] = await db.insert(users).values({
-      firebaseUid,
-      email,
-      name: name || 'Delivery Boy',
-      role: 'delivery-boy',
-      approvalStatus: 'pending',
-    }).returning();
-    
-    const [newDeliveryBoy] = await db.insert(deliveryBoys).values({
-      firebaseUid,
-      email,
-      name: name || 'Delivery Boy',
-      vehicleType,
-      approvalStatus: 'pending',
-      userId: newUser.id, // ✅ नए उपयोगकर्ता को लिंक करें
-    }).returning();
+    } else {
+      // ✅ यदि उपयोगकर्ता मौजूद नहीं है, तो एक नया उपयोगकर्ता और डिलीवरी बॉय रिकॉर्ड बनाएं
+      const [newUser] = await db.insert(users).values({
+        firebaseUid,
+        email,
+        name: fullName,
+        role: 'delivery-boy',
+        approvalStatus: 'pending',
+      }).returning();
+      
+      if (!newUser) {
+        return res.status(500).json({ message: "Failed to create new user." });
+      }
 
-    res.status(201).json(newDeliveryBoy);
+      [newDeliveryBoy] = await db.insert(deliveryBoys).values({
+        firebaseUid,
+        email,
+        name: fullName,
+        vehicleType,
+        approvalStatus: 'pending',
+        userId: newUser.id,
+      }).returning();
+    }
+
+    // ✅ महत्वपूर्ण: यहां जांच करें कि क्या सम्मिलन (insertion) सफल था
+    if (!newDeliveryBoy) {
+      console.error("❌ Failed to insert new delivery boy into the database.");
+      return res.status(500).json({ message: "Failed to submit application. Please try again." });
+    }
+
+    // ✅ यदि सम्मिलन सफल था, तो ही 201 भेजें
+    return res.status(201).json(newDeliveryBoy);
   } catch (error: any) {
-    console.error(error);
+    console.error("❌ Drizzle insert error:", error);
     res.status(400).json({ error: error.message });
   }
 });
-
-// ---
 
 // ✅ Delivery Boy Login Route
 // URL: /api/delivery-boys/login
