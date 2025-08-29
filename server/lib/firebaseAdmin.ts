@@ -2,7 +2,7 @@
 
 import { initializeApp, cert, getApps } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
-import { getStorage } from 'firebase-admin/storage'; // ✅ इस लाइन को जोड़ें
+import { getStorage } from 'firebase-admin/storage';
 
 console.log("--- Firebase ENV VARs Check ---");
 console.log("FIREBASE_PROJECT_ID:", process.env.FIREBASE_PROJECT_ID);
@@ -19,20 +19,23 @@ const firebaseApps = getApps();
 let app;
 
 if (!firebaseApps.length) {
-  const serviceAccount = {
-    projectId: process.env.FIREBASE_PROJECT_ID,
-    privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
-    clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-  };
-
-  if (!serviceAccount.projectId || !serviceAccount.privateKey || !serviceAccount.clientEmail) {
-    console.error("❌ ERROR: Missing Firebase environment variables (FIREBASE_PROJECT_ID, PRIVATE_KEY, or CLIENT_EMAIL).");
+  // ✅ यहां .replace() को हटा दें।
+  const privateKey = process.env.FIREBASE_PRIVATE_KEY;
+  
+  if (!process.env.FIREBASE_PROJECT_ID || !privateKey || !process.env.FIREBASE_CLIENT_EMAIL) {
+    console.error("❌ ERROR: Missing Firebase environment variables.");
     process.exit(1);
   }
 
+  const serviceAccount = {
+    projectId: process.env.FIREBASE_PROJECT_ID,
+    privateKey: privateKey,
+    clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+  };
+
   app = initializeApp({
     credential: cert(serviceAccount as any),
-    storageBucket: `${serviceAccount.projectId}.appspot.com`, // ✅ storageBucket जोड़ें
+    storageBucket: `${serviceAccount.projectId}.appspot.com`,
   });
   console.log('✅ Firebase Admin SDK initialized successfully.');
 } else {
@@ -40,6 +43,5 @@ if (!firebaseApps.length) {
   console.log('✅ Firebase Admin SDK already initialized.');
 }
 
-// ✅ authAdmin और storageAdmin दोनों को एक्सपोर्ट करें
 export const authAdmin = getAuth(app);
 export const storageAdmin = getStorage(app);
