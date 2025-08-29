@@ -280,7 +280,10 @@ export const reviews = pgTable("reviews", {
    
 
 export const usersRelations = relations(users, ({ one, many }) => ({
-  // ✅ one-to-one संबंध को यहां से हटा दिया गया है
+  sellerProfile: one(sellersPgTable, {
+    fields: [users.id],
+    references: [sellersPgTable.userId],
+  }),
   orders: many(orders),
   reviews: many(reviews),
   serviceProviders: many(serviceProviders),
@@ -289,7 +292,6 @@ export const usersRelations = relations(users, ({ one, many }) => ({
 }));
 
 export const sellersRelations = relations(sellersPgTable, ({ one, many }) => ({
-  // ✅ 'one' संबंध को यहां रखा गया है
   user: one(users, {
     fields: [sellersPgTable.userId],
     references: [users.id],
@@ -298,6 +300,7 @@ export const sellersRelations = relations(sellersPgTable, ({ one, many }) => ({
   stores: many(stores),
   orderItems: many(orderItems),
 }));
+
 
 export const storesRelations = relations(stores, ({ one, many }) => ({
   seller: one(sellersPgTable, {
