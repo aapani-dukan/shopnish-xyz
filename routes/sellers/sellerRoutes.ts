@@ -186,7 +186,7 @@ sellerRouter.post('/categories', requireSellerAuth, upload.single('image'), asyn
       return res.status(401).json({ error: 'Unauthorized.' });
     }
 
-    const { name, slug } = req.body;
+    const { name, nameHindi, slug } = req.body;
     const file = req.file;
 
     if (!name || !slug || !file) {
@@ -212,6 +212,7 @@ sellerRouter.post('/categories', requireSellerAuth, upload.single('image'), asyn
       name,
       slug,
       image: imageUrl,
+      nameHindi: nameHindi || null, // ✅ अब इसे स्पष्ट रूप से शामिल किया गया है
     }).returning();
 
     return res.status(201).json(newCategory[0]);
