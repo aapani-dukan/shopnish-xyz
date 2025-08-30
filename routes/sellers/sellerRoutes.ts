@@ -186,7 +186,7 @@ sellerRouter.post('/categories', requireSellerAuth, upload.single('image'), asyn
       return res.status(401).json({ error: 'Unauthorized.' });
     }
 
-    const { name, nameHindi, slug } = req.body;
+    const { name, nameHindi, slug, description, isActive, sortOrder } = req.body;
     const file = req.file;
 
     if (!name || !slug || !file) {
@@ -210,9 +210,12 @@ sellerRouter.post('/categories', requireSellerAuth, upload.single('image'), asyn
     const newCategory = await db.insert(categories).values({
       sellerId: sellerId,
       name,
+      nameHindi: nameHindi || null, 
       slug,
       image: imageUrl,
-      nameHindi: nameHindi || null, // ✅ अब इसे स्पष्ट रूप से शामिल किया गया है
+      description: description || null,
+      isActive: typeof isActive === 'boolean' ? isActive : true,
+      sortOrder: sortOrder ? parseInt(String(sortOrder)) : 0,
     }).returning();
 
     return res.status(201).json(newCategory[0]);
