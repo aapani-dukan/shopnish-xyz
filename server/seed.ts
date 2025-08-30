@@ -37,14 +37,181 @@ async function seedDatabase() {
     console.log("✅ Existing data cleaned.");
 
 
-    // 2️⃣ Insert Categories
-    console.log("➕ Inserting categories...");
-    const insertedCategories = await db.insert(categories).values([
-      { name: "Fruits", slug: "fruits", description: "Fresh fruits", image: faker.image.url(), isActive: true, sortOrder: 1 },
-      { name: "Vegetables", slug: "vegetables", description: "Fresh veggies", image: faker.image.url(), isActive: true, sortOrder: 2 },
-    ]).returning();
-    console.log(`✅ Inserted ${insertedCategories.length} categories.`);
+    // 2️⃣ Insert Category 
+    
+const seedCategories = [
+    // ग्रॉसरी और खाने-पीने की चीजें
+    {
+        name: "Vegetables",
+        nameHindi: "सब्जियां",
+        slug: "vegetables",
+        image: "https://placehold.co/400x300?text=सब्जियां", 
+        description: "ताजी और जैविक सब्जियां",
+        isActive: true,
+        sortOrder: 1,
+    },
+    {
+        name: "Fruits",
+        nameHindi: "फल",
+        slug: "fruits",
+        image: "https://placehold.co/400x300?text=फल", 
+        description: "विभिन्न प्रकार के मौसमी फल",
+        isActive: true,
+        sortOrder: 2,
+    },
+    {
+        name: "Dairy & Eggs",
+        nameHindi: "डेयरी और अंडे",
+        slug: "dairy-eggs",
+        image: "https://placehold.co/400x300?text=डेयरी", 
+        description: "दूध, दही, पनीर और अंडे",
+        isActive: true,
+        sortOrder: 3,
+    },
+    {
+        name: "Snacks",
+        nameHindi: "स्नैक्स",
+        slug: "snacks",
+        image: "https://placehold.co/400x300?text=स्नैक्स",
+        description: "मीठे और नमकीन स्नैक्स की वैराइटी",
+        isActive: true,
+        sortOrder: 4,
+    },
+    {
+        name: "Beverages",
+        nameHindi: "पेय पदार्थ",
+        slug: "beverages",
+        image: "https://placehold.co/400x300?text=पेय",
+        description: "चाय, कॉफी, जूस और कोल्ड ड्रिंक्स",
+        isActive: true,
+        sortOrder: 5,
+    },
 
+    // इलेक्ट्रॉनिक्स और गैजेट्स
+    {
+        name: "Mobile Phones",
+        nameHindi: "मोबाइल फ़ोन",
+        slug: "mobile-phones",
+        image: "https://placehold.co/400x300?text=मोबाइल",
+        description: "स्मार्टफोन, बेसिक फोन और एक्सेसरीज़",
+        isActive: true,
+        sortOrder: 6,
+    },
+    {
+        name: "Laptops & Computers",
+        nameHindi: "लैपटॉप और कंप्यूटर",
+        slug: "laptops-computers",
+        image: "https://placehold.co/400x300?text=कंप्यूटर",
+        description: "सभी प्रकार के लैपटॉप, डेस्कटॉप और पेरिफेरल्स",
+        isActive: true,
+        sortOrder: 7,
+    },
+    {
+        name: "Home Appliances",
+        nameHindi: "घरेलू उपकरण",
+        slug: "home-appliances",
+        image: "https://placehold.co/400x300?text=उपकरण",
+        description: "किचन और घर के लिए उपकरण",
+        isActive: true,
+        sortOrder: 8,
+    },
+
+    // फ़ैशन और कपड़े
+    {
+        name: "Men's Fashion",
+        nameHindi: "पुरुषों का फैशन",
+        slug: "mens-fashion",
+        image: "https://placehold.co/400x300?text=पुरुष",
+        description: "पुरुषों के लिए कपड़े, जूते और एक्सेसरीज़",
+        isActive: true,
+        sortOrder: 9,
+    },
+    {
+        name: "Women's Fashion",
+        nameHindi: "महिलाओं का फैशन",
+        slug: "womens-fashion",
+        image: "https://placehold.co/400x300?text=महिला",
+        description: "महिलाओं के लिए एथनिक और वेस्टर्न वियर",
+        isActive: true,
+        sortOrder: 10,
+    },
+    {
+        name: "Kids' Fashion",
+        nameHindi: "बच्चों का फैशन",
+        slug: "kids-fashion",
+        image: "https://placehold.co/400x300?text=बच्चे",
+        description: "बच्चों के कपड़े और जूते",
+        isActive: true,
+        sortOrder: 11,
+    },
+
+    // घर और किचन
+    {
+        name: "Home Decor",
+        nameHindi: "घर की सजावट",
+        slug: "home-decor",
+        image: "https://placehold.co/400x300?text=सजावट",
+        description: "दीवार की सजावट, लाइटिंग और शोपीस",
+        isActive: true,
+        sortOrder: 12,
+    },
+    {
+        name: "Furniture",
+        nameHindi: "फर्नीचर",
+        slug: "furniture",
+        image: "https://placehold.co/400x300?text=फर्नीचर",
+        description: "घर और ऑफिस के लिए फर्नीचर",
+        isActive: true,
+        sortOrder: 13,
+    },
+    {
+        name: "Cookware",
+        nameHindi: "किचन के बर्तन",
+        slug: "cookware",
+        image: "https://placehold.co/400x300?text=बर्तन",
+        description: "खाना बनाने के बर्तन और उपकरण",
+        isActive: true,
+        sortOrder: 14,
+    },
+
+    // सेवाएँ (Services)
+    {
+        name: "Home Services",
+        nameHindi: "घरेलू सेवाएँ",
+        slug: "home-services",
+        image: "https://placehold.co/400x300?text=सेवाएँ",
+        description: "प्लंबिंग, इलेक्ट्रिशियन और रिपेयर सेवाएँ",
+        isActive: true,
+        sortOrder: 15,
+    },
+    {
+        name: "Professional Services",
+        nameHindi: "व्यावसायिक सेवाएँ",
+        slug: "professional-services",
+        image: "https://placehold.co/400x300?text=प्रोफेशनल",
+        description: "ट्यूटरिंग, कानूनी और सलाहकार सेवाएँ",
+        isActive: true,
+        sortOrder: 16,
+    },
+    {
+        name: "Event Services",
+        nameHindi: "इवेंट सेवाएँ",
+        slug: "event-services",
+        image: "https://placehold.co/400x300?text=इवेंट",
+        description: "कैटर्स, डेकोरेटर और इवेंट प्लानर",
+        isActive: true,
+        sortOrder: 17,
+    },
+
+];
+
+// async फ़ंक्शन जो डेटाबेस में कैटेगरीज़ को डालेगा।
+async function seedDatabase() {
+    console.log("🌱 डेटाबेस में शुरुआती कैटेगरीज़ डालना शुरू हो रहा है...");
+    try {
+        await db.insert(categories).values(seedCategories);
+        console.log("✅ सभी कैटेगरीज़ सफलतापूर्वक डाली गईं!");
+    }
 
   
 
