@@ -1,6 +1,4 @@
-// server/seed.ts
-
-import { db } from "./db.ts";
+import { db } from "../db";
 import { faker } from "@faker-js/faker";
 import {
   users,
@@ -15,8 +13,9 @@ import {
   reviews,
   userRoleEnum,
   approvalStatusEnum,
-} from "../shared/backend/schema.ts";
+} from "../../shared/backend/schema";
 import { eq } from "drizzle-orm";
+import { v4 as uuidv4 } from 'uuid';
 
 async function seedDatabase() {
   try {
@@ -37,197 +36,193 @@ async function seedDatabase() {
     console.log("✅ Existing data cleaned.");
 
 
-    // 2️⃣ Insert Category 
-    
-
-
+    // 2️⃣ Insert Category
+    console.log("➕ Inserting categories...");
     const seedCategories = [
-    // ग्रॉसरी और खाने-पीने की चीजें
-    {
-        name: "Vegetables",
-        nameHindi: "सब्जियां",
-        slug: "vegetables",
-        image: "https://placehold.co/400x300?text=सब्जियां", 
-        description: "ताजी और जैविक सब्जियां",
-        isActive: true,
-        sortOrder: 1,
-    },
-    {
-        name: "Fruits",
-        nameHindi: "फल",
-        slug: "fruits",
-        image: "https://placehold.co/400x300?text=फल", 
-        description: "विभिन्न प्रकार के मौसमी फल",
-        isActive: true,
-        sortOrder: 2,
-    },
-    {
-        name: "Dairy & Eggs",
-        nameHindi: "डेयरी और अंडे",
-        slug: "dairy-eggs",
-        image: "https://placehold.co/400x300?text=डेयरी", 
-        description: "दूध, दही, पनीर और अंडे",
-        isActive: true,
-        sortOrder: 3,
-    },
-    {
-        name: "Snacks",
-        nameHindi: "स्नैक्स",
-        slug: "snacks",
-        image: "https://placehold.co/400x300?text=स्नैक्स",
-        description: "मीठे और नमकीन स्नैक्स की वैराइटी",
-        isActive: true,
-        sortOrder: 4,
-    },
-    {
-        name: "Beverages",
-        nameHindi: "पेय पदार्थ",
-        slug: "beverages",
-        image: "https://placehold.co/400x300?text=पेय",
-        description: "चाय, कॉफी, जूस और कोल्ड ड्रिंक्स",
-        isActive: true,
-        sortOrder: 5,
-    },
+      // ग्रॉसरी और खाने-पीने की चीजें
+      {
+          name: "Vegetables",
+          nameHindi: "सब्जियां",
+          slug: "vegetables",
+          image: "https://placehold.co/400x300?text=सब्जियां", 
+          description: "ताजी और जैविक सब्जियां",
+          isActive: true,
+          sortOrder: 1,
+      },
+      {
+          name: "Fruits",
+          nameHindi: "फल",
+          slug: "fruits",
+          image: "https://placehold.co/400x300?text=फल", 
+          description: "विभिन्न प्रकार के मौसमी फल",
+          isActive: true,
+          sortOrder: 2,
+      },
+      {
+          name: "Dairy & Eggs",
+          nameHindi: "डेयरी और अंडे",
+          slug: "dairy-eggs",
+          image: "https://placehold.co/400x300?text=डेयरी", 
+          description: "दूध, दही, पनीर और अंडे",
+          isActive: true,
+          sortOrder: 3,
+      },
+      {
+          name: "Snacks",
+          nameHindi: "स्नैक्स",
+          slug: "snacks",
+          image: "https://placehold.co/400x300?text=स्नैक्स",
+          description: "मीठे और नमकीन स्नैक्स की वैराइटी",
+          isActive: true,
+          sortOrder: 4,
+      },
+      {
+          name: "Beverages",
+          nameHindi: "पेय पदार्थ",
+          slug: "beverages",
+          image: "https://placehold.co/400x300?text=पेय",
+          description: "चाय, कॉफी, जूस और कोल्ड ड्रिंक्स",
+          isActive: true,
+          sortOrder: 5,
+      },
 
-    // इलेक्ट्रॉनिक्स और गैजेट्स
-    {
-        name: "Mobile Phones",
-        nameHindi: "मोबाइल फ़ोन",
-        slug: "mobile-phones",
-        image: "https://placehold.co/400x300?text=मोबाइल",
-        description: "स्मार्टफोन, बेसिक फोन और एक्सेसरीज़",
-        isActive: true,
-        sortOrder: 6,
-    },
-    {
-        name: "Laptops & Computers",
-        nameHindi: "लैपटॉप और कंप्यूटर",
-        slug: "laptops-computers",
-        image: "https://placehold.co/400x300?text=कंप्यूटर",
-        description: "सभी प्रकार के लैपटॉप, डेस्कटॉप और पेरिफेरल्स",
-        isActive: true,
-        sortOrder: 7,
-    },
-    {
-        name: "Home Appliances",
-        nameHindi: "घरेलू उपकरण",
-        slug: "home-appliances",
-        image: "https://placehold.co/400x300?text=उपकरण",
-        description: "किचन और घर के लिए उपकरण",
-        isActive: true,
-        sortOrder: 8,
-    },
+      // इलेक्ट्रॉनिक्स और गैजेट्स
+      {
+          name: "Mobile Phones",
+          nameHindi: "मोबाइल फ़ोन",
+          slug: "mobile-phones",
+          image: "https://placehold.co/400x300?text=मोबाइल",
+          description: "स्मार्टफोन, बेसिक फोन और एक्सेसरीज़",
+          isActive: true,
+          sortOrder: 6,
+      },
+      {
+          name: "Laptops & Computers",
+          nameHindi: "लैपटॉप और कंप्यूटर",
+          slug: "laptops-computers",
+          image: "https://placehold.co/400x300?text=कंप्यूटर",
+          description: "सभी प्रकार के लैपटॉप, डेस्कटॉप और पेरिफेरल्स",
+          isActive: true,
+          sortOrder: 7,
+      },
+      {
+          name: "Home Appliances",
+          nameHindi: "घरेलू उपकरण",
+          slug: "home-appliances",
+          image: "https://placehold.co/400x300?text=उपकरण",
+          description: "किचन और घर के लिए उपकरण",
+          isActive: true,
+          sortOrder: 8,
+      },
 
-    // फ़ैशन और कपड़े
-    {
-        name: "Men's Fashion",
-        nameHindi: "पुरुषों का फैशन",
-        slug: "mens-fashion",
-        image: "https://placehold.co/400x300?text=पुरुष",
-        description: "पुरुषों के लिए कपड़े, जूते और एक्सेसरीज़",
-        isActive: true,
-        sortOrder: 9,
-    },
-    {
-        name: "Women's Fashion",
-        nameHindi: "महिलाओं का फैशन",
-        slug: "womens-fashion",
-        image: "https://placehold.co/400x300?text=महिला",
-        description: "महिलाओं के लिए एथनिक और वेस्टर्न वियर",
-        isActive: true,
-        sortOrder: 10,
-    },
-    {
-        name: "Kids' Fashion",
-        nameHindi: "बच्चों का फैशन",
-        slug: "kids-fashion",
-        image: "https://placehold.co/400x300?text=बच्चे",
-        description: "बच्चों के कपड़े और जूते",
-        isActive: true,
-        sortOrder: 11,
-    },
+      // फ़ैशन और कपड़े
+      {
+          name: "Men's Fashion",
+          nameHindi: "पुरुषों का फैशन",
+          slug: "mens-fashion",
+          image: "https://placehold.co/400x300?text=पुरुष",
+          description: "पुरुषों के लिए कपड़े, जूते और एक्सेसरीज़",
+          isActive: true,
+          sortOrder: 9,
+      },
+      {
+          name: "Women's Fashion",
+          nameHindi: "महिलाओं का फैशन",
+          slug: "womens-fashion",
+          image: "https://placehold.co/400x300?text=महिला",
+          description: "महिलाओं के लिए एथनिक और वेस्टर्न वियर",
+          isActive: true,
+          sortOrder: 10,
+      },
+      {
+          name: "Kids' Fashion",
+          nameHindi: "बच्चों का फैशन",
+          slug: "kids-fashion",
+          image: "https://placehold.co/400x300?text=बच्चे",
+          description: "बच्चों के कपड़े और जूते",
+          isActive: true,
+          sortOrder: 11,
+      },
 
-    // घर और किचन
-    {
-        name: "Home Decor",
-        nameHindi: "घर की सजावट",
-        slug: "home-decor",
-        image: "https://placehold.co/400x300?text=सजावट",
-        description: "दीवार की सजावट, लाइटिंग और शोपीस",
-        isActive: true,
-        sortOrder: 12,
-    },
-    {
-        name: "Furniture",
-        nameHindi: "फर्नीचर",
-        slug: "furniture",
-        image: "https://placehold.co/400x300?text=फर्नीचर",
-        description: "घर और ऑफिस के लिए फर्नीचर",
-        isActive: true,
-        sortOrder: 13,
-    },
-    {
-        name: "Cookware",
-        nameHindi: "किचन के बर्तन",
-        slug: "cookware",
-        image: "https://placehold.co/400x300?text=बर्तन",
-        description: "खाना बनाने के बर्तन और उपकरण",
-        isActive: true,
-        sortOrder: 14,
-    },
+      // घर और किचन
+      {
+          name: "Home Decor",
+          nameHindi: "घर की सजावट",
+          slug: "home-decor",
+          image: "https://placehold.co/400x300?text=सजावट",
+          description: "दीवार की सजावट, लाइटिंग और शोपीस",
+          isActive: true,
+          sortOrder: 12,
+      },
+      {
+          name: "Furniture",
+          nameHindi: "फर्नीचर",
+          slug: "furniture",
+          image: "https://placehold.co/400x300?text=फर्नीचर",
+          description: "घर और ऑफिस के लिए फर्नीचर",
+          isActive: true,
+          sortOrder: 13,
+      },
+      {
+          name: "Cookware",
+          nameHindi: "किचन के बर्तन",
+          slug: "cookware",
+          image: "https://placehold.co/400x300?text=बर्तन",
+          description: "खाना बनाने के बर्तन और उपकरण",
+          isActive: true,
+          sortOrder: 14,
+      },
 
-    // सेवाएँ (Services)
-    {
-        name: "Home Services",
-        nameHindi: "घरेलू सेवाएँ",
-        slug: "home-services",
-        image: "https://placehold.co/400x300?text=सेवाएँ",
-        description: "प्लंबिंग, इलेक्ट्रिशियन और रिपेयर सेवाएँ",
-        isActive: true,
-        sortOrder: 15,
-    },
-    {
-        name: "Professional Services",
-        nameHindi: "व्यावसायिक सेवाएँ",
-        slug: "professional-services",
-        image: "https://placehold.co/400x300?text=प्रोफेशनल",
-        description: "ट्यूटरिंग, कानूनी और सलाहकार सेवाएँ",
-        isActive: true,
-        sortOrder: 16,
-    },
-    {
-        name: "Event Services",
-        nameHindi: "इवेंट सेवाएँ",
-        slug: "event-services",
-        image: "https://placehold.co/400x300?text=इवेंट",
-        description: "कैटर्स, डेकोरेटर और इवेंट प्लानर",
-        isActive: true,
-        sortOrder: 17,
-    },
+      // सेवाएँ (Services)
+      {
+          name: "Home Services",
+          nameHindi: "घरेलू सेवाएँ",
+          slug: "home-services",
+          image: "https://placehold.co/400x300?text=सेवाएँ",
+          description: "प्लंबिंग, इलेक्ट्रिशियन और रिपेयर सेवाएँ",
+          isActive: true,
+          sortOrder: 15,
+      },
+      {
+          name: "Professional Services",
+          nameHindi: "व्यावसायिक सेवाएँ",
+          slug: "professional-services",
+          image: "https://placehold.co/400x300?text=प्रोफेशनल",
+          description: "ट्यूटरिंग, कानूनी और सलाहकार सेवाएँ",
+          isActive: true,
+          sortOrder: 16,
+      },
+      {
+          name: "Event Services",
+          nameHindi: "इवेंट सेवाएँ",
+          slug: "event-services",
+          image: "https://placehold.co/400x300?text=इवेंट",
+          description: "कैटर्स, डेकोरेटर और इवेंट प्लानर",
+          isActive: true,
+          sortOrder: 17,
+      },
 
-];
+    ];
 
-  
-
-// 3️⃣ Insert Users
-console.log("➕ Inserting users...");
-const userInputs = [
-  // ✅ यहाँ password, firstName, lastName, phone फ़ील्ड्स जोड़े गए हैं
-  { firebaseUid: faker.string.uuid(), email: "admin@example.com", password: "password123", firstName: "Admin", lastName: "User", phone: "9876543210", role: userRoleEnum.enumValues[2], approvalStatus: approvalStatusEnum.enumValues[1] }, // "admin", "approved"
-  { firebaseUid: faker.string.uuid(), email: "customer@example.com", password: "password123", firstName: "Customer", lastName: "User", phone: "9876543210", role: userRoleEnum.enumValues[0], approvalStatus: approvalStatusEnum.enumValues[1] }, // "customer", "approved"
-  { firebaseUid: faker.string.uuid(), email: "seller@example.com", password: "password123", firstName: "Seller", lastName: "User", phone: "9876543210", role: userRoleEnum.enumValues[1], approvalStatus: approvalStatusEnum.enumValues[1] }, // "seller", "approved"
-  { firebaseUid: faker.string.uuid(), email: "delivery@example.com", password: "password123", firstName: "Delivery", lastName: "User", phone: "9876543210", role: userRoleEnum.enumValues[3], approvalStatus: approvalStatusEnum.enumValues[1] }, // "delivery_boy", "approved"
-];
-
-const insertedUsers = await db.insert(users).values(userInputs).returning();
-
-
+    // ✅ कैटेगरीज़ को डालें और उनका ID प्राप्त करें
+    const insertedCategories = await db.insert(categories).values(seedCategories).returning();
+    console.log(`✅ Inserted ${insertedCategories.length} categories.`);
     
+    
+    // 3️⃣ Insert Users
+    console.log("➕ Inserting users...");
+    const userInputs = [
+      { firebaseUid: faker.string.uuid(), email: "admin@example.com", password: "password123", firstName: "Admin", lastName: "User", phone: "9876543210", role: userRoleEnum.enumValues[2] }, // "admin"
+      { firebaseUid: faker.string.uuid(), email: "customer@example.com", password: "password123", firstName: "Customer", lastName: "User", phone: "9876543210", role: userRoleEnum.enumValues[0] }, // "customer"
+      { firebaseUid: faker.string.uuid(), email: "seller@example.com", password: "password123", firstName: "Seller", lastName: "User", phone: "9876543210", role: userRoleEnum.enumValues[1] }, // "seller"
+      { firebaseUid: faker.string.uuid(), email: "delivery@example.com", password: "password123", firstName: "Delivery", lastName: "User", phone: "9876543210", role: userRoleEnum.enumValues[3] }, // "delivery_boy"
+    ];
 
-    // implicit any type errors for 'u' parameter:
-    const sellerUser = insertedUsers.find((u: any) => u.role === userRoleEnum.enumValues[1]); // Type 'any'
-    const customerUser = insertedUsers.find((u: any) => u.role === userRoleEnum.enumValues[0]); // Type 'any'
-    const deliveryUser = insertedUsers.find((u: any) => u.role === userRoleEnum.enumValues[3]); // Type 'any'
+    const insertedUsers = await db.insert(users).values(userInputs).returning();
+    
+    const sellerUser = insertedUsers.find(u => u.role === userRoleEnum.enumValues[1]);
+    const customerUser = insertedUsers.find(u => u.role === userRoleEnum.enumValues[0]);
+    const deliveryUser = insertedUsers.find(u => u.role === userRoleEnum.enumValues[3]);
 
 
     if (!sellerUser) throw new Error("❌ Seller user not found.");
@@ -239,7 +234,7 @@ const insertedUsers = await db.insert(users).values(userInputs).returning();
     // 4️⃣ Insert Seller
     console.log("➕ Inserting seller...");
     const [insertedSeller] = await db.insert(sellers).values({
-      userId: sellerUser.id, // userId now refers to users.id (integer)
+      userId: sellerUser.id, // userId अब users.id (integer) को संदर्भित करता है
       businessName: faker.company.name(),
       businessType: "grocery",
       businessAddress: faker.location.streetAddress(),
@@ -279,11 +274,10 @@ const insertedUsers = await db.insert(users).values(userInputs).returning();
     // 6️⃣ Insert Delivery Boy
     console.log("➕ Inserting delivery boy...");
     await db.insert(deliveryBoys).values({
-      userId: deliveryUser.id, // userId now refers to users.id (integer)
+      userId: deliveryUser.id, // userId अब users.id (integer) को संदर्भित करता है
       email: deliveryUser.email!,
       name: deliveryUser.name!,
       vehicleType: "bike",
-      name: "Delivery Boy",
       approvalStatus: approvalStatusEnum.enumValues[1], // "approved"
       firebaseUid: deliveryUser.firebaseUid, // Firebase UID भी डालें
     });
@@ -297,7 +291,7 @@ const insertedUsers = await db.insert(users).values(userInputs).returning();
     // 7️⃣ Insert Products
     console.log("➕ Inserting products...");
     const insertedProducts = await db.insert(products).values(
-      insertedCategories.map((cat: any) => { // Type 'any'
+      insertedCategories.map(cat => {
         const price = faker.commerce.price({ min: 10, max: 200, dec: 2 });
         const originalPrice = (parseFloat(price) * 1.2).toFixed(2);
 
@@ -350,7 +344,7 @@ const insertedUsers = await db.insert(users).values(userInputs).returning();
     // 9️⃣ Order Items
     console.log("➕ Inserting order items...");
     let totalOrderValue = 0;
-    const items = insertedProducts.slice(0, 2).map((p: any) => { // Type 'any'
+    const items = insertedProducts.slice(0, 2).map(p => {
       const qty = 2;
       const unitPrice = parseFloat(p.price || "0");
       const totalPrice = (unitPrice * qty).toFixed(2);
@@ -400,7 +394,7 @@ const insertedUsers = await db.insert(users).values(userInputs).returning();
 
     // 🔁 Cart Items
     console.log("➕ Inserting cart items...");
-    await db.insert(cartItems).values(insertedProducts.slice(0, 2).map((p: any) => ({ // Type 'any'
+    await db.insert(cartItems).values(insertedProducts.slice(0, 2).map(p => ({
       userId: customerUser.id,
       productId: p.id,
       quantity: 1,
