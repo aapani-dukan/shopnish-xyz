@@ -39,7 +39,9 @@ async function seedDatabase() {
 
     // 2️⃣ Insert Category 
     
-const seedCategories = [
+
+
+    const seedCategories = [
     // ग्रॉसरी और खाने-पीने की चीजें
     {
         name: "Vegetables",
@@ -204,7 +206,6 @@ const seedCategories = [
     },
 
 ];
-
 
   
 
