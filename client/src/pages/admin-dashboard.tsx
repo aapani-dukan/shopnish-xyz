@@ -478,7 +478,10 @@ const AdminDashboard: React.FC = () => {
         </div>
       )}
 
-      {activeTab === 'view-categories' && (
+      
+
+
+        {activeTab === 'view-categories' && (
         <div className="bg-white p-6 rounded-lg shadow-md">
           <h2 className="text-xl font-bold mb-4">Existing Categories</h2>
           <div className="overflow-x-auto">
@@ -486,4 +489,153 @@ const AdminDashboard: React.FC = () => {
               <thead>
                 <tr className="bg-gray-100">
                   <th className="border px-4 py-2 text-left text-sm font-medium text-gray-700">Name (EN)</th>
-  
+                  <th className="border px-4 py-2 text-left text-sm font-medium text-gray-700">Name (HI)</th>
+                  <th className="border px-4 py-2 text-left text-sm font-medium text-gray-700">Slug</th>
+                  <th className="border px-4 py-2 text-left text-sm font-medium text-gray-700">Image</th>
+                  <th className="border px-4 py-2 text-left text-sm font-medium text-gray-700">Status</th>
+                  <th className="border px-4 py-2 text-left text-sm font-medium text-gray-700">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {isLoadingCategories ? (
+                  <tr>
+                    <td colSpan={6} className="border px-4 py-4 text-center text-gray-500">
+                      <Loader2 className="h-5 w-5 animate-spin inline-block mr-2" /> Loading...
+                    </td>
+                  </tr>
+                ) : (
+                  categories.length > 0 ? (
+                    categories.map((cat) => (
+                      <tr key={cat.id} className="hover:bg-gray-50">
+                        <td className="border px-4 py-2">{cat.name}</td>
+                        <td className="border px-4 py-2">{cat.nameHindi || '-'}</td>
+                        <td className="border px-4 py-2">{cat.slug}</td>
+                        <td className="border px-4 py-2">
+                          <img src={cat.image} alt={cat.name} className="h-10 w-10 object-cover rounded" />
+                        </td>
+                        <td className="border px-4 py-2">
+                          <span className={`font-semibold ${cat.isActive ? 'text-green-600' : 'text-red-600'}`}>
+                            {cat.isActive ? 'Active' : 'Inactive'}
+                          </span>
+                        </td>
+                        <td className="border px-4 py-2 space-x-2">
+                          <Button className="px-3 py-1 rounded-full text-sm" variant="outline"><Edit size={16} /></Button>
+                          <Button className="px-3 py-1 rounded-full text-sm" variant="destructive"><Trash2 size={16} /></Button>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={6} className="border px-4 py-4 text-center text-gray-500">
+                        No categories found.
+                      </td>
+                    </tr>
+                  )
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+      
+
+
+                     {activeTab === 'create-category' && (
+        <div className="bg-white p-6 rounded-lg shadow-md">
+          <h2 className="text-xl font-bold mb-4">Create New Category</h2>
+          <form onSubmit={handleCreateCategory} className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <Label htmlFor="name">Name (English)</Label>
+                <Input
+                  id="name"
+                  name="name"
+                  type="text"
+                  value={formState.name}
+                  onChange={handleInputChange}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="nameHindi">Name (Hindi)</Label>
+                <Input
+                  id="nameHindi"
+                  name="nameHindi"
+                  type="text"
+                  value={formState.nameHindi}
+                  onChange={handleInputChange}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="slug">Slug</Label>
+                <Input
+                  id="slug"
+                  name="slug"
+                  type="text"
+                  value={formState.slug}
+                  onChange={handleInputChange}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="sortOrder">Sort Order</Label>
+                <Input
+                  id="sortOrder"
+                  name="sortOrder"
+                  type="number"
+                  value={formState.sortOrder}
+                  onChange={handleInputChange}
+                />
+              </div>
+              <div className="space-y-2 col-span-1 md:col-span-2">
+                <Label htmlFor="image">Image</Label>
+                <Input
+                  id="image"
+                  name="image"
+                  type="file"
+                  accept="image/*"
+                  onChange={handleInputChange}
+                  required
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="isActive" className="flex items-center gap-2">
+                <span>Active</span>
+                <Switch
+                  id="isActive"
+                  checked={formState.isActive}
+                  onCheckedChange={handleSwitchChange}
+                />
+              </Label>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="description">Description</Label>
+              <Textarea
+                id="description"
+                name="description"
+                value={formState.description}
+                onChange={handleInputChange}
+              />
+            </div>
+            <Button type="submit" className="w-full flex items-center gap-2" disabled={createCategoryMutation.isPending}>
+              {createCategoryMutation.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span>Creating...</span>
+                </>
+              ) : (
+                <>
+                  <Plus size={16} />
+                  <span>Create Category</span>
+                </>
+              )}
+            </Button>
+          </form>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default AdminDashboard;
