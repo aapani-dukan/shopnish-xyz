@@ -177,6 +177,47 @@ sellerRouter.get('/categories', requireSellerAuth, async (req: AuthenticatedRequ
 });
 
 /**
+ * ✅ POST /api/sellers/categories (नई कैटेगरी बनाएँ)
+ */
+sellerRouter.post('/categories', requireSellerAuth, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ error: 'Unauthorized.' });
+    }
+
+    const { name, nameHindi, slug } = req.body;
+    if (!name || !slug) {
+      return res.status(400).json({ error: 'Missing required fields: name and slug.' });
+    }
+
+    const [sellerProfile] = await db.select().from(sellersPgTable).where(eq(sellersPgTable.userId, userId));
+    if (!sellerProfile) {
+      return res.status(404).json({ error: 'Seller profile not found.' });
+    }
+    const sellerId = sellerProfile.id;
+
+    // Check if category with same slug already exists for this seller
+    const [existingCategory] = await db.select().from(categories).where(and(eq(categories.sellerId, sellerId), eq(categories.slug, slug)));
+    if (existingCategory) {
+      return res.status(409).json({ error: 'A category with this slug already exists for your store.' });
+    }
+
+    const newCategory = await db.insert(categories).values({
+      sellerId: sellerId,
+      name,
+      nameHindi,
+      slug,
+    }).returning();
+
+    return res.status(201).json(newCategory[0]);
+
+  } catch (error: any) {
+    console.error('❌ Error in POST /api/sellers/categories:', error);
+    return res.status(500).json({ error: 'Failed to create new category.' });
+  }
+});
+/**
  * ✅ PATCH /api/sellers/orders/:orderId/status (ऑर्डर की स्थिति अपडेट करें)
  */
 sellerRouter.patch('/orders/:orderId/status', requireSellerAuth, async (req: AuthenticatedRequest, res: Response) => {
