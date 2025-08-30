@@ -179,7 +179,7 @@ sellerRouter.get('/categories', requireSellerAuth, async (req: AuthenticatedRequ
 /**
  * ✅ POST /api/sellers/categories (नई कैटेगरी बनाएँ)
  */
-sellerRouter.post('/categories', requireSellerAuth, async (req: AuthenticatedRequest, res: Response) => {
+sellerRouter.post('/categories', requireSellerAuth, upload.single('image'), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const userId = req.user?.id;
     if (!userId) {
@@ -187,8 +187,10 @@ sellerRouter.post('/categories', requireSellerAuth, async (req: AuthenticatedReq
     }
 
     const { name, nameHindi, slug } = req.body;
-    if (!name || !slug) {
-      return res.status(400).json({ error: 'Missing required fields: name and slug.' });
+    const file = req.file;
+
+    if (!name || !slug || !file) {
+      return res.status(400).json({ error: 'Missing required fields: name, slug, or image.' });
     }
 
     const [sellerProfile] = await db.select().from(sellersPgTable).where(eq(sellersPgTable.userId, userId));
@@ -202,12 +204,15 @@ sellerRouter.post('/categories', requireSellerAuth, async (req: AuthenticatedReq
     if (existingCategory) {
       return res.status(409).json({ error: 'A category with this slug already exists for your store.' });
     }
+    
+    const imageUrl = await uploadImage(file.path, file.originalname);
 
     const newCategory = await db.insert(categories).values({
       sellerId: sellerId,
       name,
       nameHindi,
       slug,
+      image: imageUrl,
     }).returning();
 
     return res.status(201).json(newCategory[0]);
@@ -217,6 +222,7 @@ sellerRouter.post('/categories', requireSellerAuth, async (req: AuthenticatedReq
     return res.status(500).json({ error: 'Failed to create new category.' });
   }
 });
+
 /**
  * ✅ PATCH /api/sellers/orders/:orderId/status (ऑर्डर की स्थिति अपडेट करें)
  */
