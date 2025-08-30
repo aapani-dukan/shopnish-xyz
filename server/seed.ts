@@ -1,4 +1,4 @@
-import { db } from "../db";
+import { db } from "./db";
 import { faker } from "@faker-js/faker";
 import {
   users,
@@ -13,7 +13,7 @@ import {
   reviews,
   userRoleEnum,
   approvalStatusEnum,
-} from "../../shared/backend/schema";
+} from "../shared/backend/schema";
 import { eq } from "drizzle-orm";
 import { v4 as uuidv4 } from 'uuid';
 
