@@ -48,19 +48,47 @@ router.patch('/approve/:id', requireAdminAuth, async (req: AuthenticatedRequest,
         console.log(`Approving product with ID: ${id}, Type: ${typeof id}`);
         
         // उत्पाद को अपडेट करने से पहले ढूंढें
-        const productToApprove = await db.query.products.findFirst({
-  where: (products, { eq }) => eq(products.id, id),
-});
-
-        if (!productToApprove) {
-            return res.status(404).json({ message: "Product not found." });
-        }
-
-        // Drizzle में अपडेट करें
-        const [approvedProduct] = await db.update(products)
-            .set({ status: 'approved' })
-            .where(eq(products.id, id))
-            .returning();
+        user connected: Qk9PhrPmzOc8m8MgAAAB
+User disconnected: Qk9PhrPmzOc8m8MgAAAB
+POST /api/users/login 200 in 759ms :: {"message":"उपयोगकर्ता लॉगिन सफल","customToken":"ey…
+GET /api/users/me 304 in 168ms :: {"id":115,"firebaseUid":"4FoEz3nFsXVM5AbWBHt9b5wjNdg2",…
+A user connected: PkK1XESArRGiRisLAAAD
+🛒 [API] Received GET request for cart.
+✅ [API] Sending empty cart.
+GET /api/cart 304 in 763ms :: {"message":"Your cart is empty","items":[]}
+✅ Admin custom token created.
+POST /api/auth/admin-login 200 in 1471ms :: {"message":"Admin login successful.","customT…
+GET /api/users/me 304 in 166ms :: {"id":115,"firebaseUid":"4FoEz3nFsXVM5AbWBHt9b5wjNdg2",…
+GET /api/admin/delivery-boys/pending-applications 304 in 178ms :: []
+GET /api/admin/products 304 in 256ms :: [{"id":13,"sellerId":22,"storeId":22,"categoryId"…
+GET /api/admin/vendors/sellers/pending 304 in 750ms :: []
+Approving product with ID: 13, Type: number
+Failed to approve product: error: syntax error at or near "where"
+    at /opt/render/project/src/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async <anonymous> (/opt/render/project/src/node_modules/src/node-postgres/session.ts:104:19)
+    at async file:///opt/render/project/src/dist/index.js:1098:31 {
+  length: 94,
+  severity: 'ERROR',
+  code: '42601',
+  detail: undefined,
+  hint: undefined,
+  position: '24',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'scan.l',
+  line: '1244',
+  routine: 'scanner_yyerror'
+}
+PATCH /api/admin/products/approve/13 500 in 339ms :: {"message":"Failed to approve produc…
+A user connected: bK4SEIiSI6M79w-oAAAF
+User 
 
         res.status(200).json({
             message: "Product approved successfully.",
@@ -86,7 +114,8 @@ router.patch('/reject/:id', requireAdminAuth, async (req: AuthenticatedRequest, 
 
         // उत्पाद को अपडेट करने से पहले ढूंढें
         const productToReject = await db.query.products.findFirst({
-  where: (products, { eq }) => eq(products.id, id),
+  where: (fields, { eq }) => eq(fields.id, id),
+});
 });
 
         if (!productToReject) {
