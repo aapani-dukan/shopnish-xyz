@@ -186,7 +186,7 @@ sellerRouter.post('/categories', requireSellerAuth, upload.single('image'), asyn
       return res.status(401).json({ error: 'Unauthorized.' });
     }
 
-    const { name, nameHindi, slug } = req.body;
+    const { name, slug } = req.body;
     const file = req.file;
 
     if (!name || !slug || !file) {
@@ -210,7 +210,6 @@ sellerRouter.post('/categories', requireSellerAuth, upload.single('image'), asyn
     const newCategory = await db.insert(categories).values({
       sellerId: sellerId,
       name,
-      nameHindi,
       slug,
       image: imageUrl,
     }).returning();
