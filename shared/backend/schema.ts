@@ -81,7 +81,7 @@ export const stores = pgTable("stores", {
 export const categories = pgTable("categories", {
   id: serial("id").primaryKey(),
   
-    .references(() => sellersPgTable.id, { onDelete: "cascade" }), // seller table से relation
+    
   name: text("name").notNull(),
   nameHindi: text("name_hindi"),
   slug: text("slug").notNull().unique(),
