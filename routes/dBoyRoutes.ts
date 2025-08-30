@@ -19,7 +19,7 @@ const router = Router();
 
 // ✅ Delivery Boy Registration Route
 
-Delivery Boy Registration Route
+//Delivery Boy Registration Route
 // URL: /api/delivery-boys/register
 router.post('/register', async (req: Request, res: Response) => {
   try {
