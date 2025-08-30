@@ -44,6 +44,9 @@ router.patch('/approve/:id', requireAdminAuth, async (req: AuthenticatedRequest,
             return res.status(400).json({ message: "Invalid ID provided." });
         }
         
+        // Drizzle क्वेरी से पहले id को लॉग करें
+        console.log(`Approving product with ID: ${id}, Type: ${typeof id}`);
+        
         // उत्पाद को अपडेट करने से पहले ढूंढें
         const productToApprove = await db.query.products.findFirst({
             where: eq(products.id, id),
@@ -77,6 +80,9 @@ router.patch('/reject/:id', requireAdminAuth, async (req: AuthenticatedRequest, 
         if (isNaN(id)) {
             return res.status(400).json({ message: "Invalid ID provided." });
         }
+
+        // Drizzle क्वेरी से पहले id को लॉग करें
+        console.log(`Rejecting product with ID: ${id}, Type: ${typeof id}`);
 
         // उत्पाद को अपडेट करने से पहले ढूंढें
         const productToReject = await db.query.products.findFirst({
