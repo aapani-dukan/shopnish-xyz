@@ -15,7 +15,7 @@ router.get("/", requireAdminAuth, async (req: AuthenticatedRequest, res: Respons
     const { status } = req.query;
 
     const allProducts = await db.query.products.findMany({
-      where: status ? (fields, { eq }) => eq(fields.status, String(status)) : undefined,
+      where: status ? (fields, { eq }) => eq(fields.approvalStatus, String(status)) : undefined,
     });
 
     res.status(200).json(allProducts);
@@ -43,7 +43,7 @@ router.patch("/approve/:id", requireAdminAuth, async (req: AuthenticatedRequest,
 
     const [approved] = await db
       .update(products)
-      .set({ status: "approved" })
+      .set({ approvalStatus: "approved" })
       .where(eq(products.id, id))
       .returning();
 
@@ -75,7 +75,7 @@ router.patch("/reject/:id", requireAdminAuth, async (req: AuthenticatedRequest, 
 
     const [rejected] = await db
       .update(products)
-      .set({ status: "rejected" })
+      .set({ approvalStatus: "rejected" })
       .where(eq(products.id, id))
       .returning();
 
