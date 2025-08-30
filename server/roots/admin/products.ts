@@ -49,8 +49,8 @@ router.patch('/approve/:id', requireAdminAuth, async (req: AuthenticatedRequest,
         
         // उत्पाद को अपडेट करने से पहले ढूंढें
         const productToApprove = await db.query.products.findFirst({
-            where: eq(products.id, id),
-        });
+  where: (products, { eq }) => eq(products.id, id),
+});
 
         if (!productToApprove) {
             return res.status(404).json({ message: "Product not found." });
@@ -86,8 +86,8 @@ router.patch('/reject/:id', requireAdminAuth, async (req: AuthenticatedRequest, 
 
         // उत्पाद को अपडेट करने से पहले ढूंढें
         const productToReject = await db.query.products.findFirst({
-            where: eq(products.id, id),
-        });
+  where: (products, { eq }) => eq(products.id, id),
+});
 
         if (!productToReject) {
             return res.status(404).json({ message: "Product not found." });
