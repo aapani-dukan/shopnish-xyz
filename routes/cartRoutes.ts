@@ -1,5 +1,3 @@
-// routes/cartRoutes.ts
-
 import { Router, Response } from 'express';
 import { db } from '../server/db.ts';
 import {
@@ -7,7 +5,7 @@ import {
   orderItems,
   products
 } from '../shared/backend/schema.ts';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, inArray } from 'drizzle-orm';
 import { AuthenticatedRequest, requireAuth } from '../server/middleware/authMiddleware.ts';
 
 const cartRouter = Router();
@@ -32,31 +30,45 @@ cartRouter.get('/', requireAuth, async (req: AuthenticatedRequest, res: Response
       return res.status(404).json({ error: 'User not found.' });
     }
 
-    // ✅ यहाँ क्वेरी में 'status' को जोड़ा गया है
+    // ✅ चरण 1: cartItems फ़ेच करें
     const cartItemsData = await db.query.orderItems.findMany({
       where: and(eq(orderItems.userId, dbUser.id), eq(orderItems.status, 'in_cart')),
-      with: {
-        product: true,
-      },
     });
-
-    const cleanedCartData = cartItemsData.map(item => ({
-      id: item.id,
-      quantity: item.quantity,
-      product: {
-        id: item.product.id,
-        name: item.product.name,
-        price: item.product.price,
-        image: item.product.image,
-        sellerId: item.product.sellerId, 
-      },
-    }));
-
-    if (cleanedCartData.length === 0) {
+    
+    if (cartItemsData.length === 0) {
       console.log("✅ [API] Sending empty cart.");
       return res.status(200).json({ message: "Your cart is empty", items: [] });
     }
+
+    // ✅ चरण 2: productId array बनाएं और संबंधित उत्पादों को फ़ेच करें
+    const productIds = cartItemsData.map(item => item.productId);
+    const productsData = await db.query.products.findMany({
+      where: inArray(products.id, productIds),
+    });
+
+    // productsData को एक map में बदलें ताकि इसे जोड़ना आसान हो
+    const productsMap = new Map(productsData.map(product => [product.id, product]));
     
+    // ✅ चरण 3: cartItems और products को मैन्युअल रूप से जोड़ें
+    const cleanedCartData = cartItemsData.map(item => {
+      const product = productsMap.get(item.productId);
+      if (!product) {
+        console.warn(`Product with ID ${item.productId} not found.`);
+        return null;
+      }
+      return {
+        id: item.id,
+        quantity: item.quantity,
+        product: {
+          id: product.id,
+          name: product.name,
+          price: product.price,
+          image: product.image,
+          sellerId: product.sellerId, 
+        },
+      };
+    }).filter(item => item !== null); // null आइटम्स को हटा दें
+
     console.log(`✅ [API] Sending cart with ${cleanedCartData.length} items.`);
     return res.status(200).json({ message: "Cart fetched successfully", items: cleanedCartData });
 
@@ -67,8 +79,6 @@ cartRouter.get('/', requireAuth, async (req: AuthenticatedRequest, res: Response
 });
 
 
-
-// ✅ POST /api/cart/add - Add a new item to cart
 
 // ✅ POST /api/cart/add - Add a new item to cart
 cartRouter.post('/add', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
