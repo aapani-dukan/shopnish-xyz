@@ -1,5 +1,3 @@
-// server/routes/sellers/sellerRoutes.ts
-
 import { Router, Response, NextFunction } from 'express';
 import { db } from '../../server/db';
 import {
@@ -35,18 +33,27 @@ sellerRouter.get('/me', requireSellerAuth, async (req: AuthenticatedRequest, res
       return res.status(401).json({ error: 'Unauthorized: Missing user data.' });
     }
 
-    const [userWithSeller] = await db.query.users.findMany({
-      where: eq(users.id, userId),
-      with: {
-        seller: true
-      }
-    });
+    // ✅ चरण 1: उपयोगकर्ता को उसकी ID से फ़ेच करें
+    const [dbUser] = await db
+      .select({ id: users.id, role: users.role, approvalStatus: users.approvalStatus })
+      .from(users)
+      .where(eq(users.id, userId));
 
-    if (!userWithSeller || !userWithSeller.seller) {
+    if (!dbUser) {
+      return res.status(404).json({ error: 'User not found.' });
+    }
+    
+    // ✅ चरण 2: उपयोगकर्ता की ID का उपयोग करके विक्रेता प्रोफ़ाइल को फ़ेच करें
+    const [sellerProfile] = await db
+      .select()
+      .from(sellersPgTable)
+      .where(eq(sellersPgTable.userId, dbUser.id));
+
+    if (!sellerProfile) {
       return res.status(404).json({ error: 'Seller profile not found.' });
     }
 
-    return res.status(200).json(userWithSeller.seller);
+    return res.status(200).json(sellerProfile);
   } catch (error: any) {
     console.error('❌ Error in GET /api/sellers/me:', error);
     return res.status(500).json({ error: 'Internal server error.' });
@@ -401,4 +408,3 @@ sellerRouter.post(
 );
 
 export default sellerRouter;
-  
