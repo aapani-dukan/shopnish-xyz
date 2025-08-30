@@ -2,8 +2,8 @@ import { Router, Response } from 'express';
 import { AuthenticatedRequest } from '../../middleware/verifyToken.ts';
 import { requireAdminAuth } from '../../middleware/authMiddleware.ts';
 import { storage } from '../../storage.ts';
-import { db } from '../../db.ts'; // ✅ Drizzle ORM के लिए db इंपोर्ट करें
-import { products } from '../../../shared/backend/schema.ts'; // ✅ products स्कीमा इंपोर्ट करें
+import { db } from '../../db.ts';
+import { products } from '../../../shared/backend/schema.ts';
 import { eq } from 'drizzle-orm';
 
 const router = Router();
@@ -43,15 +43,21 @@ router.patch('/approve/:id', requireAdminAuth, async (req: AuthenticatedRequest,
         if (isNaN(id)) {
             return res.status(400).json({ message: "Invalid ID provided." });
         }
+        
+        // उत्पाद को अपडेट करने से पहले ढूंढें
+        const productToApprove = await db.query.products.findFirst({
+            where: eq(products.id, id),
+        });
 
+        if (!productToApprove) {
+            return res.status(404).json({ message: "Product not found." });
+        }
+
+        // Drizzle में अपडेट करें
         const [approvedProduct] = await db.update(products)
             .set({ status: 'approved' })
             .where(eq(products.id, id))
             .returning();
-
-        if (!approvedProduct) {
-            return res.status(404).json({ message: "Product not found." });
-        }
 
         res.status(200).json({
             message: "Product approved successfully.",
@@ -72,15 +78,21 @@ router.patch('/reject/:id', requireAdminAuth, async (req: AuthenticatedRequest, 
             return res.status(400).json({ message: "Invalid ID provided." });
         }
 
+        // उत्पाद को अपडेट करने से पहले ढूंढें
+        const productToReject = await db.query.products.findFirst({
+            where: eq(products.id, id),
+        });
+
+        if (!productToReject) {
+            return res.status(404).json({ message: "Product not found." });
+        }
+
+        // Drizzle में अपडेट करें
         const [rejectedProduct] = await db.update(products)
             .set({ status: 'rejected' })
             .where(eq(products.id, id))
             .returning();
-
-        if (!rejectedProduct) {
-            return res.status(404).json({ message: "Product not found." });
-        }
-
+            
         res.status(200).json({
             message: "Product rejected successfully.",
             product: rejectedProduct,
