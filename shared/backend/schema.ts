@@ -80,8 +80,7 @@ export const stores = pgTable("stores", {
 
 export const categories = pgTable("categories", {
   id: serial("id").primaryKey(),
-  sellerId: integer("seller_id")
-    .notNull()
+  
     .references(() => sellersPgTable.id, { onDelete: "cascade" }), // seller table से relation
   name: text("name").notNull(),
   nameHindi: text("name_hindi"),
