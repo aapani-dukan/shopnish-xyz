@@ -94,20 +94,31 @@ export const products = pgTable("products", {
   sellerId: integer("seller_id").references(() => sellersPgTable.id),
   storeId: integer("store_id").references(() => stores.id),
   categoryId: integer("category_id").references(() => categories.id),
+  
   name: text("name").notNull(),
   nameHindi: text("name_hindi"),
   description: text("description"),
   descriptionHindi: text("description_hindi"),
+  
   price: decimal("price", { precision: 10, scale: 2 }).notNull(),
   originalPrice: decimal("original_price", { precision: 10, scale: 2 }),
+  
   image: text("image").notNull(),
   images: text("images").array(),
+  
   unit: text("unit").notNull().default("piece"),
   brand: text("brand"),
   stock: integer("stock").notNull().default(0),
   minOrderQty: integer("min_order_qty").default(1),
   maxOrderQty: integer("max_order_qty").default(100),
+  
   isActive: boolean("is_active").default(true),
+  
+  // ✅ Approval system fields
+  approvalStatus: approvalStatusEnum("approval_status").notNull().default("pending"),
+  approvedAt: timestamp("approved_at"),
+  rejectionReason: text("rejection_reason"),
+
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
