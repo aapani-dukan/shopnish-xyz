@@ -1,5 +1,5 @@
 import { Router, Response, NextFunction } from 'express';
-import { db } from '../../server/db';
+import { db } from '../server/db';
 import { categories, users, userRoleEnum } from '../shared/backend/schema';
 import { eq, and } from 'drizzle-orm';
 import multer from 'multer';
