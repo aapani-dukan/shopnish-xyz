@@ -276,7 +276,7 @@ async function seedDatabase() {
     await db.insert(deliveryBoys).values({
       userId: deliveryUser.id, // userId अब users.id (integer) को संदर्भित करता है
       email: deliveryUser.email!,
-      name: deliveryUser.name!,
+      name: deliveryBoyName.trim(),
       vehicleType: "bike",
       approvalStatus: approvalStatusEnum.enumValues[1], // "approved"
       firebaseUid: deliveryUser.firebaseUid, // Firebase UID भी डालें
