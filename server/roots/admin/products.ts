@@ -90,7 +90,7 @@ router.patch('/reject/:id', requireAdminAuth, async (req: AuthenticatedRequest, 
         const productToReject = await db.query.products.findFirst({
   where: (fields, { eq }) => eq(fields.id, id),
 });
-});
+
 
         if (!productToReject) {
             return res.status(404).json({ message: "Product not found." });
