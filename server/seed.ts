@@ -273,21 +273,16 @@ async function seedDatabase() {
 
     // 6️⃣ Insert Delivery Boy
     console.log("➕ Inserting delivery boy...");
+    const deliveryBoyName = (deliveryUser.firstName || '') + ' ' + (deliveryUser.lastName || '');
     await db.insert(deliveryBoys).values({
-      userId: deliveryUser.id, // userId अब users.id (integer) को संदर्भित करता है
+      userId: deliveryUser.id, 
       email: deliveryUser.email!,
-      name: deliveryName.trim(),
+      name: deliveryBoyName.trim(),
       vehicleType: "bike",
-      approvalStatus: approvalStatusEnum.enumValues[1], // "approved"
-      firebaseUid: deliveryUser.firebaseUid, // Firebase UID भी डालें
+      approvalStatus: approvalStatusEnum.enumValues[1], 
+      firebaseUid: deliveryUser.firebaseUid, 
     });
     console.log("✅ Delivery boy inserted.");
-
-
-    if (!insertedCategories.length) {
-      throw new Error("❌ Categories not inserted. Cannot proceed with product insertion.");
-    }
-
     // 7️⃣ Insert Products
     console.log("➕ Inserting products...");
     const insertedProducts = await db.insert(products).values(
