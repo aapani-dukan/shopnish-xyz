@@ -6,9 +6,8 @@ import { approvalStatusEnum } from '../../../shared/backend/schema.ts';
 
 const router = Router();
 
-// ✅ सभी राउट्स को सीधे '/sellers' के तहत परिभाषित करें
-// जब यह '/admin/vendors' के साथ जुड़ेगा, तो '/admin/vendors/sellers/...' बनेगा
-router.get('/sellers/pending', requireAdminAuth, async (req: AuthenticatedRequest, res: Response) => {
+// ✅ अब URL /api/admin/vendors/pending होगा
+router.get('/pending', requireAdminAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const pendingSellers = await storage.getSellers(approvalStatusEnum.enumValues[0]);
     res.status(200).json(pendingSellers);
@@ -18,8 +17,8 @@ router.get('/sellers/pending', requireAdminAuth, async (req: AuthenticatedReques
   }
 });
 
-// ✅ POST को PATCH में बदला गया
-router.patch('/sellers/:sellerId/approve', requireAdminAuth, async (req: AuthenticatedRequest, res: Response) => {
+// ✅ अब URL /api/admin/vendors/:sellerId/approve होगा
+router.patch('/:sellerId/approve', requireAdminAuth, async (req: AuthenticatedRequest, res: Response) => {
   const sellerId = parseInt(req.params.sellerId);
   if (isNaN(sellerId)) {
     return res.status(400).json({ error: 'Invalid seller ID.' });
@@ -37,8 +36,8 @@ router.patch('/sellers/:sellerId/approve', requireAdminAuth, async (req: Authent
   }
 });
 
-// ✅ POST को PATCH में बदला गया
-router.patch('/sellers/:sellerId/reject', requireAdminAuth, async (req: AuthenticatedRequest, res: Response) => {
+// ✅ अब URL /api/admin/vendors/:sellerId/reject होगा
+router.patch('/:sellerId/reject', requireAdminAuth, async (req: AuthenticatedRequest, res: Response) => {
   const sellerId = parseInt(req.params.sellerId);
   const { reason } = req.body;
   if (isNaN(sellerId)) {
