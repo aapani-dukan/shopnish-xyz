@@ -7,7 +7,16 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-//import Header from "@/components/header";
+import { Link } from 'react-router-dom';
+import { useAuth } from '../hooks/useAuth';
+import {
+  Navbar,
+  NavbarBrand,
+  NavbarContent,
+  NavbarItem,
+} from '@nextui-org/react';
+import { Image } from '@nextui-org/react';
+import { IoIosSearch } from 'react-icons/io';
 import ProductCard from "@/components/product-card";
 import Footer from "@/components/footer";
 import axios from 'axios'; 
@@ -39,9 +48,9 @@ const fetchCategories = async (): Promise<Category[]> => {
 };
 
 export default function Home() {
+  const { user } = useAuth();
   const location = useLocation(); 
-  const urlParams = new 
-  URLSearchParams(location.search);
+  const urlParams = new URLSearchParams(location.search);
   const categoryParam = urlParams.get('category');
   const searchParam = urlParams.get('search');
 
@@ -150,7 +159,41 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-neutral-50">
-      {/*<Header categories={categories} />*/}
+      {/* Navbar */}
+      <Navbar className="bg-white shadow-md">
+        <NavbarBrand>
+          <p className="font-bold text-inherit text-xl text-neutral-800">ShopNish</p>
+        </NavbarBrand>
+        <NavbarContent className="hidden sm:flex gap-4" justify="center">
+          {/* You can add more navigation items here */}
+        </NavbarContent>
+        <NavbarContent justify="end">
+          <NavbarItem>
+            <Button
+              as={Link}
+              color="primary"
+              to="/profile"
+              variant="flat"
+              className="text-white bg-primary-500 rounded-full shadow-lg"
+            >
+              प्रोफाइल
+            </Button>
+          </NavbarItem>
+          {user?.isAdmin && (
+            <NavbarItem>
+              <Button
+                as={Link}
+                color="secondary"
+                to="/admin/dashboard"
+                variant="flat"
+                className="text-white bg-secondary-500 rounded-full shadow-lg"
+              >
+                एडमिन डैशबोर्ड
+              </Button>
+            </NavbarItem>
+          )}
+        </NavbarContent>
+      </Navbar>
 
       {/* Hero Section - Only show on home page without filters */}
       {!selectedCategory && !searchQuery && (
