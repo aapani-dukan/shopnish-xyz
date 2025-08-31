@@ -31,7 +31,7 @@ import CustomerOrdersPage from "@/pages/customer/orders";
 
 // ✅ Admin components को सही फ़ोल्डर से इम्पोर्ट करें
 import AdminLayout from "./components/AdminLayout";
-import AdminDashboard from "./components/AdminDashboard";
+import AdminDashboard from "./pages/admin-dashboard";
 import CategoriesManagement from "./components/CategoriesManagement";
 
 function App() {
