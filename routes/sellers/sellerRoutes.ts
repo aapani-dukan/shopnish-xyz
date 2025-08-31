@@ -297,4 +297,64 @@ sellerRouter.post(
   }
 );
 
+// ✅ NEW: PATCH /api/sellers/orders/:orderId/status (ऑर्डर की स्थिति अपडेट करें)
+sellerRouter.patch("/orders/:orderId/status", requireSellerAuth, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const userId = req.user?.id;
+    const { orderId } = req.params;
+    const { newStatus } = req.body;
+
+    if (!userId) {
+      return res.status(401).json({ error: "Unauthorized." });
+    }
+
+    if (!orderId || !newStatus) {
+      return res.status(400).json({ error: "Order ID and new status are required." });
+    }
+
+    const parsedOrderId = parseInt(orderId, 10);
+    if (isNaN(parsedOrderId)) {
+      return res.status(400).json({ error: "Invalid order ID." });
+    }
+
+    // First, check if the order exists and belongs to the authenticated seller
+    const orderItemsForSeller = await db
+      .select({ sellerId: orderItems.sellerId })
+      .from(orderItems)
+      .where(eq(orderItems.orderId, parsedOrderId));
+
+    if (orderItemsForSeller.length === 0) {
+      return res.status(404).json({ error: "Order not found." });
+    }
+
+    // Get the seller's ID from the current user
+    const [sellerProfile] = await db.select().from(sellersPgTable).where(eq(sellersPgTable.userId, userId));
+    if (!sellerProfile) {
+        return res.status(404).json({ error: 'Seller profile not found.' });
+    }
+
+    const sellerId = sellerProfile.id;
+    const isOrderOwnedBySeller = orderItemsForSeller.some(item => item.sellerId === sellerId);
+
+    if (!isOrderOwnedBySeller) {
+      return res.status(403).json({ error: "You are not authorized to update this order." });
+    }
+
+    const [updatedOrder] = await db
+      .update(orders)
+      .set({ status: newStatus as typeof orderStatusEnum.enumValues[number] })
+      .where(eq(orders.id, parsedOrderId))
+      .returning();
+
+    if (!updatedOrder) {
+      return res.status(404).json({ error: "Order not found." });
+    }
+
+    return res.status(200).json({ message: "Order status updated successfully.", order: updatedOrder });
+  } catch (error: any) {
+    console.error("❌ Error updating order status:", error);
+    return res.status(500).json({ error: "Failed to update order status." });
+  }
+});
+
 export default sellerRouter;
