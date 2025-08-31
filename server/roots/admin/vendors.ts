@@ -1,9 +1,9 @@
 import { Router, Response } from 'express';
-import { db } from '../../server/db';
-import { sellersPgTable, users, approvalStatusEnum } from '../../shared/backend/schema';
-import { AuthenticatedRequest } from '../../server/middleware/verifyToken';
+import { db } from '../../db';
+import { sellersPgTable, users, approvalStatusEnum } from '../../../shared/backend/schema';
+import { AuthenticatedRequest } from '../../middleware/verifyToken';
 import { eq } from 'drizzle-orm';
-import { requireAdminAuth } from '../../server/middleware/authMiddleware';
+import { requireAdminAuth } from '../../middleware/authMiddleware';
 
 const router = Router();
 
