@@ -10,6 +10,7 @@ import { SocketProvider } from "@/hooks/useSocket";
 // Layouts and components
 import Header from "./components/header";
 import CartModal from "./components/cart-modal";
+import AdminLayout from "@/components/AdminLayout";
 
 // Pages
 import HomePage from "@/pages/home";
@@ -21,18 +22,19 @@ import SellerDashboard from "@/pages/seller-dashboard";
 import SellerApplyPage from "@/pages/seller-apply";
 import SellerStatusPage from "@/pages/seller-status";
 import NotFound from "@/pages/not-found";
+import AdminDashboard from "@/pages/admin-dashboard";
 import DeliveryDashboard from "@/pages/delivery-dashboard";
 import DeliveryApplyPage from "@/pages/delivery-apply";
 import DeliveryLogin from "@/pages/delivery-login";
 import LoginPage from "@/pages/login";
+import CategoriesManagement from "@/pages/categories-management"; // ✅ CategoriesManagement जोड़ा गया
 import AdminLogin from "@/pages/admin-login";
 import OrderConfirmation from "@/pages/order-confirmation";
 import CustomerOrdersPage from "@/pages/customer/orders";
 
-// ✅ Admin components को सही फ़ोल्डर से इम्पोर्ट करें
-import AdminLayout from "./components/AdminLayout";
-import AdminDashboard from "./pages/admin-dashboard";
-import CategoriesManagement from "./components/CategoriesManagement";
+// Centralized auth-based routing
+import AuthRedirectGuard from "@/components/auth-redirect-guard";
+import AdminGuard from "@/components/admin-guard";
 
 function App() {
   const [isCartModalOpen, setIsCartModalOpen] = useState(false);
@@ -46,7 +48,7 @@ function App() {
             <Header onCartClick={() => setIsCartModalOpen(true)} />
             <main className="min-h-screen">
               <Routes>
-                {/* सार्वजनिक मार्ग */}
+                {/* Public routes */}
                 <Route path="/" element={<HomePage />} />
                 <Route path="/product/:id" element={<ProductDetail />} />
                 <Route path="/cart" element={<Cart />} />
@@ -55,23 +57,22 @@ function App() {
                 <Route path="/login" element={<LoginPage />} />
                 <Route path="/admin-login" element={<AdminLogin />} />
                 <Route path="/delivery-login" element={<DeliveryLogin />} />
-                {/* सुरक्षित - सामान्य Auth */}
+                {/* Protected - Normal Auth */}
                 <Route path="/seller-dashboard" element={<AuthRedirectGuard><SellerDashboard /></AuthRedirectGuard>} />
                 <Route path="/seller-apply" element={<AuthRedirectGuard><SellerApplyPage /></AuthRedirectGuard>} />
                 <Route path="/seller-status" element={<AuthRedirectGuard><SellerStatusPage /></AuthRedirectGuard>} />
                 <Route path="/delivery-dashboard" element={<AuthRedirectGuard><DeliveryDashboard /></AuthRedirectGuard>} />
                 <Route path="/delivery-apply" element={<AuthRedirectGuard><DeliveryApplyPage /></AuthRedirectGuard>} />
-                
                 <Route path="/customer/orders" element={<AuthRedirectGuard><CustomerOrdersPage /></AuthRedirectGuard>} />
+                <Route path="/order-confirmation/:orderId" element={<OrderConfirmation />} />
 
-                {/* सुरक्षित - एडमिन */}
-                <Route path="/admin-dashboard" element={<AdminGuard><AdminLayout /></AdminGuard>}>
-                  <Route index element={<AdminDashboard />} />
+                {/* Protected - Admin */}
+                {/* ✅ एडमिन राउट को AdminLayout के अंदर रखा गया है */}
+                <Route path="/admin" element={<AdminGuard><AdminLayout /></AdminGuard>}>
+                  <Route path="dashboard" element={<AdminDashboard />} />
                   <Route path="categories" element={<CategoriesManagement />} />
                 </Route>
                 
-                <Route path="/order-confirmation/:orderId" element={<OrderConfirmation />} />
-
                 {/* 404 */}
                 <Route path="*" element={<NotFound />} />
               </Routes>
