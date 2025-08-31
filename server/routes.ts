@@ -1,8 +1,5 @@
-// server/routes.ts
-
 import express, { Router, Request, Response } from 'express';
 import { db } from './db.ts';
-import { eq, like } from 'drizzle-orm';
 import {
   users,
   products,
@@ -35,6 +32,7 @@ import orderConfirmationRouter from '../routes/orderConfirmationRouter';
 import orderdBoyRouter from './roots/admin/orderdBoyRoutes.ts';
 import userLoginRouter from '../routes/userRoutes.ts';
 import { verifyToken } from "./middleware/verifyToken"; 
+
 const router = Router();
 let ioInstance: any; // ✅ io इंस्टेंस को होल्ड करने के लिए एक वेरिएबल
 
@@ -128,7 +126,6 @@ router.use('/users', userLoginRouter); // '/api/users/login'
 router.use('/auth', apiAuthLoginRouter);
 
 // ✅ Seller-specific routes
-
 //cartRourer
 router.use('/cart', cartRouter);
 //orderRouter
@@ -153,11 +150,10 @@ router.get('/categories', async (req: Request, res: Response) => {
 router.use('/products', productsRouter);
 
 // ✅ Delivery Boy
-
-router.use('/delivery-boys', dBoyRouter);
+// ✅ यह वह राउट है जिसे हमने बदला है
+router.use('/delivery', dBoyRouter);
 
 // Admin Routes
-
 const adminRouter = Router();
 adminRouter.use(requireAdminAuth); // ✅ सभी एडमिन राउट्स के लिए ऑथेंटिकेशन
 adminRouter.use('/products/approve', adminApproveProductRoutes);
