@@ -245,10 +245,11 @@ export default function Home() {
                     <h5 className="font-medium mb-3">Price Range</h5>
                     <div className="space-y-2">
                       {[
-                        { id: 'under-25', label: 'Under $25' },
-                        { id: '25-50', label: '$25 - $50' },
-                        { id: '50-100', label: '$50 - $100' },
-                        { id: 'over-100', label: 'Over $100' },
+                        { id: 'under-250', label: 'Under ₹250' },
+                        { id: '250-500', label: '₹250 - ₹500' },
+                        { id: '500-1000', label: '₹500 - ₹1000' },
+                        { id: '1000-5000', label: '₹1000 - ₹5000' },
+                        { id: 'over-5000', lebel: '₹ over 5000' },
                       ].map((range) => (
                         <div key={range.id} className="flex items-center space-x-2">
                           <Checkbox
