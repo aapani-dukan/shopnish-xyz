@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
-import { Check, X, Loader2 } from "lucide-react";
+import { Check, X, Loader2, RefreshCw } from "lucide-react";
 import api from "@/lib/api";
 
 // ✅ इंटरफेस
@@ -31,27 +31,43 @@ interface DeliveryBoy {
 
 const AdminDashboard: React.FC = () => {
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState("vendors");
+  const [activeTab, setActiveTab] = useState("pending-vendors");
 
-  // ✅ डेटा फेचिंग (api का इस्तेमाल करके)
-  const { data: vendors = [], isLoading: isLoadingVendors } = useQuery<Vendor[]>({
-    queryKey: ["adminVendors"],
+  // ✅ डेटा फेचिंग (लंबित और स्वीकृत)
+  const { data: pendingVendors = [], isLoading: isLoadingPendingVendors } = useQuery<Vendor[]>({
+    queryKey: ["pendingVendors"],
     queryFn: async () => {
       const res = await api.get("/api/vendors/pending");
       return res.data && Array.isArray(res.data) ? res.data : [];
     },
   });
 
-  const { data: products = [], isLoading: isLoadingProducts } = useQuery<Product[]>({
-    queryKey: ["adminProducts"],
+  const { data: approvedVendors = [], isLoading: isLoadingApprovedVendors } = useQuery<Vendor[]>({
+    queryKey: ["approvedVendors"],
+    queryFn: async () => {
+      const res = await api.get("/api/vendors/approved");
+      return res.data && Array.isArray(res.data) ? res.data : [];
+    },
+  });
+
+  const { data: pendingProducts = [], isLoading: isLoadingPendingProducts } = useQuery<Product[]>({
+    queryKey: ["pendingProducts"],
     queryFn: async () => {
       const res = await api.get("/api/products/pending");
       return res.data && Array.isArray(res.data) ? res.data : [];
     },
   });
 
+  const { data: approvedProducts = [], isLoading: isLoadingApprovedProducts } = useQuery<Product[]>({
+    queryKey: ["approvedProducts"],
+    queryFn: async () => {
+      const res = await api.get("/api/products/approved");
+      return res.data && Array.isArray(res.data) ? res.data : [];
+    },
+  });
+
   const { data: pendingDeliveryBoys = [], isLoading: isLoadingDeliveryBoys } = useQuery<DeliveryBoy[]>({
-    queryKey: ["adminDeliveryBoys"],
+    queryKey: ["pendingDeliveryBoys"],
     queryFn: async () => {
       const res = await api.get("/api/delivery-boys/pending-applications");
       return res.data && Array.isArray(res.data) ? res.data : [];
@@ -63,7 +79,8 @@ const AdminDashboard: React.FC = () => {
     mutationFn: (vendorId: string) => api.patch(`/api/vendors/approve/${vendorId}`),
     onSuccess: () => {
       toast({ title: "वेंडर मंज़ूर हुआ!" });
-      queryClient.invalidateQueries({ queryKey: ["adminVendors"] });
+      queryClient.invalidateQueries({ queryKey: ["pendingVendors"] });
+      queryClient.invalidateQueries({ queryKey: ["approvedVendors"] });
     },
     onError: (error: any) => {
       console.error("वेंडर मंज़ूर करने में त्रुटि:", error);
@@ -75,7 +92,7 @@ const AdminDashboard: React.FC = () => {
     mutationFn: (vendorId: string) => api.patch(`/api/vendors/reject/${vendorId}`),
     onSuccess: () => {
       toast({ title: "वेंडर अस्वीकृत हुआ!" });
-      queryClient.invalidateQueries({ queryKey: ["adminVendors"] });
+      queryClient.invalidateQueries({ queryKey: ["pendingVendors"] });
     },
     onError: (error: any) => {
       console.error("वेंडर अस्वीकार करने में त्रुटि:", error);
@@ -87,7 +104,8 @@ const AdminDashboard: React.FC = () => {
     mutationFn: (productId: string) => api.patch(`/api/products/approve/${productId}`),
     onSuccess: () => {
       toast({ title: "प्रोडक्ट मंज़ूर हुआ!" });
-      queryClient.invalidateQueries({ queryKey: ["adminProducts"] });
+      queryClient.invalidateQueries({ queryKey: ["pendingProducts"] });
+      queryClient.invalidateQueries({ queryKey: ["approvedProducts"] });
     },
     onError: (error: any) => {
       console.error("प्रोडक्ट मंज़ूर करने में त्रुटि:", error);
@@ -99,7 +117,7 @@ const AdminDashboard: React.FC = () => {
     mutationFn: (productId: string) => api.patch(`/api/products/reject/${productId}`),
     onSuccess: () => {
       toast({ title: "प्रोडक्ट अस्वीकृत हुआ!" });
-      queryClient.invalidateQueries({ queryKey: ["adminProducts"] });
+      queryClient.invalidateQueries({ queryKey: ["pendingProducts"] });
     },
     onError: (error: any) => {
       console.error("प्रोडक्ट अस्वीकार करने में त्रुटि:", error);
@@ -111,7 +129,7 @@ const AdminDashboard: React.FC = () => {
     mutationFn: (id: string) => api.patch(`/api/delivery-boys/approve/${id}`),
     onSuccess: () => {
       toast({ title: "डिलीवरी बॉय मंज़ूर हुआ!" });
-      queryClient.invalidateQueries({ queryKey: ["adminDeliveryBoys"] });
+      queryClient.invalidateQueries({ queryKey: ["pendingDeliveryBoys"] });
     },
     onError: (error: any) => {
       console.error("डिलीवरी बॉय मंज़ूर करने में त्रुटि:", error);
@@ -123,20 +141,20 @@ const AdminDashboard: React.FC = () => {
     mutationFn: (id: string) => api.patch(`/api/delivery-boys/reject/${id}`),
     onSuccess: () => {
       toast({ title: "डिलीवरी बॉय अस्वीकृत हुआ!" });
-      queryClient.invalidateQueries({ queryKey: ["adminDeliveryBoys"] });
+      queryClient.invalidateQueries({ queryKey: ["pendingDeliveryBoys"] });
     },
     onError: (error: any) => {
       console.error("डिलीवरी बॉय अस्वीकार करने में त्रुटि:", error);
       toast({ title: "डिलीवरी बॉय अस्वीकार करने में विफल", variant: "destructive" });
     },
   });
-
+  
   const renderContent = () => {
     switch (activeTab) {
-      case 'vendors':
+      case 'pending-vendors':
         return (
           <div className="bg-white p-6 rounded-lg shadow-md">
-            <h2 className="text-xl font-bold mb-4">पेंडिंग वेंडर एप्लिकेशन</h2>
+            <h2 className="text-xl font-bold mb-4">लंबित वेंडर एप्लिकेशन</h2>
             <div className="overflow-x-auto">
               <table className="min-w-full table-auto border-collapse border border-gray-300">
                 <thead>
@@ -148,10 +166,10 @@ const AdminDashboard: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {isLoadingVendors ? (
+                  {isLoadingPendingVendors ? (
                     <tr><td colSpan={4} className="border px-4 py-4 text-center text-gray-500"><Loader2 className="h-5 w-5 animate-spin inline-block mr-2" /> लोडिंग...</td></tr>
-                  ) : vendors.length > 0 ? (
-                    vendors.map((vendor) => (
+                  ) : pendingVendors.length > 0 ? (
+                    pendingVendors.map((vendor) => (
                       <tr key={vendor.id} className="hover:bg-gray-50">
                         <td className="border px-4 py-2">{vendor.businessName}</td>
                         <td className="border px-4 py-2">{vendor.businessPhone}</td>
@@ -174,10 +192,42 @@ const AdminDashboard: React.FC = () => {
             </div>
           </div>
         );
-      case 'products':
+      case 'approved-vendors':
         return (
           <div className="bg-white p-6 rounded-lg shadow-md">
-            <h2 className="text-xl font-bold mb-4">पेंडिंग प्रोडक्ट अप्रूवल</h2>
+            <h2 className="text-xl font-bold mb-4">स्वीकृत वेंडर</h2>
+            <div className="overflow-x-auto">
+              <table className="min-w-full table-auto border-collapse border border-gray-300">
+                <thead>
+                  <tr className="bg-gray-100">
+                    <th className="border px-4 py-2 text-left text-sm font-medium text-gray-700">व्यापार का नाम</th>
+                    <th className="border px-4 py-2 text-left text-sm font-medium text-gray-700">फ़ोन नंबर</th>
+                    <th className="border px-4 py-2 text-left text-sm font-medium text-gray-700">स्थिति</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {isLoadingApprovedVendors ? (
+                    <tr><td colSpan={3} className="border px-4 py-4 text-center text-gray-500"><Loader2 className="h-5 w-5 animate-spin inline-block mr-2" /> लोडिंग...</td></tr>
+                  ) : approvedVendors.length > 0 ? (
+                    approvedVendors.map((vendor) => (
+                      <tr key={vendor.id} className="hover:bg-gray-50">
+                        <td className="border px-4 py-2">{vendor.businessName}</td>
+                        <td className="border px-4 py-2">{vendor.businessPhone}</td>
+                        <td className="border px-4 py-2">{vendor.approvalStatus}</td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr><td colSpan={3} className="border px-4 py-4 text-center text-gray-500">कोई स्वीकृत वेंडर नहीं हैं।</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        );
+      case 'pending-products':
+        return (
+          <div className="bg-white p-6 rounded-lg shadow-md">
+            <h2 className="text-xl font-bold mb-4">लंबित प्रोडक्ट अप्रूवल</h2>
             <div className="overflow-x-auto">
               <table className="min-w-full table-auto border-collapse border border-gray-300">
                 <thead>
@@ -190,10 +240,10 @@ const AdminDashboard: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {isLoadingProducts ? (
+                  {isLoadingPendingProducts ? (
                     <tr><td colSpan={5} className="border px-4 py-4 text-center text-gray-500"><Loader2 className="h-5 w-5 animate-spin inline-block mr-2" /> लोडिंग...</td></tr>
-                  ) : products.length > 0 ? (
-                    products.map((product) => (
+                  ) : pendingProducts.length > 0 ? (
+                    pendingProducts.map((product) => (
                       <tr key={product.id} className="hover:bg-gray-50">
                         <td className="border px-4 py-2">{product.name}</td>
                         <td className="border px-4 py-2">₹{product.price}</td>
@@ -206,7 +256,41 @@ const AdminDashboard: React.FC = () => {
                       </tr>
                     ))
                   ) : (
-                    <tr><td colSpan={5} className="border px-4 py-4 text-center text-gray-500">कोई पेंडिंग प्रोडक्ट नहीं मिले।</td></tr>
+                    <tr><td colSpan={5} className="border px-4 py-4 text-center text-gray-500">कोई लंबित प्रोडक्ट नहीं मिले।</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        );
+      case 'approved-products':
+        return (
+          <div className="bg-white p-6 rounded-lg shadow-md">
+            <h2 className="text-xl font-bold mb-4">स्वीकृत प्रोडक्ट</h2>
+            <div className="overflow-x-auto">
+              <table className="min-w-full table-auto border-collapse border border-gray-300">
+                <thead>
+                  <tr className="bg-gray-100">
+                    <th className="border px-4 py-2 text-left text-sm font-medium text-gray-700">नाम</th>
+                    <th className="border px-4 py-2 text-left text-sm font-medium text-gray-700">कीमत</th>
+                    <th className="border px-4 py-2 text-left text-sm font-medium text-gray-700">कैटेगरी</th>
+                    <th className="border px-4 py-2 text-left text-sm font-medium text-gray-700">स्थिति</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {isLoadingApprovedProducts ? (
+                    <tr><td colSpan={4} className="border px-4 py-4 text-center text-gray-500"><Loader2 className="h-5 w-5 animate-spin inline-block mr-2" /> लोडिंग...</td></tr>
+                  ) : approvedProducts.length > 0 ? (
+                    approvedProducts.map((product) => (
+                      <tr key={product.id} className="hover:bg-gray-50">
+                        <td className="border px-4 py-2">{product.name}</td>
+                        <td className="border px-4 py-2">₹{product.price}</td>
+                        <td className="border px-4 py-2">{product.category}</td>
+                        <td className="border px-4 py-2">{product.status}</td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr><td colSpan={4} className="border px-4 py-4 text-center text-gray-500">कोई स्वीकृत प्रोडक्ट नहीं मिले।</td></tr>
                   )}
                 </tbody>
               </table>
@@ -216,7 +300,7 @@ const AdminDashboard: React.FC = () => {
       case 'delivery-boys':
         return (
           <div className="bg-white p-6 rounded-lg shadow-md">
-            <h2 className="text-xl font-bold mb-4">पेंडिंग डिलीवरी बॉय एप्लिकेशन</h2>
+            <h2 className="text-xl font-bold mb-4">लंबित डिलीवरी बॉय एप्लिकेशन</h2>
             <div className="overflow-x-auto">
               <table className="min-w-full table-auto border-collapse border border-gray-300">
                 <thead>
@@ -260,11 +344,17 @@ const AdminDashboard: React.FC = () => {
   return (
     <div className="p-4 bg-gray-50 min-h-screen font-inter">
       <div className="flex space-x-4 mb-4">
-        <Button onClick={() => setActiveTab("vendors")} className={`px-4 py-2 rounded ${activeTab === "vendors" ? "bg-blue-600 text-white" : "bg-gray-200 text-gray-800 hover:bg-gray-300"}`}>
-          वेंडर
+        <Button onClick={() => setActiveTab("pending-vendors")} className={`px-4 py-2 rounded ${activeTab === "pending-vendors" ? "bg-blue-600 text-white" : "bg-gray-200 text-gray-800 hover:bg-gray-300"}`}>
+          पेंडिंग वेंडर
         </Button>
-        <Button onClick={() => setActiveTab("products")} className={`px-4 py-2 rounded ${activeTab === "products" ? "bg-blue-600 text-white" : "bg-gray-200 text-gray-800 hover:bg-gray-300"}`}>
-          प्रोडक्ट
+        <Button onClick={() => setActiveTab("approved-vendors")} className={`px-4 py-2 rounded ${activeTab === "approved-vendors" ? "bg-green-600 text-white" : "bg-gray-200 text-gray-800 hover:bg-gray-300"}`}>
+          स्वीकृत वेंडर
+        </Button>
+        <Button onClick={() => setActiveTab("pending-products")} className={`px-4 py-2 rounded ${activeTab === "pending-products" ? "bg-blue-600 text-white" : "bg-gray-200 text-gray-800 hover:bg-gray-300"}`}>
+          पेंडिंग प्रोडक्ट
+        </Button>
+        <Button onClick={() => setActiveTab("approved-products")} className={`px-4 py-2 rounded ${activeTab === "approved-products" ? "bg-green-600 text-white" : "bg-gray-200 text-gray-800 hover:bg-gray-300"}`}>
+          स्वीकृत प्रोडक्ट
         </Button>
         <Button onClick={() => setActiveTab("delivery-boys")} className={`px-4 py-2 rounded ${activeTab === "delivery-boys" ? "bg-blue-600 text-white" : "bg-gray-200 text-gray-800 hover:bg-gray-300"}`}>
           डिलीवरी बॉय
@@ -277,4 +367,3 @@ const AdminDashboard: React.FC = () => {
 
 export default AdminDashboard;
 
-                    
