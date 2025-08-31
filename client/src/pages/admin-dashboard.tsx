@@ -67,11 +67,19 @@ const AdminDashboard: React.FC = () => {
     },
   });
 
-
-  const { data: pendingDeliveryBoys = [], isLoading: isLoadingDeliveryBoys } = useQuery<DeliveryBoy[]>({
-    queryKey: ["adminDeliveryBoys"],
+  // ✅ डिलीवरी बॉय के लिए नया डेटा फ़ेचिंग
+  const { data: pendingDeliveryBoys = [], isLoading: isLoadingPendingDeliveryBoys } = useQuery<DeliveryBoy[]>({
+    queryKey: ["adminPendingDeliveryBoys"],
     queryFn: async () => {
-      const res = await api.get("/api/delivery-boys/pending-applications");
+      const res = await api.get("/api/admin/delivery-boys/pending");
+      return res.data && Array.isArray(res.data) ? res.data : [];
+    },
+  });
+
+  const { data: approvedDeliveryBoys = [], isLoading: isLoadingApprovedDeliveryBoys } = useQuery<DeliveryBoy[]>({
+    queryKey: ["adminApprovedDeliveryBoys"],
+    queryFn: async () => {
+      const res = await api.get("/api/admin/delivery-boys/approved");
       return res.data && Array.isArray(res.data) ? res.data : [];
     },
   });
@@ -131,10 +139,11 @@ const AdminDashboard: React.FC = () => {
   });
 
   const approveDeliveryBoyMutation = useMutation({
-    mutationFn: (id: string) => api.patch(`/api/delivery-boys/approve/${id}`),
+    mutationFn: (id: string) => api.patch(`/api/admin/delivery-boys/approve/${id}`),
     onSuccess: () => {
       toast({ title: "डिलीवरी बॉय मंज़ूर हुआ!" });
-      queryClient.invalidateQueries({ queryKey: ["adminDeliveryBoys"] });
+      queryClient.invalidateQueries({ queryKey: ["adminPendingDeliveryBoys"] });
+      queryClient.invalidateQueries({ queryKey: ["adminApprovedDeliveryBoys"] });
     },
     onError: (error: any) => {
       console.error("डिलीवरी बॉय मंज़ूर करने में त्रुटि:", error);
@@ -143,10 +152,11 @@ const AdminDashboard: React.FC = () => {
   });
 
   const rejectDeliveryBoyMutation = useMutation({
-    mutationFn: (id: string) => api.patch(`/api/delivery-boys/reject/${id}`),
+    mutationFn: (id: string) => api.patch(`/api/admin/delivery-boys/reject/${id}`),
     onSuccess: () => {
       toast({ title: "डिलीवरी बॉय अस्वीकृत हुआ!" });
-      queryClient.invalidateQueries({ queryKey: ["adminDeliveryBoys"] });
+      queryClient.invalidateQueries({ queryKey: ["adminPendingDeliveryBoys"] });
+      queryClient.invalidateQueries({ queryKey: ["adminApprovedDeliveryBoys"] });
     },
     onError: (error: any) => {
       console.error("डिलीवरी बॉय अस्वीकार करने में त्रुटि:", error);
@@ -297,7 +307,7 @@ const AdminDashboard: React.FC = () => {
             </div>
           </div>
         );
-      case 'delivery-boys':
+      case 'pending-delivery-boys':
         return (
           <div className="bg-white p-6 rounded-lg shadow-md">
             <h2 className="text-xl font-bold mb-4">पेंडिंग डिलीवरी बॉय एप्लिकेशन</h2>
@@ -313,7 +323,7 @@ const AdminDashboard: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {isLoadingDeliveryBoys ? (
+                  {isLoadingPendingDeliveryBoys ? (
                     <tr><td colSpan={5} className="border px-4 py-4 text-center text-gray-500"><Loader2 className="h-5 w-5 animate-spin inline-block mr-2" /> लोडिंग...</td></tr>
                   ) : pendingDeliveryBoys.length > 0 ? (
                     pendingDeliveryBoys.map((boy) => (
@@ -321,7 +331,7 @@ const AdminDashboard: React.FC = () => {
                         <td className="border px-4 py-2">{boy.name}</td>
                         <td className="border px-4 py-2">{boy.email}</td>
                         <td className="border px-4 py-2">{boy.vehicleType}</td>
-                        <td className="border px-4 py-2"><span className="font-semibold text-yellow-500">पेंडिंग</span></td>
+                        <td className="border px-4 py-2"><span className="font-semibold text-yellow-500">{boy.approvalStatus}</span></td>
                         <td className="border px-4 py-2 space-x-2">
                           <Button onClick={() => approveDeliveryBoyMutation.mutate(boy.id)} className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded-full text-sm" disabled={approveDeliveryBoyMutation.isPending}><Check size={16} /></Button>
                           <Button onClick={() => rejectDeliveryBoyMutation.mutate(boy.id)} className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-full text-sm" disabled={rejectDeliveryBoyMutation.isPending}><X size={16} /></Button>
@@ -329,7 +339,41 @@ const AdminDashboard: React.FC = () => {
                       </tr>
                     ))
                   ) : (
-                    <tr><td colSpan={5} className="border px-4 py-4 text-center text-gray-500">कोई पेंडिंग डिलीवरी बॉय एप्लिकेशन नहीं हैं।</td></tr>
+                    <tr><td colSpan={5} className="border px-4 py-4 text-center text-gray-500">कोई लंबित डिलीवरी बॉय एप्लिकेशन नहीं हैं।</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        );
+      case 'approved-delivery-boys':
+        return (
+          <div className="bg-white p-6 rounded-lg shadow-md">
+            <h2 className="text-xl font-bold mb-4">स्वीकृत डिलीवरी बॉय</h2>
+            <div className="overflow-x-auto">
+              <table className="min-w-full table-auto border-collapse border border-gray-300">
+                <thead>
+                  <tr className="bg-gray-100">
+                    <th className="border px-4 py-2 text-left text-sm font-medium text-gray-700">नाम</th>
+                    <th className="border px-4 py-2 text-left text-sm font-medium text-gray-700">ईमेल</th>
+                    <th className="border px-4 py-2 text-left text-sm font-medium text-gray-700">वाहन का प्रकार</th>
+                    <th className="border px-4 py-2 text-left text-sm font-medium text-gray-700">स्थिति</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {isLoadingApprovedDeliveryBoys ? (
+                    <tr><td colSpan={4} className="border px-4 py-4 text-center text-gray-500"><Loader2 className="h-5 w-5 animate-spin inline-block mr-2" /> लोडिंग...</td></tr>
+                  ) : approvedDeliveryBoys.length > 0 ? (
+                    approvedDeliveryBoys.map((boy) => (
+                      <tr key={boy.id} className="hover:bg-gray-50">
+                        <td className="border px-4 py-2">{boy.name}</td>
+                        <td className="border px-4 py-2">{boy.email}</td>
+                        <td className="border px-4 py-2">{boy.vehicleType}</td>
+                        <td className="border px-4 py-2"><span className="font-semibold text-green-500">{boy.approvalStatus}</span></td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr><td colSpan={4} className="border px-4 py-4 text-center text-gray-500">कोई स्वीकृत डिलीवरी बॉय नहीं हैं।</td></tr>
                   )}
                 </tbody>
               </table>
@@ -356,8 +400,11 @@ const AdminDashboard: React.FC = () => {
         <Button onClick={() => setActiveTab("approved-products")} className={`px-4 py-2 rounded ${activeTab === "approved-products" ? "bg-blue-600 text-white" : "bg-gray-200 text-gray-800 hover:bg-gray-300"}`}>
           स्वीकृत प्रोडक्ट
         </Button>
-        <Button onClick={() => setActiveTab("delivery-boys")} className={`px-4 py-2 rounded ${activeTab === "delivery-boys" ? "bg-blue-600 text-white" : "bg-gray-200 text-gray-800 hover:bg-gray-300"}`}>
-          डिलीवरी बॉय
+        <Button onClick={() => setActiveTab("pending-delivery-boys")} className={`px-4 py-2 rounded ${activeTab === "pending-delivery-boys" ? "bg-blue-600 text-white" : "bg-gray-200 text-gray-800 hover:bg-gray-300"}`}>
+          पेंडिंग डिलीवरी बॉय
+        </Button>
+        <Button onClick={() => setActiveTab("approved-delivery-boys")} className={`px-4 py-2 rounded ${activeTab === "approved-delivery-boys" ? "bg-blue-600 text-white" : "bg-gray-200 text-gray-800 hover:bg-gray-300"}`}>
+          स्वीकृत डिलीवरी बॉय
         </Button>
       </div>
       {renderContent()}
@@ -366,5 +413,3 @@ const AdminDashboard: React.FC = () => {
 };
 
 export default AdminDashboard;
-
-          
