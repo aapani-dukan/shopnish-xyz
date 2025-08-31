@@ -28,7 +28,8 @@ import {
   FormControl,
   FormMessage,
 } from "@/components/ui/form.js";
-import { apiRequest} from "@/lib/queryClient";
+import { apiRequest } from "@/lib/queryClient";
+
 // 📦 Form Validation Schema
 const sellerFormSchema = z.object({
   businessName: z.string().min(3).max(100),
@@ -79,19 +80,18 @@ function useRegisterSeller(onClose: () => void, resetForm: () => void) {
         name: user.name,
       };
 
-      const response = await apiRequest(
-        "POST",
-        "/api/sellers/apply",
-        payload,
-        user.idToken
-      );
-
-      if (!response.ok) {
-        const errData = await response.json();
-        throw new Error(errData.message || "Failed to register seller.");
+      try {
+        const response = await apiRequest(
+          "POST",
+          "/api/sellers/apply",
+          payload,
+          user.idToken
+        );
+        return response; // ✅ response पहले से ही parsed JSON है, इसलिए .json() की आवश्यकता नहीं है
+      } catch (error: any) {
+        // ✅ apiRequest में कोई भी non-ok response एक error throw करेगा।
+        throw new Error(error.message || "Failed to register seller.");
       }
-
-      return await response.json();
     },
 
     onSuccess: (data) => {
@@ -147,25 +147,24 @@ export default function SellerOnboardingDialog({
   const registerSellerMutation = useRegisterSeller(onClose, form.reset);
 
   const onSubmit = (data: FormData) => {
-  // ✅ सुनिश्चित करें कि सभी आवश्यक डेटा उपलब्ध हैं
-  if (
-    !isAuthenticated || 
-    isLoadingAuth || 
-    !user?.uid || 
-    !user?.idToken
-  ) {
-    toast({
-      title: "Please wait...",
-      description: "Authenticating user. Please try again.",
-      variant: "default",
-    });
-    return;
-  }
-  
-  // ✅ अब mutate को कॉल करें
-  registerSellerMutation.mutate(data);
-};
-  
+    // ✅ सुनिश्चित करें कि सभी आवश्यक डेटा उपलब्ध हैं
+    if (
+      !isAuthenticated ||
+      isLoadingAuth ||
+      !user?.uid ||
+      !user?.idToken
+    ) {
+      toast({
+        title: "Please wait...",
+        description: "Authenticating user. Please try again.",
+        variant: "default",
+      });
+      return;
+    }
+
+    // ✅ अब mutate को कॉल करें
+    registerSellerMutation.mutate(data);
+  };
 
   const handleClose = () => {
     form.reset();
