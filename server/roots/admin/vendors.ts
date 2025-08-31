@@ -1,9 +1,8 @@
-// server/roots/admin/vendors.ts
 import { Router, Response } from 'express';
-import { storage } from '../../storage.ts'; 
+import { storage } from '../../storage.ts';
 import { AuthenticatedRequest } from '../../middleware/verifyToken.ts';
 import { requireAdminAuth } from '../../middleware/authMiddleware.ts';
-import { approvalStatusEnum } from '../../../shared/backend/schema.ts'; 
+import { approvalStatusEnum } from '../../../shared/backend/schema.ts';
 
 const router = Router();
 
@@ -19,7 +18,8 @@ router.get('/sellers/pending', requireAdminAuth, async (req: AuthenticatedReques
   }
 });
 
-router.post('/sellers/:sellerId/approve', requireAdminAuth, async (req: AuthenticatedRequest, res: Response) => {
+// ✅ POST को PATCH में बदला गया
+router.patch('/sellers/:sellerId/approve', requireAdminAuth, async (req: AuthenticatedRequest, res: Response) => {
   const sellerId = parseInt(req.params.sellerId);
   if (isNaN(sellerId)) {
     return res.status(400).json({ error: 'Invalid seller ID.' });
@@ -37,7 +37,8 @@ router.post('/sellers/:sellerId/approve', requireAdminAuth, async (req: Authenti
   }
 });
 
-router.post('/sellers/:sellerId/reject', requireAdminAuth, async (req: AuthenticatedRequest, res: Response) => {
+// ✅ POST को PATCH में बदला गया
+router.patch('/sellers/:sellerId/reject', requireAdminAuth, async (req: AuthenticatedRequest, res: Response) => {
   const sellerId = parseInt(req.params.sellerId);
   const { reason } = req.body;
   if (isNaN(sellerId)) {
