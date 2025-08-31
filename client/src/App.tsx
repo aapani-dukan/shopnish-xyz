@@ -25,14 +25,11 @@ import DeliveryDashboard from "@/pages/delivery-dashboard";
 import DeliveryApplyPage from "@/pages/delivery-apply";
 import DeliveryLogin from "@/pages/delivery-login";
 import LoginPage from "@/pages/login";
-// Centralized auth-based routing
-import AuthRedirectGuard from "@/components/auth-redirect-guard";
-import AdminGuard from "@/components/admin-guard";
 import AdminLogin from "@/pages/admin-login";
 import OrderConfirmation from "@/pages/order-confirmation";
 import CustomerOrdersPage from "@/pages/customer/orders";
 
-// ✅ एडमिन के लिए इम्पोर्ट
+// ✅ Admin components को सही फ़ोल्डर से इम्पोर्ट करें
 import AdminLayout from "./components/AdminLayout";
 import AdminDashboard from "./components/AdminDashboard";
 import CategoriesManagement from "./components/CategoriesManagement";
@@ -49,7 +46,7 @@ function App() {
             <Header onCartClick={() => setIsCartModalOpen(true)} />
             <main className="min-h-screen">
               <Routes>
-                {/* Public routes */}
+                {/* सार्वजनिक मार्ग */}
                 <Route path="/" element={<HomePage />} />
                 <Route path="/product/:id" element={<ProductDetail />} />
                 <Route path="/cart" element={<Cart />} />
@@ -58,7 +55,7 @@ function App() {
                 <Route path="/login" element={<LoginPage />} />
                 <Route path="/admin-login" element={<AdminLogin />} />
                 <Route path="/delivery-login" element={<DeliveryLogin />} />
-                {/* Protected - Normal Auth */}
+                {/* सुरक्षित - सामान्य Auth */}
                 <Route path="/seller-dashboard" element={<AuthRedirectGuard><SellerDashboard /></AuthRedirectGuard>} />
                 <Route path="/seller-apply" element={<AuthRedirectGuard><SellerApplyPage /></AuthRedirectGuard>} />
                 <Route path="/seller-status" element={<AuthRedirectGuard><SellerStatusPage /></AuthRedirectGuard>} />
@@ -67,11 +64,9 @@ function App() {
                 
                 <Route path="/customer/orders" element={<AuthRedirectGuard><CustomerOrdersPage /></AuthRedirectGuard>} />
 
-                {/* Protected - Admin */}
-                {/* ✅ एडमिन के लिए सही राउटिंग */}
-                <Route path="/admin" element={<AdminGuard><AdminLayout /></AdminGuard>}>
+                {/* सुरक्षित - एडमिन */}
+                <Route path="/admin-dashboard" element={<AdminGuard><AdminLayout /></AdminGuard>}>
                   <Route index element={<AdminDashboard />} />
-                  <Route path="dashboard" element={<AdminDashboard />} />
                   <Route path="categories" element={<CategoriesManagement />} />
                 </Route>
                 
