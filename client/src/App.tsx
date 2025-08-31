@@ -1,5 +1,3 @@
-// client/src/App.tsx
-
 import { useState } from "react";
 import { Routes, Route } from "react-router-dom";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -23,17 +21,21 @@ import SellerDashboard from "@/pages/seller-dashboard";
 import SellerApplyPage from "@/pages/seller-apply";
 import SellerStatusPage from "@/pages/seller-status";
 import NotFound from "@/pages/not-found";
-import AdminDashboard from "@/pages/admin-dashboard";
 import DeliveryDashboard from "@/pages/delivery-dashboard";
 import DeliveryApplyPage from "@/pages/delivery-apply";
 import DeliveryLogin from "@/pages/delivery-login";
-import LoginPage from "@/pages/login"; // ✅ यह नया इम्पोर्ट जोड़ा गया है
+import LoginPage from "@/pages/login";
 // Centralized auth-based routing
 import AuthRedirectGuard from "@/components/auth-redirect-guard";
 import AdminGuard from "@/components/admin-guard";
 import AdminLogin from "@/pages/admin-login";
 import OrderConfirmation from "@/pages/order-confirmation";
 import CustomerOrdersPage from "@/pages/customer/orders";
+
+// ✅ एडमिन के लिए इम्पोर्ट
+import AdminLayout from "./components/AdminLayout";
+import AdminDashboard from "./components/AdminDashboard";
+import CategoriesManagement from "./components/CategoriesManagement";
 
 function App() {
   const [isCartModalOpen, setIsCartModalOpen] = useState(false);
@@ -53,7 +55,7 @@ function App() {
                 <Route path="/cart" element={<Cart />} />
                 <Route path="/checkout" element={<Checkout />} />
                 <Route path="/auth" element={<AuthPage />} />
-                <Route path="/login" element={<LoginPage />} />  {/* ✅ यह राउट जोड़ा गया है */}
+                <Route path="/login" element={<LoginPage />} />
                 <Route path="/admin-login" element={<AdminLogin />} />
                 <Route path="/delivery-login" element={<DeliveryLogin />} />
                 {/* Protected - Normal Auth */}
@@ -66,7 +68,12 @@ function App() {
                 <Route path="/customer/orders" element={<AuthRedirectGuard><CustomerOrdersPage /></AuthRedirectGuard>} />
 
                 {/* Protected - Admin */}
-                <Route path="/admin-dashboard" element={<AdminGuard><AdminDashboard /></AdminGuard>} />
+                {/* ✅ एडमिन के लिए सही राउटिंग */}
+                <Route path="/admin" element={<AdminGuard><AdminLayout /></AdminGuard>}>
+                  <Route index element={<AdminDashboard />} />
+                  <Route path="dashboard" element={<AdminDashboard />} />
+                  <Route path="categories" element={<CategoriesManagement />} />
+                </Route>
                 
                 <Route path="/order-confirmation/:orderId" element={<OrderConfirmation />} />
 
