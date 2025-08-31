@@ -27,7 +27,7 @@ import DeliveryDashboard from "@/pages/delivery-dashboard";
 import DeliveryApplyPage from "@/pages/delivery-apply";
 import DeliveryLogin from "@/pages/delivery-login";
 import LoginPage from "@/pages/login";
-import CategoriesManagement from "@/pages/categories-management"; // ✅ CategoriesManagement जोड़ा गया
+import CategoriesManagement from "@/pages/CategoriesManagement"; // ✅ CategoriesManagement जोड़ा गया
 import AdminLogin from "@/pages/admin-login";
 import OrderConfirmation from "@/pages/order-confirmation";
 import CustomerOrdersPage from "@/pages/customer/orders";
