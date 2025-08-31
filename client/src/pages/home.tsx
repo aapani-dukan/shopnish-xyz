@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation, Link } from "react-router-dom";
-import { Filter, ArrowRight, HomeIcon } from "lucide-react";
+import { Filter, ArrowRight, ShieldIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -94,7 +94,6 @@ export default function Home() {
   });
 
   // Handle loading and error states at the top level for a better UX
-  // ✅ Consolidated loading checks here
   if (categoriesLoading || productsLoading || featuredProductsLoading) {
     return (
       <div className="min-h-screen bg-neutral-50">
@@ -110,7 +109,7 @@ export default function Home() {
     );
   }
 
-  // ✅ Consolidated error checks here
+  // Consolidated error checks here
   if (categoriesError || productsError || featuredProductsError) {
     return (
       <div className="min-h-screen flex items-center justify-center text-red-600">
@@ -146,15 +145,15 @@ export default function Home() {
     document.getElementById('products-section')?.scrollIntoView({ behavior: 'smooth' });
   };
   
-  // ✅ Added Admin Dashboard button logic
+  // ✅ Updated Admin Login button logic
   const renderAdminButton = () => {
     if (user?.isAdmin) {
       return (
         <div className="absolute top-4 right-4">
           <Button asChild>
-            <Link to="/admin/dashboard">
-              <HomeIcon className="mr-2 h-4 w-4" />
-              एडमिन डैशबोर्ड
+            <Link to="/admin-login">
+              <ShieldIcon className="mr-2 h-4 w-4" />
+              एडमिन लॉगिन
             </Link>
           </Button>
         </div>
