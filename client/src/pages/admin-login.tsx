@@ -50,7 +50,7 @@ export default function AdminLogin() {
         description: "Welcome Admin!",
       });
 
-      navigate("/admin-dashboard", { replace: true });
+      navigate("/admin/dashboard", { replace: true });
     } catch (err: any) {
       toast({
         title: "Login Failed",
