@@ -128,8 +128,10 @@ const AdminDashboard: React.FC = () => {
   });
 
   // ✅ useMutation Hooks for Actions
+  // ✅ useMutation Hooks for Actions
   const approveVendorMutation = useMutation({
-    mutationFn: (vendorId: string) => apiRequest("PATCH", `/api/admin/vendors/sellers/approve/${vendorId}`, {}),
+    mutationFn: (vendorId: number) =>
+      apiRequest("PATCH", `/api/admin/vendors/approve/${vendorId}`, {}),
     onSuccess: () => {
       toast({ title: "Vendor approved successfully!" });
       queryClient.invalidateQueries({ queryKey: ["adminVendors"] });
@@ -141,7 +143,8 @@ const AdminDashboard: React.FC = () => {
   });
 
   const rejectVendorMutation = useMutation({
-    mutationFn: (vendorId: string) => apiRequest("PATCH", `/api/admin/vendors/sellers/reject/${vendorId}`, {}),
+    mutationFn: (vendorId: number) =>
+      apiRequest("PATCH", `/api/admin/vendors/reject/${vendorId}`, {}),
     onSuccess: () => {
       toast({ title: "Vendor rejected successfully!" });
       queryClient.invalidateQueries({ queryKey: ["adminVendors"] });
