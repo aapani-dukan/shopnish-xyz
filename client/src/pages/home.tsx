@@ -1,25 +1,16 @@
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useLocation } from "react-router-dom"; 
-import { Filter, ArrowRight } from "lucide-react";
+import { useLocation, Link } from "react-router-dom";
+import { Filter, ArrowRight, HomeIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Link } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth';
-import {
-  Navbar,
-  NavbarBrand,
-  NavbarContent,
-  NavbarItem,
-} from '@nextui-org/react';
-import { Image } from '@nextui-org/react';
-import { IoIosSearch } from 'react-icons/io';
 import ProductCard from "@/components/product-card";
 import Footer from "@/components/footer";
-import axios from 'axios'; 
+import axios from 'axios';
+import { useAuth } from '@/hooks/useAuth';
 
 interface Category {
   id: number;
@@ -155,45 +146,26 @@ export default function Home() {
     document.getElementById('products-section')?.scrollIntoView({ behavior: 'smooth' });
   };
   
-  // ✅ Removed the duplicate if (categoriesLoading) block that caused the error
+  // ✅ Added Admin Dashboard button logic
+  const renderAdminButton = () => {
+    if (user?.isAdmin) {
+      return (
+        <div className="absolute top-4 right-4">
+          <Button asChild>
+            <Link to="/admin/dashboard">
+              <HomeIcon className="mr-2 h-4 w-4" />
+              एडमिन डैशबोर्ड
+            </Link>
+          </Button>
+        </div>
+      );
+    }
+    return null;
+  };
 
   return (
     <div className="min-h-screen bg-neutral-50">
-      {/* Navbar */}
-      <Navbar className="bg-white shadow-md">
-        <NavbarBrand>
-          <p className="font-bold text-inherit text-xl text-neutral-800">ShopNish</p>
-        </NavbarBrand>
-        <NavbarContent className="hidden sm:flex gap-4" justify="center">
-          {/* You can add more navigation items here */}
-        </NavbarContent>
-        <NavbarContent justify="end">
-          <NavbarItem>
-            <Button
-              as={Link}
-              color="primary"
-              to="/profile"
-              variant="flat"
-              className="text-white bg-primary-500 rounded-full shadow-lg"
-            >
-              प्रोफाइल
-            </Button>
-          </NavbarItem>
-          {user?.isAdmin && (
-            <NavbarItem>
-              <Button
-                as={Link}
-                color="secondary"
-                to="/admin/dashboard"
-                variant="flat"
-                className="text-white bg-secondary-500 rounded-full shadow-lg"
-              >
-                एडमिन डैशबोर्ड
-              </Button>
-            </NavbarItem>
-          )}
-        </NavbarContent>
-      </Navbar>
+      {renderAdminButton()}
 
       {/* Hero Section - Only show on home page without filters */}
       {!selectedCategory && !searchQuery && (
@@ -393,4 +365,3 @@ export default function Home() {
   );
 }
 
-        
