@@ -169,7 +169,7 @@ export default function Home() {
                 {/* ✅ एडमिन बटन जोड़ा गया */}
                 {isAdmin && (
                   <Button asChild className="mt-4 bg-white text-primary hover:bg-gray-100 font-semibold">
-                    <Link to="/admin/dashboard">एडमिन पैनल पर जाएँ</Link>
+                    <Link to="/admin-login">एडमिन पैनल पर जाएँ</Link>
                   </Button>
                 )}
               </div>
