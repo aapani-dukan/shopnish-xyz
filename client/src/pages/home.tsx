@@ -1,17 +1,16 @@
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useLocation, Link } from "react-router-dom"; // ✅ Link को जोड़ा गया
+import { useLocation } from "react-router-dom"; 
 import { Filter, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+//import Header from "@/components/header";
 import ProductCard from "@/components/product-card";
 import Footer from "@/components/footer";
 import axios from 'axios'; 
-// ✅ useAuth हुक को जोड़ा गया
-import { useAuth } from "@/hooks/useAuth";
 
 interface Category {
   id: number;
@@ -33,6 +32,7 @@ interface Product {
   reviewCount: number | null;
 }
 
+// Function to fetch categories
 const fetchCategories = async (): Promise<Category[]> => {
   const response = await axios.get('/api/categories');
   return response.data;
@@ -45,9 +45,6 @@ export default function Home() {
   const categoryParam = urlParams.get('category');
   const searchParam = urlParams.get('search');
 
-  // ✅ isAdmin state को useAuth हुक से प्राप्त किया गया
-  const { isAdmin } = useAuth();
-
   const [selectedCategory, setSelectedCategory] = useState<number | null>(
     categoryParam ? parseInt(categoryParam) : null
   );
@@ -55,6 +52,7 @@ export default function Home() {
   const [priceFilter, setPriceFilter] = useState<string[]>([]);
   const [sortBy, setSortBy] = useState("best-match");
 
+  // Update filters when URL changes
   useEffect(() => {
     const currentUrlParams = new URLSearchParams(location.search);
     const newCategoryParam = currentUrlParams.get('category');
@@ -95,6 +93,8 @@ export default function Home() {
     },
   });
 
+  // Handle loading and error states at the top level for a better UX
+  // ✅ Consolidated loading checks here
   if (categoriesLoading || productsLoading || featuredProductsLoading) {
     return (
       <div className="min-h-screen bg-neutral-50">
@@ -110,6 +110,7 @@ export default function Home() {
     );
   }
 
+  // ✅ Consolidated error checks here
   if (categoriesError || productsError || featuredProductsError) {
     return (
       <div className="min-h-screen flex items-center justify-center text-red-600">
@@ -145,8 +146,12 @@ export default function Home() {
     document.getElementById('products-section')?.scrollIntoView({ behavior: 'smooth' });
   };
   
+  // ✅ Removed the duplicate if (categoriesLoading) block that caused the error
+
   return (
     <div className="min-h-screen bg-neutral-50">
+      {/*<Header categories={categories} />*/}
+
       {/* Hero Section - Only show on home page without filters */}
       {!selectedCategory && !searchQuery && (
         <section className="bg-gradient-to-r from-primary to-orange-500 text-white py-16">
@@ -166,12 +171,6 @@ export default function Home() {
                 >
                   Start Shopping <ArrowRight className="ml-2 h-5 w-5" />
                 </Button>
-                {/* ✅ एडमिन बटन जोड़ा गया */}
-                {isAdmin && (
-                  <Button asChild className="mt-4 bg-white text-primary hover:bg-gray-100 font-semibold">
-                    <Link to="/admin-login">एडमिन पैनल पर जाएँ</Link>
-                  </Button>
-                )}
               </div>
               <div className="relative">
                 <img
@@ -350,3 +349,5 @@ export default function Home() {
     </div>
   );
 }
+
+        
