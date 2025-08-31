@@ -8,7 +8,7 @@ const AdminLayout = () => {
     <div className="bg-neutral-50 min-h-screen">
       <div className="flex">
         {/* Sidebar */}
-        <div className="w-64 bg-white shadow-lg p-6 min-h-screen">
+        <aside className="w-64 bg-white shadow-lg p-6 min-h-screen">
           <div className="flex items-center space-x-2 mb-8">
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -25,9 +25,12 @@ const AdminLayout = () => {
               <path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z" />
               <path d="m9 12 2 2 4-4" />
             </svg>
-            <span className="font-bold text-lg text-neutral-800">Admin Panel</span>
+            <span className="font-bold text-lg text-neutral-800">
+              Admin Panel
+            </span>
           </div>
 
+          {/* Navigation */}
           <nav className="space-y-2">
             <Link
               to="/admin/dashboard"
@@ -52,6 +55,7 @@ const AdminLayout = () => {
               </svg>
               <span>Dashboard</span>
             </Link>
+
             <Link
               to="/admin/categories"
               className="flex items-center space-x-3 px-4 py-2 rounded-lg text-neutral-700 hover:bg-neutral-100 transition-colors"
@@ -77,9 +81,10 @@ const AdminLayout = () => {
               </svg>
               <span>Categories</span>
             </Link>
-            {/* Add more links here */}
+
+            {/* 🚀 Future links (Orders, Users, Reports, etc.) यहीं add करना */}
           </nav>
-        </div>
+        </aside>
 
         {/* Main Content */}
         <div className="flex-1 p-8">
@@ -93,6 +98,8 @@ const AdminLayout = () => {
               </span>
             </div>
           </header>
+
+          {/* ✅ Nested admin pages यहां render होंगे */}
           <Outlet />
         </div>
       </div>
@@ -101,4 +108,3 @@ const AdminLayout = () => {
 };
 
 export default AdminLayout;
-
