@@ -17,7 +17,6 @@ interface Product {
   id: string;
   name: string;
   price: number;
-  // ✅ status की जगह approvalStatus का उपयोग करें
   approvalStatus: string;
 }
 
@@ -37,7 +36,7 @@ const AdminDashboard: React.FC = () => {
   const { data: pendingVendors = [], isLoading: isLoadingVendors } = useQuery<Vendor[]>({
     queryKey: ["adminPendingVendors"],
     queryFn: async () => {
-      const res = await api.get("/api/vendors/pending");
+      const res = await api.get("/api/admin/vendors/pending");
       return res.data && Array.isArray(res.data) ? res.data : [];
     },
   });
@@ -45,16 +44,16 @@ const AdminDashboard: React.FC = () => {
   const { data: approvedVendors = [], isLoading: isLoadingApprovedVendors } = useQuery<Vendor[]>({
     queryKey: ["adminApprovedVendors"],
     queryFn: async () => {
-      const res = await api.get("/api/vendors/approved");
+      const res = await api.get("/api/admin/vendors/approved");
       return res.data && Array.isArray(res.data) ? res.data : [];
     },
   });
 
-  // ✅ अब products को fetch करने के लिए सही admin API का उपयोग करें
   const { data: pendingProducts = [], isLoading: isLoadingPendingProducts } = useQuery<Product[]>({
     queryKey: ["adminPendingProducts"],
     queryFn: async () => {
-      const res = await api.get("/api/admin/products?status=pending");
+      // ✅ API कॉल को नए रास्तों से जोड़ा
+      const res = await api.get("/api/admin/products/pending");
       return res.data && Array.isArray(res.data) ? res.data : [];
     },
   });
@@ -62,7 +61,8 @@ const AdminDashboard: React.FC = () => {
   const { data: approvedProducts = [], isLoading: isLoadingApprovedProducts } = useQuery<Product[]>({
     queryKey: ["adminApprovedProducts"],
     queryFn: async () => {
-      const res = await api.get("/api/admin/products?status=approved");
+      // ✅ API कॉल को नए रास्तों से जोड़ा
+      const res = await api.get("/api/admin/products/approved");
       return res.data && Array.isArray(res.data) ? res.data : [];
     },
   });
@@ -79,7 +79,7 @@ const AdminDashboard: React.FC = () => {
 
   // ✅ म्यूटेशन (अब सही एडमिन API का उपयोग करके)
   const approveVendorMutation = useMutation({
-    mutationFn: (vendorId: string) => api.patch(`/api/vendors/approve/${vendorId}`),
+    mutationFn: (vendorId: string) => api.patch(`/api/admin/vendors/approve/${vendorId}`),
     onSuccess: () => {
       toast({ title: "वेंडर मंज़ूर हुआ!" });
       queryClient.invalidateQueries({ queryKey: ["adminPendingVendors"] });
@@ -92,7 +92,7 @@ const AdminDashboard: React.FC = () => {
   });
 
   const rejectVendorMutation = useMutation({
-    mutationFn: (vendorId: string) => api.patch(`/api/vendors/reject/${vendorId}`),
+    mutationFn: (vendorId: string) => api.patch(`/api/admin/vendors/reject/${vendorId}`),
     onSuccess: () => {
       toast({ title: "वेंडर अस्वीकृत हुआ!" });
       queryClient.invalidateQueries({ queryKey: ["adminPendingVendors"] });
@@ -104,7 +104,6 @@ const AdminDashboard: React.FC = () => {
     },
   });
   
-  // ✅ अब सही admin API का उपयोग करें
   const approveProductMutation = useMutation({
     mutationFn: (productId: string) => api.patch(`/api/admin/products/approve/${productId}`),
     onSuccess: () => {
@@ -118,7 +117,6 @@ const AdminDashboard: React.FC = () => {
     },
   });
 
-  // ✅ अब सही admin API का उपयोग करें
   const rejectProductMutation = useMutation({
     mutationFn: (productId: string) => api.patch(`/api/admin/products/reject/${productId}`),
     onSuccess: () => {
@@ -369,4 +367,4 @@ const AdminDashboard: React.FC = () => {
 
 export default AdminDashboard;
 
-                                                                                                                                                                                                                                
+          
