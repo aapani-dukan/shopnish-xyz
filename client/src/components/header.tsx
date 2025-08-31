@@ -136,7 +136,7 @@ const Header: React.FC<HeaderProps> = ({ categories = [], onCartClick }) => {
           return { label: "Seller Application", path: "/seller-apply" };
         }
       case "admin":
-        return { label: "Admin Dashboard", path: "/admin-dashboard" };
+        return { label: "Admin Login", path: "/admin-login" };
       case "delivery":
         return { label: "Delivery Dashboard", path: "/delivery-dashboard" };
       case "customer":
