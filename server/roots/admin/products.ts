@@ -1,122 +1,95 @@
-import { Router,Request, Response } from 'express';
-import { AuthenticatedRequest } from '../../middleware/verifyToken.ts';
-import { requireAdminAuth } from '../../middleware/authMiddleware.ts';
-import { storage } from '../../storage.ts';
+import { Router, Response } from 'express';
 import { db } from '../../db.ts';
-import { products } from '../../../shared/backend/schema.ts';
+import { products, approvalStatusEnum } from '../../../shared/backend/schema.ts';
+import { AuthenticatedRequest } from '../../middleware/verifyToken.ts';
 import { eq } from 'drizzle-orm';
-
+import { requireAdminAuth } from '../../middleware/authMiddleware.ts';
 
 const router = Router();
 
-// ✅ Get all products (optional filter by status)
-router.get("/", requireAdminAuth, async (req: AuthenticatedRequest, res: Response) => {
+// ✅ GET /api/admin/products/pending
+// सभी लंबित (pending) प्रोडक्ट्स को फ़ेच करें
+router.get('/pending', requireAdminAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const { status } = req.query;
-
-    const allProducts = await db.query.products.findMany({
-      where: status ? (fields, { eq }) => eq(fields.approvalStatus, String(status)) : undefined,
+    const pendingProducts = await db.query.products.findMany({
+      where: eq(products.approvalStatus, approvalStatusEnum.enumValues[0]),
     });
-
-    res.status(200).json(allProducts);
+    res.status(200).json(pendingProducts);
   } catch (error: any) {
-    console.error("Failed to fetch products:", error);
-    res.status(500).json({ message: "Failed to fetch products." });
+    console.error('Failed to fetch pending products:', error);
+    res.status(500).json({ error: 'Internal server error.' });
   }
 });
 
-// ✅ Approve product
-router.patch("/approve/:id", requireAdminAuth, async (req: AuthenticatedRequest, res: Response) => {
+// ✅ GET /api/admin/products/approved
+// सभी स्वीकृत (approved) प्रोडक्ट्स को फ़ेच करें
+router.get('/approved', requireAdminAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const id = Number(req.params.id);
-    if (isNaN(id)) {
-      return res.status(400).json({ message: "Invalid ID provided." });
-    }
-
-    const product = await db.query.products.findFirst({
-      where: (fields, { eq }) => eq(fields.id, id),
+    const approvedProducts = await db.query.products.findMany({
+      where: eq(products.approvalStatus, approvalStatusEnum.enumValues[1]),
     });
+    res.status(200).json(approvedProducts);
+  } catch (error: any) {
+    console.error('Failed to fetch approved products:', error);
+    res.status(500).json({ error: 'Internal server error.' });
+  }
+});
 
-    if (!product) {
-      return res.status(404).json({ message: "Product not found." });
+// ✅ PATCH /api/admin/products/approve/:id
+// एक प्रोडक्ट को मंज़ूर करें
+router.patch('/approve/:id', requireAdminAuth, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const productId = Number(req.params.id);
+    if (isNaN(productId)) {
+      return res.status(400).json({ message: 'Invalid ID provided.' });
     }
 
     const [approved] = await db
       .update(products)
-      .set({ approvalStatus: "approved" })
-      .where(eq(products.id, id))
+      .set({ approvalStatus: approvalStatusEnum.enumValues[1] })
+      .where(eq(products.id, productId))
       .returning();
 
+    if (!approved) {
+      return res.status(404).json({ message: 'Product not found.' });
+    }
+
     res.status(200).json({
-      message: "Product approved successfully.",
+      message: 'Product approved successfully.',
       product: approved,
     });
   } catch (error: any) {
-    console.error("Failed to approve product:", error);
-    res.status(500).json({ message: "Failed to approve product." });
+    console.error('Failed to approve product:', error);
+    res.status(500).json({ message: 'Failed to approve product.' });
   }
 });
 
-// ✅ Reject product
-router.patch("/reject/:id", requireAdminAuth, async (req: AuthenticatedRequest, res: Response) => {
+// ✅ PATCH /api/admin/products/reject/:id
+// एक प्रोडक्ट को अस्वीकार करें
+router.patch('/reject/:id', requireAdminAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const id = Number(req.params.id);
-    if (isNaN(id)) {
-      return res.status(400).json({ message: "Invalid ID provided." });
-    }
-
-    const product = await db.query.products.findFirst({
-      where: (fields, { eq }) => eq(fields.id, id),
-    });
-
-    if (!product) {
-      return res.status(404).json({ message: "Product not found." });
+    const productId = Number(req.params.id);
+    if (isNaN(productId)) {
+      return res.status(400).json({ message: 'Invalid ID provided.' });
     }
 
     const [rejected] = await db
       .update(products)
-      .set({ approvalStatus: "rejected" })
-      .where(eq(products.id, id))
+      .set({ approvalStatus: approvalStatusEnum.enumValues[2] })
+      .where(eq(products.id, productId))
       .returning();
 
+    if (!rejected) {
+      return res.status(404).json({ message: 'Product not found.' });
+    }
+
     res.status(200).json({
-      message: "Product rejected successfully.",
+      message: 'Product rejected successfully.',
       product: rejected,
     });
   } catch (error: any) {
-    console.error("Failed to reject product:", error);
-    res.status(500).json({ message: "Failed to reject product." });
-  }
-});
-
-// ✅ Delete product
-router.delete("/:id", requireAdminAuth, async (req: AuthenticatedRequest, res: Response) => {
-  try {
-    const id = Number(req.params.id);
-    if (isNaN(id)) {
-      return res.status(400).json({ message: "Invalid ID provided." });
-    }
-
-    const product = await db.query.products.findFirst({
-      where: (fields, { eq }) => eq(fields.id, id),
-    });
-
-    if (!product) {
-      return res.status(404).json({ message: "Product not found." });
-    }
-
-    const [deleted] = await db
-      .delete(products)
-      .where(eq(products.id, id))
-      .returning();
-
-    res.status(200).json({
-      message: "Product deleted successfully.",
-      product: deleted,
-    });
-  } catch (error: any) {
-    console.error("Failed to delete product:", error);
-    res.status(500).json({ message: "Failed to delete product." });
+    console.error('Failed to reject product:', error);
+    res.status(500).json({ message: 'Failed to reject product.' });
   }
 });
 
