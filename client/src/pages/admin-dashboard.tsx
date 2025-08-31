@@ -10,7 +10,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { Check, X, Loader2, Plus, Edit, Trash2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-
+import { ArrowLeft, ArrowRight } from "lucide-react"
 // ✅ Vendor इंटरफ़ेस को आपके डेटाबेस स्कीमा के अनुसार अपडेट किया गया
 interface Vendor {
   id: string; 
