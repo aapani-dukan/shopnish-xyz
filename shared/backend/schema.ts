@@ -368,12 +368,17 @@ export const cartItemsRelations = relations(cartItems, ({ one }) => ({
 
 export const ordersRelations = relations(orders, ({ many, one }) => ({
   customer: one(users, {
-    fields: [orders.customerId],
+    fields: [orders.userId],
     references: [users.id],
   }),
   deliveryBoy: one(deliveryBoys, {
     fields: [orders.deliveryBoyId],
     references: [deliveryBoys.id],
+  }),
+  // ✅ यह संबंध (relation) missing था, जिसे अब जोड़ा गया है
+  deliveryAddress: one(deliveryAddresses, {
+    fields: [orders.deliveryAddressId],
+    references: [deliveryAddresses.id],
   }),
   items: many(orderItems),
   tracking: many(orderTracking),
