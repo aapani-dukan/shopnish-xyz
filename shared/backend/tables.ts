@@ -1,7 +1,6 @@
 import { pgTable, text, serial, integer, decimal, boolean, timestamp, json, pgEnum } from "drizzle-orm/pg-core";
 
 // --- Drizzle ORM Table Definitions & Enums ---
-
 export const orderStatusEnum = pgEnum('order_status', [
   'pending',
   'accepted',
@@ -192,7 +191,7 @@ export const orderItems = pgTable("order_items", {
   quantity: integer("quantity").notNull(),
   unitPrice: decimal("unit_price", { precision: 10, scale: 2 }).notNull(),
   totalPrice: decimal("total_price", { precision: 10, scale: 2 }).notNull(),
-  status: orderStatusEnum('status').default('pending'),
+  status: orderStatusEnum('status').default('in_cart'),
 });
 
 export const orderTracking = pgTable("order_tracking", {
