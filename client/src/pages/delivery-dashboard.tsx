@@ -1,44 +1,126 @@
-
-
-import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";           // ⬅️ react-router v6
+import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   useQuery,
   useMutation,
   useQueryClient,
 } from "@tanstack/react-query";
 
-import { apiRequest } from "@/lib/queryClient";
-import { useToast } from "@/hooks/use-toast";
+// You can create a file for these utility functions and import them.
+const apiRequest = async (method, url, data = null) => {
+  const token = localStorage.getItem("deliveryBoyToken");
+  const headers = {
+    "Content-Type": "application/json",
+    ...(token && { Authorization: `Bearer ${token}` }),
+  };
 
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { CardContent } from "@/components/ui/card";
-import { CardHeader } from "@/components/ui/card";
-import { CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import { Dialog } from "@/components/ui/dialog";
-import { DialogContent } from "@/components/ui/dialog";
-import { DialogHeader } from "@/components/ui/dialog";
-import { DialogTitle } from "@/components/ui/dialog";
-import { DialogTrigger } from "@/components/ui/dialog";
+  const options = {
+    method,
+    headers,
+    ...(data && { body: JSON.stringify(data) }),
+  };
 
-import {
-  Package,
-  Navigation,
-  Phone,
-  MapPin,
-  Clock,
-  CheckCircle,
-  User,
-  LogOut,
-  ShieldCheck,
-} from "lucide-react";
+  const response = await fetch(url, options);
+  if (!response.ok) {
+    throw new Error(`API call failed with status: ${response.status}`);
+  }
+  return response;
+};
+
+// You can create a file for this hook and import it.
+const useToast = () => {
+    return {
+        toast: ({ title, description, variant }) => {
+            console.log(`Toast: ${title} - ${description} (Variant: ${variant})`);
+        }
+    };
+};
+
+// Assuming these are local components or part of a component library
+// For a single file example, we'll keep them simple.
+const Button = ({ children, onClick, variant, size, disabled, ...props }) => (
+    <button onClick={onClick} disabled={disabled} className={`p-2 rounded-md ${variant === 'outline' ? 'border' : 'bg-blue-500 text-white'}`} {...props}>
+        {children}
+    </button>
+);
+const Card = ({ children }) => <div className="bg-white rounded-lg shadow-md p-4">{children}</div>;
+const CardContent = ({ children, className }) => <div className={`p-4 ${className}`}>{children}</div>;
+const CardHeader = ({ children }) => <div className="p-4 border-b">{children}</div>;
+const CardTitle = ({ children }) => <h2 className="text-xl font-bold">{children}</h2>;
+const Input = ({ ...props }) => <input className="border p-2 rounded-md w-full" {...props} />;
+const Label = ({ children, htmlFor }) => <label htmlFor={htmlFor} className="block mb-1 font-medium">{children}</label>;
+const Badge = ({ children, className }) => <span className={`px-2 py-1 text-xs rounded-full ${className}`}>{children}</span>;
+const Dialog = ({ open, onOpenChange, children }) => {
+    if (!open) return null;
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
+            <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-sm">
+                {children}
+            </div>
+        </div>
+    );
+};
+const DialogContent = ({ children }) => <div>{children}</div>;
+const DialogHeader = ({ children }) => <div className="mb-4">{children}</div>;
+const DialogTitle = ({ children }) => <h3 className="text-lg font-bold">{children}</h3>;
+const DialogTrigger = ({ children }) => <span>{children}</span>; // No-op for this single-file example.
+
+// We'll use inline SVGs instead of lucide-react for single-file example
+const Package = (props) => (
+    <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M6 3v18H3c-.55 0-1-.45-1-1V5c0-.55.45-1 1-1h3m0-1v2H3a1 1 0 00-1 1v14a1 1 0 001 1h3v2m15 0H9m0-2h12v-2H9m0-2h12V7H9m0-2h12V3H9z" />
+    </svg>
+);
+const Navigation = (props) => (
+    <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M3 11l19-9-9 19-2-8-8-2z" />
+    </svg>
+);
+const Phone = (props) => (
+    <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M22 16.92v3a2 2 0 01-2.18 2.06l-4.72-.94a2 2 0 01-1.87-1.42l-.24-.96a1 1 0 00-.91-.71l-2.45-.16a1 1 0 00-.73.34l-3.5 3.5a1 1 0 01-.7.29a.9.9 0 01-.7-.29L2.8 19.29a2 2 0 01-.58-1.58V14a2 2 0 012-2h3a2 2 0 012 2v2" />
+    </svg>
+);
+const MapPin = (props) => (
+    <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 2c-4.42 0-8 3.58-8 8s8 12 8 12 8-7.58 8-12-3.58-8-8-8zm0 10a2 2 0 100-4 2 2 0 000 4z" />
+    </svg>
+);
+const Clock = (props) => (
+    <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="12" cy="12" r="10" />
+        <path d="M12 6v6l4 2" />
+    </svg>
+);
+const CheckCircle = (props) => (
+    <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M22 11.08V12a10 10 0 11-5.93-8.82" />
+        <path d="M13.5 8L10 11.5l-2-2" />
+    </svg>
+);
+const User = (props) => (
+    <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" />
+        <circle cx="12" cy="7" r="4" />
+    </svg>
+);
+const LogOut = (props) => (
+    <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" />
+        <polyline points="16 17 21 12 16 7" />
+        <line x1="21" y1="12" x2="9" y2="12" />
+    </svg>
+);
+const ShieldCheck = (props) => (
+    <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 22s8-4 8-10V5c0-1.2-.8-2-2-2H6c-1.2 0-2 .8-2 2v7c0 6 8 10 8 10z" />
+        <path d="M9 12l2 2 4-4" />
+    </svg>
+);
+
 
 /* -------------------------------------------------------------------------- */
-/*                                   Types                                    */
+/* Types                                    */
 /* -------------------------------------------------------------------------- */
 
 interface DeliveryOrder {
@@ -73,7 +155,7 @@ interface DeliveryOrder {
 }
 
 /* -------------------------------------------------------------------------- */
-/*                              Helper Functions                              */
+/* Helper Functions                              */
 /* -------------------------------------------------------------------------- */
 
 const statusColor = (status: DeliveryOrder["status"]) => {
@@ -133,10 +215,10 @@ const nextStatusLabel = (status: DeliveryOrder["status"]) => {
 };
 
 /* -------------------------------------------------------------------------- */
-/*                             Component Start                                */
+/* Component Start                                */
 /* -------------------------------------------------------------------------- */
 
-export default function DeliveryDashboard() {
+export default function App() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -352,7 +434,9 @@ export default function DeliveryDashboard() {
       <section className="max-w-6xl mx-auto px-4 pb-16 space-y-6">
         <h2 className="text-2xl font-bold">Assigned Orders</h2>
 
+        {/* --- Orders Render --- */}
         {orders.length === 0 ? (
+          // जब `orders` एरे खाली होता है, तो यह संदेश दिखाता है।
           <Card>
             <CardContent className="py-12 text-center">
               <Package className="mx-auto h-12 w-12 text-gray-400 mb-4" />
@@ -491,10 +575,9 @@ export default function DeliveryDashboard() {
           <DialogHeader>
             <DialogTitle>Complete Delivery</DialogTitle>
           </DialogHeader>
-
-          <DialogDescription className="text-sm text-gray-600 mb-4">
-      Ask the customer for the 4-digit OTP to confirm delivery.
-    </DialogDescription>
+          <div className="text-sm text-gray-600 mb-4">
+            Ask the customer for the 4-digit OTP to confirm delivery.
+          </div>
 
           {selectedOrder && (
             <div className="p-4 bg-blue-50 rounded-lg mb-4">
@@ -543,4 +626,4 @@ export default function DeliveryDashboard() {
       </Dialog>
     </div>
   );
-    }
+}
