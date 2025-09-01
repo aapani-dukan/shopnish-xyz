@@ -124,16 +124,26 @@ router.post('/login', verifyToken, async (req: AuthenticatedRequest, res: Respon
 });
 
 // ✅ UPDATED: /api/delivery/orders (ऑर्डर फ़ेच करें)
+// अब यह `firebaseUid` का उपयोग करके सही `deliveryBoyId` का पता लगाता है।
 router.get('/orders', requireDeliveryBoyAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const deliveryBoyId = req.user?.id;
+    const firebaseUid = req.user?.firebaseUid;
 
-    if (!deliveryBoyId) {
-      return res.status(401).json({ message: "Unauthorized. Delivery Boy ID is required." });
+    if (!firebaseUid) {
+      return res.status(401).json({ message: "Unauthorized. Firebase UID is required." });
+    }
+
+    // पहले firebaseUid का उपयोग करके deliveryBoyId खोजें
+    const deliveryBoy = await db.query.deliveryBoys.findFirst({
+      where: eq(deliveryBoys.firebaseUid, firebaseUid)
+    });
+
+    if (!deliveryBoy) {
+      return res.status(404).json({ message: "Delivery Boy profile not found." });
     }
 
     const assignedOrders = await db.query.orders.findMany({
-      where: eq(orders.deliveryBoyId, deliveryBoyId),
+      where: eq(orders.deliveryBoyId, deliveryBoy.id),
       with: {
         items: {
           with: {
@@ -152,19 +162,38 @@ router.get('/orders', requireDeliveryBoyAuth, async (req: AuthenticatedRequest, 
 });
 
 // ✅ UPDATED: /api/delivery/orders/:orderId/status (ऑर्डर की स्थिति अपडेट करें)
+// अब यह `firebaseUid` का उपयोग करके सही `deliveryBoyId` का पता लगाता है।
 router.patch('/orders/:orderId/status', requireDeliveryBoyAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
+    const firebaseUid = req.user?.firebaseUid;
     const orderId = Number(req.params.orderId);
     const { status } = req.body;
-    const deliveryBoyId = req.user?.id;
 
-    if (!orderId || !status || !deliveryBoyId) {
+    if (!orderId || !status || !firebaseUid) {
       return res.status(400).json({ message: "Order ID and status are required." });
     }
 
+    // पहले firebaseUid का उपयोग करके deliveryBoyId खोजें
+    const deliveryBoy = await db.query.deliveryBoys.findFirst({
+      where: eq(deliveryBoys.firebaseUid, firebaseUid)
+    });
+
+    if (!deliveryBoy) {
+      return res.status(404).json({ message: "Delivery Boy profile not found." });
+    }
+    
     const validStatuses = orderStatusEnum.enumValues;
     if (!validStatuses.includes(status)) {
       return res.status(400).json({ message: "Invalid status provided." });
+    }
+    
+    // सुनिश्चित करें कि ऑर्डर उसी डिलीवरी बॉय को असाइन किया गया है
+    const order = await db.query.orders.findFirst({
+        where: eq(orders.id, orderId)
+    });
+
+    if (order?.deliveryBoyId !== deliveryBoy.id) {
+        return res.status(403).json({ message: "Forbidden: You are not assigned to this order." });
     }
     
     const [updatedOrder] = await db.update(orders)
@@ -187,14 +216,24 @@ router.patch('/orders/:orderId/status', requireDeliveryBoyAuth, async (req: Auth
 });
 
 // ✅ UPDATED: /api/delivery/orders/:orderId/complete-delivery (OTP के साथ डिलीवरी पूरी करें)
+// अब यह `firebaseUid` का उपयोग करके सही `deliveryBoyId` का पता लगाता है।
 router.post('/orders/:orderId/complete-delivery', requireDeliveryBoyAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
+    const firebaseUid = req.user?.firebaseUid;
     const orderId = Number(req.params.orderId);
     const { otp } = req.body;
-    const deliveryBoyId = req.user?.id;
 
-    if (!orderId || !otp || !deliveryBoyId) {
+    if (!orderId || !otp || !firebaseUid) {
       return res.status(400).json({ message: "Order ID and OTP are required." });
+    }
+
+    // पहले firebaseUid का उपयोग करके deliveryBoyId खोजें
+    const deliveryBoy = await db.query.deliveryBoys.findFirst({
+      where: eq(deliveryBoys.firebaseUid, firebaseUid)
+    });
+
+    if (!deliveryBoy) {
+      return res.status(404).json({ message: "Delivery Boy profile not found." });
     }
 
     const order = await db.query.orders.findFirst({
@@ -203,6 +242,11 @@ router.post('/orders/:orderId/complete-delivery', requireDeliveryBoyAuth, async 
 
     if (!order) {
       return res.status(404).json({ message: "Order not found." });
+    }
+    
+    // सुनिश्चित करें कि ऑर्डर उसी डिलीवरी बॉय को असाइन किया गया है
+    if (order.deliveryBoyId !== deliveryBoy.id) {
+        return res.status(403).json({ message: "Forbidden: You are not assigned to this order." });
     }
 
     if (order.deliveryOtp !== otp) {
