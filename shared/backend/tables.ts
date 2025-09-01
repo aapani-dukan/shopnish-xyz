@@ -173,7 +173,7 @@ export const orders = pgTable("orders", {
   paymentMethod: text("payment_method").notNull(),
   paymentStatus: text("payment_status").default("pending"),
   status: orderStatusEnum('status').default('pending').notNull(),
-  deliveryAddressId: integer("delivery_address_id").references(() => deliveryAddresses.id).notNull(),
+  deliveryAddress: json("delivery_address").notNull(),
   deliveryInstructions: text("delivery_instructions"),
   estimatedDeliveryTime: timestamp("estimated_delivery_time"),
   actualDeliveryTime: timestamp("actual_delivery_time"),
