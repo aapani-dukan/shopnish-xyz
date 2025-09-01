@@ -1,104 +1,66 @@
-import { Router, Response } from 'express';
-import { db } from '../../db';
-import { sellersPgTable, users, approvalStatusEnum } from '../../../shared/backend/schema';
-import { AuthenticatedRequest } from '../../middleware/verifyToken';
+import { Router, Response, NextFunction } from 'express';
+import { db } from '../../db.ts';
+import {
+  sellersPgTable,
+  users,
+} from '../../../shared/backend/schema.ts';
 import { eq } from 'drizzle-orm';
-import { requireAdminAuth } from '../../middleware/authMiddleware';
+import { AuthenticatedRequest } from '../../middleware/verifyToken.ts';
+import { requireAdminAuth } from '../../middleware/authMiddleware.ts';
 
 const router = Router();
 
-// ✅ GET /api/admin/vendors/pending
-router.get('/pending', requireAdminAuth, async (req: AuthenticatedRequest, res: Response) => {
+router.use(requireAdminAuth);
+
+// ✅ PATCH /admin/vendors/approve/:id
+router.patch("/approve/:id", async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
-    const pendingSellers = await db.query.sellersPgTable.findMany({
-      where: eq(sellersPgTable.approvalStatus, approvalStatusEnum.enumValues[0]),
-    });
-    res.status(200).json(pendingSellers);
-  } catch (error: any) {
-    console.error('Failed to fetch pending sellers:', error);
-    res.status(500).json({ error: 'Internal server error.' });
-  }
-});
-
-// ✅ GET /api/admin/vendors/approved
-router.get('/approved', requireAdminAuth, async (req: AuthenticatedRequest, res: Response) => {
-  try {
-    const approvedSellers = await db.query.sellersPgTable.findMany({
-      where: eq(sellersPgTable.approvalStatus, approvalStatusEnum.enumValues[1]),
-    });
-    res.status(200).json(approvedSellers);
-  } catch (error: any) {
-    console.error('Failed to fetch approved sellers:', error);
-    res.status(500).json({ error: 'Internal server error.' });
-  }
-});
-
-// ✅ PATCH /api/admin/vendors/approve/:id
-router.patch("/approve/:id", requireAdminAuth, async (req: AuthenticatedRequest, res: Response) => {
-  try {
-    const sellerId = Number(req.params.id);
-    if (isNaN(sellerId)) {
-      return res.status(400).json({ message: "Invalid ID provided." });
-    }
-
-    const seller = await db.query.sellersPgTable.findFirst({
-      where: (fields, { eq }) => eq(fields.id, sellerId),
-    });
-
-    if (!seller) {
-      return res.status(404).json({ message: "Seller not found." });
-    }
-
-    const [approved] = await db
-      .update(sellersPgTable)
-      .set({ approvalStatus: "approved", approvedAt: new Date() })
-      .where(eq(sellersPgTable.id, sellerId))
+    const vendorId = Number(req.params.id);
+    const [approvedVendor] = await db.update(sellersPgTable)
+      .set({ approvalStatus: "approved" })
+      .where(eq(sellersPgTable.id, vendorId))
       .returning();
 
-    // साथ ही यूज़र की भूमिका (role) को 'seller' में अपडेट करें
-    await db.update(users)
-      .set({ role: 'seller' })
-      .where(eq(users.firebaseUid, seller.userId));
+    if (!approvedVendor) {
+      return res.status(404).json({ error: "Vendor not found." });
+    }
 
-    res.status(200).json({
-      message: "Seller approved successfully.",
-      seller: approved,
-    });
+    // ✅ users टेबल को भी अपडेट करें
+    const [updatedUser] = await db.update(users)
+      .set({ approvalStatus: "approved" })
+      .where(eq(users.id, approvedVendor.userId))
+      .returning();
+
+    return res.status(200).json({ approvedVendor, updatedUser });
   } catch (error: any) {
-    console.error("Failed to approve seller:", error);
-    res.status(500).json({ message: "Failed to approve seller." });
+    console.error("❌ Error approving vendor:", error);
+    next(error);
   }
 });
 
-// ✅ PATCH /api/admin/vendors/reject/:id
-router.patch("/reject/:id", requireAdminAuth, async (req: AuthenticatedRequest, res: Response) => {
+// ✅ PATCH /admin/vendors/reject/:id
+router.patch("/reject/:id", async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
-    const sellerId = Number(req.params.id);
-    if (isNaN(sellerId)) {
-      return res.status(400).json({ message: "Invalid ID provided." });
-    }
-
-    const product = await db.query.sellersPgTable.findFirst({
-      where: (fields, { eq }) => eq(fields.id, sellerId),
-    });
-
-    if (!product) {
-      return res.status(404).json({ message: "Seller not found." });
-    }
-
-    const [rejected] = await db
-      .update(sellersPgTable)
+    const vendorId = Number(req.params.id);
+    const [rejectedVendor] = await db.update(sellersPgTable)
       .set({ approvalStatus: "rejected" })
-      .where(eq(sellersPgTable.id, sellerId))
+      .where(eq(sellersPgTable.id, vendorId))
       .returning();
 
-    res.status(200).json({
-      message: "Seller rejected successfully.",
-      seller: rejected,
-    });
+    if (!rejectedVendor) {
+      return res.status(404).json({ error: "Vendor not found." });
+    }
+
+    // ✅ users टेबल को भी अपडेट करें
+    const [updatedUser] = await db.update(users)
+      .set({ approvalStatus: "rejected" })
+      .where(eq(users.id, rejectedVendor.userId))
+      .returning();
+
+    return res.status(200).json({ rejectedVendor, updatedUser });
   } catch (error: any) {
-    console.error("Failed to reject seller:", error);
-    res.status(500).json({ message: "Failed to reject seller." });
+    console.error("❌ Error rejecting vendor:", error);
+    next(error);
   }
 });
 
