@@ -43,7 +43,7 @@ export const requireSellerAuth = [
 export const requireDeliveryBoyAuth = [
   ...requireAuth, // ✅ पहले सामान्य प्रमाणीकरण चलाएं
   (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
-    if (req.user?.role !== 'delivery_boy') {
+    if (req.user?.role !== 'delivery-boy') {
       return res.status(403).json({ message: 'Forbidden: Delivery Boy access required.' });
     }
     next();
