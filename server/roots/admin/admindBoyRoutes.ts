@@ -90,11 +90,11 @@ router.patch('/reject/:id', requireAdminAuth, async (req: AuthenticatedRequest, 
       return res.status(404).json({ message: 'Delivery boy not found.' });
     }
 
-    // ✅ संबंधित यूज़र का अप्रूवल स्टेटस 'rejected' पर अपडेट करें
     const [deliveryBoy] = await db.select().from(deliveryBoys).where(eq(deliveryBoys.id, deliveryBoyId));
     if (deliveryBoy) {
+      // ✅ संबंधित यूज़र का अप्रूवल स्टेटस 'rejected' और भूमिका 'customer' पर अपडेट करें
       await db.update(users)
-        .set({ approvalStatus: 'rejected' })
+        .set({ approvalStatus: 'rejected', role: 'customer' })
         .where(eq(users.id, deliveryBoy.userId));
     }
 
