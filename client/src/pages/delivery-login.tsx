@@ -26,7 +26,7 @@ export default function DeliveryLogin() {
         const user = result.user;
         const token = await user.getIdToken();
 
-        const response = await fetch("/api/delivery-boys/login", {
+        const response = await fetch("/api/delivery/login", {
   
 
           method: "POST",
