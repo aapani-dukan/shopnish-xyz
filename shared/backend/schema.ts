@@ -417,7 +417,7 @@ export const promoCodesRelations = relations(promoCodes, ({ many }) => ({
 export const serviceCategoriesRelations = relations(serviceCategories, ({ many, one }) => ({
   services: many(services),
   category: one(categories, {
-    fields: [serviceCategories.id],
+    fields: [serviceCategories.categoryId],
     references: [categories.id],
   }),
 }));
