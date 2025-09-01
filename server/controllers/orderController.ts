@@ -1,18 +1,18 @@
 import { Request, Response } from 'express';
 // ✅ db का सही पथ (Path) सुनिश्चित करें
-import { db } from '../db.ts'; 
-import { orders, orderItems } from '../../shared/backend/schema.ts';
+import { db } from '../db.ts';
+import { orders, orderItems, deliveryAddresses } from '../../shared/backend/schema.ts';
 import { eq, and, desc } from 'drizzle-orm';
 import { AuthenticatedRequest } from '../middleware/authMiddleware.ts';
 import { v4 as uuidv4 } from 'uuid';
 
 /**
  * ग्राहक के लिए एक नया ऑर्डर प्लेस करने का फ़ंक्शन।
- * इस फ़ंक्शन में अतिरिक्त लॉगिंग जोड़ी गई है ताकि हम डेटा प्रवाह (data flow) को देख सकें।
+ * यह अब डेटाबेस स्कीमा के अनुरूप है।
  */
 export const placeOrder = async (req: AuthenticatedRequest, res: Response) => {
   console.log("🚀 [API] Received request to place order.");
-  console.log("📋 [API] Request Body:", req.body); // ✅ यह लॉग हमें इनकमिंग डेटा दिखाएगा
+  console.log("📋 [API] Request Body:", req.body);
 
   try {
     const userId = req.user?.id;
@@ -20,8 +20,9 @@ export const placeOrder = async (req: AuthenticatedRequest, res: Response) => {
       console.log("⚠️ [API] Unauthorized: User ID missing.");
       return res.status(401).json({ message: "Unauthorized: User not logged in." });
     }
-    
-    // ✅ 1. डेटाबेस से "in_cart" वाले आइटम को फ़ेच करें।
+
+    const { deliveryAddress, paymentMethod, deliveryInstructions } = req.body;
+
     const cartItems = await db.query.orderItems.findMany({
       where: and(
         eq(orderItems.userId, userId),
@@ -35,37 +36,46 @@ export const placeOrder = async (req: AuthenticatedRequest, res: Response) => {
       return res.status(400).json({ message: "Cart is empty, cannot place an order." });
     }
 
-    // ✅ 2. टोटल और सबटोटल की गणना करें।
     const subtotal = cartItems.reduce((sum, item) => sum + parseFloat(item.totalPrice), 0);
     const deliveryCharge = parseFloat(req.body.deliveryCharge) || 0;
     const total = subtotal + deliveryCharge;
 
     let newOrderId;
+    let newDeliveryAddressId;
 
     await db.transaction(async (tx) => {
       const orderNumber = `ORD-${uuidv4()}`;
 
-      // ✅ 3. यहाँ deliveryAddress को JSON स्ट्रिंग में बदलें।
-      const serializedDeliveryAddress = JSON.stringify(req.body.deliveryAddress);
+      // ✅ STEP 1: deliveryAddresses टेबल में नया पता डालें।
+      const [newAddress] = await tx.insert(deliveryAddresses).values({
+        userId: userId,
+        fullName: deliveryAddress.fullName,
+        phoneNumber: deliveryAddress.phone,
+        addressLine1: deliveryAddress.address,
+        addressLine2: deliveryAddress.landmark, //landmark को addressLine2 में डालें
+        city: deliveryAddress.city,
+        postalCode: deliveryAddress.pincode,
+        state: "Rajasthan", // frontend से state भी प्राप्त करें
+      }).returning();
       
-      console.log("🚚 [API] Serializing deliveryAddress:", req.body.deliveryAddress); // ✅ ऑब्जेक्ट देखें
-      console.log("📦 [API] Serialized String:", serializedDeliveryAddress); // ✅ स्ट्रिंग देखें
+      newDeliveryAddressId = newAddress.id;
 
-      // 4. एक नया ऑर्डर डालें।
+      // ✅ STEP 2: orders टेबल में नया ऑर्डर डालें, अब deliveryAddressId का उपयोग करके।
       const [newOrder] = await tx.insert(orders).values({
         customerId: userId,
         status: "pending",
         orderNumber: orderNumber,
         subtotal: subtotal.toFixed(2),
         total: total.toFixed(2),
-        paymentMethod: req.body.paymentMethod || 'COD',
-        deliveryAddress: serializedDeliveryAddress,
-        deliveryInstructions: req.body.deliveryInstructions,
+        paymentMethod: paymentMethod || 'COD',
+        deliveryAddressId: newDeliveryAddressId, // ✅ यहाँ सही ID का उपयोग करें
+        deliveryInstructions: deliveryInstructions,
+        deliveryCharge: deliveryCharge, // डिलीवरी चार्ज को भी यहाँ डालें
       }).returning();
       
       newOrderId = newOrder.id;
 
-      // 5. कार्ट आइटम का स्टेटस बदलें।
+      // ✅ STEP 3: कार्ट आइटम का स्टेटस बदलें और उन्हें नए ऑर्डर से जोड़ें।
       await tx.update(orderItems)
         .set({
           status: 'pending',
