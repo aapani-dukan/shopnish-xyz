@@ -1,6 +1,4 @@
-// client/src/pages/admin-login.tsx
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -14,6 +12,19 @@ export default function AdminLogin() {
   const { toast } = useToast();
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  
+  // ✅ लॉगिन के बाद नेविगेट करने के लिए useEffect का उपयोग करें
+  useEffect(() => {
+    const auth = getAuth();
+    const unsubscribe = auth.onAuthStateChanged((user) => {
+      if (user) {
+        // ✅ अगर उपयोगकर्ता लॉग इन है, तो डैशबोर्ड पर नेविगेट करें
+        navigate("/admin/dashboard", { replace: true });
+      }
+    });
+    return () => unsubscribe();
+  }, [navigate]);
+
 
   const handleLogin = async () => {
     setLoading(true);
@@ -23,34 +34,32 @@ export default function AdminLogin() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ password }),
       });
-
-      // ✅ res.json() को एक बार ही कॉल करें
+      
       const data = await res.json();
-
+      
       if (!res.ok) {
         throw new Error(data.message || "Login failed");
       }
-
-      const { customToken } = data; // ✅ यहाँ पहले से प्राप्त डेटा का उपयोग करें
-
-      // ✅ Firebase में Custom Token से Login करें
+      
+      const { customToken } = data;
+      
       const auth = getAuth();
       await signInWithCustomToken(auth, customToken);
-
-      // ✅ Force refresh करके fresh ID token लें और localStorage में store करें
+      
       const idToken = await auth.currentUser?.getIdToken(true);
       if (idToken) {
         localStorage.setItem("authToken", idToken);
       } else {
         throw new Error("Failed to retrieve ID token");
       }
-
+      
       toast({
         title: "Login Successful",
         description: "Welcome Admin!",
       });
-
-      navigate("/admin/dashboard", { replace: true });
+      
+      // ✅ अब यहां से नेविगेट करने की जरूरत नहीं है, useEffect इसे संभालेगा
+      
     } catch (err: any) {
       toast({
         title: "Login Failed",
@@ -61,7 +70,7 @@ export default function AdminLogin() {
       setLoading(false);
     }
   };
-
+  
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-700 flex items-center justify-center p-4">
       <Card className="w-full max-w-md">
