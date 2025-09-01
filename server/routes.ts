@@ -12,7 +12,7 @@ import {
 import { AuthenticatedRequest } from './middleware/verifyToken.ts';
 import { requireAuth, requireAdminAuth } from './middleware/authMiddleware.ts';
 import { authAdmin } from './lib/firebaseAdmin.ts';
-
+import { eq, and, } from 'drizzle-orm';
 // ✅ अब orderRoutes को io ऑब्जेक्ट पास किया जाएगा
 import orderRoutes from '../routes/orderRoutes';
 
