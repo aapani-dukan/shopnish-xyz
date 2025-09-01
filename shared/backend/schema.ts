@@ -15,18 +15,18 @@ import {
 import {
   insertUserSchema, insertSellerSchema, insertStoreSchema, insertCategorySchema,
   insertProductSchema, insertDeliveryAreaSchema, insertDeliveryBoySchema, insertCartItemSchema,
-  insertOrderSchema, insertOrderItemSchema, insertOrderTrackingSchema, insertPromoCodeSchema,
-  insertServiceCategorySchema, insertServiceSchema, insertServiceProviderSchema,
+  insertDeliveryAddressSchema, insertOrderSchema, insertOrderItemSchema, insertOrderTrackingSchema,
+  insertPromoCodeSchema, insertServiceCategorySchema, insertServiceSchema, insertServiceProviderSchema,
   insertServiceBookingSchema, insertReviewSchema
 } from './zod-schemas';
 
 import {
   OrderItemWithProduct, OrderWithItems, User, InsertUser, Seller, InsertSeller, Store, InsertStore,
   Category, InsertCategory, Product, InsertProduct, DeliveryArea, InsertDeliveryArea, DeliveryBoy,
-  InsertDeliveryBoy, CartItem, InsertCartItem, Order, InsertOrder, OrderItem, InsertOrderItem,
-  OrderTracking, InsertOrderTracking, PromoCode, InsertPromoCode, ServiceCategory, InsertServiceCategory,
-  Service, InsertService, ServiceProvider, InsertServiceProvider, ServiceBooking, InsertServiceBooking,
-  Review, InsertReview
+  InsertDeliveryBoy, CartItem, InsertCartItem, DeliveryAddress, InsertDeliveryAddress, Order, InsertOrder,
+  OrderItem, InsertOrderItem, OrderTracking, InsertOrderTracking, PromoCode, InsertPromoCode,
+  ServiceCategory, InsertServiceCategory, Service, InsertService, ServiceProvider, InsertServiceProvider,
+  ServiceBooking, InsertServiceBooking, Review, InsertReview
 } from './types';
 
 export {
@@ -46,16 +46,16 @@ export {
 export {
   insertUserSchema, insertSellerSchema, insertStoreSchema, insertCategorySchema,
   insertProductSchema, insertDeliveryAreaSchema, insertDeliveryBoySchema, insertCartItemSchema,
-  insertOrderSchema, insertOrderItemSchema, insertOrderTrackingSchema, insertPromoCodeSchema,
-  insertServiceCategorySchema, insertServiceSchema, insertServiceProviderSchema,
+  insertDeliveryAddressSchema, insertOrderSchema, insertOrderItemSchema, insertOrderTrackingSchema,
+  insertPromoCodeSchema, insertServiceCategorySchema, insertServiceSchema, insertServiceProviderSchema,
   insertServiceBookingSchema, insertReviewSchema
 }
 
 export {
   OrderItemWithProduct, OrderWithItems, User, InsertUser, Seller, InsertSeller, Store, InsertStore,
   Category, InsertCategory, Product, InsertProduct, DeliveryArea, InsertDeliveryArea, DeliveryBoy,
-  InsertDeliveryBoy, CartItem, InsertCartItem, Order, InsertOrder, OrderItem, InsertOrderItem,
-  OrderTracking, InsertOrderTracking, PromoCode, InsertPromoCode, ServiceCategory, InsertServiceCategory,
-  Service, InsertService, ServiceProvider, InsertServiceProvider, ServiceBooking, InsertServiceBooking,
-  Review, InsertReview
+  InsertDeliveryBoy, CartItem, InsertCartItem, DeliveryAddress, InsertDeliveryAddress, Order, InsertOrder,
+  OrderItem, InsertOrderItem, OrderTracking, InsertOrderTracking, PromoCode, InsertPromoCode,
+  ServiceCategory, InsertServiceCategory, Service, InsertService, ServiceProvider, InsertServiceProvider,
+  ServiceBooking, InsertServiceBooking, Review, InsertReview
 }
