@@ -73,7 +73,7 @@ export default function DeliveryApplyPage() {
     }
 
     try {
-      const res = await fetch("/api/delivery-boys/register", {
+      const res = await fetch("/api/delivery/register", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
