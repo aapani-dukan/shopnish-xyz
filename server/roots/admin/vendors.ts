@@ -58,7 +58,7 @@ router.patch("/approve/:id", requireAdminAuth, async (req: AuthenticatedRequest,
     // ✅ संबंधित यूज़र की भूमिका (role) और अप्रूवल स्टेटस दोनों को अपडेट करें
     await db.update(users)
       .set({ role: 'seller', approvalStatus: 'approved' })
-      .where(eq(users.firebaseUid, seller.userId));
+      .where(eq(users.id, seller.userId));
 
     res.status(200).json({
       message: "Seller approved successfully.",
@@ -78,11 +78,11 @@ router.patch("/reject/:id", requireAdminAuth, async (req: AuthenticatedRequest, 
       return res.status(400).json({ message: "Invalid ID provided." });
     }
 
-    const product = await db.query.sellersPgTable.findFirst({
+    const seller = await db.query.sellersPgTable.findFirst({
       where: (fields, { eq }) => eq(fields.id, sellerId),
     });
 
-    if (!product) {
+    if (!seller) {
       return res.status(404).json({ message: "Seller not found." });
     }
 
@@ -92,14 +92,11 @@ router.patch("/reject/:id", requireAdminAuth, async (req: AuthenticatedRequest, 
       .where(eq(sellersPgTable.id, sellerId))
       .returning();
 
-    // ✅ संबंधित यूज़र का अप्रूवल स्टेटस 'rejected' पर अपडेट करें
-    const [seller] = await db.select().from(sellersPgTable).where(eq(sellersPgTable.id, sellerId));
-    if (seller) {
-      await db.update(users)
-        .set({ approvalStatus: 'rejected' })
-        .where(eq(users.firebaseUid, seller.userId));
-    }
-
+    // ✅ संबंधित यूज़र का अप्रूवल स्टेटस 'rejected' और भूमिका 'customer' पर अपडेट करें
+    await db.update(users)
+      .set({ approvalStatus: 'rejected', role: 'customer' })
+      .where(eq(users.id, seller.userId));
+      
     res.status(200).json({
       message: "Seller rejected successfully.",
       seller: rejected,
