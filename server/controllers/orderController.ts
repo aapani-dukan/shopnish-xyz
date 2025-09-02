@@ -23,11 +23,15 @@ export const placeOrder = async (req: AuthenticatedRequest, res: Response) => {
 
     const { deliveryAddress, paymentMethod, deliveryInstructions, items, subtotal, total, deliveryCharge } = req.body;
 
-    // ✅ लॉजिक अपडेट: अब हम सीधे रिक्वेस्ट बॉडी से 'items' का उपयोग कर रहे हैं।
     if (!items || items.length === 0) {
       console.log("🛒 [API] Items list is empty, cannot place an order.");
       return res.status(400).json({ message: "Items list is empty, cannot place an order." });
     }
+
+    // ✅ यहाँ फिक्स है: strings को numbers में बदलें
+    const parsedSubtotal = parseFloat(subtotal);
+    const parsedTotal = parseFloat(total);
+    const parsedDeliveryCharge = parseFloat(deliveryCharge);
 
     let newOrderId;
     let newDeliveryAddressId;
@@ -41,25 +45,25 @@ export const placeOrder = async (req: AuthenticatedRequest, res: Response) => {
         fullName: deliveryAddress.fullName,
         phoneNumber: deliveryAddress.phone,
         addressLine1: deliveryAddress.address,
-        addressLine2: deliveryAddress.landmark, //landmark को addressLine2 में डालें
+        addressLine2: deliveryAddress.landmark,
         city: deliveryAddress.city,
         postalCode: deliveryAddress.pincode,
-        state: "Rajasthan", // frontend से state भी प्राप्त करें
+        state: "Rajasthan",
       }).returning();
       
       newDeliveryAddressId = newAddress.id;
 
-      // ✅ STEP 2: orders टेबल में नया ऑर्डर डालें, अब deliveryAddressId का उपयोग करके।
+      // ✅ STEP 2: orders टेबल में नया ऑर्डर डालें
       const [newOrder] = await tx.insert(orders).values({
         customerId: userId,
         status: "pending",
         orderNumber: orderNumber,
-        subtotal: subtotal.toFixed(2),
-        total: total.toFixed(2),
+        subtotal: parsedSubtotal.toFixed(2), // अब `toFixed` एक नंबर पर कॉल किया जा रहा है
+        total: parsedTotal.toFixed(2),     // यहाँ भी फिक्स
         paymentMethod: paymentMethod || 'COD',
-        deliveryAddressId: newDeliveryAddressId, // ✅ यहाँ सही ID का उपयोग करें
+        deliveryAddressId: newDeliveryAddressId,
         deliveryInstructions: deliveryInstructions,
-        deliveryCharge: deliveryCharge, // डिलीवरी चार्ज को भी यहाँ डालें
+        deliveryCharge: parsedDeliveryCharge.toFixed(2), // डिलीवरी चार्ज भी फिक्स
       }).returning();
       
       newOrderId = newOrder.id;
@@ -68,17 +72,15 @@ export const placeOrder = async (req: AuthenticatedRequest, res: Response) => {
       for (const item of items) {
         await tx.insert(orderItems).values({
           orderId: newOrder.id,
-          productId: item.productId, // रिक्वेस्ट बॉडी में productId नहीं है, यह एक समस्या है
+          // ✅ ध्यान दें: आपकी रिक्वेस्ट बॉडी में productId नहीं है। 
+          // आपको इसे फ्रंटएंड से भेजना होगा ताकि यह एरर न दे।
+          productId: item.productId,
           sellerId: item.sellerId,
           quantity: item.quantity,
           unitPrice: item.unitPrice,
           totalPrice: item.totalPrice,
         });
       }
-
-      // ✅ STEP 4 (वैकल्पिक): यदि आपके पास कार्ट के लिए एक अलग टेबल है, तो उसे यहाँ साफ़ करें।
-      // यह कोड आपकी मौजूदा समस्या का हिस्सा नहीं है, लेकिन एक अच्छे डिज़ाइन के लिए महत्वपूर्ण है।
-      // await tx.delete(cartItems).where(eq(cartItems.userId, userId));
     });
 
     res.status(201).json({ message: "Order placed successfully!", orderId: newOrderId });
@@ -118,7 +120,7 @@ export const getUserOrders = async (req: AuthenticatedRequest, res: Response) =>
     
     res.status(200).json(ordersWithItems);
   } catch (error) {
-    console.error("❌ Error fetching orders:", error);
-    res.status(500).json({ message: "Failed to fetch orders." });
+      console.error("❌ Error fetching orders:", error);
+      res.status(500).json({ message: "Failed to fetch orders." });
   }
 };
