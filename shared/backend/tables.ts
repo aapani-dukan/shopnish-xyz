@@ -161,9 +161,11 @@ export const deliveryAddresses = pgTable('delivery_addresses', {
   createdAt: timestamp('created_at').defaultNow(),
 });
 
-
 export const orders = pgTable("orders", {
   id: serial("id").primaryKey(),
+
+  // Unique Order Number
+  orderNumber: text("order_number").notNull(),
 
   // Relations
   customerId: integer("customer_id")
@@ -179,7 +181,11 @@ export const orders = pgTable("orders", {
 
   // Order Details
   status: orderStatusEnum("status").default("pending").notNull(),
-total: decimal("total", { precision: 10, scale: 2 }).notNull(),
+  subtotal: decimal("subtotal", { precision: 10, scale: 2 }).notNull(),
+  total: decimal("total", { precision: 10, scale: 2 }).notNull(),
+  deliveryCharge: decimal("delivery_charge", { precision: 10, scale: 2 }).notNull(),
+  paymentMethod: text("payment_method").notNull(),
+  paymentStatus: text("payment_status").default("pending"),
 
   // Delivery Info
   deliveryInstructions: text("delivery_instructions"),
@@ -193,6 +199,7 @@ total: decimal("total", { precision: 10, scale: 2 }).notNull(),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
+
 export const orderItems = pgTable("order_items", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").references(() => users.id),
