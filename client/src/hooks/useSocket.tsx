@@ -1,21 +1,18 @@
 // client/src/hooks/useSocket.tsx
 
 import { useEffect, useState, createContext, useContext } from "react";
-import { io, Socket } from "socket.io-client";
+import { io, type Socket } from "socket.io-client";
 import { useAuth } from "./useAuth"; // useAuth हुक को आयात करें
 
-interface SocketContextType {
-  socket: Socket | null;
-}
-
-const SocketContext = createContext<SocketContextType | undefined>(undefined);
+// Context type अब सिर्फ Socket या null
+const SocketContext = createContext<Socket | null>(null);
 
 export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
   const [socket, setSocket] = useState<Socket | null>(null);
-  const { user, isAuthenticated } = useAuth(); // ✅ useAuth से उपयोगकर्ता की जानकारी प्राप्त करें
+  const { user, isAuthenticated } = useAuth(); // ✅ useAuth से user info
 
   useEffect(() => {
-    // ✅ जब तक उपयोगकर्ता प्रमाणित नहीं होता, हम सॉकेट को कनेक्ट नहीं करेंगे।
+    // यदि user authenticated नहीं है तो socket disconnect करें
     if (!isAuthenticated) {
       if (socket) {
         socket.disconnect();
@@ -24,37 +21,47 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
       return;
     }
 
-    // ✅ अपने सर्वर का URL डालें
-    const newSocket = io("https://shopnish-lzrf.onrender.com");
+    // Backend URL environment variable से लें, fallback localhost
+    const socketUrl = import.meta.env.VITE_API_URL || "http://localhost:5001";
+
+    const newSocket = io(socketUrl, {
+      withCredentials: true,
+    });
 
     setSocket(newSocket);
 
-    // ✅ उपयोगकर्ता के प्रमाणित होने पर सॉकेट को उनके रोल और UID के साथ रजिस्टर करें
+    // जब connect हो जाए
     newSocket.on("connect", () => {
+      console.log("✅ Socket connected:", newSocket.id);
+
       if (user) {
         newSocket.emit("register-client", {
           role: user.role,
           userId: user.id,
         });
+        console.log("📡 Registered client:", { role: user.role, userId: user.id });
       }
     });
 
+    // Cleanup on unmount
     return () => {
       newSocket.disconnect();
+      console.log("⚡ Socket disconnected");
     };
   }, [isAuthenticated, user]);
 
   return (
-    <SocketContext.Provider value={{ socket }}>
+    <SocketContext.Provider value={socket}>
       {children}
     </SocketContext.Provider>
   );
 };
 
+// Custom hook for consuming socket
 export const useSocket = () => {
-  const context = useContext(SocketContext);
-  if (!context) {
+  const socket = useContext(SocketContext);
+  if (!socket) {
     throw new Error("useSocket must be used within a SocketProvider");
   }
-  return context;
+  return socket;
 };
