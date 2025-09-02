@@ -173,6 +173,7 @@ export const orders = pgTable("orders", {
   paymentMethod: text("payment_method").notNull(),
   paymentStatus: text("payment_status").default("pending"),
   status: orderStatusEnum('status').default('pending').notNull(),
+  // ✅ आपके अनुरोध के अनुसार जोड़ा गया
   deliveryAddress: json("delivery_address").notNull(),
   deliveryInstructions: text("delivery_instructions"),
   estimatedDeliveryTime: timestamp("estimated_delivery_time"),
