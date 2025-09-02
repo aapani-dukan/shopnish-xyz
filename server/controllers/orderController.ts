@@ -2,13 +2,13 @@ import { Request, Response } from 'express';
 // ✅ db का सही पथ (Path) सुनिश्चित करें
 import { db } from '../db.ts';
 import { orders, orderItems, deliveryAddresses } from '../../shared/backend/schema.ts';
-import { eq, and, desc } from 'drizzle-orm';
+import { eq, desc } from 'drizzle-orm';
 import { AuthenticatedRequest } from '../middleware/authMiddleware.ts';
 import { v4 as uuidv4 } from 'uuid';
+import { io } from '../index.ts'; // ✅ Socket.IO import किया
 
 /**
  * ग्राहक के लिए एक नया ऑर्डर प्लेस करने का फ़ंक्शन।
- * यह अब डेटाबेस स्कीमा के अनुरूप है।
  */
 export const placeOrder = async (req: AuthenticatedRequest, res: Response) => {
   console.log("🚀 [API] Received request to place order.");
@@ -36,23 +36,11 @@ export const placeOrder = async (req: AuthenticatedRequest, res: Response) => {
     const orderPaymentMethod = paymentMethod || 'COD';
     const deliveryBoyId = null;
 
-    // ✅ लॉग करें ताकि आप कंसोल में मान देख सकें
-    console.log("✅ [API] Validating required fields before insertion:");
-    console.log(` - Order Number: ${orderNumber}`);
-    console.log(` - Customer ID: ${userId}`);
-    console.log(` - Subtotal: ${parsedSubtotal}`);
-    console.log(` - Total: ${parsedTotal}`);
-    console.log(` - Delivery Charge: ${parsedDeliveryCharge}`);
-    console.log(` - Payment Method: ${orderPaymentMethod}`);
-    console.log(` - Delivery Address String: ${JSON.stringify(deliveryAddress)}`);
-    console.log(` - Delivery Boy ID: ${deliveryBoyId}`);
-
-    let newOrderId;
+    let newOrder: any;
     let newDeliveryAddressId;
 
     await db.transaction(async (tx) => {
       // ✅ STEP 1: deliveryAddresses टेबल में नया पता डालें।
-      // सुनिश्चित करें कि सभी not-null फ़ील्ड्स में मान हैं।
       const [newAddress] = await tx.insert(deliveryAddresses).values({
         userId: userId,
         fullName: deliveryAddress.fullName,
@@ -67,26 +55,20 @@ export const placeOrder = async (req: AuthenticatedRequest, res: Response) => {
       newDeliveryAddressId = newAddress.id;
 
       // ✅ STEP 2: orders टेबल में नया ऑर्डर डालें
-      const [newOrder] = await tx.insert(orders).values({
+      [newOrder] = await tx.insert(orders).values({
         customerId: userId,
         status: "pending",
-        
-        // ✅ FIX: deliveryStatus कॉलम जोड़ा गया
-        deliveryStatus: "pending", 
-
-        orderNumber: orderNumber,
+        deliveryStatus: "pending",
+        orderNumber,
         subtotal: parsedSubtotal.toFixed(2),
         total: parsedTotal.toFixed(2),
         deliveryCharge: parsedDeliveryCharge.toFixed(2),
         paymentMethod: orderPaymentMethod,
         deliveryAddressId: newDeliveryAddressId,
-        deliveryInstructions: deliveryInstructions,
-        // ✅ FIX: deliveryAddress ऑब्जेक्ट को JSON स्ट्रिंग के रूप में डालें
+        deliveryInstructions,
         deliveryAddress: JSON.stringify(deliveryAddress),
-        deliveryBoyId: deliveryBoyId,
+        deliveryBoyId,
       }).returning();
-      
-      newOrderId = newOrder.id;
 
       // ✅ STEP 3: रिक्वेस्ट बॉडी से प्रत्येक आइटम के लिए orderItems रिकॉर्ड डालें।
       for (const item of items) {
@@ -101,7 +83,19 @@ export const placeOrder = async (req: AuthenticatedRequest, res: Response) => {
       }
     });
 
-    res.status(201).json({ message: "Order placed successfully!", orderId: newOrderId });
+    // ✅ STEP 4: Socket.IO से नए ऑर्डर का इवेंट भेजें
+    io.emit("new-order", {
+      orderId: newOrder.id,
+      orderNumber: newOrder.orderNumber,
+      customerId: newOrder.customerId,
+      total: newOrder.total,
+      status: newOrder.status,
+      deliveryStatus: newOrder.deliveryStatus,
+      createdAt: newOrder.createdAt,
+      items, // frontend me seller/delivery dashboard ko product dikhane ke liye
+    });
+
+    res.status(201).json({ message: "Order placed successfully!", orderId: newOrder.id });
 
   } catch (error) {
     console.error("❌ Error placing order:", error);
@@ -111,7 +105,7 @@ export const placeOrder = async (req: AuthenticatedRequest, res: Response) => {
 
 
 /**
- * ग्राहक के सभी ऑर्डर फ़ेच करने का फ़ंक्शन (इसमें कोई बदलाव नहीं किया गया है)।
+ * ग्राहक के सभी ऑर्डर फ़ेच करने का फ़ंक्शन।
  */
 export const getUserOrders = async (req: AuthenticatedRequest, res: Response) => {
   try {
