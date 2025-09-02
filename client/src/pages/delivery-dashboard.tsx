@@ -8,24 +8,10 @@ import {
 } from "@tanstack/react-query";
 import { initializeApp, getApps } from "firebase/app";
 import { getAuth, signInWithCustomToken, onAuthStateChanged, signInAnonymously } from "firebase/auth";
-import {
-  getFirestore,
-  doc,
-  updateDoc,
-  onSnapshot,
-  collection,
-  query,
-  where,
-  setLogLevel
-} from "firebase/firestore";
-
-// Firestore logs को सक्षम करें
-setLogLevel('debug');
 
 // -----------------------------------------------------------------------------
 // ## ग्लोबल एनवायरनमेंट वैरिएबल
 // -----------------------------------------------------------------------------
-// ये वैरिएबल रनटाइम पर आपके एनवायरनमेंट से स्वतः ही प्रदान किए जाते हैं।
 const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
 const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
 const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
@@ -87,7 +73,6 @@ const ShieldCheck = (props) => (<svg {...props} xmlns="http://www.w3.org/2000/sv
 // -----------------------------------------------------------------------------
 // ## कोर लॉजिक और हेल्पर्स
 // -----------------------------------------------------------------------------
-// ये फ़ंक्शन UI के लिए डेटा तैयार करने में मदद करते हैं।
 const statusColor = (status) => {
   switch (status) {
     case "ready":
@@ -148,11 +133,9 @@ const nextStatusLabel = (status) => {
   }
 };
 
-
 // -----------------------------------------------------------------------------
 // ## मुख्य React कंपोनेंट: DeliveryDashboard
 // -----------------------------------------------------------------------------
-// यह कंपोनेंट ऐप की सारी कार्यक्षमता को संभालता है।
 const DeliveryDashboard = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -160,7 +143,7 @@ const DeliveryDashboard = () => {
   const [orders, setOrders] = useState([]);
   const [userId, setUserId] = useState(null);
   const [authReady, setAuthReady] = useState(false);
-  const [db, setDb] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [auth, setAuth] = useState(null);
 
   // OTP dialog के लिए लोकल स्टेट।
@@ -168,88 +151,83 @@ const DeliveryDashboard = () => {
   const [otp, setOtp] = useState("");
   const [otpDialogOpen, setOtpDialogOpen] = useState(false);
 
+  // ─── Data Fetching with Fetch API ───
+  // यह फ़ंक्शन API से ऑर्डर फ़ेच करता है
+  const fetchOrders = async (id) => {
+    setIsLoading(true);
+    try {
+      const response = await fetch(`/api/delivery/orders?deliveryBoyId=${id}`);
+      if (!response.ok) {
+        throw new Error("नेटवर्क प्रतिक्रिया ठीक नहीं थी");
+      }
+      const data = await response.json();
+      setOrders(data.orders);
+    } catch (error) {
+      console.error("ऑर्डर फ़ेच करने में त्रुटि:", error);
+      toast({
+        title: "डेटा फ़ेच करने में त्रुटि",
+        description: "ऑर्डर फ़ेच करते समय एक समस्या हुई।",
+        variant: "destructive"
+      });
+      setOrders([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // ─── Firebase Initialization and Auth ───
-  // यह useEffect केवल एक बार चलता है, ऐप शुरू होने पर।
   useEffect(() => {
     let unsubscribeAuth;
-    let unsubscribeFirestore;
 
     try {
-      // अगर कोई Firebase ऐप पहले से शुरू नहीं हुआ है, तो उसे शुरू करें।
       if (!getApps().length) {
         initializeApp(firebaseConfig);
       }
       
       const tempAuth = getAuth();
-      const tempDb = getFirestore();
       setAuth(tempAuth);
-      setDb(tempDb);
       
-      // onAuthStateChanged listener Firebase प्रमाणीकरण स्थिति में बदलाव को ट्रैक करता है।
       unsubscribeAuth = onAuthStateChanged(tempAuth, async (user) => {
         if (user) {
           setUserId(user.uid);
           setAuthReady(true);
-          
-          // जब उपयोगकर्ता लॉग इन हो, तो Firestore listener सेट करें।
-          try {
-            const ordersRef = collection(tempDb, "orders");
-            const q = query(ordersRef, where("deliveryBoyId", "==", user.uid));
-            
-            // onSnapshot Firestore से वास्तविक समय में डेटा फ़ेच करता है।
-            unsubscribeFirestore = onSnapshot(q, (snapshot) => {
-              const fetchedOrders = snapshot.docs.map((doc) => ({
-                id: doc.id,
-                ...doc.data(),
-              }));
-              setOrders(fetchedOrders);
-              console.log("Firebase से फ़ेच किया गया डेटा:", fetchedOrders);
-            }, (error) => {
-                console.error("Firestore data fetch failed:", error);
-                toast({
-                    title: "डेटा फ़ेच करने में त्रुटि",
-                    description: "ऑर्डर फ़ेच करते समय एक समस्या हुई। कृपया पुनः प्रयास करें।",
-                    variant: "destructive"
-                });
-            });
-          } catch (error) {
-            console.error("Failed to set up Firestore listener:", error);
-          }
+          // जब उपयोगकर्ता लॉग इन हो, तो API से डेटा फ़ेच करें।
+          fetchOrders(user.uid);
         } else {
           setUserId(null);
           setAuthReady(false);
           setOrders([]); // उपयोगकर्ता के लॉग आउट होने पर ऑर्डर्स साफ़ करें।
-          // यदि auth token मौजूद है, तो custom token के साथ साइन इन करें।
           if (initialAuthToken) {
             await signInWithCustomToken(tempAuth, initialAuthToken);
           } else {
-            // अन्यथा, गुमनाम रूप से साइन इन करें।
             await signInAnonymously(tempAuth);
           }
         }
       });
-      
-      // Cleanup function जो कंपोनेंट के अनमाउंट होने पर listeners को हटा देती है।
+
       return () => {
         if (unsubscribeAuth) unsubscribeAuth();
-        if (unsubscribeFirestore) unsubscribeFirestore();
       };
-
     } catch (error) {
       console.error("Firebase initialization failed:", error);
     }
   }, []);
 
   // ─── React Query Mutations ───
-  // यह mutation Firestore में ऑर्डर का स्टेटस अपडेट करने के लिए है।
+  // यह mutation API के माध्यम से ऑर्डर का स्टेटस अपडेट करने के लिए है।
   const updateStatusMutation = useMutation({
-    mutationFn: ({ orderId, status }) => {
-      if (!db) {
-        console.error("Firestore DB is not initialized.");
-        return Promise.reject("Firestore DB is not initialized.");
+    mutationFn: async ({ orderId, status }) => {
+      const response = await fetch(`/api/delivery/update-status`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ orderId, status }),
+      });
+      if (!response.ok) {
+        throw new Error('स्टेटस अपडेट करने में विफल');
       }
-      const orderRef = doc(db, "orders", orderId);
-      return updateDoc(orderRef, { status: status });
+      return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/delivery/orders"] });
@@ -257,6 +235,8 @@ const DeliveryDashboard = () => {
         title: "स्टेटस अपडेट किया गया",
         description: "ऑर्डर का स्टेटस सफलतापूर्वक अपडेट किया गया।",
       });
+      // सक्सेस पर ऑर्डर्स फिर से फ़ेच करें
+      fetchOrders(userId);
     },
     onError: (error) => {
       console.error("Mutation failed:", error);
@@ -270,17 +250,18 @@ const DeliveryDashboard = () => {
 
   // यह mutation OTP सबमिट करने और डिलीवरी पूरी करने के लिए है।
   const handleOtpSubmit = useMutation({
-    mutationFn: ({ orderId, otp }) => {
-      if (!db) {
-        console.error("Firestore DB is not initialized.");
-        return Promise.reject("Firestore DB is not initialized.");
-      }
-      // OTP के साथ डिलीवरी पूरी करने के लिए एक API कॉल।
-      const orderRef = doc(db, "orders", orderId);
-      return updateDoc(orderRef, {
-        status: "delivered",
-        deliveryOtp: otp // Note: A real app should verify this on the backend
+    mutationFn: async ({ orderId, otp }) => {
+      const response = await fetch(`/api/delivery/complete-delivery`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ orderId, otp }),
       });
+      if (!response.ok) {
+        throw new Error('OTP सबमिशन विफल');
+      }
+      return response.json();
     },
     onSuccess: () => {
       setOtp("");
@@ -290,6 +271,7 @@ const DeliveryDashboard = () => {
         title: "डिलीवरी पूरी हुई",
         description: "ऑर्डर को सफलतापूर्वक डिलीवर किया गया।",
       });
+      fetchOrders(userId);
     },
     onError: (error) => {
       console.error("OTP submission failed:", error);
@@ -328,16 +310,11 @@ const DeliveryDashboard = () => {
   };
   
   const handleLogout = () => {
-    if (!auth) {
-        console.error("Auth object is not available.");
-        return;
-    }
+    if (!auth) return;
     auth.signOut().then(() => {
-        // आप यहाँ एक लॉगिन स्क्रीन पर रीडायरेक्ट कर सकते हैं,
-        // लेकिन इस सिंगल-फाइल कंपोनेंट में, हम बस पेज रीलोड कर रहे हैं।
         window.location.reload();
     }).catch((error) => {
-        console.error("Sign out error", error);
+        console.error("साइन आउट त्रुटि", error);
     });
   };
 
@@ -346,7 +323,7 @@ const DeliveryDashboard = () => {
   // -----------------------------------------------------------------------------
   
   /* ----------------------------- Loading & Empty State ----------------------------------- */
-  if (!authReady || !userId) {
+  if (!authReady || isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="animate-spin w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full" />
@@ -474,7 +451,7 @@ const DeliveryDashboard = () => {
                       </div>
                     </div>
                     <div>
-                       <h4 className="font-medium mb-2">डिलीवरी पता</h4>
+                      <h4 className="font-medium mb-2">डिलीवरी पता</h4>
                       <div className="flex items-start space-x-2 text-sm text-gray-600">
                         <MapPin className="w-4 h-4 mt-0.5" />
                         <div>
@@ -501,7 +478,7 @@ const DeliveryDashboard = () => {
                           className="flex items-center space-x-3 text-sm"
                         >
                           <img
-                            src={item.product.image}
+                           src={item.product.image}
                             alt={item.product.name}
                             className="w-8 h-8 object-cover rounded"
                           />
@@ -624,4 +601,3 @@ export default function App() {
     </QueryClientProvider>
   );
 }
-           
