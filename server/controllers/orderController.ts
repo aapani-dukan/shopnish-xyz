@@ -31,6 +31,7 @@ export const placeOrder = async (req: AuthenticatedRequest, res: Response) => {
     // ✅ फिक्स: order_number को transaction के बाहर परिभाषित करें
     const orderNumber = `ORD-${uuidv4()}`;
 
+    // ✅ फिक्स: strings को numbers में बदलें
     const parsedSubtotal = parseFloat(subtotal);
     const parsedTotal = parseFloat(total);
     const parsedDeliveryCharge = parseFloat(deliveryCharge);
