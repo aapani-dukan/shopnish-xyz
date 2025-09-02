@@ -14,6 +14,8 @@ export const orderStatusEnum = pgEnum('order_status', [
 
 export const userRoleEnum = pgEnum("user_role", ["customer", "seller", "admin", "delivery_boy"]);
 export const approvalStatusEnum = pgEnum("approval_status", ["pending", "approved", "rejected"]);
+export const deliveryStatusEnum = pgEnum("delivery_status_enum", ["pending", "accepted", "out for delivery", "delivered"]);
+
 
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
@@ -161,6 +163,8 @@ export const deliveryAddresses = pgTable('delivery_addresses', {
   isDefault: boolean('is_default').default(false),
   createdAt: timestamp('created_at').defaultNow(),
 });
+
+
 export const orders = pgTable("orders", {
   id: serial("id").primaryKey(),
 
@@ -181,13 +185,17 @@ export const orders = pgTable("orders", {
 
   // Order Details
   status: orderStatusEnum("status").default("pending").notNull(),
+  
+  // ✅ FIX: delivery_status कॉलम जोड़ा गया
+  deliveryStatus: deliveryStatusEnum("delivery_status").default("pending").notNull(),
+
   subtotal: decimal("subtotal", { precision: 10, scale: 2 }).notNull(),
   total: decimal("total", { precision: 10, scale: 2 }).notNull(),
   deliveryCharge: decimal("delivery_charge", { precision: 10, scale: 2 }).notNull(),
   paymentMethod: text("payment_method").notNull(),
   paymentStatus: text("payment_status").default("pending"),
 
-  // ✅ FIX: delivery_address कॉलम जोड़ा गया
+  // Delivery Address (string version)
   deliveryAddress: text("delivery_address").notNull(),
 
   // Delivery Info
@@ -202,6 +210,7 @@ export const orders = pgTable("orders", {
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
+
 export const orderItems = pgTable("order_items", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").references(() => users.id),
