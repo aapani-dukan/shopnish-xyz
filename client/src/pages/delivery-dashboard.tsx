@@ -105,7 +105,8 @@ const deliveryOrder = {
   },
   total: '',
   paymentMethod: '',
-  status: 'ready',
+  status: 'pending',
+  deliveryStatus: 'pending', // नया डिलीवरी स्टेटस कॉलम
   estimatedDeliveryTime: '',
   deliveryOtp: '',
   items: [
@@ -125,40 +126,40 @@ const deliveryOrder = {
 /* -------------------------------------------------------------------------- */
 /* Helper Functions                              */
 /* -------------------------------------------------------------------------- */
-const statusColor = (status) => {
-  switch (status) {
-    case "ready": return "bg-yellow-500";
-    case "picked_up": return "bg-blue-500";
-    case "out_for_delivery": return "bg-purple-500";
+const statusColor = (deliveryStatus) => {
+  switch (deliveryStatus) {
+    case "pending": return "bg-gray-400";
+    case "accepted": return "bg-blue-500";
+    case "out for delivery": return "bg-purple-500";
     case "delivered": return "bg-green-500";
     default: return "bg-gray-500";
   }
 };
 
-const statusText = (status) => {
-  switch (status) {
-    case "ready": return "तैयार";
-    case "picked_up": return "उठाया गया";
-    case "out_for_delivery": return "डिलीवरी पर";
+const statusText = (deliveryStatus) => {
+  switch (deliveryStatus) {
+    case "pending": return "लंबित";
+    case "accepted": return "स्वीकृत";
+    case "out for delivery": return "डिलीवरी पर";
     case "delivered": return "डिलीवर किया गया";
-    default: return status;
+    default: return deliveryStatus;
   }
 };
 
-const nextStatus = (status) => {
-  switch (status) {
-    case "ready": return "picked_up";
-    case "picked_up": return "out_for_delivery";
-    case "out_for_delivery": return "delivered";
+const nextStatus = (deliveryStatus) => {
+  switch (deliveryStatus) {
+    case "pending": return "accepted";
+    case "accepted": return "out for delivery";
+    case "out for delivery": return "delivered";
     default: return null;
   }
 };
 
-const nextStatusLabel = (status) => {
-  switch (status) {
-    case "ready": return "उठाया गया";
-    case "picked_up": return "डिलीवरी शुरू करें";
-    case "out_for_delivery": return "डिलीवरी पूरी करें";
+const nextStatusLabel = (deliveryStatus) => {
+  switch (deliveryStatus) {
+    case "pending": return "ऑर्डर स्वीकार करें";
+    case "accepted": return "डिलीवरी शुरू करें";
+    case "out for delivery": return "डिलीवरी पूरी करें";
     default: return "";
   }
 };
@@ -189,11 +190,19 @@ const DeliveryDashboard = () => {
       ),
   });
 
+  // यह सुनिश्चित करने के लिए कि सभी ऑर्डर फ़ेच हो रहे हैं, इसे कंसोल में देखें
+  useEffect(() => {
+    if (orders.length > 0) {
+      console.log("सभी फ़ेच किए गए ऑर्डर:", orders);
+    }
+  }, [orders]);
+
+
   const updateStatus = useMutation({
     mutationFn: ({
       orderId,
-      status,
-    }) => apiRequest("PATCH", `/api/orders/${orderId}/status`, { status }),
+      deliveryStatus,
+    }) => apiRequest("PATCH", `/api/orders/${orderId}/status`, { deliveryStatus }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/delivery/orders"] });
       toast({
@@ -207,10 +216,12 @@ const DeliveryDashboard = () => {
     mutationFn: ({
       orderId,
       otp,
+      deliveryStatus
     }) =>
       apiRequest("POST", `/api/orders/${orderId}/complete-delivery`, {
         otp,
         deliveryBoyId,
+        deliveryStatus
       }),
     onSuccess: () => {
       setOtp("");
@@ -238,14 +249,14 @@ const DeliveryDashboard = () => {
   };
 
   const handleStatusProgress = (order) => {
-    if (order.status === "out_for_delivery") {
+    if (order['delivery-status'] === "out for delivery") {
       setSelectedOrder(order);
       setOtpDialogOpen(true);
       return;
     }
-    const next = nextStatus(order.status);
+    const next = nextStatus(order['delivery-status']);
     if (next) {
-      updateStatus.mutate({ orderId: order.id, status: next });
+      updateStatus.mutate({ orderId: order.id, deliveryStatus: next });
     }
   };
 
@@ -259,7 +270,7 @@ const DeliveryDashboard = () => {
       });
       return;
     }
-    completeDelivery.mutate({ orderId: selectedOrder.id, otp });
+    completeDelivery.mutate({ orderId: selectedOrder.id, otp, deliveryStatus: 'delivered' });
   };
 
   if (isLoading) {
@@ -269,9 +280,11 @@ const DeliveryDashboard = () => {
       </div>
     );
   }
-
-  const availableOrders = orders.filter(order => order.status === 'ready');
-  const myOrders = orders.filter(order => ['picked_up', 'out_for_delivery'].includes(order.status));
+  
+  // ऑर्डर्स को उनके डिलीवरी स्टेटस के अनुसार फ़िल्टर करें
+  const newOrders = orders.filter(order => order['delivery-status'] === 'pending');
+  const acceptedOrders = orders.filter(order => ['accepted', 'out for delivery'].includes(order['delivery-status']));
+  const deliveredOrders = orders.filter(order => order['delivery-status'] === 'delivered');
 
   const renderOrderList = (list, title) => (
     <section className="mb-8">
@@ -296,8 +309,8 @@ const DeliveryDashboard = () => {
                       {order.items.length} आइटम • ₹{order.total}
                     </p>
                   </div>
-                  <Badge className={`${statusColor(order.status)} text-white`}>
-                    {statusText(order.status)}
+                  <Badge className={`${statusColor(order['delivery-status'])} text-white`}>
+                    {statusText(order['delivery-status'])}
                   </Badge>
                 </div>
               </CardHeader>
@@ -351,28 +364,30 @@ const DeliveryDashboard = () => {
                     </div>
                   </div>
                 </div>
-                <div className="flex flex-wrap gap-3 mt-6 pt-4 border-t">
-                  <Button
-                    variant="outline"
-                    onClick={() => window.open(`tel:${order.deliveryAddress.phone}`)}
-                  >
-                    <Icons.Phone className="w-4 h-4 mr-2" />
-                    ग्राहक को कॉल करें
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() => window.open(`https://maps.google.com/?q=${encodeURIComponent(order.deliveryAddress.address)}`)}
-                  >
-                    <Icons.Navigation className="w-4 h-4 mr-2" />
-                    नेविगेट करें
-                  </Button>
-                  <Button
-                    onClick={() => handleStatusProgress(order)}
-                    disabled={updateStatus.isLoading || completeDelivery.isLoading}
-                  >
-                    {nextStatusLabel(order.status)}
-                  </Button>
-                </div>
+                {order['delivery-status'] !== 'delivered' && (
+                    <div className="flex flex-wrap gap-3 mt-6 pt-4 border-t">
+                      <Button
+                        variant="outline"
+                        onClick={() => window.open(`tel:${order.deliveryAddress.phone}`)}
+                      >
+                        <Icons.Phone className="w-4 h-4 mr-2" />
+                        ग्राहक को कॉल करें
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={() => window.open(`https://maps.google.com/?q=${encodeURIComponent(order.deliveryAddress.address)}`)}
+                      >
+                        <Icons.Navigation className="w-4 h-4 mr-2" />
+                        नेविगेट करें
+                      </Button>
+                      <Button
+                        onClick={() => handleStatusProgress(order)}
+                        disabled={updateStatus.isLoading || completeDelivery.isLoading}
+                      >
+                        {nextStatusLabel(order['delivery-status'])}
+                      </Button>
+                    </div>
+                )}
               </CardContent>
             </Card>
           ))
@@ -403,8 +418,9 @@ const DeliveryDashboard = () => {
         </div>
       </header>
       <main className="p-6">
-        {renderOrderList(availableOrders, "नए ऑर्डर")}
-        {renderOrderList(myOrders, "मेरे स्वीकृत ऑर्डर")}
+        {renderOrderList(newOrders, "नए ऑर्डर")}
+        {renderOrderList(acceptedOrders, "मेरे स्वीकृत ऑर्डर")}
+        {renderOrderList(deliveredOrders, "डिलीवर किए गए ऑर्डर")}
       </main>
       
       <Dialog open={otpDialogOpen} onOpenChange={setOtpDialogOpen}>
@@ -465,3 +481,4 @@ export default function App() {
   );
 }
 
+  
