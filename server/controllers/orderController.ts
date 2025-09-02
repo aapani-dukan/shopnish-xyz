@@ -28,14 +28,23 @@ export const placeOrder = async (req: AuthenticatedRequest, res: Response) => {
       return res.status(400).json({ message: "Items list is empty, cannot place an order." });
     }
 
-    // ✅ फिक्स: order_number को transaction के बाहर परिभाषित करें
+    // ✅ सभी "not-null" फ़ील्ड्स के मानों को सुनिश्चित करें
     const orderNumber = `ORD-${uuidv4()}`;
-    console.log("✅ [API] Generated Order Number:", orderNumber);
-
-    // ✅ फिक्स: strings को numbers में बदलें
     const parsedSubtotal = parseFloat(subtotal);
     const parsedTotal = parseFloat(total);
     const parsedDeliveryCharge = parseFloat(deliveryCharge);
+    const orderPaymentMethod = paymentMethod || 'COD';
+    const parsedDeliveryAddress = deliveryAddress.address || '';
+
+    // ✅ लॉग करें ताकि आप कंसोल में मान देख सकें
+    console.log("✅ [API] Validating required fields before insertion:");
+    console.log(` - Order Number: ${orderNumber}`);
+    console.log(` - Customer ID: ${userId}`);
+    console.log(` - Subtotal: ${parsedSubtotal}`);
+    console.log(` - Total: ${parsedTotal}`);
+    console.log(` - Delivery Charge: ${parsedDeliveryCharge}`);
+    console.log(` - Payment Method: ${orderPaymentMethod}`);
+    console.log(` - Delivery Address String: ${parsedDeliveryAddress}`);
 
     let newOrderId;
     let newDeliveryAddressId;
@@ -62,11 +71,11 @@ export const placeOrder = async (req: AuthenticatedRequest, res: Response) => {
         orderNumber: orderNumber,
         subtotal: parsedSubtotal.toFixed(2),
         total: parsedTotal.toFixed(2),
-        paymentMethod: paymentMethod || 'COD',
+        paymentMethod: orderPaymentMethod,
         deliveryAddressId: newDeliveryAddressId,
         deliveryInstructions: deliveryInstructions,
         deliveryCharge: parsedDeliveryCharge.toFixed(2),
-        deliveryAddress: deliveryAddress.address, // ✅ फिक्स: delivery_address कॉलम में मान जोड़ें
+        deliveryAddress: parsedDeliveryAddress,
       }).returning();
       
       newOrderId = newOrder.id;
