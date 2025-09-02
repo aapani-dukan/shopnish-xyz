@@ -28,7 +28,9 @@ export const placeOrder = async (req: AuthenticatedRequest, res: Response) => {
       return res.status(400).json({ message: "Items list is empty, cannot place an order." });
     }
 
-    // ✅ यहाँ फिक्स है: strings को numbers में बदलें
+    // ✅ फिक्स: order_number को transaction के बाहर परिभाषित करें
+    const orderNumber = `ORD-${uuidv4()}`;
+
     const parsedSubtotal = parseFloat(subtotal);
     const parsedTotal = parseFloat(total);
     const parsedDeliveryCharge = parseFloat(deliveryCharge);
@@ -37,8 +39,6 @@ export const placeOrder = async (req: AuthenticatedRequest, res: Response) => {
     let newDeliveryAddressId;
 
     await db.transaction(async (tx) => {
-      const orderNumber = `ORD-${uuidv4()}`;
-
       // ✅ STEP 1: deliveryAddresses टेबल में नया पता डालें।
       const [newAddress] = await tx.insert(deliveryAddresses).values({
         userId: userId,
@@ -57,13 +57,13 @@ export const placeOrder = async (req: AuthenticatedRequest, res: Response) => {
       const [newOrder] = await tx.insert(orders).values({
         customerId: userId,
         status: "pending",
-        orderNumber: orderNumber,
-        subtotal: parsedSubtotal.toFixed(2), // अब `toFixed` एक नंबर पर कॉल किया जा रहा है
-        total: parsedTotal.toFixed(2),     // यहाँ भी फिक्स
+        orderNumber: orderNumber, // अब यह वेरिएबल ट्रांजैक्शन से पहले परिभाषित है
+        subtotal: parsedSubtotal.toFixed(2),
+        total: parsedTotal.toFixed(2),
         paymentMethod: paymentMethod || 'COD',
         deliveryAddressId: newDeliveryAddressId,
         deliveryInstructions: deliveryInstructions,
-        deliveryCharge: parsedDeliveryCharge.toFixed(2), // डिलीवरी चार्ज भी फिक्स
+        deliveryCharge: parsedDeliveryCharge.toFixed(2),
       }).returning();
       
       newOrderId = newOrder.id;
@@ -72,8 +72,6 @@ export const placeOrder = async (req: AuthenticatedRequest, res: Response) => {
       for (const item of items) {
         await tx.insert(orderItems).values({
           orderId: newOrder.id,
-          // ✅ ध्यान दें: आपकी रिक्वेस्ट बॉडी में productId नहीं है। 
-          // आपको इसे फ्रंटएंड से भेजना होगा ताकि यह एरर न दे।
           productId: item.productId,
           sellerId: item.sellerId,
           quantity: item.quantity,
