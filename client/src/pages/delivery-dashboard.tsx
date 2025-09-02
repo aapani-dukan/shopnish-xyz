@@ -24,11 +24,23 @@ const apiRequest = async (method, url, data = null) => {
     ...(data && { body: JSON.stringify(data) }),
   };
 
-  const response = await fetch(url, options);
-  if (!response.ok) {
-    throw new Error(`API call failed with status: ${response.status}`);
+  try {
+    const response = await fetch(url, options);
+    // ✅ FIX: 401 Unauthorized errors को हैंडल करें
+    if (response.status === 401) {
+      localStorage.removeItem("deliveryBoyToken");
+      localStorage.removeItem("deliveryBoyId");
+      // यहां हम वास्तविक रीडायरेक्ट नहीं कर सकते, इसलिए हम एक त्रुटि फेंकते हैं
+      throw new Error("Unauthorized: Invalid or expired token. Please log in again.");
+    }
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || `API call failed with status: ${response.status}`);
+    }
+    return response.json();
+  } catch (error) {
+    throw error;
   }
-  return response.json();
 };
 
 const useToast = () => {
@@ -175,9 +187,23 @@ const DeliveryDashboard = () => {
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [otp, setOtp] = useState("");
   const [otpDialogOpen, setOtpDialogOpen] = useState(false);
+  const [isLoggedOut, setIsLoggedOut] = useState(false); // ✅ FIX: लॉगआउट स्थिति को ट्रैक करने के लिए नया स्टेट
 
   const deliveryBoyId = localStorage.getItem("deliveryBoyId") || 'demo-id-123';
   const deliveryBoyName = "रवि सिंह";
+
+  // ✅ FIX: `deliveryBoyToken` की उपलब्धता जांचें
+  useEffect(() => {
+    const token = localStorage.getItem("deliveryBoyToken");
+    if (!token) {
+      setIsLoggedOut(true);
+      toast({
+        title: "लॉगिन की आवश्यकता है",
+        description: "आपका सत्र समाप्त हो गया है। कृपया फिर से लॉगिन करें।",
+        variant: "destructive",
+      });
+    }
+  }, []);
 
   const { data: orders = [], isLoading } = useQuery({
     queryKey: ["/api/delivery/orders", deliveryBoyId],
@@ -245,6 +271,7 @@ const DeliveryDashboard = () => {
   const handleLogout = () => {
     localStorage.removeItem("deliveryBoyToken");
     localStorage.removeItem("deliveryBoyId");
+    setIsLoggedOut(true); // ✅ FIX: लॉगआउट स्टेटस को अपडेट करें
     // navigate("/delivery-login"); // यहाँ navigate को उपयोग करने के लिए react-router-dom की जरूरत है
   };
 
@@ -277,6 +304,23 @@ const DeliveryDashboard = () => {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="animate-spin w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full" />
+      </div>
+    );
+  }
+
+  // ✅ FIX: अगर लॉगआउट हो गया है तो लॉगिन स्क्रीन दिखाएं
+  if (isLoggedOut) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 p-6">
+        <Card className="text-center max-w-sm">
+          <CardContent className="space-y-4">
+            <h1 className="text-2xl font-bold text-red-600">अमान्य सत्र</h1>
+            <p className="text-gray-600">आपका सत्र समाप्त हो गया है। कृपया फिर से लॉगिन करें।</p>
+            <Button onClick={() => window.location.reload()}>
+                लॉगिन पर जाएँ
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -428,7 +472,7 @@ const DeliveryDashboard = () => {
           <DialogHeader>
             <DialogTitle>डिलीवरी पूरी करें</DialogTitle>
           </DialogHeader>
-          <div className="text-sm text-gray-600 mb-4">
+              <div className="text-sm text-gray-600 mb-4">
             डिलीवरी की पुष्टि करने के लिए ग्राहक से 4-अंकीय OTP मांगें।
           </div>
           {selectedOrder && (
@@ -480,5 +524,3 @@ export default function App() {
     </QueryClientProvider>
   );
 }
-
-  
