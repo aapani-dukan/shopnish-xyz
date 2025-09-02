@@ -179,7 +179,7 @@ export const orders = pgTable("orders", {
 
   // Order Details
   status: orderStatusEnum("status").default("pending").notNull(),
-  totalAmount: decimal("total_amount", { precision: 10, scale: 2 }).notNull(),
+total: decimal("total", { precision: 10, scale: 2 }).notNull(),
 
   // Delivery Info
   deliveryInstructions: text("delivery_instructions"),
