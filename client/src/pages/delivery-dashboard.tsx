@@ -22,16 +22,21 @@ import {
 // Firestore logs को सक्षम करें
 setLogLevel('debug');
 
-// TanStack QueryClient को App कंपोनेंट के बाहर बनाएँ
-const queryClient = new QueryClient();
-
-// Firestore और Firebase Auth के लिए ग्लोबल वैरिएबल
+// -----------------------------------------------------------------------------
+// ## ग्लोबल एनवायरनमेंट वैरिएबल
+// -----------------------------------------------------------------------------
 // ये वैरिएबल रनटाइम पर आपके एनवायरनमेंट से स्वतः ही प्रदान किए जाते हैं।
 const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
 const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
 const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
-// Mock utility functions from the original code for a single file component
+// TanStack QueryClient को App कंपोनेंट के बाहर बनाएँ।
+const queryClient = new QueryClient();
+
+// -----------------------------------------------------------------------------
+// ## मॉक UI कंपोनेंट और यूटिलिटी फ़ंक्शन
+// -----------------------------------------------------------------------------
+// ये UI एलिमेंट और फंक्शन एक सिंगल-फाइल कंपोनेंट में उपयोग के लिए हैं।
 const useToast = () => {
     return {
         toast: ({ title, description, variant }) => {
@@ -66,7 +71,9 @@ const DialogContent = ({ children }) => <div>{children}</div>;
 const DialogHeader = ({ children }) => <div className="mb-4">{children}</div>;
 const DialogTitle = ({ children }) => <h3 className="text-lg font-bold">{children}</h3>;
 
-// Inline SVG Icons
+// -----------------------------------------------------------------------------
+// ## SVG Icons
+// -----------------------------------------------------------------------------
 const Package = (props) => (<svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 3v18H3c-.55 0-1-.45-1-1V5c0-.55.45-1 1-1h3m0-1v2H3a1 1 0 00-1 1v14a1 1 0 001 1h3v2m15 0H9m0-2h12v-2H9m0-2h12V7H9m0-2h12V3H9z" /></svg>);
 const Navigation = (props) => (<svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 11l19-9-9 19-2-8-8-2z" /></svg>);
 const Phone = (props) => (<svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 01-2.18 2.06l-4.72-.94a2 2 0 01-1.87-1.42l-.24-.96a1 1 0 00-.91-.71l-2.45-.16a1 1 0 00-.73.34l-3.5 3.5a1 1 0 01-.7.29a.9.9 0 01-.7-.29L2.8 19.29a2 2 0 01-.58-1.58V14a2 2 0 012-2h3a2 2 0 012 2v2" /></svg>);
@@ -77,11 +84,10 @@ const User = (props) => (<svg {...props} xmlns="http://www.w3.org/2000/svg" widt
 const LogOut = (props) => (<svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" /></svg>);
 const ShieldCheck = (props) => (<svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5c0-1.2-.8-2-2-2H6c-1.2 0-2 .8-2 2v7c0 6 8 10 8 10z" /><path d="M9 12l2 2 4-4" /></svg>);
 
-
-/* -------------------------------------------------------------------------- */
-/* Helper Functions                                                           */
-/* -------------------------------------------------------------------------- */
-
+// -----------------------------------------------------------------------------
+// ## कोर लॉजिक और हेल्पर्स
+// -----------------------------------------------------------------------------
+// ये फ़ंक्शन UI के लिए डेटा तैयार करने में मदद करते हैं।
 const statusColor = (status) => {
   switch (status) {
     case "ready":
@@ -142,10 +148,11 @@ const nextStatusLabel = (status) => {
   }
 };
 
-/* -------------------------------------------------------------------------- */
-/* Component Start                                                            */
-/* -------------------------------------------------------------------------- */
 
+// -----------------------------------------------------------------------------
+// ## मुख्य React कंपोनेंट: DeliveryDashboard
+// -----------------------------------------------------------------------------
+// यह कंपोनेंट ऐप की सारी कार्यक्षमता को संभालता है।
 const DeliveryDashboard = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -156,83 +163,85 @@ const DeliveryDashboard = () => {
   const [db, setDb] = useState(null);
   const [auth, setAuth] = useState(null);
 
-  // local state for OTP dialog
+  // OTP dialog के लिए लोकल स्टेट।
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [otp, setOtp] = useState("");
   const [otpDialogOpen, setOtpDialogOpen] = useState(false);
 
   // ─── Firebase Initialization and Auth ───
+  // यह useEffect केवल एक बार चलता है, ऐप शुरू होने पर।
   useEffect(() => {
-    try {
-      // अगर पहले से ही कोई Firebase ऐप शुरू हो चुका है, तो दोबारा शुरू न करें
-      if (!getApps().length) {
-        const app = initializeApp(firebaseConfig);
-        const tempAuth = getAuth(app);
-        const tempDb = getFirestore(app);
-        setAuth(tempAuth);
-        setDb(tempDb);
-      } else {
-        const tempAuth = getAuth();
-        const tempDb = getFirestore();
-        setAuth(tempAuth);
-        setDb(tempDb);
-      }
+    let unsubscribeAuth;
+    let unsubscribeFirestore;
 
-      const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
+    try {
+      // अगर कोई Firebase ऐप पहले से शुरू नहीं हुआ है, तो उसे शुरू करें।
+      if (!getApps().length) {
+        initializeApp(firebaseConfig);
+      }
+      
+      const tempAuth = getAuth();
+      const tempDb = getFirestore();
+      setAuth(tempAuth);
+      setDb(tempDb);
+      
+      // onAuthStateChanged listener Firebase प्रमाणीकरण स्थिति में बदलाव को ट्रैक करता है।
+      unsubscribeAuth = onAuthStateChanged(tempAuth, async (user) => {
         if (user) {
           setUserId(user.uid);
           setAuthReady(true);
+          
+          // जब उपयोगकर्ता लॉग इन हो, तो Firestore listener सेट करें।
+          try {
+            const ordersRef = collection(tempDb, "orders");
+            const q = query(ordersRef, where("deliveryBoyId", "==", user.uid));
+            
+            // onSnapshot Firestore से वास्तविक समय में डेटा फ़ेच करता है।
+            unsubscribeFirestore = onSnapshot(q, (snapshot) => {
+              const fetchedOrders = snapshot.docs.map((doc) => ({
+                id: doc.id,
+                ...doc.data(),
+              }));
+              setOrders(fetchedOrders);
+              console.log("Firebase से फ़ेच किया गया डेटा:", fetchedOrders);
+            }, (error) => {
+                console.error("Firestore data fetch failed:", error);
+                toast({
+                    title: "डेटा फ़ेच करने में त्रुटि",
+                    description: "ऑर्डर फ़ेच करते समय एक समस्या हुई। कृपया पुनः प्रयास करें।",
+                    variant: "destructive"
+                });
+            });
+          } catch (error) {
+            console.error("Failed to set up Firestore listener:", error);
+          }
         } else {
-          // यदि auth token मौजूद है, तो custom token के साथ साइन इन करें
+          setUserId(null);
+          setAuthReady(false);
+          setOrders([]); // उपयोगकर्ता के लॉग आउट होने पर ऑर्डर्स साफ़ करें।
+          // यदि auth token मौजूद है, तो custom token के साथ साइन इन करें।
           if (initialAuthToken) {
-            await signInWithCustomToken(auth, initialAuthToken);
+            await signInWithCustomToken(tempAuth, initialAuthToken);
           } else {
-            // अन्यथा, गुमनाम रूप से साइन इन करें
-            await signInAnonymously(auth);
+            // अन्यथा, गुमनाम रूप से साइन इन करें।
+            await signInAnonymously(tempAuth);
           }
         }
       });
+      
+      // Cleanup function जो कंपोनेंट के अनमाउंट होने पर listeners को हटा देती है।
+      return () => {
+        if (unsubscribeAuth) unsubscribeAuth();
+        if (unsubscribeFirestore) unsubscribeFirestore();
+      };
 
-      return () => unsubscribeAuth();
     } catch (error) {
       console.error("Firebase initialization failed:", error);
     }
-  }, [auth]);
-
-  // ─── Firestore Real-time Listener ───
-  useEffect(() => {
-    if (!authReady || !userId || !db) return;
-
-    try {
-      // केवल उन्हीं ऑर्डर्स को फ़ेच करें जो इस डिलीवरी बॉय को असाइन किए गए हैं
-      const ordersRef = collection(db, "orders");
-      const q = query(ordersRef, where("deliveryBoyId", "==", userId));
-
-      const unsubscribeFirestore = onSnapshot(q, (snapshot) => {
-        const fetchedOrders = snapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        }));
-        setOrders(fetchedOrders);
-        console.log("Firebase से फ़ेच किया गया डेटा:", fetchedOrders);
-      }, (error) => {
-          console.error("Firestore data fetch failed:", error);
-          toast({
-              title: "डेटा फ़ेच करने में त्रुटि",
-              description: "ऑर्डर फ़ेच करते समय एक समस्या हुई। कृपया पुनः प्रयास करें।",
-              variant: "destructive"
-          });
-      });
-
-      // जब कंपोनेंट अनमाउंट हो तो listener को साफ़ करें
-      return () => unsubscribeFirestore();
-    } catch (error) {
-        console.error("Failed to set up Firestore listener:", error);
-    }
-  }, [authReady, userId, db, toast]);
-
+  }, []);
 
   // ─── React Query Mutations ───
+  // यह mutation Firestore में ऑर्डर का स्टेटस अपडेट करने के लिए है।
   const updateStatusMutation = useMutation({
     mutationFn: ({ orderId, status }) => {
       if (!db) {
@@ -259,13 +268,14 @@ const DeliveryDashboard = () => {
     },
   });
 
+  // यह mutation OTP सबमिट करने और डिलीवरी पूरी करने के लिए है।
   const handleOtpSubmit = useMutation({
     mutationFn: ({ orderId, otp }) => {
       if (!db) {
         console.error("Firestore DB is not initialized.");
         return Promise.reject("Firestore DB is not initialized.");
       }
-      // OTP के साथ डिलीवरी पूरी करने के लिए एक API कॉल
+      // OTP के साथ डिलीवरी पूरी करने के लिए एक API कॉल।
       const orderRef = doc(db, "orders", orderId);
       return updateDoc(orderRef, {
         status: "delivered",
@@ -331,6 +341,10 @@ const DeliveryDashboard = () => {
     });
   };
 
+  // -----------------------------------------------------------------------------
+  // ## JSX रेंडरिंग और UI
+  // -----------------------------------------------------------------------------
+  
   /* ----------------------------- Loading & Empty State ----------------------------------- */
   if (!authReady || !userId) {
     return (
@@ -460,7 +474,7 @@ const DeliveryDashboard = () => {
                       </div>
                     </div>
                     <div>
-                      <h4 className="font-medium mb-2">डिलीवरी पता</h4>
+                       <h4 className="font-medium mb-2">डिलीवरी पता</h4>
                       <div className="flex items-start space-x-2 text-sm text-gray-600">
                         <MapPin className="w-4 h-4 mt-0.5" />
                         <div>
@@ -599,7 +613,10 @@ const DeliveryDashboard = () => {
   );
 };
 
-// React Query Provider के साथ App को रैप करें
+// -----------------------------------------------------------------------------
+// ## ऐप्लिकेशन एंट्री पॉइंट
+// -----------------------------------------------------------------------------
+// React Query Provider के साथ App को रैप करें।
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
@@ -607,3 +624,4 @@ export default function App() {
     </QueryClientProvider>
   );
 }
+           
