@@ -146,6 +146,21 @@ export const cartItems = pgTable("cart_items", {
   sessionId: text("session_id"),
   createdAt: timestamp("created_at").defaultNow(),
 });
+
+
+export const deliveryAddresses = pgTable('delivery_addresses', {
+  id: serial('id').primaryKey(),
+  userId: integer('user_id').references(() => users.id, { onDelete: 'cascade' }),
+  fullName: text('full_name').notNull(),
+  phoneNumber: text('phone_number'),
+  addressLine1: text('address_line1').notNull(),
+  addressLine2: text('address_line2'),
+  city: text('city').notNull(),
+  state: text('state').notNull(),
+  postalCode: text('postal_code').notNull(),
+  isDefault: boolean('is_default').default(false),
+  createdAt: timestamp('created_at').defaultNow(),
+});
 export const orders = pgTable("orders", {
   id: serial("id").primaryKey(),
 
