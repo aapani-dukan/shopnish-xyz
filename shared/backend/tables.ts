@@ -146,21 +146,6 @@ export const cartItems = pgTable("cart_items", {
   sessionId: text("session_id"),
   createdAt: timestamp("created_at").defaultNow(),
 });
-
-export const deliveryAddresses = pgTable('delivery_addresses', {
-  id: serial('id').primaryKey(),
-  userId: integer('user_id').references(() => users.id, { onDelete: 'cascade' }),
-  fullName: text('full_name').notNull(),
-  phoneNumber: text('phone_number'),
-  addressLine1: text('address_line1').notNull(),
-  addressLine2: text('address_line2'),
-  city: text('city').notNull(),
-  state: text('state').notNull(),
-  postalCode: text('postal_code').notNull(),
-  isDefault: boolean('is_default').default(false),
-  createdAt: timestamp('created_at').defaultNow(),
-});
-
 export const orders = pgTable("orders", {
   id: serial("id").primaryKey(),
 
@@ -187,6 +172,9 @@ export const orders = pgTable("orders", {
   paymentMethod: text("payment_method").notNull(),
   paymentStatus: text("payment_status").default("pending"),
 
+  // ✅ FIX: delivery_address कॉलम जोड़ा गया
+  deliveryAddress: text("delivery_address").notNull(),
+
   // Delivery Info
   deliveryInstructions: text("delivery_instructions"),
   estimatedDeliveryTime: timestamp("estimated_delivery_time"),
@@ -199,7 +187,6 @@ export const orders = pgTable("orders", {
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
-
 export const orderItems = pgTable("order_items", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").references(() => users.id),
