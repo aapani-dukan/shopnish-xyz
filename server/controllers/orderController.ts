@@ -30,6 +30,7 @@ export const placeOrder = async (req: AuthenticatedRequest, res: Response) => {
 
     // ✅ फिक्स: order_number को transaction के बाहर परिभाषित करें
     const orderNumber = `ORD-${uuidv4()}`;
+    console.log("✅ [API] Generated Order Number:", orderNumber);
 
     // ✅ फिक्स: strings को numbers में बदलें
     const parsedSubtotal = parseFloat(subtotal);
@@ -58,13 +59,14 @@ export const placeOrder = async (req: AuthenticatedRequest, res: Response) => {
       const [newOrder] = await tx.insert(orders).values({
         customerId: userId,
         status: "pending",
-        orderNumber: orderNumber, // अब यह वेरिएबल ट्रांजैक्शन से पहले परिभाषित है
+        orderNumber: orderNumber,
         subtotal: parsedSubtotal.toFixed(2),
         total: parsedTotal.toFixed(2),
         paymentMethod: paymentMethod || 'COD',
         deliveryAddressId: newDeliveryAddressId,
         deliveryInstructions: deliveryInstructions,
         deliveryCharge: parsedDeliveryCharge.toFixed(2),
+        deliveryAddress: deliveryAddress.address, // ✅ फिक्स: delivery_address कॉलम में मान जोड़ें
       }).returning();
       
       newOrderId = newOrder.id;
