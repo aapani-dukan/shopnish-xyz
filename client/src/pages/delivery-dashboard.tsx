@@ -16,7 +16,11 @@ import {
   collection,
   query,
   where,
+  setLogLevel
 } from "firebase/firestore";
+
+// Firestore logs को सक्षम करें
+setLogLevel('debug');
 
 // TanStack QueryClient को App कंपोनेंट के बाहर बनाएँ
 const queryClient = new QueryClient();
@@ -149,6 +153,8 @@ const DeliveryDashboard = () => {
   const [orders, setOrders] = useState([]);
   const [userId, setUserId] = useState(null);
   const [authReady, setAuthReady] = useState(false);
+  const [db, setDb] = useState(null);
+  const [auth, setAuth] = useState(null);
 
   // local state for OTP dialog
   const [selectedOrder, setSelectedOrder] = useState(null);
@@ -159,20 +165,22 @@ const DeliveryDashboard = () => {
   useEffect(() => {
     try {
       const app = initializeApp(firebaseConfig);
-      const auth = getAuth(app);
-      const db = getFirestore(app);
+      const tempAuth = getAuth(app);
+      const tempDb = getFirestore(app);
+      setAuth(tempAuth);
+      setDb(tempDb);
 
-      const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
+      const unsubscribeAuth = onAuthStateChanged(tempAuth, async (user) => {
         if (user) {
           setUserId(user.uid);
           setAuthReady(true);
         } else {
           // यदि auth token मौजूद है, तो custom token के साथ साइन इन करें
           if (initialAuthToken) {
-            await signInWithCustomToken(auth, initialAuthToken);
+            await signInWithCustomToken(tempAuth, initialAuthToken);
           } else {
             // अन्यथा, गुमनाम रूप से साइन इन करें
-            await signInAnonymously(auth);
+            await signInAnonymously(tempAuth);
           }
         }
       });
@@ -185,7 +193,7 @@ const DeliveryDashboard = () => {
 
   // ─── Firestore Real-time Listener ───
   useEffect(() => {
-    if (!authReady || !userId) return;
+    if (!authReady || !userId || !db) return;
 
     try {
       // केवल उन्हीं ऑर्डर्स को फ़ेच करें जो इस डिलीवरी बॉय को असाइन किए गए हैं
@@ -219,6 +227,10 @@ const DeliveryDashboard = () => {
   // ─── React Query Mutations ───
   const updateStatusMutation = useMutation({
     mutationFn: ({ orderId, status }) => {
+      if (!db) {
+        console.error("Firestore DB is not initialized.");
+        return Promise.reject("Firestore DB is not initialized.");
+      }
       const orderRef = doc(db, "orders", orderId);
       return updateDoc(orderRef, { status: status });
     },
@@ -229,7 +241,8 @@ const DeliveryDashboard = () => {
         description: "ऑर्डर का स्टेटस सफलतापूर्वक अपडेट किया गया।",
       });
     },
-    onError: () => {
+    onError: (error) => {
+      console.error("Mutation failed:", error);
       toast({
         title: "स्टेटस अपडेट करने में त्रुटि",
         description: "कृपया पुनः प्रयास करें।",
@@ -240,6 +253,10 @@ const DeliveryDashboard = () => {
 
   const handleOtpSubmit = useMutation({
     mutationFn: ({ orderId, otp }) => {
+      if (!db) {
+        console.error("Firestore DB is not initialized.");
+        return Promise.reject("Firestore DB is not initialized.");
+      }
       // OTP के साथ डिलीवरी पूरी करने के लिए एक API कॉल
       const orderRef = doc(db, "orders", orderId);
       return updateDoc(orderRef, {
@@ -256,7 +273,8 @@ const DeliveryDashboard = () => {
         description: "ऑर्डर को सफलतापूर्वक डिलीवर किया गया।",
       });
     },
-    onError: () => {
+    onError: (error) => {
+      console.error("OTP submission failed:", error);
       toast({
         title: "गलत OTP",
         description: "कृपया OTP जांचें और फिर से प्रयास करें।",
@@ -292,7 +310,10 @@ const DeliveryDashboard = () => {
   };
   
   const handleLogout = () => {
-    const auth = getAuth();
+    if (!auth) {
+        console.error("Auth object is not available.");
+        return;
+    }
     auth.signOut().then(() => {
         // आप यहाँ एक लॉगिन स्क्रीन पर रीडायरेक्ट कर सकते हैं,
         // लेकिन इस सिंगल-फाइल कंपोनेंट में, हम बस पेज रीलोड कर रहे हैं।
@@ -461,7 +482,7 @@ const DeliveryDashboard = () => {
                             src={item.product.image}
                             alt={item.product.name}
                             className="w-8 h-8 object-cover rounded"
-                          />
+            />
                           <div className="flex-1">
                             <p className="font-medium">{item.product.name}</p>
                             <p className="text-gray-600">
@@ -478,7 +499,7 @@ const DeliveryDashboard = () => {
                     variant="outline"
                     size="sm"
                     onClick={() =>
-                    window.open(`tel:${order.deliveryAddress.phone}`)
+                      window.open(`tel:${order.deliveryAddress.phone}`)
                     }
                   >
                     <Phone className="w-4 h-4 mr-2" />
@@ -577,4 +598,4 @@ export default function App() {
       <DeliveryDashboard />
     </QueryClientProvider>
   );
-              }
+}
