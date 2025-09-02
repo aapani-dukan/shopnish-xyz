@@ -92,7 +92,7 @@ const Icons = {
   CheckCircle: (props) => (<svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 11-5.93-8.82" /><path d="M13.5 8L10 11.5l-2-2" /></svg>),
   User: (props) => (<svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>),
   LogOut: (props) => (<svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" /></svg>),
-  ShieldCheck: (props) => (<svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5c0-1.2-.8-2-2-2H6c-1.2 0-2 .8-2 2v7c0 6 8 10 8 10z" /><path d="M9 12l2 2 4-4" /></svg>),
+  ShieldCheck: (props) => (<svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5c0-1.2-.8-2-2-2H6c-1.2 0-2 .8-2 2v7c0 6 8 8 10 10z" /><path d="M9 12l2 2 4-4" /></svg>),
   Plus: (props) => (<svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>)
 };
 
@@ -216,8 +216,9 @@ const DeliveryDashboard = () => {
       ),
   });
 
-  // यह सुनिश्चित करने के लिए कि सभी ऑर्डर फ़ेच हो रहे हैं, इसे कंसोल में देखें
+  // ✅ FIX: API से आने वाले डेटा को कंसोल में लॉग करें
   useEffect(() => {
+    console.log("API से फ़ेच किया गया डेटा:", orders);
     if (orders.length > 0) {
       console.log("सभी फ़ेच किए गए ऑर्डर:", orders);
     }
@@ -276,12 +277,12 @@ const DeliveryDashboard = () => {
   };
 
   const handleStatusProgress = (order) => {
-    if (order['delivery-status'] === "out for delivery") {
+    if (order.deliveryStatus === "out for delivery") {
       setSelectedOrder(order);
       setOtpDialogOpen(true);
       return;
     }
-    const next = nextStatus(order['delivery-status']);
+    const next = nextStatus(order.deliveryStatus);
     if (next) {
       updateStatus.mutate({ orderId: order.id, deliveryStatus: next });
     }
@@ -326,9 +327,10 @@ const DeliveryDashboard = () => {
   }
   
   // ऑर्डर्स को उनके डिलीवरी स्टेटस के अनुसार फ़िल्टर करें
-  const newOrders = orders.filter(order => order['delivery-status'] === 'pending');
-  const acceptedOrders = orders.filter(order => ['accepted', 'out for delivery'].includes(order['delivery-status']));
-  const deliveredOrders = orders.filter(order => order['delivery-status'] === 'delivered');
+  // ✅ FIX: सही कॉलम नाम का उपयोग करें
+  const newOrders = orders.filter(order => order.deliveryStatus === 'pending');
+  const acceptedOrders = orders.filter(order => ['accepted', 'out for delivery'].includes(order.deliveryStatus));
+  const deliveredOrders = orders.filter(order => order.deliveryStatus === 'delivered');
 
   const renderOrderList = (list, title) => (
     <section className="mb-8">
@@ -353,8 +355,8 @@ const DeliveryDashboard = () => {
                       {order.items.length} आइटम • ₹{order.total}
                     </p>
                   </div>
-                  <Badge className={`${statusColor(order['delivery-status'])} text-white`}>
-                    {statusText(order['delivery-status'])}
+                  <Badge className={`${statusColor(order.deliveryStatus)} text-white`}>
+                    {statusText(order.deliveryStatus)}
                   </Badge>
                 </div>
               </CardHeader>
@@ -367,7 +369,7 @@ const DeliveryDashboard = () => {
                         {order.deliveryAddress.fullName}
                       </p>
                       <div className="flex items-center space-x-2 text-sm text-gray-600">
-                        <Icons.Phone className="w-4 h-4" />
+                        <Icons.Phone className="w-4 h-4 mr-1" />
                         <span>{order.deliveryAddress.phone}</span>
                       </div>
                     </div>
@@ -408,7 +410,7 @@ const DeliveryDashboard = () => {
                     </div>
                   </div>
                 </div>
-                {order['delivery-status'] !== 'delivered' && (
+                {order.deliveryStatus !== 'delivered' && (
                     <div className="flex flex-wrap gap-3 mt-6 pt-4 border-t">
                       <Button
                         variant="outline"
@@ -428,7 +430,7 @@ const DeliveryDashboard = () => {
                         onClick={() => handleStatusProgress(order)}
                         disabled={updateStatus.isLoading || completeDelivery.isLoading}
                       >
-                        {nextStatusLabel(order['delivery-status'])}
+                        {nextStatusLabel(order.deliveryStatus)}
                       </Button>
                     </div>
                 )}
@@ -470,9 +472,10 @@ const DeliveryDashboard = () => {
       <Dialog open={otpDialogOpen} onOpenChange={setOtpDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>डिलीवरी पूरी करें</DialogTitle>
+            <DialogTitle>डिलीवरी पूरी करें</
+      DialogTitle>
           </DialogHeader>
-              <div className="text-sm text-gray-600 mb-4">
+          <div className="text-sm text-gray-600 mb-4">
             डिलीवरी की पुष्टि करने के लिए ग्राहक से 4-अंकीय OTP मांगें।
           </div>
           {selectedOrder && (
