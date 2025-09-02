@@ -70,6 +70,10 @@ export const placeOrder = async (req: AuthenticatedRequest, res: Response) => {
       const [newOrder] = await tx.insert(orders).values({
         customerId: userId,
         status: "pending",
+        
+        // ✅ FIX: deliveryStatus कॉलम जोड़ा गया
+        deliveryStatus: "pending", 
+
         orderNumber: orderNumber,
         subtotal: parsedSubtotal.toFixed(2),
         total: parsedTotal.toFixed(2),
