@@ -6,7 +6,7 @@ import {
   QueryClient,
   QueryClientProvider
 } from "@tanstack/react-query";
-import { initializeApp } from "firebase/app";
+import { initializeApp, getApps } from "firebase/app";
 import { getAuth, signInWithCustomToken, onAuthStateChanged, signInAnonymously } from "firebase/auth";
 import {
   getFirestore,
@@ -164,23 +164,31 @@ const DeliveryDashboard = () => {
   // ─── Firebase Initialization and Auth ───
   useEffect(() => {
     try {
-      const app = initializeApp(firebaseConfig);
-      const tempAuth = getAuth(app);
-      const tempDb = getFirestore(app);
-      setAuth(tempAuth);
-      setDb(tempDb);
+      // अगर पहले से ही कोई Firebase ऐप शुरू हो चुका है, तो दोबारा शुरू न करें
+      if (!getApps().length) {
+        const app = initializeApp(firebaseConfig);
+        const tempAuth = getAuth(app);
+        const tempDb = getFirestore(app);
+        setAuth(tempAuth);
+        setDb(tempDb);
+      } else {
+        const tempAuth = getAuth();
+        const tempDb = getFirestore();
+        setAuth(tempAuth);
+        setDb(tempDb);
+      }
 
-      const unsubscribeAuth = onAuthStateChanged(tempAuth, async (user) => {
+      const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
         if (user) {
           setUserId(user.uid);
           setAuthReady(true);
         } else {
           // यदि auth token मौजूद है, तो custom token के साथ साइन इन करें
           if (initialAuthToken) {
-            await signInWithCustomToken(tempAuth, initialAuthToken);
+            await signInWithCustomToken(auth, initialAuthToken);
           } else {
             // अन्यथा, गुमनाम रूप से साइन इन करें
-            await signInAnonymously(tempAuth);
+            await signInAnonymously(auth);
           }
         }
       });
@@ -189,7 +197,7 @@ const DeliveryDashboard = () => {
     } catch (error) {
       console.error("Firebase initialization failed:", error);
     }
-  }, []);
+  }, [auth]);
 
   // ─── Firestore Real-time Listener ───
   useEffect(() => {
@@ -482,7 +490,7 @@ const DeliveryDashboard = () => {
                             src={item.product.image}
                             alt={item.product.name}
                             className="w-8 h-8 object-cover rounded"
-            />
+                          />
                           <div className="flex-1">
                             <p className="font-medium">{item.product.name}</p>
                             <p className="text-gray-600">
