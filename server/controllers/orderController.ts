@@ -34,8 +34,7 @@ export const placeOrder = async (req: AuthenticatedRequest, res: Response) => {
     const parsedTotal = parseFloat(total);
     const parsedDeliveryCharge = parseFloat(deliveryCharge);
     const orderPaymentMethod = paymentMethod || 'COD';
-    const parsedDeliveryAddress = deliveryAddress.address || '';
-    const deliveryBoyId = null; 
+    const deliveryBoyId = null;
 
     // ✅ लॉग करें ताकि आप कंसोल में मान देख सकें
     console.log("✅ [API] Validating required fields before insertion:");
@@ -45,7 +44,7 @@ export const placeOrder = async (req: AuthenticatedRequest, res: Response) => {
     console.log(` - Total: ${parsedTotal}`);
     console.log(` - Delivery Charge: ${parsedDeliveryCharge}`);
     console.log(` - Payment Method: ${orderPaymentMethod}`);
-    console.log(` - Delivery Address String: ${parsedDeliveryAddress}`);
+    console.log(` - Delivery Address String: ${JSON.stringify(deliveryAddress)}`);
     console.log(` - Delivery Boy ID: ${deliveryBoyId}`);
 
     let newOrderId;
@@ -78,7 +77,8 @@ export const placeOrder = async (req: AuthenticatedRequest, res: Response) => {
         paymentMethod: orderPaymentMethod,
         deliveryAddressId: newDeliveryAddressId,
         deliveryInstructions: deliveryInstructions,
-        deliveryAddress: parsedDeliveryAddress,
+        // ✅ FIX: deliveryAddress ऑब्जेक्ट को JSON स्ट्रिंग के रूप में डालें
+        deliveryAddress: JSON.stringify(deliveryAddress),
         deliveryBoyId: deliveryBoyId,
       }).returning();
       
