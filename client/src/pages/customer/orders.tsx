@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Package } from "lucide-react";
 
+// इंटरफ़ेस (Interface) जो API से आने वाले डेटा को परिभाषित करता है।
 interface CustomerOrder {
   id: number;
   orderNumber: string;
@@ -15,24 +16,25 @@ interface CustomerOrder {
   createdAt: string;
 }
 
-const getStatusBadgeVariant = (status: string) => {
-  switch (status) {
-    case "pending":
-    case "accepted":
-      return "secondary";
-    case "out_for_delivery":
-      return "info";
-    case "delivered":
-      return "success";
-    case "cancelled":
-    case "rejected":
-      return "destructive";
-    default:
-      return "secondary";
-  }
+// ऑर्डर स्टेटस के लिए बैज का वेरिएंट (रंग) निर्धारित करता है।
+// स्विच स्टेटमेंट की जगह ऑब्जेक्ट का उपयोग करना कोड को अधिक पठनीय और स्केलेबल बनाता है।
+const statusBadgeVariants = {
+  pending: "secondary",
+  accepted: "secondary",
+  out_for_delivery: "info",
+  delivered: "success",
+  cancelled: "destructive",
+  rejected: "destructive",
+  default: "secondary",
 };
 
+const getStatusBadgeVariant = (status: string) => {
+  return statusBadgeVariants[status] || statusBadgeVariants.default;
+};
+
+// ग्राहक के ऑर्डर दिखाने वाला मुख्य कंपोनेंट।
 export default function CustomerOrdersPage() {
+  // TanStack Query का उपयोग करके API से ऑर्डर फ़ेच करें।
   const {
     data: orders,
     isLoading,
@@ -47,6 +49,7 @@ export default function CustomerOrdersPage() {
     },
   });
 
+  // लोडिंग की स्थिति को हैंडल करें।
   if (isLoading) {
     return (
       <div className="container mx-auto p-4">
@@ -60,6 +63,7 @@ export default function CustomerOrdersPage() {
     );
   }
 
+  // एरर की स्थिति को हैंडल करें।
   if (isError) {
     return (
       <div className="container mx-auto p-4 text-center">
@@ -71,7 +75,7 @@ export default function CustomerOrdersPage() {
     );
   }
 
-  // ✅ यह ब्लॉक जोड़ा गया है जो खाली डेटा को हैंडल करता है।
+  // ✅ खाली डेटा को हैंडल करें।
   if (!orders || orders.length === 0) {
     return (
       <div className="container mx-auto p-4 text-center">
@@ -87,6 +91,7 @@ export default function CustomerOrdersPage() {
     );
   }
 
+  // ऑर्डरों को प्रदर्शित करें।
   return (
     <div className="container mx-auto p-4">
       <h1 className="text-2xl font-bold mb-6">Your Orders</h1>
@@ -95,7 +100,8 @@ export default function CustomerOrdersPage() {
           <Card key={order.id} className="p-4">
             <CardHeader className="p-0 mb-4">
               <CardTitle className="flex justify-between items-center text-lg">
-                <span>Order #{order.id}</span>
+                {/* हमने back-end लॉजिक से मेल खाने के लिए order.id के बजाय order.orderNumber का उपयोग किया है */}
+                <span>Order #{order.orderNumber}</span>
                 <Badge variant={getStatusBadgeVariant(order.status)}>
                   {order.status}
                 </Badge>
@@ -136,3 +142,4 @@ export default function CustomerOrdersPage() {
     </div>
   );
 }
+
