@@ -5,7 +5,7 @@ import cors from "cors";
 import apiRouter from "./routes.ts";
 import "./lib/firebaseAdmin.ts";
 import { createServer, type Server } from "http";
-import { Server as SocketIOServer } from "socket.io"; // ✅ Socket.IO Server आयात करें
+import { Server as SocketIOServer } from "socket.io";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
 import { Pool } from "pg";
@@ -19,12 +19,12 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app: Express = express();
-let server: Server; // http server
+let server: Server; 
 let io: SocketIOServer; // ✅ Socket.IO server
 
 app.use(
   cors({
-    origin: ["https://shopnish-lzrf.onrender.com", "http://localhost:5173"], // ✅ https:// को एक बार ही लिखा गया है
+    origin: ["https://shopnish-lzrf.onrender.com", "http://localhost:5173"],
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     credentials: true,
   })
@@ -146,17 +146,17 @@ async function runMigrations() {
   // ✅ Socket.IO को HTTP सर्वर से जोड़ें
   io = new SocketIOServer(server, {
     cors: {
-      origin: "*", 
+      origin: ["https://shopnish-lzrf.onrender.com", "http://localhost:5173"], // यहाँ * की बजाय वही origins डालो जो allow करने हैं
       methods: ["GET", "POST"]
     }
   });
 
   // ✅ Socket.IO कनेक्शन हैंडलर
   io.on('connection', (socket) => {
-    console.log('A user connected:', socket.id);
+    console.log('⚡ New client connected:', socket.id);
 
     socket.on('disconnect', () => {
-      console.log('User disconnected:', socket.id);
+      console.log('❌ Client disconnected:', socket.id);
     });
   });
 
@@ -165,4 +165,5 @@ async function runMigrations() {
   );
 })();
 
-export { io }; // ✅ io को एक्सपोर्ट करें ताकि इसे routes में उपयोग किया जा सके
+// ✅ Export io to use inside routes/controllers
+export { io };
