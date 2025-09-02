@@ -1,62 +1,39 @@
-// client/vite.config.ts
-import { defineConfig } from 'vite';
-import react from '@vitejs/plugin-react';
-import path from 'path';
-import { fileURLToPath } from 'url';
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
+import tsconfigPaths from "vite-tsconfig-paths";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-export default defineConfig(({ command }) => {
-  const isProduction = command === 'build';
-
-  return {
-    root: './',
-    base: isProduction ? './' : '/',
-
-    plugins: [react()],
-
-    server: {
-      host: '0.0.0.0',
-      port: 5173,
-      strictPort: true,
+// https://vitejs.dev/config/
+export default defineConfig({
+  plugins: [
+    react(),
+    tsconfigPaths(),
+  ],
+  server: {
+    port: 5173, // आप चाहें तो बदल सकते हैं
+    proxy: {
+      "/api": {
+        target: "http://localhost:5000", // backend express server
+        changeOrigin: true,
+        secure: false,
+      },
+      "/socket.io": {
+        target: "http://localhost:5000", // socket.io backend
+        ws: true,
+      },
     },
-
-    define: {
-      'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV ?? 'development'),
-      global: 'window'
+  },
+  preview: {
+    port: 4173,
+    proxy: {
+      "/api": {
+        target: "http://localhost:5000",
+        changeOrigin: true,
+        secure: false,
+      },
+      "/socket.io": {
+        target: "http://localhost:5000",
+        ws: true,
+      },
     },
-
-    resolve: {
-      alias: {
-        '@': path.resolve(__dirname, './src'),
-        '@shared': path.resolve(__dirname, '..', 'shared'),
-        buffer: 'buffer/',
-        stream: 'stream-browserify',
-        util: 'util/'
-      }
-    },
-
-    optimizeDeps: {
-      exclude: [
-        'express', 'http', 'https', 'path', 'fs', 'events',
-        'net', 'crypto', 'querystring', 'url', 'zlib', 'async_hooks'
-      ]
-    },
-
-    build: {
-      outDir: path.resolve(__dirname, '..', 'dist/public'),  // ✅ IMPORTANT FIX
-      emptyOutDir: true,
-      sourcemap: true,
-      chunkSizeWarningLimit: 1000,
-
-      rollupOptions: {
-        output: {
-          manualChunks(id) {
-            return id.includes('node_modules') ? 'vendor' : undefined;
-          }
-        }
-      }
-    }
-  };
+  },
 });
