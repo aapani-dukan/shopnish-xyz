@@ -30,28 +30,26 @@ import {
 } from './types';
 
 export {
+  // Tables
   users, sellersPgTable, stores, categories, products, deliveryAreas, deliveryBoys, cartItems,
   deliveryAddresses, orders, orderItems, orderTracking, promoCodes, serviceCategories,
   services, serviceProviders, serviceBookings, reviews, userRoleEnum, approvalStatusEnum,
-  orderStatusEnum
-}
+  orderStatusEnum,
 
-export {
+  // Relations
   usersRelations, sellersRelations, storesRelations, categoriesRelations, productsRelations,
   deliveryBoysRelations, cartItemsRelations, deliveryAddressesRelations, ordersRelations,
   orderItemsRelations, orderTrackingRelations, promoCodesRelations, serviceCategoriesRelations,
-  servicesRelations, serviceProvidersRelations, serviceBookingsRelations, reviewsRelations
-}
+  servicesRelations, serviceProvidersRelations, serviceBookingsRelations, reviewsRelations,
 
-export {
+  // Schemas
   insertUserSchema, insertSellerSchema, insertStoreSchema, insertCategorySchema,
   insertProductSchema, insertDeliveryAreaSchema, insertDeliveryBoySchema, insertCartItemSchema,
   insertDeliveryAddressSchema, insertOrderSchema, insertOrderItemSchema, insertOrderTrackingSchema,
   insertPromoCodeSchema, insertServiceCategorySchema, insertServiceSchema, insertServiceProviderSchema,
-  insertServiceBookingSchema, insertReviewSchema
-}
+  insertServiceBookingSchema, insertReviewSchema,
 
-export {
+  // Types
   OrderItemWithProduct, OrderWithItems, User, InsertUser, Seller, InsertSeller, Store, InsertStore,
   Category, InsertCategory, Product, InsertProduct, DeliveryArea, InsertDeliveryArea, DeliveryBoy,
   InsertDeliveryBoy, CartItem, InsertCartItem, DeliveryAddress, InsertDeliveryAddress, Order, InsertOrder,
