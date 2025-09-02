@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from "react";
 // Firebase Core App and Auth imports
-import { initializeApp } from 'firebase/app';
+import { initializeApp, getApps } from 'firebase/app';
 import { getAuth, signInWithCustomToken, onAuthStateChanged, signInAnonymously } from 'firebase/auth';
 // Firebase Firestore imports
-import { getFirestore, doc, updateDoc, onSnapshot, collection, query, where, setLogLevel } from 'firebase/firestore';
+import { getFirestore, doc, updateDoc, onSnapshot, collection, query, where, setLogLevel, addDoc } from 'firebase/firestore';
 
 // ग्लोबल वेरिएबल्स, ये runtime में उपलब्ध हैं
 const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
@@ -53,7 +53,8 @@ const Icons = {
   CheckCircle: (props) => (<svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 11-5.93-8.82" /><path d="M13.5 8L10 11.5l-2-2" /></svg>),
   User: (props) => (<svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>),
   LogOut: (props) => (<svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" /></svg>),
-  ShieldCheck: (props) => (<svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5c0-1.2-.8-2-2-2H6c-1.2 0-2 .8-2 2v7c0 6 8 10 8 10z" /><path d="M9 12l2 2 4-4" /></svg>)
+  ShieldCheck: (props) => (<svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5c0-1.2-.8-2-2-2H6c-1.2 0-2 .8-2 2v7c0 6 8 10 8 10z" /><path d="M9 12l2 2 4-4" /></svg>),
+  Plus: (props) => (<svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>)
 };
 
 /* -------------------------------------------------------------------------- */
@@ -106,6 +107,7 @@ export default function App() {
   const [availableOrders, setAvailableOrders] = useState([]);
   const [myOrders, setMyOrders] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [addingOrder, setAddingOrder] = useState(false);
 
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [otp, setOtp] = useState("");
@@ -125,10 +127,15 @@ export default function App() {
     // Firestore में लॉगिंग चालू करें
     setLogLevel('debug');
     
+    let app, authInstance, dbInstance;
     try {
-        const app = initializeApp(firebaseConfig);
-        const authInstance = getAuth(app);
-        const dbInstance = getFirestore(app);
+        // यह सुनिश्चित करने के लिए कि Firebase केवल एक बार शुरू हो
+        if (!getApps().length) {
+          app = initializeApp(firebaseConfig);
+        }
+        
+        authInstance = getAuth();
+        dbInstance = getFirestore();
 
         setDb(dbInstance);
 
@@ -194,6 +201,33 @@ export default function App() {
       };
     }
   }, [db, userId, appId]);
+
+  const addTestOrder = async () => {
+    setAddingOrder(true);
+    try {
+      const orderData = {
+        orderNumber: 'ORD' + Date.now().toString().substring(4, 12),
+        total: Math.floor(Math.random() * 500) + 100,
+        paymentMethod: 'Cash',
+        status: 'pending',
+        deliveryAddress: {
+          fullName: 'अमित शर्मा',
+          phone: '9876543210',
+          address: 'G-12, Sector 5, Vashi',
+          city: 'Mumbai',
+          pincode: '400703'
+        },
+        createdAt: new Date().toISOString()
+      };
+      await addDoc(collection(db, `artifacts/${appId}/public/data/orders`), orderData);
+      showToast('टेस्ट ऑर्डर सफलतापूर्वक जोड़ा गया!');
+    } catch (error) {
+      console.error("Error adding test order: ", error);
+      showToast('टेस्ट ऑर्डर जोड़ने में त्रुटि।', true);
+    } finally {
+      setAddingOrder(false);
+    }
+  };
 
   // ऑर्डर की स्थिति अपडेट करने के लिए handler
   const handleStatusUpdate = async (orderId, newStatus) => {
@@ -344,6 +378,12 @@ export default function App() {
       </header>
 
       <main className="p-6">
+        <div className="flex justify-end mb-4">
+          <Button onClick={addTestOrder} disabled={addingOrder}>
+            <Icons.Plus className="w-5 h-5 mr-2" />
+            टेस्ट ऑर्डर जोड़ें
+          </Button>
+        </div>
         {renderOrderList(availableOrders, "नए ऑर्डर")}
         {renderOrderList(myOrders, "मेरे स्वीकृत ऑर्डर")}
       </main>
@@ -397,10 +437,4 @@ export default function App() {
               रद्द करें
             </Button>
           </div>
-        </DialogContent>
-      </Dialog>
-    </div>
-  );
-}
-
-        
+ 
