@@ -5,7 +5,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import type { Seller, ProductWithSeller, OrderWithItems } from "@shared/backend/schema";
+import type { Seller, OrderWithItems } from "@shared/backend/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "react-router-dom";
@@ -33,18 +33,21 @@ export default function SellerDashboard() {
   const { socket } = useSocket();
   const { user, isAuthenticated } = useAuth();
 
-  // Socket.IO लॉजिक
+  // ----------------- SOCKET.IO LOGIC -----------------
   useEffect(() => {
-    if (!socket || !isAuthenticated || user?.role !== "seller") {
-      return;
-    }
+    if (!socket || !isAuthenticated || user?.role !== "seller") return;
 
-    socket.on("new-order-for-seller", (order) => {
+    // Listen for new orders
+    socket.on("new-order-for-seller", (order: OrderWithItems) => {
       console.log("Received new order for seller:", order);
+
+      // Refetch orders
       queryClient.invalidateQueries({ queryKey: ["/api/sellers/orders"] });
+
+      // Show toast notification
       toast({
         title: "🔔 नया ऑर्डर!",
-        description: `आपको ऑर्डर #${order.id} के लिए एक नया ऑर्डर मिला है।`,
+        description: `आपको ऑर्डर #${order.id} के लिए नया ऑर्डर मिला।`,
         duration: 5000,
       });
     });
@@ -54,32 +57,38 @@ export default function SellerDashboard() {
     };
   }, [socket, isAuthenticated, user, toast, queryClient]);
 
-  // Fetch seller profile
+  // ----------------- FETCH SELLER PROFILE -----------------
   const { data: seller, isLoading: sellerLoading, error: sellerError } = useQuery<Seller>({
     queryKey: ["/api/sellers/me"],
     queryFn: () => apiRequest("GET", "/api/sellers/me"),
     staleTime: 5 * 60 * 1000,
   });
 
-  // Fetch seller's orders
+  // ----------------- FETCH SELLER ORDERS -----------------
   const { data: orders, isLoading: ordersLoading, error: ordersError } = useQuery<OrderWithItems[]>({
     queryKey: ["/api/sellers/orders"],
     queryFn: () => apiRequest("GET", "/api/sellers/orders"),
     enabled: !!seller?.id,
     staleTime: 0,
-    refetchInterval: 60 * 1000,
+    refetchInterval: 60 * 1000, // auto-refresh every 60 sec
   });
 
-  // Calculate dashboard metrics
-  const totalRevenue = orders?.reduce((sum, order) =>
-    sum + order.items.reduce((itemSum, item) =>
-      itemSum + (typeof item.total === 'string' ? parseFloat(item.total) : item.total), 0
-    ), 0
-  ) || 0;
+  // ----------------- DASHBOARD METRICS -----------------
+  const totalRevenue =
+    orders?.reduce(
+      (sum, order) =>
+        sum +
+        order.items.reduce(
+          (itemSum, item) => itemSum + (typeof item.total === "string" ? parseFloat(item.total) : item.total),
+          0
+        ),
+      0
+    ) || 0;
   const totalOrders = orders?.length || 0;
-  const totalProducts = 0; // ये जानकारी ProductsManager में है
+  const totalProducts = 0; // from ProductManager
   const averageRating = parseFloat(seller?.rating?.toString() || "0");
 
+  // ----------------- LOADING & ERROR STATES -----------------
   if (sellerLoading) {
     return (
       <div className="min-h-screen bg-background">
@@ -110,12 +119,12 @@ export default function SellerDashboard() {
           </div>
           <h2 className="text-2xl font-bold mb-4">{sellerError ? "Error Loading Profile" : "Seller Profile Not Found"}</h2>
           <p className="text-muted-foreground mb-6">
-            {sellerError ? "There was an issue fetching your seller profile. Please try again." : "It looks like you haven't set up your seller profile yet or it's not approved."}
+            {sellerError
+              ? "There was an issue fetching your seller profile. Please try again."
+              : "It looks like you haven't set up your seller profile yet or it's not approved."}
           </p>
           <Link to="/seller-apply">
-            <Button>
-              {sellerError ? "Retry" : "Apply to be a Seller"}
-            </Button>
+            <Button>{sellerError ? "Retry" : "Apply to be a Seller"}</Button>
           </Link>
           <Link to="/">
             <Button variant="ghost" className="ml-4">
@@ -127,6 +136,7 @@ export default function SellerDashboard() {
     );
   }
 
+  // ----------------- RENDER DASHBOARD -----------------
   return (
     <div className="min-h-screen bg-background">
       <Header />
@@ -149,7 +159,7 @@ export default function SellerDashboard() {
                 <Clock className="h-3 w-3 mr-1" />
                 Pending Verification
               </Badge>
-            ) : ( // rejected
+            ) : (
               <Badge variant="destructive">
                 <XCircle className="h-3 w-3 mr-1" />
                 Rejected ({seller.rejectionReason || "No reason specified"})
@@ -161,52 +171,44 @@ export default function SellerDashboard() {
         {/* Metrics Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center">
-                <TrendingUp className="h-8 w-8 text-primary" />
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-muted-foreground">Total Revenue</p>
-                  <p className="text-2xl font-bold">₹{totalRevenue.toLocaleString()}</p>
-                </div>
+            <CardContent className="p-6 flex items-center">
+              <TrendingUp className="h-8 w-8 text-primary" />
+              <div className="ml-4">
+                <p className="text-sm font-medium text-muted-foreground">Total Revenue</p>
+                <p className="text-2xl font-bold">₹{totalRevenue.toLocaleString()}</p>
               </div>
             </CardContent>
           </Card>
           <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center">
-                <ShoppingCart className="h-8 w-8 text-secondary" />
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-muted-foreground">Total Orders</p>
-                  <p className="text-2xl font-bold">{totalOrders}</p>
-                </div>
+            <CardContent className="p-6 flex items-center">
+              <ShoppingCart className="h-8 w-8 text-secondary" />
+              <div className="ml-4">
+                <p className="text-sm font-medium text-muted-foreground">Total Orders</p>
+                <p className="text-2xl font-bold">{totalOrders}</p>
               </div>
             </CardContent>
           </Card>
           <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center">
-                <Package className="h-8 w-8 text-yellow-600" />
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-muted-foreground">Products</p>
-                  <p className="text-2xl font-bold">{0}</p> {/* Dynamic value from ProductManager */}
-                </div>
+            <CardContent className="p-6 flex items-center">
+              <Package className="h-8 w-8 text-yellow-600" />
+              <div className="ml-4">
+                <p className="text-sm font-medium text-muted-foreground">Products</p>
+                <p className="text-2xl font-bold">{totalProducts}</p>
               </div>
             </CardContent>
           </Card>
           <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center">
-                <Star className="h-8 w-8 text-yellow-500" />
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-muted-foreground">Rating</p>
-                  <p className="text-2xl font-bold">{averageRating.toFixed(1)}</p>
-                </div>
+            <CardContent className="p-6 flex items-center">
+              <Star className="h-8 w-8 text-yellow-500" />
+              <div className="ml-4">
+                <p className="text-sm font-medium text-muted-foreground">Rating</p>
+                <p className="text-2xl font-bold">{averageRating.toFixed(1)}</p>
               </div>
             </CardContent>
           </Card>
         </div>
 
-        {/* Main Content */}
+        {/* Main Tabs */}
         <Tabs defaultValue="products" value={activeTab} onValueChange={setActiveTab} className="space-y-4">
           <TabsList>
             <TabsTrigger value="products">
