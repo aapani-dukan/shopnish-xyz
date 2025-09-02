@@ -161,28 +161,38 @@ export const deliveryAddresses = pgTable('delivery_addresses', {
   createdAt: timestamp('created_at').defaultNow(),
 });
 
+
 export const orders = pgTable("orders", {
   id: serial("id").primaryKey(),
-  customerId: integer("customer_id").references(() => users.id),
-  deliveryBoyId: integer("delivery_boy_id").references(() => deliveryBoys.id),
-  orderNumber: text("order_number").notNull().unique(),
-  subtotal: decimal("subtotal", { precision: 10, scale: 2 }).notNull(),
-  deliveryCharge: decimal("delivery_charge", { precision: 10, scale: 2 }).default("0"),
-  discount: decimal("discount", { precision: 10, scale: 2 }).default("0"),
-  total: decimal("total", { precision: 10, scale: 2 }).notNull(),
-  paymentMethod: text("payment_method").notNull(),
-  paymentStatus: text("payment_status").default("pending"),
-  status: orderStatusEnum('status').default('pending').notNull(),
-  // ✅ आपके अनुरोध के अनुसार जोड़ा गया
-  deliveryAddress: json("delivery_address").notNull(),
+
+  // Relations
+  customerId: integer("customer_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+
+  deliveryBoyId: integer("delivery_boy_id")
+    .references(() => deliveryBoys.id, { onDelete: "set null" }),
+
+  deliveryAddressId: integer("delivery_address_id")
+    .notNull()
+    .references(() => deliveryAddresses.id, { onDelete: "cascade" }),
+
+  // Order Details
+  status: orderStatusEnum("status").default("pending").notNull(),
+  totalAmount: decimal("total_amount", { precision: 10, scale: 2 }).notNull(),
+
+  // Delivery Info
   deliveryInstructions: text("delivery_instructions"),
   estimatedDeliveryTime: timestamp("estimated_delivery_time"),
   actualDeliveryTime: timestamp("actual_delivery_time"),
+
+  // Discounts / Offers
   promoCode: text("promo_code"),
+
+  // Timestamps
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
-
 export const orderItems = pgTable("order_items", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").references(() => users.id),
@@ -269,13 +279,21 @@ export const serviceBookings = pgTable("service_bookings", {
   customerNotes: text("customer_notes"),
   createdAt: timestamp("created_at").defaultNow(),
 });
-
 export const reviews = pgTable("reviews", {
   id: serial("id").primaryKey(),
+
+  // Relations
   customerId: integer("customer_id").references(() => users.id),
   productId: integer("product_id").references(() => products.id),
   orderId: integer("order_id").references(() => orders.id),
+  deliveryBoyId: integer("delivery_boy_id").references(() => deliveryBoys.id),
+  deliveryAddressId: integer("delivery_address_id").references(() => deliveryAddresses.id),
+
+  // Review details
   rating: integer("rating").notNull(),
   comment: text("comment"),
+
+  // Timestamps
   createdAt: timestamp("created_at").defaultNow(),
 });
+
