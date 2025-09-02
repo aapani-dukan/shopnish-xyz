@@ -35,6 +35,7 @@ export const placeOrder = async (req: AuthenticatedRequest, res: Response) => {
     const parsedDeliveryCharge = parseFloat(deliveryCharge);
     const orderPaymentMethod = paymentMethod || 'COD';
     const parsedDeliveryAddress = deliveryAddress.address || '';
+    const deliveryBoyId = null; 
 
     // ✅ लॉग करें ताकि आप कंसोल में मान देख सकें
     console.log("✅ [API] Validating required fields before insertion:");
@@ -45,12 +46,14 @@ export const placeOrder = async (req: AuthenticatedRequest, res: Response) => {
     console.log(` - Delivery Charge: ${parsedDeliveryCharge}`);
     console.log(` - Payment Method: ${orderPaymentMethod}`);
     console.log(` - Delivery Address String: ${parsedDeliveryAddress}`);
+    console.log(` - Delivery Boy ID: ${deliveryBoyId}`);
 
     let newOrderId;
     let newDeliveryAddressId;
 
     await db.transaction(async (tx) => {
       // ✅ STEP 1: deliveryAddresses टेबल में नया पता डालें।
+      // सुनिश्चित करें कि सभी not-null फ़ील्ड्स में मान हैं।
       const [newAddress] = await tx.insert(deliveryAddresses).values({
         userId: userId,
         fullName: deliveryAddress.fullName,
@@ -71,11 +74,12 @@ export const placeOrder = async (req: AuthenticatedRequest, res: Response) => {
         orderNumber: orderNumber,
         subtotal: parsedSubtotal.toFixed(2),
         total: parsedTotal.toFixed(2),
+        deliveryCharge: parsedDeliveryCharge.toFixed(2),
         paymentMethod: orderPaymentMethod,
         deliveryAddressId: newDeliveryAddressId,
         deliveryInstructions: deliveryInstructions,
-        deliveryCharge: parsedDeliveryCharge.toFixed(2),
         deliveryAddress: parsedDeliveryAddress,
+        deliveryBoyId: deliveryBoyId,
       }).returning();
       
       newOrderId = newOrder.id;
