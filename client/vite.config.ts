@@ -1,39 +1,29 @@
+// vite.config.ts
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
-import tsconfigPaths from "vite-tsconfig-paths";
+import path from "path";
 
-// https://vitejs.dev/config/
 export default defineConfig({
-  plugins: [
-    react(),
-    tsconfigPaths(),
-  ],
+  plugins: [react()],
+  resolve: {
+    alias: {
+      "@": path.resolve(__dirname, "client/src"),
+      "@shared": path.resolve(__dirname, "shared"),
+    },
+  },
   server: {
-    port: 5173, // आप चाहें तो बदल सकते हैं
+    port: 5173,
+    open: true,
     proxy: {
       "/api": {
-        target: "http://localhost:5000", // backend express server
+        target: "http://localhost:5000", // ✅ Express backend
         changeOrigin: true,
         secure: false,
-      },
-      "/socket.io": {
-        target: "http://localhost:5000", // socket.io backend
-        ws: true,
       },
     },
   },
-  preview: {
-    port: 4173,
-    proxy: {
-      "/api": {
-        target: "http://localhost:5000",
-        changeOrigin: true,
-        secure: false,
-      },
-      "/socket.io": {
-        target: "http://localhost:5000",
-        ws: true,
-      },
-    },
+  build: {
+    outDir: "dist",
+    emptyOutDir: true,
   },
 });
