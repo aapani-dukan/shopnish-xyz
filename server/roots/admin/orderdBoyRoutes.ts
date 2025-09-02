@@ -1,9 +1,8 @@
-// Server/roots/admin/orderdBoyRoutes.ts
-
 import { Router, Request, Response } from 'express';
 import { db } from '../../db.ts';
-import { orders, orderStatusEnum } from '../../../shared/backend/schema.ts';
+import { orders, orderStatusEnum, deliveryStatusEnum } from '../../../shared/backend/schema.ts'; // ✅ deliveryStatusEnum को इंपोर्ट किया गया
 import { eq } from 'drizzle-orm';
+import { v4 as uuidv4 } from 'uuid';
 
 const router = Router();
 
@@ -23,7 +22,8 @@ router.patch('/assign', async (req: Request, res: Response) => {
     const [updatedOrder] = await db.update(orders)
       .set({
         deliveryBoyId,
-        status: 'assigned_to_delivery_boy',
+        // ✅ FIX: deliveryStatus कॉलम को अपडेट किया गया
+        deliveryStatus: 'accepted',
         deliveryOtp,
       })
       .where(eq(orders.id, orderId))
