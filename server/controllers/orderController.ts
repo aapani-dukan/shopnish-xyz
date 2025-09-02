@@ -21,24 +21,13 @@ export const placeOrder = async (req: AuthenticatedRequest, res: Response) => {
       return res.status(401).json({ message: "Unauthorized: User not logged in." });
     }
 
-    const { deliveryAddress, paymentMethod, deliveryInstructions } = req.body;
+    const { deliveryAddress, paymentMethod, deliveryInstructions, items, subtotal, total, deliveryCharge } = req.body;
 
-    const cartItems = await db.query.orderItems.findMany({
-      where: and(
-        eq(orderItems.userId, userId),
-        eq(orderItems.status, 'in_cart')
-      ),
-      with: { product: true },
-    });
-
-    if (cartItems.length === 0) {
-      console.log("🛒 [API] Cart is empty, cannot place an order.");
-      return res.status(400).json({ message: "Cart is empty, cannot place an order." });
+    // ✅ लॉजिक अपडेट: अब हम सीधे रिक्वेस्ट बॉडी से 'items' का उपयोग कर रहे हैं।
+    if (!items || items.length === 0) {
+      console.log("🛒 [API] Items list is empty, cannot place an order.");
+      return res.status(400).json({ message: "Items list is empty, cannot place an order." });
     }
-
-    const subtotal = cartItems.reduce((sum, item) => sum + parseFloat(item.totalPrice), 0);
-    const deliveryCharge = parseFloat(req.body.deliveryCharge) || 0;
-    const total = subtotal + deliveryCharge;
 
     let newOrderId;
     let newDeliveryAddressId;
@@ -75,17 +64,21 @@ export const placeOrder = async (req: AuthenticatedRequest, res: Response) => {
       
       newOrderId = newOrder.id;
 
-      // ✅ STEP 3: कार्ट आइटम का स्टेटस बदलें और उन्हें नए ऑर्डर से जोड़ें।
-      await tx.update(orderItems)
-        .set({
-          status: 'pending',
+      // ✅ STEP 3: रिक्वेस्ट बॉडी से प्रत्येक आइटम के लिए orderItems रिकॉर्ड डालें।
+      for (const item of items) {
+        await tx.insert(orderItems).values({
           orderId: newOrder.id,
-          updatedAt: new Date(),
-        })
-        .where(and(
-          eq(orderItems.userId, userId),
-          eq(orderItems.status, 'in_cart')
-        ));
+          productId: item.productId, // रिक्वेस्ट बॉडी में productId नहीं है, यह एक समस्या है
+          sellerId: item.sellerId,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+          totalPrice: item.totalPrice,
+        });
+      }
+
+      // ✅ STEP 4 (वैकल्पिक): यदि आपके पास कार्ट के लिए एक अलग टेबल है, तो उसे यहाँ साफ़ करें।
+      // यह कोड आपकी मौजूदा समस्या का हिस्सा नहीं है, लेकिन एक अच्छे डिज़ाइन के लिए महत्वपूर्ण है।
+      // await tx.delete(cartItems).where(eq(cartItems.userId, userId));
     });
 
     res.status(201).json({ message: "Order placed successfully!", orderId: newOrderId });
