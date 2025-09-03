@@ -1,15 +1,27 @@
 // server/routes/orderRoutes.ts
 
-import { Router, Response } from "express";
-import { AuthenticatedRequest } from "../server/middleware/authMiddleware";
-// ✅ db, orders, orderItems, v4 जैसे सीधे इंपोर्ट हटा दें
-import { requireAuth } from "../server/middleware/authMiddleware";
-import { getUserOrders, placeOrder } from "../server/controllers/orderController"; // ✅ placeOrder को इंपोर्ट करें
+import { Router } from "express";
+import { requireAuth, AuthenticatedRequest } from "../server/middleware/authMiddleware";
+import { getUserOrders, placeOrder } from "../server/controllers/orderController";
+import { getIO } from "../socket"; // ✅ socket instance लेने के लिए
 
 const ordersRouter = Router();
 
-// ✅ अब POST रूट सीधे orderController के placeOrder फ़ंक्शन को कॉल करेगा
-ordersRouter.post("/", requireAuth, placeOrder);
+// ✅ placeOrder में socket emit भी होगा
+ordersRouter.post("/", requireAuth, async (req: AuthenticatedRequest, res) => {
+  try {
+    const order = await placeOrder(req, res);
+
+    // ✅ नया ऑर्डर बनने पर socket event
+    getIO().emit("orders:updated", {
+      message: "New order placed",
+      order,
+    });
+  } catch (err: any) {
+    console.error("❌ placeOrder error:", err);
+    res.status(500).json({ message: err.message || "Failed to place order" });
+  }
+});
 
 // ✅ getUserOrders रूट
 ordersRouter.get("/", requireAuth, getUserOrders);
