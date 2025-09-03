@@ -161,32 +161,35 @@ export default function DeliveryOrdersList({ userId, auth }: { userId: string | 
   }, [userId, fetchOrders]);
 
   // ─── Socket.IO: listen to server events
-  useEffect(() => {
-    if (!socket) return;
+  // ─── Socket.IO: listen to server events
+useEffect(() => {
+  if (!socket) return;
 
-    const onOrdersChanged = (payload: any) => {
+  let fetchTimeout: NodeJS.Timeout | null = null;
+
+  const safeFetch = () => {
+    if (fetchTimeout) return; // already scheduled
+    fetchTimeout = setTimeout(() => {
       if (userId) fetchOrders(userId);
-    };
+      fetchTimeout = null;
+    }, 1000); // ✅ 1 second में max 1 बार fetch
+  };
 
-    const onNewOrder = (payload: any) => {
-      if (userId) fetchOrders(userId);
-    };
+  const onOrdersChanged = () => safeFetch();
+  const onNewOrder = () => safeFetch();
 
-    socket.on("delivery:orders-changed", onOrdersChanged);
-    socket.on("new-order", onNewOrder);
-    socket.on("connect", () => {
-      if (userId) {
-        socket.emit("register-client", { role: "delivery", userId });
-      } else {
-        socket.emit("register-client", { role: "delivery", userId: null });
-      }
-    });
+  socket.on("delivery:orders-changed", onOrdersChanged);
+  socket.on("new-order", onNewOrder);
+  socket.on("connect", () => {
+    socket.emit("register-client", { role: "delivery", userId: userId || null });
+  });
 
-    return () => {
-      socket.off("delivery:orders-changed", onOrdersChanged);
-      socket.off("new-order", onNewOrder);
-    };
-  }, [socket, userId, fetchOrders]);
+  return () => {
+    socket.off("delivery:orders-changed", onOrdersChanged);
+    socket.off("new-order", onNewOrder);
+    if (fetchTimeout) clearTimeout(fetchTimeout);
+  };
+}, [socket, userId, fetchOrders]);
 
   // ─── Mutations ───
   const updateStatusMutation = useMutation({
