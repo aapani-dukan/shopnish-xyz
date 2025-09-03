@@ -1,138 +1,183 @@
 import { Router, Request, Response } from "express";
-import { db } from "../../db";
-import { orders } from "../../../shared/backend/schema";
-import { eq, and, or } from "drizzle-orm";
+import { and, eq, or } from "drizzle-orm";
+import { db } from "../../db.ts";
+import {
+  orders,
+  cartItems,
+  // अगर cart टेबल अलग है तो import बदलना पड़ेगा
+} from "../../../shared/backend/schema.ts";
+import { io } from "../../socket.ts";
 
 const router = Router();
 
 /**
- * 🚚 1. Get Orders for Delivery Boys
- * - अगर deliveryBoyId दिया है → केवल उसी delivery boy के orders दिखाओ
- * - अगर deliveryBoyId नहीं है → सभी pending orders दिखाओ (unassigned orders)
+ * GET /api/delivery/orders?deliveryBoyId=UID
  */
 router.get("/orders", async (req: Request, res: Response) => {
   try {
-    const { deliveryBoyId } = req.query;
+    const deliveryBoyId = String(req.query.deliveryBoyId || "");
 
-    let result;
-    if (deliveryBoyId) {
-      // उस delivery boy को assigned orders
-      result = await db
-        .select()
-        .from(orders)
-        .where(eq(orders.delivery_boy_id, String(deliveryBoyId)));
-    } else {
-      // Pending orders (अभी तक assign नहीं हुए)
-      result = await db
-        .select()
-        .from(orders)
-        .where(eq(orders.delivery_status, "pending"));
+    if (!deliveryBoyId) {
+      return res.status(400).json({ message: "deliveryBoyId is required" });
     }
 
-    res.json({ orders: result });
-  } catch (error) {
-    console.error("Error fetching orders:", error);
-    res.status(500).json({ message: "Failed to fetch orders" });
+    const list = await db.query.orders.findMany({
+      where: or(
+        eq(orders.deliveryStatus, "pending" as any),
+        and(
+          eq(orders.deliveryStatus, "accepted" as any),
+          eq(orders.deliveryBoyId, deliveryBoyId)
+        )
+      ),
+      with: {
+        items: { with: { product: true } },
+        seller: true,
+        user: true,
+      },
+      orderBy: (o, { desc }) => [desc(o.createdAt)],
+    });
+
+    return res.json({ orders: list });
+  } catch (err) {
+    console.error("GET /delivery/orders error:", err);
+    return res.status(500).json({ message: "Failed to fetch orders" });
   }
 });
 
 /**
- * 🚚 2. Accept an Order (Delivery boy assigns himself)
- * - delivery_status = accepted
- * - delivery_boy_id set करना
+ * POST /api/delivery/accept
  */
 router.post("/accept", async (req: Request, res: Response) => {
   try {
-    const { orderId, deliveryBoyId } = req.body;
-
+    const { orderId, deliveryBoyId } = req.body || {};
     if (!orderId || !deliveryBoyId) {
       return res
         .status(400)
-        .json({ message: "OrderId and DeliveryBoyId required" });
+        .json({ message: "orderId and deliveryBoyId are required" });
     }
+
+    const existing = await db.query.orders.findFirst({
+      where: eq(orders.id, orderId),
+      columns: { id: true, deliveryStatus: true },
+    });
+
+    if (!existing) return res.status(404).json({ message: "Order not found" });
+    if (existing.deliveryStatus !== "pending")
+      return res.status(409).json({ message: "Order is not pending anymore" });
 
     const deliveryOtp = Math.floor(1000 + Math.random() * 9000).toString();
 
     const [updated] = await db
       .update(orders)
       .set({
-        delivery_boy_id: deliveryBoyId,
-        delivery_status: "accepted",
-        delivery_otp: deliveryOtp,
+        deliveryBoyId,
+        deliveryStatus: "accepted" as any,
+        deliveryOtp,
+        deliveryAcceptedAt: new Date(),
       })
       .where(eq(orders.id, orderId))
       .returning();
 
-    res.json({ message: "Order accepted", order: updated });
-  } catch (error) {
-    console.error("Error accepting order:", error);
-    res.status(500).json({ message: "Failed to accept order" });
+    io.emit("delivery:orders-changed", {
+      reason: "accepted",
+      orderId,
+      deliveryBoyId,
+    });
+
+    return res.json({ message: "Order accepted", order: updated });
+  } catch (err) {
+    console.error("POST /delivery/accept error:", err);
+    return res.status(500).json({ message: "Failed to accept order" });
   }
 });
 
 /**
- * 🚚 3. Update Delivery Status
- * - e.g. accepted → picked_up → delivered
+ * POST /api/delivery/update-status
  */
 router.post("/update-status", async (req: Request, res: Response) => {
   try {
-    const { orderId, status } = req.body;
-
+    const { orderId, status } = req.body || {};
     if (!orderId || !status) {
-      return res.status(400).json({ message: "OrderId and Status required" });
+      return res
+        .status(400)
+        .json({ message: "orderId and status are required" });
     }
 
-    const [updated] = await db
-      .update(orders)
-      .set({ delivery_status: status })
-      .where(eq(orders.id, orderId))
-      .returning();
-
-    res.json({ message: "Delivery status updated", order: updated });
-  } catch (error) {
-    console.error("Error updating delivery status:", error);
-    res.status(500).json({ message: "Failed to update status" });
-  }
-});
-
-/**
- * 🚚 4. Complete Delivery with OTP
- */
-router.post("/complete-delivery", async (req: Request, res: Response) => {
-  try {
-    const { orderId, otp } = req.body;
-
-    if (!orderId || !otp) {
-      return res.status(400).json({ message: "OrderId and OTP required" });
-    }
-
-    const [order] = await db
-      .select()
-      .from(orders)
-      .where(eq(orders.id, orderId))
-      .limit(1);
-
-    if (!order) {
-      return res.status(404).json({ message: "Order not found" });
-    }
-
-    if (order.delivery_otp !== otp) {
-      return res.status(400).json({ message: "Invalid OTP" });
+    const allowed = new Set(["picked_up", "out_for_delivery", "delivered"]);
+    if (!allowed.has(status)) {
+      return res.status(400).json({ message: "Invalid status value" });
     }
 
     const [updated] = await db
       .update(orders)
       .set({
-        delivery_status: "delivered",
-        actual_delivery_time: new Date(),
+        deliveryStatus: status as any,
+        ...(status === "picked_up" && { deliveryPickedAt: new Date() }),
+        ...(status === "out_for_delivery" && { deliveryOutAt: new Date() }),
+        ...(status === "delivered" && { deliveryCompletedAt: new Date() }),
       })
       .where(eq(orders.id, orderId))
       .returning();
 
-    res.json({ message: "Order delivered successfully", order: updated });
-  } catch (error) {
-    console.error("Error completing delivery:", error);
-    res.status(500).json({ message: "Failed to complete delivery" });
+    io.emit("delivery:orders-changed", {
+      reason: "status-updated",
+      orderId,
+      status,
+    });
+
+    return res.json({ message: "Status updated", order: updated });
+  } catch (err) {
+    console.error("POST /delivery/update-status error:", err);
+    return res.status(500).json({ message: "Failed to update status" });
+  }
+});
+
+/**
+ * POST /api/delivery/complete-delivery
+ */
+router.post("/complete-delivery", async (req: Request, res: Response) => {
+  try {
+    const { orderId, otp } = req.body || {};
+    if (!orderId || !otp) {
+      return res.status(400).json({ message: "orderId and otp are required" });
+    }
+
+    const existing = await db.query.orders.findFirst({
+      where: eq(orders.id, orderId),
+      columns: { id: true, userId: true, deliveryOtp: true, deliveryStatus: true },
+    });
+
+    if (!existing) return res.status(404).json({ message: "Order not found" });
+    if (existing.deliveryStatus === "delivered")
+      return res.status(409).json({ message: "Order already delivered" });
+    if (existing.deliveryOtp !== otp)
+      return res.status(401).json({ message: "Invalid OTP" });
+
+    const [updated] = await db
+      .update(orders)
+      .set({
+        deliveryStatus: "delivered" as any,
+        deliveryCompletedAt: new Date(),
+        actualDeliveryTime: new Date(),
+        deliveryOtp: null,
+      })
+      .where(eq(orders.id, orderId))
+      .returning();
+
+    // ✅ order delivered → clear customer cart
+    if (existing.userId) {
+      await db.delete(cartItems).where(eq(cartItems.userId, existing.userId));
+    }
+
+    io.emit("delivery:orders-changed", {
+      reason: "delivered",
+      orderId,
+    });
+
+    return res.json({ message: "Delivery completed", order: updated });
+  } catch (err) {
+    console.error("POST /delivery/complete-delivery error:", err);
+    return res.status(500).json({ message: "Failed to complete delivery" });
   }
 });
 
