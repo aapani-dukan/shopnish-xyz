@@ -6,8 +6,8 @@ import {
   cartItems,
   // अगर cart टेबल अलग है तो import बदलना पड़ेगा
 } from "../../../shared/backend/schema.ts";
-import { io } from "../../socket.ts";
 
+import { getIO } from "../../socket.ts";
 const router = Router();
 
 /**
