@@ -5,7 +5,7 @@ import { orders, orderItems, deliveryAddresses } from '../../shared/backend/sche
 import { eq, desc } from 'drizzle-orm';
 import { AuthenticatedRequest } from '../middleware/authMiddleware.ts';
 import { v4 as uuidv4 } from 'uuid';
-import { io } from '../index.ts'; // ✅ Socket.IO import किया
+import { getIO } from "../socket.ts";// ✅ Socket.IO import किया
 
 /**
  * ग्राहक के लिए एक नया ऑर्डर प्लेस करने का फ़ंक्शन।
@@ -84,7 +84,7 @@ export const placeOrder = async (req: AuthenticatedRequest, res: Response) => {
     });
 
     // ✅ STEP 4: Socket.IO से नए ऑर्डर का इवेंट भेजें
-    io.emit("new-order", {
+    getIO().emit("new-order", {
       orderId: newOrder.id,
       orderNumber: newOrder.orderNumber,
       customerId: newOrder.customerId,
