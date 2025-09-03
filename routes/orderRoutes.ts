@@ -3,7 +3,7 @@
 import { Router } from "express";
 import { requireAuth, AuthenticatedRequest } from "../server/middleware/authMiddleware";
 import { getUserOrders, placeOrder } from "../server/controllers/orderController";
-import { getIO } from "../socket"; // ✅ socket instance लेने के लिए
+import { getIO } from "../server/socket"; // ✅ socket instance लेने के लिए
 
 const ordersRouter = Router();
 
