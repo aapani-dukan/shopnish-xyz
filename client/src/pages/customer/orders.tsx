@@ -1,4 +1,5 @@
-import { useQuery } from "@tanstack/react-query";
+import { useEffect } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { Link } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -6,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Package } from "lucide-react";
+import { socket } from "@/lib/socket"; // ✅ socket.io client helper
 
 // इंटरफ़ेस (Interface) जो API से आने वाले डेटा को परिभाषित करता है।
 interface CustomerOrder {
@@ -17,7 +19,6 @@ interface CustomerOrder {
 }
 
 // ऑर्डर स्टेटस के लिए बैज का वेरिएंट (रंग) निर्धारित करता है।
-// स्विच स्टेटमेंट की जगह ऑब्जेक्ट का उपयोग करना कोड को अधिक पठनीय और स्केलेबल बनाता है।
 const statusBadgeVariants = {
   pending: "secondary",
   accepted: "secondary",
@@ -34,6 +35,8 @@ const getStatusBadgeVariant = (status: string) => {
 
 // ग्राहक के ऑर्डर दिखाने वाला मुख्य कंपोनेंट।
 export default function CustomerOrdersPage() {
+  const queryClient = useQueryClient();
+
   // TanStack Query का उपयोग करके API से ऑर्डर फ़ेच करें।
   const {
     data: orders,
@@ -43,11 +46,23 @@ export default function CustomerOrdersPage() {
   } = useQuery({
     queryKey: ["customerOrders"],
     queryFn: async () => {
-      // ✅ API route to be created on the backend
       const response = await apiRequest("GET", "/api/orders");
       return response;
     },
   });
+
+  // ✅ Socket.IO से order updates सुनें
+  useEffect(() => {
+    socket.on("order:update", (updatedOrder) => {
+      console.log("📦 Order update received:", updatedOrder);
+      // cache refresh कर दो
+      queryClient.invalidateQueries({ queryKey: ["customerOrders"] });
+    });
+
+    return () => {
+      socket.off("order:update");
+    };
+  }, [queryClient]);
 
   // लोडिंग की स्थिति को हैंडल करें।
   if (isLoading) {
@@ -67,7 +82,9 @@ export default function CustomerOrdersPage() {
   if (isError) {
     return (
       <div className="container mx-auto p-4 text-center">
-        <p className="text-red-500">Error loading orders: {error.message}</p>
+        <p className="text-red-500">
+          Error loading orders: {(error as Error).message}
+        </p>
         <Button onClick={() => window.location.reload()} className="mt-4">
           Retry
         </Button>
@@ -100,7 +117,6 @@ export default function CustomerOrdersPage() {
           <Card key={order.id} className="p-4">
             <CardHeader className="p-0 mb-4">
               <CardTitle className="flex justify-between items-center text-lg">
-                {/* हमने back-end लॉजिक से मेल खाने के लिए order.id के बजाय order.orderNumber का उपयोग किया है */}
                 <span>Order #{order.orderNumber}</span>
                 <Badge variant={getStatusBadgeVariant(order.status)}>
                   {order.status}
@@ -142,4 +158,3 @@ export default function CustomerOrdersPage() {
     </div>
   );
 }
-
