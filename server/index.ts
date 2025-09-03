@@ -1,5 +1,4 @@
 // server/index.ts
-
 import express, { type Request, type Response, type NextFunction, type Express } from "express";
 import cors from "cors";
 import apiRouter from "./routes.ts";
@@ -13,14 +12,14 @@ import path from "path";
 import { fileURLToPath } from "url";
 import cookieParser from "cookie-parser";
 
-//...
+// ✅ Socket helper import
+import { setIO } from "./socket.ts";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app: Express = express();
-let server: Server; 
-let io: SocketIOServer; // ✅ Socket.IO server
+let server: Server;
 
 app.use(
   cors({
@@ -104,8 +103,8 @@ async function runMigrations() {
   // Serve static files (production only)
   if (isProd) {
     app.use(express.static(path.resolve(__dirname, "..", "dist", "public")));
-    
-    app.get('*', (req, res) => {
+
+    app.get("*", (req, res) => {
       res.sendFile(path.resolve(__dirname, "..", "dist", "public", "index.html"));
     });
   } else {
@@ -144,26 +143,28 @@ async function runMigrations() {
   server = createServer(app);
 
   // ✅ Socket.IO को HTTP सर्वर से जोड़ें
-  io = new SocketIOServer(server, {
+  const io = new SocketIOServer(server, {
     cors: {
-      origin: ["https://shopnish-lzrf.onrender.com", "http://localhost:5173"], // यहाँ * की बजाय वही origins डालो जो allow करने हैं
-      methods: ["GET", "POST"]
-    }
+      origin: ["https://shopnish-lzrf.onrender.com", "http://localhost:5173"],
+      methods: ["GET", "POST"],
+    },
   });
 
-  // ✅ Socket.IO कनेक्शन हैंडलर
-  io.on('connection', (socket) => {
-    console.log('⚡ New client connected:', socket.id);
+  // ✅ io को globally set करें
+  setIO(io);
 
-    socket.on('disconnect', () => {
-      console.log('❌ Client disconnected:', socket.id);
+  // ✅ Socket.IO कनेक्शन हैंडलर
+  io.on("connection", (socket) => {
+    console.log("⚡ New client connected:", socket.id);
+
+    socket.on("disconnect", () => {
+      console.log("❌ Client disconnected:", socket.id);
     });
   });
 
   server.listen({ port, host: "0.0.0.0" }, () =>
-    console.log(`🚀 Server listening on port ${port} in ${isProd ? "production" : "development"} mode`)
+    console.log(
+      `🚀 Server listening on port ${port} in ${isProd ? "production" : "development"} mode`
+    )
   );
 })();
-
-// ✅ Export io to use inside routes/controllers
-export { io };
