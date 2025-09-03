@@ -21,7 +21,6 @@ import { useSocket } from "@/hooks/useSocket"; // ensure this hook exists and co
 const useToast = () => {
   return {
     toast: ({ title, description, variant }) => {
-      // आप यहाँ अपने Toaster को कॉल कर सकते हैं — अभी console.log रखा है
       console.log(`Toast: ${title} - ${description} (Variant: ${variant})`);
     },
   };
@@ -118,7 +117,7 @@ export default function DeliveryOrdersList({ userId, auth }: { userId: string | 
   const [otp, setOtp] = useState("");
   const [otpDialogOpen, setOtpDialogOpen] = useState(false);
 
-  // API base - use absolute for production, or relative for dev
+  // API base
   const API_BASE = process.env.REACT_APP_API_BASE || "https://shopnish-lzrf.onrender.com";
 
   // ─── fetchOrders: gets both pending (for everyone) and accepted (only assigned to this user)
@@ -131,10 +130,16 @@ export default function DeliveryOrdersList({ userId, auth }: { userId: string | 
           setIsLoading(false);
           return;
         }
-        const res = await fetch(`${API_BASE}/api/delivery/orders?deliveryBoyId=${encodeURIComponent(id)}`);
+
+        const token = auth ? await auth.currentUser?.getIdToken() : null;
+
+        const res = await fetch(`${API_BASE}/api/delivery/orders?deliveryBoyId=${encodeURIComponent(id)}`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
         if (!res.ok) throw new Error("नेटवर्क प्रतिक्रिया ठीक नहीं थी");
         const data = await res.json();
-        // Expected response: { orders: [...] }
         setOrders(Array.isArray(data.orders) ? data.orders : []);
       } catch (err) {
         console.error("ऑर्डर फ़ेच करने में त्रुटि:", err);
@@ -144,10 +149,9 @@ export default function DeliveryOrdersList({ userId, auth }: { userId: string | 
         setIsLoading(false);
       }
     },
-    [API_BASE, toast]
+    [API_BASE, auth, toast]
   );
 
-  // initial load + when userId changes
   useEffect(() => {
     if (userId) fetchOrders(userId);
     else {
@@ -156,38 +160,21 @@ export default function DeliveryOrdersList({ userId, auth }: { userId: string | 
     }
   }, [userId, fetchOrders]);
 
-  // ─── Socket.IO: listen to server events and refresh list appropriately
+  // ─── Socket.IO: listen to server events
   useEffect(() => {
     if (!socket) return;
 
     const onOrdersChanged = (payload: any) => {
-      // payload could be { reason, orderId, deliveryBoyId, status } from backend
-      // If it's general, just refetch; otherwise do minimal filtering if desired.
-      try {
-        // if payload contains deliveryBoyId and it's not for this user, still need to refresh
-        // because pending list may have changed (assigned -> should disappear for others)
-        if (userId) {
-          fetchOrders(userId);
-        }
-      } catch (err) {
-        console.error("Socket handler error:", err);
-      }
+      if (userId) fetchOrders(userId);
     };
 
     const onNewOrder = (payload: any) => {
-      // New order created: all delivery boys should see it in pending list — refetch
-      try {
-        if (userId) fetchOrders(userId);
-      } catch (err) {
-        console.error("Socket new-order handler error:", err);
-      }
+      if (userId) fetchOrders(userId);
     };
 
-    // Subscribe
     socket.on("delivery:orders-changed", onOrdersChanged);
     socket.on("new-order", onNewOrder);
     socket.on("connect", () => {
-      // register client with server (if your server expects)
       if (userId) {
         socket.emit("register-client", { role: "delivery", userId });
       } else {
@@ -204,9 +191,14 @@ export default function DeliveryOrdersList({ userId, auth }: { userId: string | 
   // ─── Mutations ───
   const updateStatusMutation = useMutation({
     mutationFn: async ({ orderId, status }: { orderId: number; status: string }) => {
+      const token = auth ? await auth.currentUser?.getIdToken() : null;
+
       const response = await fetch(`${API_BASE}/api/delivery/update-status`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify({ orderId, status }),
       });
       if (!response.ok) throw new Error("स्टेटस अपडेट करने में विफल");
@@ -225,9 +217,14 @@ export default function DeliveryOrdersList({ userId, auth }: { userId: string | 
 
   const handleOtpSubmit = useMutation({
     mutationFn: async ({ orderId, otp }: { orderId: number; otp: string }) => {
+      const token = auth ? await auth.currentUser?.getIdToken() : null;
+
       const response = await fetch(`${API_BASE}/api/delivery/complete-delivery`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify({ orderId, otp }),
       });
       if (!response.ok) throw new Error("OTP सबमिशन विफल");
@@ -248,7 +245,6 @@ export default function DeliveryOrdersList({ userId, auth }: { userId: string | 
 
   // ─── Handlers ───
   const handleStatusProgress = (order: any) => {
-    // Use deliveryStatus field from DB (order.deliveryStatus)
     const cur = order.deliveryStatus || order.status || "pending";
     if (cur === "out_for_delivery") {
       setSelectedOrder(order);
@@ -457,4 +453,4 @@ export default function DeliveryOrdersList({ userId, auth }: { userId: string | 
       />
     </div>
   );
-}
+                                                                          }
