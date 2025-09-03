@@ -7,9 +7,7 @@ export default defineConfig({
   plugins: [react()],
   resolve: {
     alias: {  
-    stream: 'stream-browserify',  
-    util: 'util/'  
-  }  
+    
       "@": path.resolve(__dirname, "src"),       // ✅ client/src
       "@shared": path.resolve(__dirname, '..', 'shared'), // ✅ root/shared
     },
