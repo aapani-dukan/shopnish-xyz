@@ -1,3 +1,5 @@
+// src/pages/seller-dashboard.tsx
+
 import Header from "@/components/header";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -22,9 +24,9 @@ import {
 import { useEffect, useState } from "react";
 import { useSocket } from "@/hooks/useSocket";
 import { useAuth } from "@/hooks/useAuth";
-import ProductManager from "../components/ProductManager";
-import OrderManager from "../components/OrderManager";
-import ProfileManager from "../components/ProfileManager";
+import ProductManager from "@/components/ProductManager";
+import OrderManager from "@/components/OrderManager";
+import ProfileManager from "@/components/ProfileManager";
 
 export default function SellerDashboard() {
   const { toast } = useToast();
@@ -37,14 +39,11 @@ export default function SellerDashboard() {
   useEffect(() => {
     if (!socket || !isAuthenticated || user?.role !== "seller") return;
 
-    // Listen for new orders
     socket.on("new-order-for-seller", (order: OrderWithItems) => {
-      console.log("Received new order for seller:", order);
+      console.log("📦 नया ऑर्डर seller को मिला:", order);
 
-      // Refetch orders
       queryClient.invalidateQueries({ queryKey: ["/api/sellers/orders"] });
 
-      // Show toast notification
       toast({
         title: "🔔 नया ऑर्डर!",
         description: `आपको ऑर्डर #${order.id} के लिए नया ऑर्डर मिला।`,
@@ -70,25 +69,28 @@ export default function SellerDashboard() {
     queryFn: () => apiRequest("GET", "/api/sellers/orders"),
     enabled: !!seller?.id,
     staleTime: 0,
-    refetchInterval: 60 * 1000, // auto-refresh every 60 sec
+    refetchInterval: 60 * 1000,
   });
 
-  // ----------------- DASHBOARD METRICS -----------------
+  // ----------------- METRICS -----------------
   const totalRevenue =
     orders?.reduce(
       (sum, order) =>
         sum +
         order.items.reduce(
-          (itemSum, item) => itemSum + (typeof item.total === "string" ? parseFloat(item.total) : item.total),
+          (itemSum, item) =>
+            itemSum +
+            (typeof item.total === "string" ? parseFloat(item.total) : item.total),
           0
         ),
       0
     ) || 0;
+
   const totalOrders = orders?.length || 0;
-  const totalProducts = 0; // from ProductManager
+  const totalProducts = 0; // ProductManager से dynamic हो सकता है
   const averageRating = parseFloat(seller?.rating?.toString() || "0");
 
-  // ----------------- LOADING & ERROR STATES -----------------
+  // ----------------- LOADING -----------------
   if (sellerLoading) {
     return (
       <div className="min-h-screen bg-background">
@@ -109,22 +111,33 @@ export default function SellerDashboard() {
     );
   }
 
+  // ----------------- ERROR -----------------
   if (sellerError || !seller) {
     return (
       <div className="min-h-screen bg-background">
         <Header />
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16 text-center">
           <div className="text-6xl mb-4">
-            {sellerError ? <XCircle className="w-20 h-20 text-red-500 mx-auto" /> : "🏪"}
+            {sellerError ? (
+              <XCircle className="w-20 h-20 text-red-500 mx-auto" />
+            ) : (
+              "🏪"
+            )}
           </div>
-          <h2 className="text-2xl font-bold mb-4">{sellerError ? "Error Loading Profile" : "Seller Profile Not Found"}</h2>
+          <h2 className="text-2xl font-bold mb-4">
+            {sellerError
+              ? "Error Loading Profile"
+              : "Seller Profile Not Found"}
+          </h2>
           <p className="text-muted-foreground mb-6">
             {sellerError
               ? "There was an issue fetching your seller profile. Please try again."
               : "It looks like you haven't set up your seller profile yet or it's not approved."}
           </p>
           <Link to="/seller-apply">
-            <Button>{sellerError ? "Retry" : "Apply to be a Seller"}</Button>
+            <Button>
+              {sellerError ? "Retry" : "Apply to be a Seller"}
+            </Button>
           </Link>
           <Link to="/">
             <Button variant="ghost" className="ml-4">
@@ -136,7 +149,7 @@ export default function SellerDashboard() {
     );
   }
 
-  // ----------------- RENDER DASHBOARD -----------------
+  // ----------------- DASHBOARD -----------------
   return (
     <div className="min-h-screen bg-background">
       <Header />
@@ -145,8 +158,12 @@ export default function SellerDashboard() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-foreground mb-2">Seller Dashboard</h1>
-            <p className="text-muted-foreground">Manage your products and orders</p>
+            <h1 className="text-3xl font-bold text-foreground mb-2">
+              Seller Dashboard
+            </h1>
+            <p className="text-muted-foreground">
+              Manage your products and orders
+            </p>
           </div>
           <div className="flex items-center space-x-4 mt-4 sm:mt-0">
             {seller.approvalStatus === "approved" ? (
@@ -168,14 +185,18 @@ export default function SellerDashboard() {
           </div>
         </div>
 
-        {/* Metrics Cards */}
+        {/* Metrics */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <Card>
             <CardContent className="p-6 flex items-center">
               <TrendingUp className="h-8 w-8 text-primary" />
               <div className="ml-4">
-                <p className="text-sm font-medium text-muted-foreground">Total Revenue</p>
-                <p className="text-2xl font-bold">₹{totalRevenue.toLocaleString()}</p>
+                <p className="text-sm font-medium text-muted-foreground">
+                  Total Revenue
+                </p>
+                <p className="text-2xl font-bold">
+                  ₹{totalRevenue.toLocaleString()}
+                </p>
               </div>
             </CardContent>
           </Card>
@@ -183,7 +204,9 @@ export default function SellerDashboard() {
             <CardContent className="p-6 flex items-center">
               <ShoppingCart className="h-8 w-8 text-secondary" />
               <div className="ml-4">
-                <p className="text-sm font-medium text-muted-foreground">Total Orders</p>
+                <p className="text-sm font-medium text-muted-foreground">
+                  Total Orders
+                </p>
                 <p className="text-2xl font-bold">{totalOrders}</p>
               </div>
             </CardContent>
@@ -192,7 +215,9 @@ export default function SellerDashboard() {
             <CardContent className="p-6 flex items-center">
               <Package className="h-8 w-8 text-yellow-600" />
               <div className="ml-4">
-                <p className="text-sm font-medium text-muted-foreground">Products</p>
+                <p className="text-sm font-medium text-muted-foreground">
+                  Products
+                </p>
                 <p className="text-2xl font-bold">{totalProducts}</p>
               </div>
             </CardContent>
@@ -201,15 +226,24 @@ export default function SellerDashboard() {
             <CardContent className="p-6 flex items-center">
               <Star className="h-8 w-8 text-yellow-500" />
               <div className="ml-4">
-                <p className="text-sm font-medium text-muted-foreground">Rating</p>
-                <p className="text-2xl font-bold">{averageRating.toFixed(1)}</p>
+                <p className="text-sm font-medium text-muted-foreground">
+                  Rating
+                </p>
+                <p className="text-2xl font-bold">
+                  {averageRating.toFixed(1)}
+                </p>
               </div>
             </CardContent>
           </Card>
         </div>
 
-        {/* Main Tabs */}
-        <Tabs defaultValue="products" value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+        {/* Tabs */}
+        <Tabs
+          defaultValue="products"
+          value={activeTab}
+          onValueChange={setActiveTab}
+          className="space-y-4"
+        >
           <TabsList>
             <TabsTrigger value="products">
               <Package className="h-4 w-4 mr-2" /> Products
@@ -227,7 +261,12 @@ export default function SellerDashboard() {
           </TabsContent>
 
           <TabsContent value="orders">
-            <OrderManager seller={seller} orders={orders} isLoading={ordersLoading} error={ordersError} />
+            <OrderManager
+              seller={seller}
+              orders={orders}
+              isLoading={ordersLoading}
+              error={ordersError}
+            />
           </TabsContent>
 
           <TabsContent value="profile">
@@ -237,4 +276,4 @@ export default function SellerDashboard() {
       </div>
     </div>
   );
-}
+                  }
