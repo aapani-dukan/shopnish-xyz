@@ -2,7 +2,7 @@
 import express, { type Request, type Response, type NextFunction, type Express } from "express";
 import cors from "cors";
 import apiRouter from "./routes";
-import "./lib/firebaseAdmin";
+import "./lib/firebaseAdmin.ts";
 import { createServer, type Server } from "http";
 import { Server as SocketIOServer } from "socket.io";
 import { drizzle } from "drizzle-orm/node-postgres";
@@ -13,8 +13,8 @@ import { fileURLToPath } from "url";
 import cookieParser from "cookie-parser";
 
 // ✅ Socket helper import
-import { getIO } from "./socket";
-import { setIO } from " ./socket";
+import { getIO } from "./socket.ts";
+import { setIO } from " ./socket.ts";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
