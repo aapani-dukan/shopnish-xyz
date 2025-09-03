@@ -13,6 +13,7 @@ import {
 import { eq, sql } from 'drizzle-orm';
 import { AuthenticatedRequest, verifyToken } from '../server/middleware/verifyToken';
 import { requireDeliveryBoyAuth } from '../server/middleware/authMiddleware';
+import { getIO } from '../server/socket'; 
 
 const router = Router();
 
@@ -78,6 +79,8 @@ router.post('/register', async (req: Request, res: Response) => {
       return res.status(500).json({ message: "Failed to submit application. Please try again." });
     }
 
+    getIO().emit("admin:update", { type: "delivery-boy-register", data: newDeliveryBoy });
+    
     return res.status(201).json(newDeliveryBoy);
   } catch (error: any) {
     console.error("❌ Drizzle insert error:", error);
@@ -209,6 +212,9 @@ router.patch('/orders/:orderId/status', requireDeliveryBoyAuth, async (req: Auth
       message: "Order status updated successfully.",
       order: updatedOrder,
     });
+
+    // 🔔 Socket emit → Customer और Admin को inform करना
+    getIO().emit("order:update", { type: "status-change", data: updatedOrder });
   } catch (error: any) {
     console.error("Failed to update order status:", error);
     res.status(500).json({ message: "Failed to update order status." });
@@ -265,6 +271,8 @@ router.post('/orders/:orderId/complete-delivery', requireDeliveryBoyAuth, async 
       message: "Delivery completed successfully.",
       order: updatedOrder,
     });
+    // 🔔 Socket emit → Customer और Admin को inform करना
+    getIO().emit("order:update", { type: "delivered", data: updatedOrder });
   } catch (error: any) {
     console.error("Failed to complete delivery:", error);
     res.status(500).json({ message: "Failed to complete delivery." });
