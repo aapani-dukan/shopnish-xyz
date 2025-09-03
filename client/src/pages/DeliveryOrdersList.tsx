@@ -1,134 +1,198 @@
-// client/src/pages/delivery-dashboard/DeliveryOrdersList.tsx
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { toast } from "@/hooks/use-toast";
-import { Button } from "@/components/ui/button";
-import { Check, X, Loader2 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Checkbox } from '@/components/ui/checkbox';
-import { Badge } from "@/components/ui/badge";
-import {input } from "@/components/ui/input",
-// UI Components (जैसा पहले था)
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  User,
+  LogOut,
+  Package,
+  Clock,
+  CheckCircle,
+  Navigation,
+  Phone,
+  MapPin,
+  Loader2,
+} from "lucide-react";
+import DeliveryOtpDialog from "./DeliveryOtpDialog";
 
-import { CheckCircle, Package, Truck, MapPin, Clock, Phone } from "lucide-react";
-import { logout } from "@/lib/firebase";
+// -----------------------------------------------------------------------------
+// ## मॉक UI कंपोनेंट और यूटिलिटी फ़ंक्शन
+// -----------------------------------------------------------------------------
+const useToast = () => {
+  return {
+    toast: ({ title, description, variant }) => {
+      console.log(`Toast: ${title} - ${description} (Variant: ${variant})`);
+    },
+  };
+};
+const Button = ({ children, onClick, variant, size, disabled, ...props }) => (
+  <button onClick={onClick} disabled={disabled} className={`p-2 rounded-md ${variant === 'outline' ? 'border' : 'bg-blue-500 text-white'} ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`} {...props}>
+    {children}
+  </button>
+);
+const Card = ({ children }) => <div className="bg-white rounded-lg shadow-md p-4">{children}</div>;
+const CardContent = ({ children, className }) => <div className={`p-4 ${className}`}>{children}</div>;
+const CardHeader = ({ children }) => <div className="p-4 border-b">{children}</div>;
+const CardTitle = ({ children }) => <h2 className="text-xl font-bold">{children}</h2>;
+const Badge = ({ children, className }) => <span className={`px-2 py-1 text-xs rounded-full ${className}`}>{children}</span>;
 
-// Helpers
-const statusColor = (status: string) => {
+// -----------------------------------------------------------------------------
+// ## कोर लॉजिक और हेल्पर्स
+// -----------------------------------------------------------------------------
+const statusColor = (status) => {
   switch (status) {
     case "ready":
-    case "pending": return "bg-yellow-500";
-    case "picked_up": return "bg-blue-500";
-    case "out_for_delivery": return "bg-purple-500";
-    case "delivered": return "bg-green-500";
-    default: return "bg-gray-500";
+    case "pending":
+      return "bg-yellow-500";
+    case "picked_up":
+      return "bg-blue-500";
+    case "out_for_delivery":
+      return "bg-purple-500";
+    case "delivered":
+      return "bg-green-500";
+    default:
+      return "bg-gray-500";
   }
 };
-const statusText = (status: string) => {
+const statusText = (status) => {
   switch (status) {
     case "ready":
-    case "pending": return "पिकअप के लिए तैयार";
-    case "picked_up": return "पिकअप किया गया";
-    case "out_for_delivery": return "डिलीवरी के लिए निकला";
-    case "delivered": return "डिलीवर किया गया";
-    default: return status;
+    case "pending":
+      return "पिकअप के लिए तैयार";
+    case "picked_up":
+      return "पिकअप किया गया";
+    case "out_for_delivery":
+      return "डिलीवरी के लिए निकला";
+    case "delivered":
+      return "डिलीवर किया गया";
+    default:
+      return status;
   }
 };
-const nextStatus = (status: string) => {
+const nextStatus = (status) => {
   switch (status) {
     case "ready":
-    case "pending": return "picked_up";
-    case "picked_up": return "out_for_delivery";
-    case "out_for_delivery": return "delivered";
-    default: return null;
+    case "pending":
+      return "picked_up";
+    case "picked_up":
+      return "out_for_delivery";
+    case "out_for_delivery":
+      return "delivered";
+    default:
+      return null;
   }
 };
-const nextStatusLabel = (status: string) => {
+const nextStatusLabel = (status) => {
   switch (status) {
     case "ready":
-    case "pending": return "पिकअप के रूप में चिह्नित करें";
-    case "picked_up": return "डिलीवरी शुरू करें";
-    case "out_for_delivery": return "डिलीवरी पूरी करें";
-    default: return "";
+    case "pending":
+      return "पिकअप के रूप में चिह्नित करें";
+    case "picked_up":
+      return "डिलीवरी शुरू करें";
+    case "out_for_delivery":
+      return "डिलीवरी पूरी करें";
+    default:
+      return "";
   }
 };
 
-interface Order {
-  id: string;
-  orderNumber: string;
-  status: string;
-  total: number;
-  items: any[];
-  deliveryAddress: any;
-}
-
-interface Props {
-  userId: string;
-  auth: any;
-}
-
-export default function DeliveryOrdersList({ userId, auth }: Props) {
+// -----------------------------------------------------------------------------
+// ## मुख्य React कंपोनेंट: DeliveryOrdersList
+// -----------------------------------------------------------------------------
+export default function DeliveryOrdersList({ userId, auth }) {
+  const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [orders, setOrders] = useState<Order[]>([]);
+  const [orders, setOrders] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
-
-  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [selectedOrder, setSelectedOrder] = useState(null);
   const [otp, setOtp] = useState("");
   const [otpDialogOpen, setOtpDialogOpen] = useState(false);
 
-  const toast = { toast: ({ title, description, variant }) => console.log(title, description, variant) };
-
-  // ─── Fetch Orders ───
-  React.useEffect(() => {
-    const fetchOrders = async () => {
-      setIsLoading(true);
-      try {
-        const res = await fetch(`/api/delivery/orders?deliveryBoyId=${userId}`);
-        const data = await res.json();
-        setOrders(data.orders || []);
-      } catch (err) {
-        console.error(err);
-        setOrders([]);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchOrders();
+  // ─── Data Fetching ───
+  const fetchOrders = async (id) => {
+    setIsLoading(true);
+    try {
+      const response = await fetch(`/api/delivery/orders?deliveryBoyId=${id}`);
+      if (!response.ok) throw new Error("नेटवर्क प्रतिक्रिया ठीक नहीं थी");
+      const data = await response.json();
+      setOrders(data.orders);
+    } catch (error) {
+      console.error("ऑर्डर फ़ेच करने में त्रुटि:", error);
+      toast({
+        title: "डेटा फ़ेच करने में त्रुटि",
+        description: "ऑर्डर फ़ेच करते समय एक समस्या हुई।",
+        variant: "destructive",
+      });
+      setOrders([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  useEffect(() => {
+    if (userId) {
+      fetchOrders(userId);
+    }
   }, [userId]);
 
   // ─── Mutations ───
   const updateStatusMutation = useMutation({
-    mutationFn: async ({ orderId, status }: any) => {
-      const res = await fetch(`/api/delivery/update-status`, {
+    mutationFn: async ({ orderId, status }) => {
+      const response = await fetch(`/api/delivery/update-status`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ orderId, status }),
       });
-      return res.json();
+      if (!response.ok) throw new Error("स्टेटस अपडेट करने में विफल");
+      return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries([`/api/delivery/orders`]);
+      queryClient.invalidateQueries({ queryKey: ["/api/delivery/orders"] });
+      toast({
+        title: "स्टेटस अपडेट किया गया",
+        description: "ऑर्डर का स्टेटस सफलतापूर्वक अपडेट किया गया।",
+      });
+      fetchOrders(userId);
+    },
+    onError: (error) => {
+      console.error("Mutation failed:", error);
+      toast({
+        title: "स्टेटस अपडेट करने में त्रुटि",
+        description: "कृपया पुनः प्रयास करें।",
+        variant: "destructive",
+      });
     },
   });
 
   const handleOtpSubmit = useMutation({
-    mutationFn: async ({ orderId, otp }: any) => {
-      const res = await fetch(`/api/delivery/complete-delivery`, {
+    mutationFn: async ({ orderId, otp }) => {
+      const response = await fetch(`/api/delivery/complete-delivery`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ orderId, otp }),
       });
-      return res.json();
+      if (!response.ok) throw new Error("OTP सबमिशन विफल");
+      return response.json();
     },
     onSuccess: () => {
       setOtp("");
       setOtpDialogOpen(false);
       setSelectedOrder(null);
+      toast({
+        title: "डिलीवरी पूरी हुई",
+        description: "ऑर्डर को सफलतापूर्वक डिलीवर किया गया।",
+      });
+      fetchOrders(userId);
+    },
+    onError: (error) => {
+      console.error("OTP submission failed:", error);
+      toast({
+        title: "गलत OTP",
+        description: "कृपया OTP जांचें और फिर से प्रयास करें।",
+        variant: "destructive",
+      });
     },
   });
 
-  const handleStatusProgress = (order: Order) => {
+  // ─── Handlers ───
+  const handleStatusProgress = (order) => {
     if (order.status === "out_for_delivery") {
       setSelectedOrder(order);
       setOtpDialogOpen(true);
@@ -137,25 +201,33 @@ export default function DeliveryOrdersList({ userId, auth }: Props) {
     const next = nextStatus(order.status);
     if (next) updateStatusMutation.mutate({ orderId: order.id, status: next });
   };
-
   const handleOtpConfirmation = () => {
-    if (!selectedOrder || otp.trim().length !== 4) return;
+    if (!selectedOrder) return;
+    if (otp.trim().length !== 4) {
+      toast({
+        title: "OTP दर्ज करें",
+        description: "4-अंकों का OTP आवश्यक है।",
+        variant: "destructive",
+      });
+      return;
+    }
     handleOtpSubmit.mutate({ orderId: selectedOrder.id, otp });
   };
-
   const handleLogout = () => {
+    if (!auth) return;
     auth.signOut().then(() => window.location.reload());
   };
 
+  // -----------------------------------------------------------------------------
+  // ## JSX रेंडरिंग
+  // -----------------------------------------------------------------------------
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full" />
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
       </div>
     );
   }
-
-  // ─── JSX ───
   return (
     <div className="min-h-screen bg-gray-50 font-inter text-gray-800">
       <header className="bg-white shadow-sm border-b rounded-b-lg">
@@ -166,75 +238,191 @@ export default function DeliveryOrdersList({ userId, auth }: Props) {
             </div>
             <div>
               <h1 className="text-xl font-bold">डिलीवरी डैशबोर्ड</h1>
-              <p className="text-sm text-gray-600">वापस स्वागत है, डिलीवरी बॉय!</p>
+              <p className="text-sm text-gray-600">
+                वापस स्वागत है, डिलीवरी बॉय!
+              </p>
             </div>
           </div>
           <div className="flex space-x-2">
             <Button variant="outline" onClick={handleLogout}>
-              <LogOut className="w-4 h-4 mr-1" /> लॉगआउट
+              <LogOut className="w-4 h-4 mr-1" />
+              लॉगआउट
             </Button>
           </div>
         </div>
       </header>
-
-      {/* Orders List */}
+      <section className="max-w-6xl mx-auto px-4 py-8 grid grid-cols-1 md:grid-cols-4 gap-6">
+        <Card>
+          <CardContent className="p-6 flex items-center space-x-3">
+            <Package className="w-8 h-8 text-blue-600" />
+            <div>
+              <p className="text-2xl font-bold">{orders.length}</p>
+              <p className="text-sm text-gray-600">कुल ऑर्डर</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-6 flex items-center space-x-3">
+            <Clock className="w-8 h-8 text-yellow-600" />
+            <div>
+              <p className="text-2xl font-bold">
+                {orders.filter((o) =>
+                  ["ready", "picked_up", "out_for_delivery", "pending"].includes(o.status)
+                ).length}
+              </p>
+              <p className="text-sm text-gray-600">लंबित</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-6 flex items-center space-x-3">
+            <CheckCircle className="w-8 h-8 text-green-600" />
+            <div>
+              <p className="text-2xl font-bold">
+                {orders.filter((o) => o.status === "delivered").length}
+              </p>
+              <p className="text-sm text-gray-600">पूरे हुए</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-6 flex items-center space-x-3">
+            <Navigation className="w-8 h-8 text-purple-600" />
+            <div>
+              <p className="text-2xl font-bold">
+                {orders.filter((o) => o.status === "out_for_delivery").length}
+              </p>
+              <p className="text-sm text-gray-600">रास्ते में</p>
+            </div>
+          </CardContent>
+        </Card>
+      </section>
       <section className="max-w-6xl mx-auto px-4 pb-16 space-y-6">
-        {orders.map((order) => (
-          <Card key={order.id}>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle>ऑर्डर #{order.orderNumber}</CardTitle>
-                  <Badge className={`ml-2 ${statusColor(order.status)} text-white`}>
+        <h2 className="text-2xl font-bold">असाइन किए गए ऑर्डर</h2>
+        {orders.length === 0 ? (
+          <Card>
+            <CardContent className="py-12 text-center">
+              <Package className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+              <h3 className="text-lg font-medium mb-2">कोई ऑर्डर असाइन नहीं</h3>
+              <p className="text-gray-600">
+                नए डिलीवरी असाइनमेंट के लिए बाद में देखें।
+              </p>
+            </CardContent>
+          </Card>
+        ) : (
+          orders.map((order) => (
+            <Card key={order.id}>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>ऑर्डर #{order.orderNumber}</CardTitle>
+                    <p className="text-sm text-gray-600">
+                      {order.items.length} आइटम • ₹{order.total}
+                    </p>
+                  </div>
+                  <Badge className={`${statusColor(order.status)} text-white`}>
                     {statusText(order.status)}
                   </Badge>
                 </div>
-                <div className="text-gray-600 font-medium">₹{order.total}</div>
-              </div>
-            </CardHeader>
-            <CardContent className="pt-2 space-y-2">
-              <div>
-                <strong>Items:</strong> {order.items.map((i) => i.name).join(", ")}
-              </div>
-              <div>
-                <strong>Address:</strong> {order.deliveryAddress.address}, {order.deliveryAddress.city}
-              </div>
-              <Button
-                className="mt-2"
-                onClick={() => handleStatusProgress(order)}
-                disabled={order.status === "delivered"}
-              >
-                {nextStatusLabel(order.status)}
-              </Button>
-            </CardContent>
-          </Card>
-        ))}
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <div className="space-y-4">
+                    <div>
+                      <h4 className="font-medium mb-2">ग्राहक विवरण</h4>
+                      <p className="font-medium">{order.deliveryAddress.fullName}</p>
+                      <div className="flex items-center space-x-2 text-sm text-gray-600">
+                        <Phone className="w-4 h-4" />
+                        <span>{order.deliveryAddress.phone}</span>
+                      </div>
+                    </div>
+                    <div>
+                      <h4 className="font-medium mb-2">डिलीवरी पता</h4>
+                      <div className="flex items-start space-x-2 text-sm text-gray-600">
+                        <MapPin className="w-4 h-4 mt-0.5" />
+                        <div>
+                          <p>{order.deliveryAddress.address}</p>
+                          <p>
+                            {order.deliveryAddress.city}, {order.deliveryAddress.pincode}
+                          </p>
+                          {order.deliveryAddress.landmark && (
+                            <p className="text-xs">
+                              लैंडमार्क: {order.deliveryAddress.landmark}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div>
+                    <h4 className="font-medium mb-2">ऑर्डर आइटम्स</h4>
+                    <div className="space-y-2 max-h-32 overflow-y-auto pr-2">
+                      {order.items.map((item) => (
+                        <div key={item.id} className="flex items-center space-x-3 text-sm">
+                          <img
+                            src={item.product.image}
+                            alt={item.product.name}
+                            className="w-8 h-8 object-cover rounded"
+                          />
+                          <div className="flex-1">
+                            <p className="font-medium">{item.product.name}</p>
+                            <p className="text-gray-600">
+                              Qty: {item.quantity} {item.product.unit}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-3 mt-6 pt-4 border-t">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => window.open(`tel:${order.deliveryAddress.phone}`)}
+                  >
+                    <Phone className="w-4 h-4 mr-2" />
+                    ग्राहक को कॉल करें
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() =>
+                      window.open(
+                        `https://maps.google.com/?q=${encodeURIComponent(
+                          `${order.deliveryAddress.address}, ${order.deliveryAddress.city}`
+                        )}`
+                      )
+                    }
+                  >
+                    <Navigation className="w-4 h-4 mr-2" />
+                    नेविगेट करें
+                  </Button>
+                  {nextStatus(order.status) && (
+                    <Button
+                      size="sm"
+                      onClick={() => handleStatusProgress(order)}
+                      disabled={updateStatusMutation.isPending}
+                    >
+                      {nextStatusLabel(order.status)}
+                    </Button>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          ))
+        )}
       </section>
-
-      {/* OTP Dialog */}
-      <Dialog open={otpDialogOpen} onOpenChange={setOtpDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>डिलीवरी OTP दर्ज करें</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-2">
-            <Label htmlFor="otp">OTP</Label>
-            <Input
-              id="otp"
-              value={otp}
-              onChange={(e) => setOtp(e.target.value)}
-              maxLength={4}
-              placeholder="4 अंकों का OTP"
-            />
-            <Button onClick={handleOtpConfirmation} disabled={otp.length !== 4}>
-              पुष्टि करें
-            </Button>
-            <Button variant="ghost" onClick={() => setOtpDialogOpen(false)}>
-              बंद करें
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <DeliveryOtpDialog
+        selectedOrder={selectedOrder}
+        otp={otp}
+        setOtp={setOtp}
+        otpDialogOpen={otpDialogOpen}
+        setOtpDialogOpen={setOtpDialogOpen}
+        handleOtpConfirmation={handleOtpConfirmation}
+        isSubmitting={handleOtpSubmit.isPending}
+      />
     </div>
   );
 }
+
