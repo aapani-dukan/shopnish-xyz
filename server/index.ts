@@ -13,7 +13,7 @@ import { fileURLToPath } from "url";
 import cookieParser from "cookie-parser";
 
 // ✅ Socket helper import
-import { setIO } from "./socket.ts";
+import { getIO } from "./socket.ts";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
