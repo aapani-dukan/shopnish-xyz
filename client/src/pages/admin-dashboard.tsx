@@ -1,411 +1,272 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Check, X, Loader2 } from "lucide-react";
 import api from "@/lib/api";
+import { socket } from "@/lib/socket"; // ✅ socket import
 
-// ✅ इंटरफेस
+// Interfaces
 interface Vendor {
-  id: string;
+  id: number;
   businessName: string;
-  businessPhone: string;
-  approvalStatus: string;
+  approvalStatus: "pending" | "approved" | "rejected";
+  rejectionReason?: string;
 }
 
 interface Product {
-  id: string;
+  id: number;
   name: string;
-  price: number;
-  approvalStatus: string;
+  approvalStatus: "pending" | "approved" | "rejected";
+  rejectionReason?: string;
 }
 
 interface DeliveryBoy {
-  id: string;
+  id: number;
   name: string;
-  email: string;
-  vehicleType: string;
-  approvalStatus: string;
+  approvalStatus: "pending" | "approved" | "rejected";
+  rejectionReason?: string;
 }
 
 const AdminDashboard: React.FC = () => {
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState("pending-vendors");
 
-  // ✅ डेटा फेचिंग (अब सही एडमिन API का उपयोग करके)
-  const { data: pendingVendors = [], isLoading: isLoadingVendors } = useQuery<Vendor[]>({
+  // ✅ socket.io real-time updates
+  useEffect(() => {
+    socket.on("admin:vendor-updated", () => {
+      queryClient.invalidateQueries({ queryKey: ["adminPendingVendors"] });
+      queryClient.invalidateQueries({ queryKey: ["adminApprovedVendors"] });
+    });
+
+    socket.on("admin:product-updated", () => {
+      queryClient.invalidateQueries({ queryKey: ["adminPendingProducts"] });
+      queryClient.invalidateQueries({ queryKey: ["adminApprovedProducts"] });
+    });
+
+    socket.on("admin:deliveryboy-updated", () => {
+      queryClient.invalidateQueries({ queryKey: ["adminPendingDeliveryBoys"] });
+      queryClient.invalidateQueries({ queryKey: ["adminApprovedDeliveryBoys"] });
+    });
+
+    return () => {
+      socket.off("admin:vendor-updated");
+      socket.off("admin:product-updated");
+      socket.off("admin:deliveryboy-updated");
+    };
+  }, [queryClient]);
+
+  // Vendors API calls
+  const { data: pendingVendors } = useQuery<Vendor[]>({
     queryKey: ["adminPendingVendors"],
     queryFn: async () => {
       const res = await api.get("/api/admin/vendors/pending");
-      return res.data && Array.isArray(res.data) ? res.data : [];
+      return res.data;
     },
   });
 
-  const { data: approvedVendors = [], isLoading: isLoadingApprovedVendors } = useQuery<Vendor[]>({
+  const { data: approvedVendors } = useQuery<Vendor[]>({
     queryKey: ["adminApprovedVendors"],
     queryFn: async () => {
       const res = await api.get("/api/admin/vendors/approved");
-      return res.data && Array.isArray(res.data) ? res.data : [];
+      return res.data;
     },
   });
 
-  const { data: pendingProducts = [], isLoading: isLoadingPendingProducts } = useQuery<Product[]>({
+  // Products API calls
+  const { data: pendingProducts } = useQuery<Product[]>({
     queryKey: ["adminPendingProducts"],
     queryFn: async () => {
-      // ✅ API कॉल को नए रास्तों से जोड़ा
       const res = await api.get("/api/admin/products/pending");
-      return res.data && Array.isArray(res.data) ? res.data : [];
+      return res.data;
     },
   });
 
-  const { data: approvedProducts = [], isLoading: isLoadingApprovedProducts } = useQuery<Product[]>({
+  const { data: approvedProducts } = useQuery<Product[]>({
     queryKey: ["adminApprovedProducts"],
     queryFn: async () => {
-      // ✅ API कॉल को नए रास्तों से जोड़ा
       const res = await api.get("/api/admin/products/approved");
-      return res.data && Array.isArray(res.data) ? res.data : [];
+      return res.data;
     },
   });
 
-  // ✅ डिलीवरी बॉय के लिए नया डेटा फ़ेचिंग
-  const { data: pendingDeliveryBoys = [], isLoading: isLoadingPendingDeliveryBoys } = useQuery<DeliveryBoy[]>({
+  // Delivery Boys API calls
+  const { data: pendingDeliveryBoys } = useQuery<DeliveryBoy[]>({
     queryKey: ["adminPendingDeliveryBoys"],
     queryFn: async () => {
-      const res = await api.get("/api/admin/delivery-boys/pending");
-      return res.data && Array.isArray(res.data) ? res.data : [];
+      const res = await api.get("/api/admin/deliveryboys/pending");
+      return res.data;
     },
   });
 
-  const { data: approvedDeliveryBoys = [], isLoading: isLoadingApprovedDeliveryBoys } = useQuery<DeliveryBoy[]>({
+  const { data: approvedDeliveryBoys } = useQuery<DeliveryBoy[]>({
     queryKey: ["adminApprovedDeliveryBoys"],
     queryFn: async () => {
-      const res = await api.get("/api/admin/delivery-boys/approved");
-      return res.data && Array.isArray(res.data) ? res.data : [];
+      const res = await api.get("/api/admin/deliveryboys/approved");
+      return res.data;
     },
   });
 
-
-  // ✅ म्यूटेशन (अब सही एडमिन API का उपयोग करके)
+  // Mutations
   const approveVendorMutation = useMutation({
-    mutationFn: (vendorId: string) => api.patch(`/api/admin/vendors/approve/${vendorId}`),
+    mutationFn: (vendorId: number) => api.post(`/api/admin/vendors/${vendorId}/approve`),
     onSuccess: () => {
-      toast({ title: "वेंडर मंज़ूर हुआ!" });
+      toast({ title: "Vendor Approved" });
       queryClient.invalidateQueries({ queryKey: ["adminPendingVendors"] });
       queryClient.invalidateQueries({ queryKey: ["adminApprovedVendors"] });
-    },
-    onError: (error: any) => {
-      console.error("वेंडर मंज़ूर करने में त्रुटि:", error);
-      toast({ title: "वेंडर मंज़ूर करने में विफल", variant: "destructive" });
     },
   });
 
   const rejectVendorMutation = useMutation({
-    mutationFn: (vendorId: string) => api.patch(`/api/admin/vendors/reject/${vendorId}`),
+    mutationFn: (vendorId: number) => api.post(`/api/admin/vendors/${vendorId}/reject`, { reason: "Not eligible" }),
     onSuccess: () => {
-      toast({ title: "वेंडर अस्वीकृत हुआ!" });
+      toast({ title: "Vendor Rejected" });
       queryClient.invalidateQueries({ queryKey: ["adminPendingVendors"] });
-      queryClient.invalidateQueries({ queryKey: ["adminApprovedVendors"] });
-    },
-    onError: (error: any) => {
-      console.error("वेंडर अस्वीकार करने में त्रुटि:", error);
-      toast({ title: "वेंडर अस्वीकार करने में विफल", variant: "destructive" });
     },
   });
-  
+
   const approveProductMutation = useMutation({
-    mutationFn: (productId: string) => api.patch(`/api/admin/products/approve/${productId}`),
+    mutationFn: (productId: number) => api.post(`/api/admin/products/${productId}/approve`),
     onSuccess: () => {
-      toast({ title: "प्रोडक्ट मंज़ूर हुआ!" });
+      toast({ title: "Product Approved" });
       queryClient.invalidateQueries({ queryKey: ["adminPendingProducts"] });
       queryClient.invalidateQueries({ queryKey: ["adminApprovedProducts"] });
-    },
-    onError: (error: any) => {
-      console.error("प्रोडक्ट मंज़ूर करने में त्रुटि:", error);
-      toast({ title: "प्रोडक्ट मंज़ूर करने में विफल", variant: "destructive" });
     },
   });
 
   const rejectProductMutation = useMutation({
-    mutationFn: (productId: string) => api.patch(`/api/admin/products/reject/${productId}`),
+    mutationFn: (productId: number) => api.post(`/api/admin/products/${productId}/reject`, { reason: "Not eligible" }),
     onSuccess: () => {
-      toast({ title: "प्रोडक्ट अस्वीकृत हुआ!" });
+      toast({ title: "Product Rejected" });
       queryClient.invalidateQueries({ queryKey: ["adminPendingProducts"] });
-      queryClient.invalidateQueries({ queryKey: ["adminApprovedProducts"] });
-    },
-    onError: (error: any) => {
-      console.error("प्रोडक्ट अस्वीकार करने में त्रुटि:", error);
-      toast({ title: "प्रोडक्ट अस्वीकार करने में विफल", variant: "destructive" });
     },
   });
 
   const approveDeliveryBoyMutation = useMutation({
-    mutationFn: (id: string) => api.patch(`/api/admin/delivery-boys/approve/${id}`),
+    mutationFn: (deliveryBoyId: number) => api.post(`/api/admin/deliveryboys/${deliveryBoyId}/approve`),
     onSuccess: () => {
-      toast({ title: "डिलीवरी बॉय मंज़ूर हुआ!" });
+      toast({ title: "Delivery Boy Approved" });
       queryClient.invalidateQueries({ queryKey: ["adminPendingDeliveryBoys"] });
       queryClient.invalidateQueries({ queryKey: ["adminApprovedDeliveryBoys"] });
-    },
-    onError: (error: any) => {
-      console.error("डिलीवरी बॉय मंज़ूर करने में त्रुटि:", error);
-      toast({ title: "डिलीवरी बॉय मंज़ूर करने में विफल", variant: "destructive" });
     },
   });
 
   const rejectDeliveryBoyMutation = useMutation({
-    mutationFn: (id: string) => api.patch(`/api/admin/delivery-boys/reject/${id}`),
+    mutationFn: (deliveryBoyId: number) => api.post(`/api/admin/deliveryboys/${deliveryBoyId}/reject`, { reason: "Not eligible" }),
     onSuccess: () => {
-      toast({ title: "डिलीवरी बॉय अस्वीकृत हुआ!" });
+      toast({ title: "Delivery Boy Rejected" });
       queryClient.invalidateQueries({ queryKey: ["adminPendingDeliveryBoys"] });
-      queryClient.invalidateQueries({ queryKey: ["adminApprovedDeliveryBoys"] });
-    },
-    onError: (error: any) => {
-      console.error("डिलीवरी बॉय अस्वीकार करने में त्रुटि:", error);
-      toast({ title: "डिलीवरी बॉय अस्वीकार करने में विफल", variant: "destructive" });
     },
   });
+
+  // Render
   const renderContent = () => {
     switch (activeTab) {
-      case 'pending-vendors':
+      case "pending-vendors":
         return (
-          <div className="bg-white p-6 rounded-lg shadow-md">
-            <h2 className="text-xl font-bold mb-4">पेंडिंग वेंडर एप्लिकेशन</h2>
-            <div className="overflow-x-auto">
-              <table className="min-w-full table-auto border-collapse border border-gray-300">
-                <thead>
-                  <tr className="bg-gray-100">
-                    <th className="border px-4 py-2 text-left text-sm font-medium text-gray-700">व्यापार का नाम</th>
-                    <th className="border px-4 py-2 text-left text-sm font-medium text-gray-700">फ़ोन नंबर</th>
-                    <th className="border px-4 py-2 text-left text-sm font-medium text-gray-700">स्थिति</th>
-                    <th className="border px-4 py-2 text-left text-sm font-medium text-gray-700">एक्शन</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {isLoadingVendors ? (
-                    <tr><td colSpan={4} className="border px-4 py-4 text-center text-gray-500"><Loader2 className="h-5 w-5 animate-spin inline-block mr-2" /> लोडिंग...</td></tr>
-                  ) : pendingVendors.length > 0 ? (
-                    pendingVendors.map((vendor) => (
-                      <tr key={vendor.id} className="hover:bg-gray-50">
-                        <td className="border px-4 py-2">{vendor.businessName}</td>
-                        <td className="border px-4 py-2">{vendor.businessPhone}</td>
-                        <td className="border px-4 py-2">{vendor.approvalStatus}</td>
-                        <td className="border px-4 py-2 space-x-2">
-                          {vendor.approvalStatus === 'pending' && (
-                            <>
-                              <Button onClick={() => approveVendorMutation.mutate(vendor.id)} className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded-full text-sm" disabled={approveVendorMutation.isPending}><Check size={16} /></Button>
-                              <Button onClick={() => rejectVendorMutation.mutate(vendor.id)} className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-full text-sm" disabled={rejectVendorMutation.isPending}><X size={16} /></Button>
-                            </>
-                          )}
-                        </td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr><td colSpan={4} className="border px-4 py-4 text-center text-gray-500">कोई लंबित वेंडर एप्लिकेशन नहीं हैं।</td></tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        );
-        case 'approved-vendors':
-          return (
-            <div className="bg-white p-6 rounded-lg shadow-md">
-              <h2 className="text-xl font-bold mb-4">स्वीकृत वेंडर</h2>
-              <div className="overflow-x-auto">
-                <table className="min-w-full table-auto border-collapse border border-gray-300">
-                  <thead>
-                    <tr className="bg-gray-100">
-                      <th className="border px-4 py-2 text-left text-sm font-medium text-gray-700">व्यापार का नाम</th>
-                      <th className="border px-4 py-2 text-left text-sm font-medium text-gray-700">फ़ोन नंबर</th>
-                      <th className="border px-4 py-2 text-left text-sm font-medium text-gray-700">स्थिति</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {isLoadingApprovedVendors ? (
-                      <tr><td colSpan={3} className="border px-4 py-4 text-center text-gray-500"><Loader2 className="h-5 w-5 animate-spin inline-block mr-2" /> लोडिंग...</td></tr>
-                    ) : approvedVendors.length > 0 ? (
-                      approvedVendors.map((vendor) => (
-                        <tr key={vendor.id} className="hover:bg-gray-50">
-                          <td className="border px-4 py-2">{vendor.businessName}</td>
-                          <td className="border px-4 py-2">{vendor.businessPhone}</td>
-                          <td className="border px-4 py-2">{vendor.approvalStatus}</td>
-                        </tr>
-                      ))
-                    ) : (
-                      <tr><td colSpan={3} className="border px-4 py-4 text-center text-gray-500">कोई स्वीकृत वेंडर नहीं हैं।</td></tr>
-                    )}
-                  </tbody>
-                </table>
+          <div>
+            <h2 className="text-lg font-semibold mb-2">Pending Vendors</h2>
+            {pendingVendors?.map((vendor) => (
+              <div key={vendor.id} className="flex justify-between items-center bg-white p-2 rounded mb-2 shadow-sm">
+                <span>{vendor.businessName}</span>
+                <div>
+                  <Button variant="success" size="sm" onClick={() => approveVendorMutation.mutate(vendor.id)}>
+                    {approveVendorMutation.isPending ? <Loader2 className="animate-spin h-4 w-4" /> : <Check className="h-4 w-4" />}
+                  </Button>
+                  <Button variant="destructive" size="sm" onClick={() => rejectVendorMutation.mutate(vendor.id)} className="ml-2">
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
-            </div>
-          );
-      case 'pending-products':
-        return (
-          <div className="bg-white p-6 rounded-lg shadow-md">
-            <h2 className="text-xl font-bold mb-4">पेंडिंग प्रोडक्ट अप्रूवल</h2>
-            <div className="overflow-x-auto">
-              <table className="min-w-full table-auto border-collapse border border-gray-300">
-                <thead>
-                  <tr className="bg-gray-100">
-                    <th className="border px-4 py-2 text-left text-sm font-medium text-gray-700">नाम</th>
-                    <th className="border px-4 py-2 text-left text-sm font-medium text-gray-700">कीमत</th>
-                    <th className="border px-4 py-2 text-left text-sm font-medium text-gray-700">स्थिति</th>
-                    <th className="border px-4 py-2 text-left text-sm font-medium text-gray-700">एक्शन</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {isLoadingPendingProducts ? (
-                    <tr><td colSpan={4} className="border px-4 py-4 text-center text-gray-500"><Loader2 className="h-5 w-5 animate-spin inline-block mr-2" /> लोडिंग...</td></tr>
-                  ) : pendingProducts.length > 0 ? (
-                    pendingProducts.map((product) => (
-                      <tr key={product.id} className="hover:bg-gray-50">
-                        <td className="border px-4 py-2">{product.name}</td>
-                        <td className="border px-4 py-2">₹{product.price}</td>
-                        <td className="border px-4 py-2">{product.approvalStatus}</td>
-                        <td className="border px-4 py-2 space-x-2">
-                          <Button onClick={() => approveProductMutation.mutate(product.id)} className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded-full text-sm" disabled={approveProductMutation.isPending}><Check size={16} /></Button>
-                          <Button onClick={() => rejectProductMutation.mutate(product.id)} className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-full text-sm" disabled={rejectProductMutation.isPending}><X size={16} /></Button>
-                        </td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr><td colSpan={4} className="border px-4 py-4 text-center text-gray-500">कोई पेंडिंग प्रोडक्ट नहीं मिले।</td></tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
+            ))}
           </div>
         );
-      case 'approved-products':
+
+      case "approved-vendors":
         return (
-          <div className="bg-white p-6 rounded-lg shadow-md">
-            <h2 className="text-xl font-bold mb-4">स्वीकृत प्रोडक्ट</h2>
-            <div className="overflow-x-auto">
-              <table className="min-w-full table-auto border-collapse border border-gray-300">
-                <thead>
-                  <tr className="bg-gray-100">
-                    <th className="border px-4 py-2 text-left text-sm font-medium text-gray-700">नाम</th>
-                    <th className="border px-4 py-2 text-left text-sm font-medium text-gray-700">कीमत</th>
-                    <th className="border px-4 py-2 text-left text-sm font-medium text-gray-700">स्थिति</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {isLoadingApprovedProducts ? (
-                    <tr><td colSpan={3} className="border px-4 py-4 text-center text-gray-500"><Loader2 className="h-5 w-5 animate-spin inline-block mr-2" /> लोडिंग...</td></tr>
-                  ) : approvedProducts.length > 0 ? (
-                    approvedProducts.map((product) => (
-                      <tr key={product.id} className="hover:bg-gray-50">
-                        <td className="border px-4 py-2">{product.name}</td>
-                        <td className="border px-4 py-2">₹{product.price}</td>
-                        <td className="border px-4 py-2">{product.approvalStatus}</td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr><td colSpan={3} className="border px-4 py-4 text-center text-gray-500">कोई स्वीकृत प्रोडक्ट नहीं हैं।</td></tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
+          <div>
+            <h2 className="text-lg font-semibold mb-2">Approved Vendors</h2>
+            {approvedVendors?.map((vendor) => (
+              <div key={vendor.id} className="bg-white p-2 rounded mb-2 shadow-sm">{vendor.businessName}</div>
+            ))}
           </div>
         );
-      case 'pending-delivery-boys':
+
+      case "pending-products":
         return (
-          <div className="bg-white p-6 rounded-lg shadow-md">
-            <h2 className="text-xl font-bold mb-4">पेंडिंग डिलीवरी बॉय एप्लिकेशन</h2>
-            <div className="overflow-x-auto">
-              <table className="min-w-full table-auto border-collapse border border-gray-300">
-                <thead>
-                  <tr className="bg-gray-100">
-                    <th className="border px-4 py-2 text-left text-sm font-medium text-gray-700">नाम</th>
-                    <th className="border px-4 py-2 text-left text-sm font-medium text-gray-700">ईमेल</th>
-                    <th className="border px-4 py-2 text-left text-sm font-medium text-gray-700">वाहन का प्रकार</th>
-                    <th className="border px-4 py-2 text-left text-sm font-medium text-gray-700">स्थिति</th>
-                    <th className="border px-4 py-2 text-left text-sm font-medium text-gray-700">एक्शन</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {isLoadingPendingDeliveryBoys ? (
-                    <tr><td colSpan={5} className="border px-4 py-4 text-center text-gray-500"><Loader2 className="h-5 w-5 animate-spin inline-block mr-2" /> लोडिंग...</td></tr>
-                  ) : pendingDeliveryBoys.length > 0 ? (
-                    pendingDeliveryBoys.map((boy) => (
-                      <tr key={boy.id} className="hover:bg-gray-50">
-                        <td className="border px-4 py-2">{boy.name}</td>
-                        <td className="border px-4 py-2">{boy.email}</td>
-                        <td className="border px-4 py-2">{boy.vehicleType}</td>
-                        <td className="border px-4 py-2"><span className="font-semibold text-yellow-500">{boy.approvalStatus}</span></td>
-                        <td className="border px-4 py-2 space-x-2">
-                          <Button onClick={() => approveDeliveryBoyMutation.mutate(boy.id)} className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded-full text-sm" disabled={approveDeliveryBoyMutation.isPending}><Check size={16} /></Button>
-                          <Button onClick={() => rejectDeliveryBoyMutation.mutate(boy.id)} className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-full text-sm" disabled={rejectDeliveryBoyMutation.isPending}><X size={16} /></Button>
-                        </td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr><td colSpan={5} className="border px-4 py-4 text-center text-gray-500">कोई लंबित डिलीवरी बॉय एप्लिकेशन नहीं हैं।</td></tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
+          <div>
+            <h2 className="text-lg font-semibold mb-2">Pending Products</h2>
+            {pendingProducts?.map((product) => (
+              <div key={product.id} className="flex justify-between items-center bg-white p-2 rounded mb-2 shadow-sm">
+                <span>{product.name}</span>
+                <div>
+                  <Button variant="success" size="sm" onClick={() => approveProductMutation.mutate(product.id)}>
+                    <Check className="h-4 w-4" />
+                  </Button>
+                  <Button variant="destructive" size="sm" onClick={() => rejectProductMutation.mutate(product.id)} className="ml-2">
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            ))}
           </div>
         );
-      case 'approved-delivery-boys':
+
+      case "approved-products":
         return (
-          <div className="bg-white p-6 rounded-lg shadow-md">
-            <h2 className="text-xl font-bold mb-4">स्वीकृत डिलीवरी बॉय</h2>
-            <div className="overflow-x-auto">
-              <table className="min-w-full table-auto border-collapse border border-gray-300">
-                <thead>
-                  <tr className="bg-gray-100">
-                    <th className="border px-4 py-2 text-left text-sm font-medium text-gray-700">नाम</th>
-                    <th className="border px-4 py-2 text-left text-sm font-medium text-gray-700">ईमेल</th>
-                    <th className="border px-4 py-2 text-left text-sm font-medium text-gray-700">वाहन का प्रकार</th>
-                    <th className="border px-4 py-2 text-left text-sm font-medium text-gray-700">स्थिति</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {isLoadingApprovedDeliveryBoys ? (
-                    <tr><td colSpan={4} className="border px-4 py-4 text-center text-gray-500"><Loader2 className="h-5 w-5 animate-spin inline-block mr-2" /> लोडिंग...</td></tr>
-                  ) : approvedDeliveryBoys.length > 0 ? (
-                    approvedDeliveryBoys.map((boy) => (
-                      <tr key={boy.id} className="hover:bg-gray-50">
-                        <td className="border px-4 py-2">{boy.name}</td>
-                        <td className="border px-4 py-2">{boy.email}</td>
-                        <td className="border px-4 py-2">{boy.vehicleType}</td>
-                        <td className="border px-4 py-2"><span className="font-semibold text-green-500">{boy.approvalStatus}</span></td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr><td colSpan={4} className="border px-4 py-4 text-center text-gray-500">कोई स्वीकृत डिलीवरी बॉय नहीं हैं।</td></tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
+          <div>
+            <h2 className="text-lg font-semibold mb-2">Approved Products</h2>
+            {approvedProducts?.map((product) => (
+              <div key={product.id} className="bg-white p-2 rounded mb-2 shadow-sm">{product.name}</div>
+            ))}
           </div>
         );
+
+      case "pending-deliveryboys":
+        return (
+          <div>
+            <h2 className="text-lg font-semibold mb-2">Pending Delivery Boys</h2>
+            {pendingDeliveryBoys?.map((dboy) => (
+              <div key={dboy.id} className="flex justify-between items-center bg-white p-2 rounded mb-2 shadow-sm">
+                <span>{dboy.name}</span>
+                <div>
+                  <Button variant="success" size="sm" onClick={() => approveDeliveryBoyMutation.mutate(dboy.id)}>
+                    <Check className="h-4 w-4" />
+                  </Button>
+                  <Button variant="destructive" size="sm" onClick={() => rejectDeliveryBoyMutation.mutate(dboy.id)} className="ml-2">
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        );
+
+      case "approved-deliveryboys":
+        return (
+          <div>
+            <h2 className="text-lg font-semibold mb-2">Approved Delivery Boys</h2>
+            {approvedDeliveryBoys?.map((dboy) => (
+              <div key={dboy.id} className="bg-white p-2 rounded mb-2 shadow-sm">{dboy.name}</div>
+            ))}
+          </div>
+        );
+
       default:
-        return null;
+        return <p>Select a tab</p>;
     }
   };
 
   return (
     <div className="p-4 bg-gray-50 min-h-screen font-inter">
-      <div className="flex flex-wrap space-x-2 space-y-2 sm:space-y-0 sm:space-x-4 mb-4">
-        <Button onClick={() => setActiveTab("pending-vendors")} className={`px-4 py-2 rounded ${activeTab === "pending-vendors" ? "bg-blue-600 text-white" : "bg-gray-200 text-gray-800 hover:bg-gray-300"}`}>
-          पेंडिंग वेंडर
-        </Button>
-        <Button onClick={() => setActiveTab("approved-vendors")} className={`px-4 py-2 rounded ${activeTab === "approved-vendors" ? "bg-blue-600 text-white" : "bg-gray-200 text-gray-800 hover:bg-gray-300"}`}>
-          स्वीकृत वेंडर
-        </Button>
-        <Button onClick={() => setActiveTab("pending-products")} className={`px-4 py-2 rounded ${activeTab === "pending-products" ? "bg-blue-600 text-white" : "bg-gray-200 text-gray-800 hover:bg-gray-300"}`}>
-          पेंडिंग प्रोडक्ट
-        </Button>
-        <Button onClick={() => setActiveTab("approved-products")} className={`px-4 py-2 rounded ${activeTab === "approved-products" ? "bg-blue-600 text-white" : "bg-gray-200 text-gray-800 hover:bg-gray-300"}`}>
-          स्वीकृत प्रोडक्ट
-        </Button>
-        <Button onClick={() => setActiveTab("pending-delivery-boys")} className={`px-4 py-2 rounded ${activeTab === "pending-delivery-boys" ? "bg-blue-600 text-white" : "bg-gray-200 text-gray-800 hover:bg-gray-300"}`}>
-          पेंडिंग डिलीवरी बॉय
-        </Button>
-        <Button onClick={() => setActiveTab("approved-delivery-boys")} className={`px-4 py-2 rounded ${activeTab === "approved-delivery-boys" ? "bg-blue-600 text-white" : "bg-gray-200 text-gray-800 hover:bg-gray-300"}`}>
-          स्वीकृत डिलीवरी बॉय
-        </Button>
+      <h1 className="text-2xl font-bold mb-4">Admin Dashboard</h1>
+      <div className="flex space-x-4 mb-6">
+        <Button onClick={() => setActiveTab("pending-vendors")}>Pending Vendors</Button>
+        <Button onClick={() => setActiveTab("approved-vendors")}>Approved Vendors</Button>
+        <Button onClick={() => setActiveTab("pending-products")}>Pending Products</Button>
+        <Button onClick={() => setActiveTab("approved-products")}>Approved Products</Button>
+        <Button onClick={() => setActiveTab("pending-deliveryboys")}>Pending Delivery Boys</Button>
+        <Button onClick={() => setActiveTab("approved-deliveryboys")}>Approved Delivery Boys</Button>
       </div>
       {renderContent()}
     </div>
