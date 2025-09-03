@@ -6,6 +6,8 @@ import { useQueryClient, useMutation } from "@tanstack/react-query";
 import { OrderWithItems, Seller, orderStatusEnum } from "@shared/backend/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useSocket } from "@/hooks/useSocket"; // ✅ नया import
+import { useEffect } from "react";
 
 interface OrderManagerProps {
   orders: OrderWithItems[] | undefined;
@@ -39,7 +41,31 @@ export default function OrderManager({
 }: OrderManagerProps) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { socket } = useSocket(); // ✅ socket instance
 
+  // ---------------- SOCKET.IO LISTENERS ----------------
+  useEffect(() => {
+    if (!socket || !seller) return;
+
+    // जब किसी order का status बदले
+    socket.on("order-status-updated", (updatedOrder: OrderWithItems) => {
+      console.log("📦 Order status updated:", updatedOrder);
+
+      // React Query cache invalidate → orders दुबारा fetch
+      queryClient.invalidateQueries({ queryKey: ["/api/sellers/orders"] });
+
+      toast({
+        title: "Order Updated",
+        description: `Order #${updatedOrder.id} is now ${updatedOrder.status}`,
+      });
+    });
+
+    return () => {
+      socket.off("order-status-updated");
+    };
+  }, [socket, seller, queryClient, toast]);
+
+  // ---------------- MUTATION (STATUS UPDATE) ----------------
   const { mutate, isPending } = useMutation({
     mutationFn: async ({
       orderId,
@@ -79,6 +105,7 @@ export default function OrderManager({
     mutate({ orderId, newStatus });
   };
 
+  // ---------------- RENDER HELPERS ----------------
   const renderStatusActions = (order: OrderWithItems) => {
     switch (order.status) {
       case "pending":
@@ -157,22 +184,16 @@ export default function OrderManager({
             </div>
 
             {/* ✅ Customer */}
-            
-
-{order.customer && order.deliveryAddress && (
-  <p className="text-sm">
-    Customer: 
-    <strong>
-      {/* पहले customer.firstName का उपयोग करें,
-          अगर वह नहीं है तो deliveryAddress.fullName का उपयोग करें।
-      */}
-      {order.customer.firstName || order.deliveryAddress.fullName || "Unknown"}
-    </strong>
-  </p>
-)}
-            
-            
-            
+            {order.customer && order.deliveryAddress && (
+              <p className="text-sm">
+                Customer:{" "}
+                <strong>
+                  {order.customer.firstName ||
+                    order.deliveryAddress.fullName ||
+                    "Unknown"}
+                </strong>
+              </p>
+            )}
 
             {/* ✅ Payment Info */}
             <p className="text-sm text-muted-foreground">
