@@ -119,7 +119,7 @@ router.post("/update-status", async (req: Request, res: Response) => {
       .where(eq(orders.id, orderId))
       .returning();
 
-    io.emit("delivery:orders-changed", {
+    getIO().emit("delivery:orders-changed", {
       reason: "status-updated",
       orderId,
       status,
