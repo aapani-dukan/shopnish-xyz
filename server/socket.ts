@@ -4,11 +4,14 @@ import type { Server as HTTPServer } from "http";
 
 let io: Server | null = null;
 
-// Initialize Socket.IO with existing HTTP server
+/**
+ * Initialize Socket.IO with HTTP server
+ * या manually setIO से भी global io set किया जा सकता है
+ */
 export function initSocket(server: HTTPServer) {
   io = new Server(server, {
     cors: {
-      origin: process.env.CLIENT_URL || "*", // frontend origin
+      origin: process.env.CLIENT_URL || "*",
       methods: ["GET", "POST"],
     },
   });
@@ -16,13 +19,11 @@ export function initSocket(server: HTTPServer) {
   io.on("connection", (socket) => {
     console.log("🔌 New client connected:", socket.id);
 
-    // Example: listening for chat messages
     socket.on("chat:message", (msg) => {
       console.log("💬 Message received:", msg);
-      io?.emit("chat:message", msg); // broadcast to all clients
+      io?.emit("chat:message", msg);
     });
 
-    // Example: custom event for order updates
     socket.on("order:update", (data) => {
       console.log("📦 Order update:", data);
       io?.emit("order:update", data);
@@ -33,14 +34,24 @@ export function initSocket(server: HTTPServer) {
     });
   });
 
-  console.log("✅ Socket.IO initialized");
+  console.log("✅ Socket.IO initialized via initSocket");
   return io;
 }
 
-// Get current io instance anywhere
-export function getIO() {
+/**
+ * Manually set the global io instance
+ */
+export function setIO(serverIO: Server) {
+  io = serverIO;
+  console.log("✅ Global Socket.IO instance set via setIO");
+}
+
+/**
+ * Get the current io instance
+ */
+export function getIO(): Server {
   if (!io) {
-    throw new Error("❌ Socket.IO not initialized. Call initSocket first.");
+    throw new Error("❌ Socket.IO not initialized. Call initSocket or setIO first.");
   }
   return io;
 }
