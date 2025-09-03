@@ -6,9 +6,12 @@ import path from "path";
 export default defineConfig({
   plugins: [react()],
   resolve: {
-    alias: {
+    alias: {  
+    stream: 'stream-browserify',  
+    util: 'util/'  
+  }  
       "@": path.resolve(__dirname, "src"),       // ✅ client/src
-      "@shared": path.resolve(__dirname, "../shared"), // ✅ root/shared
+      "@shared": path.resolve(__dirname, '..', 'shared'), // ✅ root/shared
     },
   },
   server: {
@@ -25,9 +28,9 @@ export default defineConfig({
     },
   },
   build: {
-    outDir: path.resolve(__dirname, "../dist/public"), // ✅ same as server expects
+    outDir: path.resolve(__dirname, '..', 'dist/public'), // ✅ same as server expects
     emptyOutDir: true,
     sourcemap: true,
     chunkSizeWarningLimit: 1000,
   },
-});
+}); 
