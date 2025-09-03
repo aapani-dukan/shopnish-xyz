@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from "react";
+// client/src/pages/DeliveryOrdersList.tsx
+import React, { useState, useEffect, useCallback } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   User,
@@ -12,32 +13,41 @@ import {
   Loader2,
 } from "lucide-react";
 import DeliveryOtpDialog from "./DeliveryOtpDialog";
+import { useSocket } from "@/hooks/useSocket"; // ensure this hook exists and connects socket
 
 // -----------------------------------------------------------------------------
-// ## मॉक UI कंपोनेंट और यूटिलिटी फ़ंक्शन
+// ## मॉक UI कंपोनेंट और यूटिलिटी फ़ंक्शन (आपके मौजूदा कंपोनेंट्स के जैसा)
 // -----------------------------------------------------------------------------
 const useToast = () => {
   return {
     toast: ({ title, description, variant }) => {
+      // आप यहाँ अपने Toaster को कॉल कर सकते हैं — अभी console.log रखा है
       console.log(`Toast: ${title} - ${description} (Variant: ${variant})`);
     },
   };
 };
-const Button = ({ children, onClick, variant, size, disabled, ...props }) => (
-  <button onClick={onClick} disabled={disabled} className={`p-2 rounded-md ${variant === 'outline' ? 'border' : 'bg-blue-500 text-white'} ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`} {...props}>
+const Button = ({ children, onClick, variant, size, disabled, ...props }: any) => (
+  <button
+    onClick={onClick}
+    disabled={disabled}
+    className={`p-2 rounded-md ${variant === "outline" ? "border" : "bg-blue-500 text-white"} ${
+      disabled ? "opacity-50 cursor-not-allowed" : ""
+    }`}
+    {...props}
+  >
     {children}
   </button>
 );
-const Card = ({ children }) => <div className="bg-white rounded-lg shadow-md p-4">{children}</div>;
-const CardContent = ({ children, className }) => <div className={`p-4 ${className}`}>{children}</div>;
-const CardHeader = ({ children }) => <div className="p-4 border-b">{children}</div>;
-const CardTitle = ({ children }) => <h2 className="text-xl font-bold">{children}</h2>;
-const Badge = ({ children, className }) => <span className={`px-2 py-1 text-xs rounded-full ${className}`}>{children}</span>;
+const Card = ({ children }: any) => <div className="bg-white rounded-lg shadow-md p-4">{children}</div>;
+const CardContent = ({ children, className = "" }: any) => <div className={`p-4 ${className}`}>{children}</div>;
+const CardHeader = ({ children }: any) => <div className="p-4 border-b">{children}</div>;
+const CardTitle = ({ children }: any) => <h2 className="text-xl font-bold">{children}</h2>;
+const Badge = ({ children, className = "" }: any) => <span className={`px-2 py-1 text-xs rounded-full ${className}`}>{children}</span>;
 
 // -----------------------------------------------------------------------------
 // ## कोर लॉजिक और हेल्पर्स
 // -----------------------------------------------------------------------------
-const statusColor = (status) => {
+const statusColor = (status: string) => {
   switch (status) {
     case "ready":
     case "pending":
@@ -52,7 +62,7 @@ const statusColor = (status) => {
       return "bg-gray-500";
   }
 };
-const statusText = (status) => {
+const statusText = (status: string) => {
   switch (status) {
     case "ready":
     case "pending":
@@ -67,7 +77,7 @@ const statusText = (status) => {
       return status;
   }
 };
-const nextStatus = (status) => {
+const nextStatus = (status: string) => {
   switch (status) {
     case "ready":
     case "pending":
@@ -80,7 +90,7 @@ const nextStatus = (status) => {
       return null;
   }
 };
-const nextStatusLabel = (status) => {
+const nextStatusLabel = (status: string) => {
   switch (status) {
     case "ready":
     case "pending":
@@ -97,45 +107,104 @@ const nextStatusLabel = (status) => {
 // -----------------------------------------------------------------------------
 // ## मुख्य React कंपोनेंट: DeliveryOrdersList
 // -----------------------------------------------------------------------------
-export default function DeliveryOrdersList({ userId, auth }) {
+export default function DeliveryOrdersList({ userId, auth }: { userId: string | null; auth: any }) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [orders, setOrders] = useState([]);
+  const { socket } = useSocket(); // useSocket hook should provide connected socket or null
+
+  const [orders, setOrders] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [selectedOrder, setSelectedOrder] = useState(null);
+  const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
   const [otp, setOtp] = useState("");
   const [otpDialogOpen, setOtpDialogOpen] = useState(false);
 
-  // ─── Data Fetching ───
-  const fetchOrders = async (id) => {
-    setIsLoading(true);
-    try {
-      const response = await fetch(`/api/delivery/orders?deliveryBoyId=${id}`);
-      if (!response.ok) throw new Error("नेटवर्क प्रतिक्रिया ठीक नहीं थी");
-      const data = await response.json();
-      setOrders(data.orders);
-    } catch (error) {
-      console.error("ऑर्डर फ़ेच करने में त्रुटि:", error);
-      toast({
-        title: "डेटा फ़ेच करने में त्रुटि",
-        description: "ऑर्डर फ़ेच करते समय एक समस्या हुई।",
-        variant: "destructive",
-      });
+  // API base - use absolute for production, or relative for dev
+  const API_BASE = process.env.REACT_APP_API_BASE || "https://shopnish-lzrf.onrender.com";
+
+  // ─── fetchOrders: gets both pending (for everyone) and accepted (only assigned to this user)
+  const fetchOrders = useCallback(
+    async (id: string | null) => {
+      setIsLoading(true);
+      try {
+        if (!id) {
+          setOrders([]);
+          setIsLoading(false);
+          return;
+        }
+        const res = await fetch(`${API_BASE}/api/delivery/orders?deliveryBoyId=${encodeURIComponent(id)}`);
+        if (!res.ok) throw new Error("नेटवर्क प्रतिक्रिया ठीक नहीं थी");
+        const data = await res.json();
+        // Expected response: { orders: [...] }
+        setOrders(Array.isArray(data.orders) ? data.orders : []);
+      } catch (err) {
+        console.error("ऑर्डर फ़ेच करने में त्रुटि:", err);
+        toast({ title: "डेटा फ़ेच करने में त्रुटि", description: "ऑर्डर लाने में समस्या हुई", variant: "destructive" });
+        setOrders([]);
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [API_BASE, toast]
+  );
+
+  // initial load + when userId changes
+  useEffect(() => {
+    if (userId) fetchOrders(userId);
+    else {
       setOrders([]);
-    } finally {
       setIsLoading(false);
     }
-  };
+  }, [userId, fetchOrders]);
+
+  // ─── Socket.IO: listen to server events and refresh list appropriately
   useEffect(() => {
-    if (userId) {
-      fetchOrders(userId);
-    }
-  }, [userId]);
+    if (!socket) return;
+
+    const onOrdersChanged = (payload: any) => {
+      // payload could be { reason, orderId, deliveryBoyId, status } from backend
+      // If it's general, just refetch; otherwise do minimal filtering if desired.
+      try {
+        // if payload contains deliveryBoyId and it's not for this user, still need to refresh
+        // because pending list may have changed (assigned -> should disappear for others)
+        if (userId) {
+          fetchOrders(userId);
+        }
+      } catch (err) {
+        console.error("Socket handler error:", err);
+      }
+    };
+
+    const onNewOrder = (payload: any) => {
+      // New order created: all delivery boys should see it in pending list — refetch
+      try {
+        if (userId) fetchOrders(userId);
+      } catch (err) {
+        console.error("Socket new-order handler error:", err);
+      }
+    };
+
+    // Subscribe
+    socket.on("delivery:orders-changed", onOrdersChanged);
+    socket.on("new-order", onNewOrder);
+    socket.on("connect", () => {
+      // register client with server (if your server expects)
+      if (userId) {
+        socket.emit("register-client", { role: "delivery", userId });
+      } else {
+        socket.emit("register-client", { role: "delivery", userId: null });
+      }
+    });
+
+    return () => {
+      socket.off("delivery:orders-changed", onOrdersChanged);
+      socket.off("new-order", onNewOrder);
+    };
+  }, [socket, userId, fetchOrders]);
 
   // ─── Mutations ───
   const updateStatusMutation = useMutation({
-    mutationFn: async ({ orderId, status }) => {
-      const response = await fetch(`/api/delivery/update-status`, {
+    mutationFn: async ({ orderId, status }: { orderId: number; status: string }) => {
+      const response = await fetch(`${API_BASE}/api/delivery/update-status`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ orderId, status }),
@@ -145,25 +214,18 @@ export default function DeliveryOrdersList({ userId, auth }) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/delivery/orders"] });
-      toast({
-        title: "स्टेटस अपडेट किया गया",
-        description: "ऑर्डर का स्टेटस सफलतापूर्वक अपडेट किया गया।",
-      });
-      fetchOrders(userId);
+      toast({ title: "स्टेटस अपडेट किया गया", description: "ऑर्डर का स्टेटस सफलतापूर्वक अपडेट किया गया।" });
+      if (userId) fetchOrders(userId);
     },
     onError: (error) => {
       console.error("Mutation failed:", error);
-      toast({
-        title: "स्टेटस अपडेट करने में त्रुटि",
-        description: "कृपया पुनः प्रयास करें।",
-        variant: "destructive",
-      });
+      toast({ title: "स्टेटस अपडेट करने में त्रुटि", description: "कृपया पुनः प्रयास करें।", variant: "destructive" });
     },
   });
 
   const handleOtpSubmit = useMutation({
-    mutationFn: async ({ orderId, otp }) => {
-      const response = await fetch(`/api/delivery/complete-delivery`, {
+    mutationFn: async ({ orderId, otp }: { orderId: number; otp: string }) => {
+      const response = await fetch(`${API_BASE}/api/delivery/complete-delivery`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ orderId, otp }),
@@ -175,44 +237,37 @@ export default function DeliveryOrdersList({ userId, auth }) {
       setOtp("");
       setOtpDialogOpen(false);
       setSelectedOrder(null);
-      toast({
-        title: "डिलीवरी पूरी हुई",
-        description: "ऑर्डर को सफलतापूर्वक डिलीवर किया गया।",
-      });
-      fetchOrders(userId);
+      toast({ title: "डिलीवरी पूरी हुई", description: "ऑर्डर को सफलतापूर्वक डिलीवर किया गया।" });
+      if (userId) fetchOrders(userId);
     },
     onError: (error) => {
       console.error("OTP submission failed:", error);
-      toast({
-        title: "गलत OTP",
-        description: "कृपया OTP जांचें और फिर से प्रयास करें।",
-        variant: "destructive",
-      });
+      toast({ title: "गलत OTP", description: "कृपया OTP जांचें और फिर से प्रयास करें।", variant: "destructive" });
     },
   });
 
   // ─── Handlers ───
-  const handleStatusProgress = (order) => {
-    if (order.status === "out_for_delivery") {
+  const handleStatusProgress = (order: any) => {
+    // Use deliveryStatus field from DB (order.deliveryStatus)
+    const cur = order.deliveryStatus || order.status || "pending";
+    if (cur === "out_for_delivery") {
       setSelectedOrder(order);
       setOtpDialogOpen(true);
       return;
     }
-    const next = nextStatus(order.status);
+    const next = nextStatus(cur);
     if (next) updateStatusMutation.mutate({ orderId: order.id, status: next });
   };
+
   const handleOtpConfirmation = () => {
     if (!selectedOrder) return;
     if (otp.trim().length !== 4) {
-      toast({
-        title: "OTP दर्ज करें",
-        description: "4-अंकों का OTP आवश्यक है।",
-        variant: "destructive",
-      });
+      toast({ title: "OTP दर्ज करें", description: "4-अंकों का OTP आवश्यक है।", variant: "destructive" });
       return;
     }
     handleOtpSubmit.mutate({ orderId: selectedOrder.id, otp });
   };
+
   const handleLogout = () => {
     if (!auth) return;
     auth.signOut().then(() => window.location.reload());
@@ -228,6 +283,7 @@ export default function DeliveryOrdersList({ userId, auth }) {
       </div>
     );
   }
+
   return (
     <div className="min-h-screen bg-gray-50 font-inter text-gray-800">
       <header className="bg-white shadow-sm border-b rounded-b-lg">
@@ -238,9 +294,7 @@ export default function DeliveryOrdersList({ userId, auth }) {
             </div>
             <div>
               <h1 className="text-xl font-bold">डिलीवरी डैशबोर्ड</h1>
-              <p className="text-sm text-gray-600">
-                वापस स्वागत है, डिलीवरी बॉय!
-              </p>
+              <p className="text-sm text-gray-600">वापस स्वागत है, डिलीवरी बॉय!</p>
             </div>
           </div>
           <div className="flex space-x-2">
@@ -251,6 +305,8 @@ export default function DeliveryOrdersList({ userId, auth }) {
           </div>
         </div>
       </header>
+
+      {/* Metrics */}
       <section className="max-w-6xl mx-auto px-4 py-8 grid grid-cols-1 md:grid-cols-4 gap-6">
         <Card>
           <CardContent className="p-6 flex items-center space-x-3">
@@ -261,52 +317,54 @@ export default function DeliveryOrdersList({ userId, auth }) {
             </div>
           </CardContent>
         </Card>
+
         <Card>
           <CardContent className="p-6 flex items-center space-x-3">
             <Clock className="w-8 h-8 text-yellow-600" />
             <div>
               <p className="text-2xl font-bold">
-                {orders.filter((o) =>
-                  ["ready", "picked_up", "out_for_delivery", "pending"].includes(o.status)
-                ).length}
+                {
+                  orders.filter((o) =>
+                    ["ready", "picked_up", "out_for_delivery", "pending"].includes(o.deliveryStatus || o.status)
+                  ).length
+                }
               </p>
               <p className="text-sm text-gray-600">लंबित</p>
             </div>
           </CardContent>
         </Card>
+
         <Card>
           <CardContent className="p-6 flex items-center space-x-3">
             <CheckCircle className="w-8 h-8 text-green-600" />
             <div>
-              <p className="text-2xl font-bold">
-                {orders.filter((o) => o.status === "delivered").length}
-              </p>
+              <p className="text-2xl font-bold">{orders.filter((o) => (o.deliveryStatus || o.status) === "delivered").length}</p>
               <p className="text-sm text-gray-600">पूरे हुए</p>
             </div>
           </CardContent>
         </Card>
+
         <Card>
           <CardContent className="p-6 flex items-center space-x-3">
             <Navigation className="w-8 h-8 text-purple-600" />
             <div>
-              <p className="text-2xl font-bold">
-                {orders.filter((o) => o.status === "out_for_delivery").length}
-              </p>
+              <p className="text-2xl font-bold">{orders.filter((o) => (o.deliveryStatus || o.status) === "out_for_delivery").length}</p>
               <p className="text-sm text-gray-600">रास्ते में</p>
             </div>
           </CardContent>
         </Card>
       </section>
+
+      {/* Orders list */}
       <section className="max-w-6xl mx-auto px-4 pb-16 space-y-6">
-        <h2 className="text-2xl font-bold">असाइन किए गए ऑर्डर</h2>
+        <h2 className="text-2xl font-bold">असाइन / उपलब्ध ऑर्डर</h2>
+
         {orders.length === 0 ? (
           <Card>
             <CardContent className="py-12 text-center">
               <Package className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-              <h3 className="text-lg font-medium mb-2">कोई ऑर्डर असाइन नहीं</h3>
-              <p className="text-gray-600">
-                नए डिलीवरी असाइनमेंट के लिए बाद में देखें।
-              </p>
+              <h3 className="text-lg font-medium mb-2">कोई ऑर्डर उपलब्ध नहीं</h3>
+              <p className="text-gray-600">नए ऑर्डर के लिए बाद में देखें।</p>
             </CardContent>
           </Card>
         ) : (
@@ -317,94 +375,68 @@ export default function DeliveryOrdersList({ userId, auth }) {
                   <div>
                     <CardTitle>ऑर्डर #{order.orderNumber}</CardTitle>
                     <p className="text-sm text-gray-600">
-                      {order.items.length} आइटम • ₹{order.total}
+                      {order.items?.length || 0} आइटम • ₹{order.total}
                     </p>
                   </div>
-                  <Badge className={`${statusColor(order.status)} text-white`}>
-                    {statusText(order.status)}
+                  <Badge className={`${statusColor(order.deliveryStatus || order.status)} text-white`}>
+                    {statusText(order.deliveryStatus || order.status)}
                   </Badge>
                 </div>
               </CardHeader>
+
               <CardContent>
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   <div className="space-y-4">
                     <div>
                       <h4 className="font-medium mb-2">ग्राहक विवरण</h4>
-                      <p className="font-medium">{order.deliveryAddress.fullName}</p>
+                      <p className="font-medium">{order.deliveryAddress?.fullName || order.deliveryAddress}</p>
                       <div className="flex items-center space-x-2 text-sm text-gray-600">
                         <Phone className="w-4 h-4" />
-                        <span>{order.deliveryAddress.phone}</span>
+                        <span>{order.deliveryAddress?.phone || "-"}</span>
                       </div>
                     </div>
+
                     <div>
                       <h4 className="font-medium mb-2">डिलीवरी पता</h4>
                       <div className="flex items-start space-x-2 text-sm text-gray-600">
                         <MapPin className="w-4 h-4 mt-0.5" />
                         <div>
-                          <p>{order.deliveryAddress.address}</p>
-                          <p>
-                            {order.deliveryAddress.city}, {order.deliveryAddress.pincode}
-                          </p>
-                          {order.deliveryAddress.landmark && (
-                            <p className="text-xs">
-                              लैंडमार्क: {order.deliveryAddress.landmark}
-                            </p>
-                          )}
+                          <p>{order.deliveryAddress?.address || order.deliveryAddress}</p>
+                          <p>{order.deliveryAddress?.city || ""} {order.deliveryAddress?.pincode ? `, ${order.deliveryAddress.pincode}` : ""}</p>
+                          {order.deliveryAddress?.landmark && <p className="text-xs">लैंडमार्क: {order.deliveryAddress.landmark}</p>}
                         </div>
                       </div>
                     </div>
                   </div>
+
                   <div>
                     <h4 className="font-medium mb-2">ऑर्डर आइटम्स</h4>
                     <div className="space-y-2 max-h-32 overflow-y-auto pr-2">
-                      {order.items.map((item) => (
+                      {order.items?.map((item: any) => (
                         <div key={item.id} className="flex items-center space-x-3 text-sm">
-                          <img
-                            src={item.product.image}
-                            alt={item.product.name}
-                            className="w-8 h-8 object-cover rounded"
-                          />
+                          <img src={item.product?.image} alt={item.product?.name} className="w-8 h-8 object-cover rounded" />
                           <div className="flex-1">
-                            <p className="font-medium">{item.product.name}</p>
-                            <p className="text-gray-600">
-                              Qty: {item.quantity} {item.product.unit}
-                            </p>
+                            <p className="font-medium">{item.product?.name}</p>
+                            <p className="text-gray-600">Qty: {item.quantity} {item.product?.unit}</p>
                           </div>
                         </div>
                       ))}
                     </div>
                   </div>
                 </div>
+
                 <div className="flex flex-wrap gap-3 mt-6 pt-4 border-t">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => window.open(`tel:${order.deliveryAddress.phone}`)}
-                  >
-                    <Phone className="w-4 h-4 mr-2" />
-                    ग्राहक को कॉल करें
+                  <Button variant="outline" size="sm" onClick={() => window.open(`tel:${order.deliveryAddress?.phone || ""}`)}>
+                    <Phone className="w-4 h-4 mr-2" /> ग्राहक को कॉल करें
                   </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() =>
-                      window.open(
-                        `https://maps.google.com/?q=${encodeURIComponent(
-                          `${order.deliveryAddress.address}, ${order.deliveryAddress.city}`
-                        )}`
-                      )
-                    }
-                  >
-                    <Navigation className="w-4 h-4 mr-2" />
-                    नेविगेट करें
+
+                  <Button variant="outline" size="sm" onClick={() => window.open(`https://maps.google.com/?q=${encodeURIComponent(`${order.deliveryAddress?.address || ""}, ${order.deliveryAddress?.city || ""}`)}`)}>
+                    <Navigation className="w-4 h-4 mr-2" /> नेविगेट करें
                   </Button>
-                  {nextStatus(order.status) && (
-                    <Button
-                      size="sm"
-                      onClick={() => handleStatusProgress(order)}
-                      disabled={updateStatusMutation.isPending}
-                    >
-                      {nextStatusLabel(order.status)}
+
+                  {nextStatus(order.deliveryStatus || order.status) && (
+                    <Button size="sm" onClick={() => handleStatusProgress(order)} disabled={updateStatusMutation.isLoading}>
+                      {nextStatusLabel(order.deliveryStatus || order.status)}
                     </Button>
                   )}
                 </div>
@@ -413,6 +445,7 @@ export default function DeliveryOrdersList({ userId, auth }) {
           ))
         )}
       </section>
+
       <DeliveryOtpDialog
         selectedOrder={selectedOrder}
         otp={otp}
@@ -420,9 +453,8 @@ export default function DeliveryOrdersList({ userId, auth }) {
         otpDialogOpen={otpDialogOpen}
         setOtpDialogOpen={setOtpDialogOpen}
         handleOtpConfirmation={handleOtpConfirmation}
-        isSubmitting={handleOtpSubmit.isPending}
+        isSubmitting={handleOtpSubmit.isLoading}
       />
     </div>
   );
 }
-
