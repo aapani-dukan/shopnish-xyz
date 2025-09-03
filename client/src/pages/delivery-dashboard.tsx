@@ -1,13 +1,12 @@
-// client/src/pages/delivery-dashboard/DeliveryDashboard.tsx
 import React, { useEffect, useState } from "react";
-import { QueryClientProvider, useQueryClient } from "@tanstack/react-query";
+import { QueryClientProvider, QueryClient } from "@tanstack/react-query";
 import { initializeApp, getApps } from "firebase/app";
 import { getAuth, onAuthStateChanged, signInAnonymously, signInWithCustomToken } from "firebase/auth";
 import DeliveryOrdersList from "./DeliveryOrdersList";
-import { QueryClient } from "@tanstack/react-query";
 
 // -----------------------------------------------------------------------------
-// Firebase config (आपका पहले वाला config)
+// ## ग्लोबल एनवायरनमेंट वैरिएबल
+// -----------------------------------------------------------------------------
 const firebaseConfig = typeof __firebase_config !== "undefined" ? JSON.parse(__firebase_config) : {};
 const initialAuthToken = typeof __initial_auth_token !== "undefined" ? __initial_auth_token : null;
 
@@ -15,16 +14,17 @@ const initialAuthToken = typeof __initial_auth_token !== "undefined" ? __initial
 const queryClient = new QueryClient();
 
 export default function DeliveryDashboardWrapper() {
-  const [userId, setUserId] = useState<string | null>(null);
+  const [userId, setUserId] = useState(null);
   const [authReady, setAuthReady] = useState(false);
-  const [auth, setAuth] = useState<any>(null);
+  const [auth, setAuth] = useState(null);
 
   useEffect(() => {
     let unsubscribeAuth;
 
     try {
-      if (!getApps().length) initializeApp(firebaseConfig);
-
+      if (!getApps().length) {
+        initializeApp(firebaseConfig);
+      }
       const tempAuth = getAuth();
       setAuth(tempAuth);
 
@@ -61,7 +61,9 @@ export default function DeliveryDashboardWrapper() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <DeliveryOrdersList userId={userId!} auth={auth} />
+      <DeliveryOrdersList userId={userId} auth={auth} />
     </QueryClientProvider>
   );
 }
+
+
