@@ -1,4 +1,4 @@
-// client/src/pages/DeliveryOrdersList.tsx
+ // client/src/pages/DeliveryOrdersList.tsx
 import React, { useState, useEffect } from "react";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import {
@@ -127,7 +127,6 @@ export default function DeliveryOrdersList({ userId, auth }: { userId: string | 
       if (!userId) return [];
       try {
         const token = auth ? await auth.currentUser?.getIdToken() : null;
-        // Fetch orders assigned to the user OR unassigned (pending) orders
         const res = await fetch(
           `${API_BASE}/api/delivery/orders?deliveryBoyId=${encodeURIComponent(userId)}&includePending=true`,
           {
@@ -207,7 +206,6 @@ export default function DeliveryOrdersList({ userId, auth }: { userId: string | 
   const acceptOrderMutation = useMutation({
     mutationFn: async (orderId: number) => {
       const token = auth ? await auth.currentUser?.getIdToken() : null;
-      // NOTE: backend route is /accept (not accept-order)
       const response = await fetch(`${API_BASE}/api/delivery/accept`, {
         method: "POST",
         headers: {
@@ -272,7 +270,7 @@ export default function DeliveryOrdersList({ userId, auth }: { userId: string | 
 
   // ─── Handlers ───
   const handleStatusProgress = (order: any) => {
-    const cur = order.delivery_status || order.status || "pending";
+    const cur = order.deliveryStatus || "pending";
     if (cur === "out_for_delivery") {
       setSelectedOrder(order);
       setOtpDialogOpen(true);
@@ -352,9 +350,7 @@ export default function DeliveryOrdersList({ userId, auth }: { userId: string | 
               <p className="text-2xl font-bold">
                 {
                   orders.filter((o: any) =>
-                    ["ready", "picked_up", "out_for_delivery", "pending"].includes(
-                      o.delivery_status || o.status
-                    )
+                    ["ready", "picked_up", "out_for_delivery", "pending"].includes(o.deliveryStatus)
                   ).length
                 }
               </p>
@@ -368,7 +364,7 @@ export default function DeliveryOrdersList({ userId, auth }: { userId: string | 
             <CheckCircle className="w-8 h-8 text-green-600" />
             <div>
               <p className="text-2xl font-bold">
-                {orders.filter((o: any) => (o.delivery_status || o.status) === "delivered").length}
+                {orders.filter((o: any) => o.deliveryStatus === "delivered").length}
               </p>
               <p className="text-sm text-gray-600">पूरे हुए</p>
             </div>
@@ -380,7 +376,7 @@ export default function DeliveryOrdersList({ userId, auth }: { userId: string | 
             <Navigation className="w-8 h-8 text-purple-600" />
             <div>
               <p className="text-2xl font-bold">
-                {orders.filter((o: any) => (o.delivery_status || o.status) === "out_for_delivery").length}
+                {orders.filter((o: any) => o.deliveryStatus === "out_for_delivery").length}
               </p>
               <p className="text-sm text-gray-600">रास्ते में</p>
             </div>
@@ -411,8 +407,8 @@ export default function DeliveryOrdersList({ userId, auth }: { userId: string | 
                       {order.items?.length || 0} आइटम • ₹{order.total}
                     </p>
                   </div>
-                  <Badge className={`${statusColor(order.delivery_status || order.status)} text-white`}>
-                    {statusText(order.delivery_status || order.status)}
+                  <Badge className={`${statusColor(order.deliveryStatus)} text-white`}>
+                    {statusText(order.deliveryStatus)}
                   </Badge>
                 </div>
               </CardHeader>
@@ -460,6 +456,8 @@ export default function DeliveryOrdersList({ userId, auth }: { userId: string | 
                             <img
                               src={item.product.image || "https://placehold.co/32x32/E2E8F0/1A202C?text=No+Img"}
                               alt={item.product.name || "No Name"}
+                              
+                  
                               className="w-8 h-8 object-cover rounded"
                             />
                             <div className="flex-1">
