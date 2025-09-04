@@ -52,3 +52,4 @@ adminDeliveryRouter.get("/orders", async (req: AuthenticatedRequest, res: Respon
     return res.status(500).json({ error: "Failed to fetch delivery orders." });
   }
 });
+export default orderdBoyRouter;
