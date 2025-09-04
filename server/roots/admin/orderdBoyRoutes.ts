@@ -1,15 +1,13 @@
 import { Router, Request, Response } from "express";
-import { and, eq, or, isNull, inArray } from "drizzle-orm";
+import { and, eq, or, isNull } from "drizzle-orm";
 import { db } from "../../db.ts";
 import {
   orders,
   cartItems,
-  // अगर cart टेबल अलग है तो import बदलना पड़ेगा
 } from "../../../shared/backend/schema.ts";
 
 import { getIO } from "../../socket.ts";
 const router = Router();
-const io = getIO();
 
 /**
  * GET /api/delivery/orders?deliveryBoyId=UID
@@ -17,14 +15,13 @@ const io = getIO();
 router.get("/orders", async (req: Request, res: Response) => {
   try {
     const deliveryBoyId = String(req.query.deliveryBoyId || "");
-    const includePending = req.query.includePending === 'true';
 
     if (!deliveryBoyId) {
       return res.status(400).json({ message: "deliveryBoyId is required" });
     }
 
-    // लॉजिक को सही करें: उन ऑर्डर्स को दिखाएं जो या तो आपको असाइन किए गए हैं
-    // या जो 'pending' स्थिति में हैं और किसी को असाइन नहीं किए गए हैं।
+    // वह ऑर्डर्स दिखाएं जो या तो आपको असाइन किए गए हैं
+    // या जो 'pending' हैं और किसी को असाइन नहीं किए गए हैं।
     const whereClause = or(
       eq(orders.deliveryBoyId, deliveryBoyId),
       and(
@@ -84,7 +81,7 @@ router.post("/accept", async (req: Request, res: Response) => {
       .where(eq(orders.id, orderId))
       .returning();
 
-    io.emit("delivery:orders-changed", {
+    getIO().emit("delivery:orders-changed", {
       reason: "accepted",
       orderId,
       deliveryBoyId,
@@ -175,7 +172,7 @@ router.post("/complete-delivery", async (req: Request, res: Response) => {
       await db.delete(cartItems).where(eq(cartItems.userId, existing.userId));
     }
 
-    io.emit("delivery:orders-changed", {
+    getIO().emit("delivery:orders-changed", {
       reason: "delivered",
       orderId,
     });
