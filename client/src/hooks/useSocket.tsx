@@ -46,7 +46,7 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
       newSocket.disconnect();
       console.log("⚡ Socket disconnected");
     };
-  }, [isAuthenticated, user, socket]);
+  }, [isAuthenticated, user]); // ✅ `socket` को dependency array से हटा दिया गया है
 
   return (
     <SocketContext.Provider value={socket}>
