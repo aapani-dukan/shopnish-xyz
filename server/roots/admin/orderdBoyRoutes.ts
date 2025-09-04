@@ -1,6 +1,6 @@
 // server/routes/adminDeliveryRouter.ts
 import { Router, Response } from "express";
-import { db } from "../db";
+import { db } from "../../db";
 import { orders, orderItems, users } from "@shared/backend/schema";
 import { eq, exists, and, desc } from "drizzle-orm";
 
