@@ -138,9 +138,7 @@ export default function DeliveryOrdersList({ userId, auth }: { userId: string | 
         return [];
       }
     },
-    enabled: !!userId, // ✅ जब तक userId नहीं है तब तक query न चलाएं
-    refetchInterval: 60000, // 60 सेकंड बाद ऑटोमेटिकली refetch करें (सिर्फ़ एक fallback)
-    staleTime: 60000,
+    enabled: !!userId,
   });
 
   // ─── Socket.IO: listen to server events and invalidate queries
@@ -380,15 +378,26 @@ export default function DeliveryOrdersList({ userId, auth }: { userId: string | 
                   <div>
                     <h4 className="font-medium mb-2">ऑर्डर आइटम्स</h4>
                     <div className="space-y-2 max-h-32 overflow-y-auto pr-2">
-                      {order.items?.map((item: any) => (
-                        <div key={item.id} className="flex items-center space-x-3 text-sm">
-                          <img src={item.product?.image} alt={item.product?.name} className="w-8 h-8 object-cover rounded" />
-                          <div className="flex-1">
-                            <p className="font-medium">{item.product?.name}</p>
-                            <p className="text-gray-600">Qty: {item.quantity} {item.product?.unit}</p>
+                      {order.items?.map((item: any) => {
+                        // डेटा की सुरक्षा के लिए, हम जांच करते हैं कि product object मौजूद है या नहीं
+                        if (!item.product) {
+                          console.error("Item is missing product data:", item);
+                          return null; // या एक fallback UI component दिखाएं
+                        }
+                        return (
+                          <div key={item.id} className="flex items-center space-x-3 text-sm">
+                            <img
+                              src={item.product.image || "https://placehold.co/32x32/E2E8F0/1A202C?text=No+Img"}
+                              alt={item.product.name || "No Name"}
+                              className="w-8 h-8 object-cover rounded"
+                            />
+                            <div className="flex-1">
+                              <p className="font-medium">{item.product.name}</p>
+                              <p className="text-gray-600">Qty: {item.quantity} {item.product.unit}</p>
+                            </div>
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
                 </div>
