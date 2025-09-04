@@ -134,36 +134,33 @@ export default function DeliveryOrdersList({ userId, auth }: { userId: string | 
   };
 
   // ─── useQuery: ऑर्डर्स फ़ेच करने के लिए
-  const { data: orders = [], isLoading } = useQuery({
-    queryKey: ["deliveryOrders", userId],
-    queryFn: async () => {
-      if (!userId) return [];
-      try {
-        const token = await getValidToken();
-        if (!token) throw new Error("अमान्य या समाप्त टोकन");
-        const res = await fetch(
-          `${API_BASE}/api/delivery/orders?deliveryBoyId=${encodeURIComponent(userId)}&includePending=true`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
-        if (!res.ok) throw new Error("नेटवर्क प्रतिक्रिया ठीक नहीं थी");
-        const data = await res.json();
-        return Array.isArray(data.orders) ? data.orders : [];
-      } catch (err) {
-        console.error("ऑर्डर फ़ेच करने में त्रुटि:", err);
-        toast({
-          title: "डेटा फ़ेच करने में त्रुटि",
-          description: "ऑर्डर लाने में समस्या हुई",
-          variant: "destructive",
-        });
-        return [];
-      }
-    },
-    enabled: !!userId,
-  });
+  // ─── useQuery: ऑर्डर्स फ़ेच करने के लिए (deliveryBoyId filter हटाया)
+const { data: orders = [], isLoading } = useQuery({
+  queryKey: ["deliveryOrders"],
+  queryFn: async () => {
+    try {
+      const token = await getValidToken();
+      if (!token) throw new Error("अमान्य या समाप्त टोकन");
+      const res = await fetch(`${API_BASE}/api/delivery/orders`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      if (!res.ok) throw new Error("नेटवर्क प्रतिक्रिया ठीक नहीं थी");
+      const data = await res.json();
+      return Array.isArray(data.orders) ? data.orders : [];
+    } catch (err) {
+      console.error("ऑर्डर फ़ेच करने में त्रुटि:", err);
+      toast({
+        title: "डेटा फ़ेच करने में त्रुटि",
+        description: "ऑर्डर लाने में समस्या हुई",
+        variant: "destructive",
+      });
+      return [];
+    }
+  },
+  enabled: !!userId,
+});
 
   // ─── Socket.IO: listen to server events and invalidate queries
   useEffect(() => {
