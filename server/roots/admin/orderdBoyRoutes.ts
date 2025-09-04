@@ -1,20 +1,14 @@
 // server/roots/admin/orderdBoyRoutes.ts
 import { Router, Response } from "express";
 import { db } from "../../db";
-import { orders, orderItems } from "@shared/backend/schema";
-import { requireDeliveryBoyAuth, AuthenticatedRequest } from "../../middleware/authMiddleware";
-import { eq } from "drizzle-orm";
+import { orders } from "@shared/backend/schema";
 
 const orderdBoyRouter = Router();
 
-// Delivery boy के लिए orders fetch करने का route
-orderdBoyRouter.get("/orders", requireDeliveryBoyAuth, async (req: AuthenticatedRequest, res: Response) => {
+// सभी orders fetch करने का route (कोई filter नहीं)
+orderdBoyRouter.get("/orders", async (req, Response) => {
   try {
-    const deliveryBoyId = req.user?.id; // Delivery boy का user.id
-    if (!deliveryBoyId) return res.status(401).json({ error: "Unauthorized" });
-
-    const assignedOrders = await db.query.orders.findMany({
-      where: eq(orders.deliveryBoyId, deliveryBoyId),
+    const allOrders = await db.query.orders.findMany({
       with: {
         items: {
           with: {
@@ -33,9 +27,9 @@ orderdBoyRouter.get("/orders", requireDeliveryBoyAuth, async (req: Authenticated
       orderBy: [{ column: orders.createdAt, order: "desc" }],
     });
 
-    res.status(200).json(assignedOrders);
+    res.status(200).json(allOrders);
   } catch (error) {
-    console.error("❌ Error fetching delivery boy orders:", error);
+    console.error("❌ Error fetching orders:", error);
     res.status(500).json({ error: "Failed to fetch orders" });
   }
 });
