@@ -7,7 +7,7 @@ const SocketContext = createContext<Socket | null>(null);
 
 export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
   const [socket, setSocket] = useState<Socket | null>(null);
-  const { user, isAuthenticated } = useAuth(); // ✅ useAuth से user info
+  const { user, isAuthenticated } = useAuth(); // useAuth से user info
 
   useEffect(() => {
     // यदि user authenticated नहीं है तो socket disconnect करें
@@ -20,7 +20,7 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
     }
 
     // Backend URL environment variable से लें, fallback localhost
-    const socketUrl = import.meta.env.REACT_APP_API_BASE || "http://localhost:5001";
+    const socketUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:5001";
 
     const newSocket = io(socketUrl, {
       withCredentials: true,
@@ -46,7 +46,7 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
       newSocket.disconnect();
       console.log("⚡ Socket disconnected");
     };
-  }, [isAuthenticated, user, socket]); // ✅ Added 'socket' to dependencies to avoid re-creating socket on re-renders
+  }, [isAuthenticated, user, socket]);
 
   return (
     <SocketContext.Provider value={socket}>
