@@ -118,7 +118,8 @@ export default function DeliveryOrdersList({ userId, auth }: { userId: string | 
   const [otpDialogOpen, setOtpDialogOpen] = useState(false);
 
   // API base
-  const API_BASE = process.env.REACT_APP_API_BASE || "https://shopnish-lzrf.onrender.com";
+   
+  const API_BASE = import.meta.env.VITE_API_BASE_URL || "https://shopnish-lzrf.onrender.com";
 
   // ─── fetchOrders: gets both pending (for everyone) and accepted (only assigned to this user)
   const fetchOrders = useCallback(
@@ -172,7 +173,7 @@ useEffect(() => {
     fetchTimeout = setTimeout(() => {
       if (userId) fetchOrders(userId);
       fetchTimeout = null;
-    }, 1000); // ✅ 1 second में max 1 बार fetch
+    }, 1000); // 1 second में max 1 बार fetch
   };
 
   const onOrdersChanged = () => safeFetch();
@@ -190,6 +191,7 @@ useEffect(() => {
     if (fetchTimeout) clearTimeout(fetchTimeout);
   };
 }, [socket, userId, fetchOrders]);
+
 
   // ─── Mutations ───
   const updateStatusMutation = useMutation({
