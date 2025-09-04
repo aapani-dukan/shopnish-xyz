@@ -1,7 +1,7 @@
 import { Router, Response } from "express";
 import { db } from "../../db";
 import { orders, orderItems, deliveryBoysPgTable } from "@shared/backend/schema";
-import { requireDeliveryAuth, AuthenticatedRequest } from "../../middleware/auth";
+import { requireDeliveryAuth, AuthenticatedRequest } from "../../middleware/authMiddleware";
 import { eq } from "drizzle-orm";
 
 const orderdBoyRouter = Router();
