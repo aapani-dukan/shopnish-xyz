@@ -1,3 +1,4 @@
+// client/src/pages/DeliveryOrdersList.tsx
 import React, { useState, useEffect } from "react";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import {
@@ -24,6 +25,7 @@ const useToast = () => {
     },
   };
 };
+
 const Button = ({ children, onClick, variant, size, disabled, ...props }: any) => (
   <button
     onClick={onClick}
@@ -36,6 +38,7 @@ const Button = ({ children, onClick, variant, size, disabled, ...props }: any) =
     {children}
   </button>
 );
+
 const Card = ({ children }: any) => <div className="bg-white rounded-lg shadow-md p-4">{children}</div>;
 const CardContent = ({ children, className = "" }: any) => <div className={`p-4 ${className}`}>{children}</div>;
 const CardHeader = ({ children }: any) => <div className="p-4 border-b">{children}</div>;
@@ -60,6 +63,7 @@ const statusColor = (status: string) => {
       return "bg-gray-500";
   }
 };
+
 const statusText = (status: string) => {
   switch (status) {
     case "ready":
@@ -75,6 +79,7 @@ const statusText = (status: string) => {
       return status;
   }
 };
+
 const nextStatus = (status: string) => {
   switch (status) {
     case "ready":
@@ -86,6 +91,7 @@ const nextStatus = (status: string) => {
       return null;
   }
 };
+
 const nextStatusLabel = (status: string) => {
   switch (status) {
     case "ready":
@@ -122,17 +128,24 @@ export default function DeliveryOrdersList({ userId, auth }: { userId: string | 
       try {
         const token = auth ? await auth.currentUser?.getIdToken() : null;
         // Fetch orders assigned to the user OR unassigned (pending) orders
-        const res = await fetch(`${API_BASE}/api/delivery/orders?deliveryBoyId=${encodeURIComponent(userId)}&includePending=true`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
+        const res = await fetch(
+          `${API_BASE}/api/delivery/orders?deliveryBoyId=${encodeURIComponent(userId)}&includePending=true`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
         if (!res.ok) throw new Error("नेटवर्क प्रतिक्रिया ठीक नहीं थी");
         const data = await res.json();
         return Array.isArray(data.orders) ? data.orders : [];
       } catch (err) {
         console.error("ऑर्डर फ़ेच करने में त्रुटि:", err);
-        toast({ title: "डेटा फ़ेच करने में त्रुटि", description: "ऑर्डर लाने में समस्या हुई", variant: "destructive" });
+        toast({
+          title: "डेटा फ़ेच करने में त्रुटि",
+          description: "ऑर्डर लाने में समस्या हुई",
+          variant: "destructive",
+        });
         return [];
       }
     },
@@ -176,35 +189,50 @@ export default function DeliveryOrdersList({ userId, auth }: { userId: string | 
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["deliveryOrders"] });
-      toast({ title: "स्टेटस अपडेट किया गया", description: "ऑर्डर का स्टेटस सफलतापूर्वक अपडेट किया गया।" });
+      toast({
+        title: "स्टेटस अपडेट किया गया",
+        description: "ऑर्डर का स्टेटस सफलतापूर्वक अपडेट किया गया।",
+      });
     },
     onError: (error) => {
       console.error("Mutation failed:", error);
-      toast({ title: "स्टेटस अपडेट करने में त्रुटि", description: "कृपया पुनः प्रयास करें।", variant: "destructive" });
+      toast({
+        title: "स्टेटस अपडेट करने में त्रुटि",
+        description: "कृपया पुनः प्रयास करें।",
+        variant: "destructive",
+      });
     },
   });
 
   const acceptOrderMutation = useMutation({
     mutationFn: async (orderId: number) => {
       const token = auth ? await auth.currentUser?.getIdToken() : null;
-      const response = await fetch(`${API_BASE}/api/delivery/accept-order`, {
+      // NOTE: backend route is /accept (not accept-order)
+      const response = await fetch(`${API_BASE}/api/delivery/accept`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ orderId }),
+        body: JSON.stringify({ orderId, deliveryBoyId: userId }),
       });
       if (!response.ok) throw new Error("ऑर्डर स्वीकार करने में विफल");
       return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["deliveryOrders"] });
-      toast({ title: "ऑर्डर स्वीकार किया गया", description: "यह ऑर्डर अब आपको असाइन किया गया है।" });
+      toast({
+        title: "ऑर्डर स्वीकार किया गया",
+        description: "यह ऑर्डर अब आपको असाइन किया गया है।",
+      });
     },
     onError: (error) => {
       console.error("Accept order mutation failed:", error);
-      toast({ title: "ऑर्डर स्वीकार करने में त्रुटि", description: "कृपया पुनः प्रयास करें।", variant: "destructive" });
+      toast({
+        title: "ऑर्डर स्वीकार करने में त्रुटि",
+        description: "कृपया पुनः प्रयास करें।",
+        variant: "destructive",
+      });
     },
   });
 
@@ -226,18 +254,25 @@ export default function DeliveryOrdersList({ userId, auth }: { userId: string | 
       setOtp("");
       setOtpDialogOpen(false);
       setSelectedOrder(null);
-      toast({ title: "डिलीवरी पूरी हुई", description: "ऑर्डर को सफलतापूर्वक डिलीवर किया गया।" });
+      toast({
+        title: "डिलीवरी पूरी हुई",
+        description: "ऑर्डर को सफलतापूर्वक डिलीवर किया गया।",
+      });
       queryClient.invalidateQueries({ queryKey: ["deliveryOrders"] });
     },
     onError: (error) => {
       console.error("OTP submission failed:", error);
-      toast({ title: "गलत OTP", description: "कृपया OTP जांचें और फिर से प्रयास करें।", variant: "destructive" });
+      toast({
+        title: "गलत OTP",
+        description: "कृपया OTP जांचें और फिर से प्रयास करें।",
+        variant: "destructive",
+      });
     },
   });
 
   // ─── Handlers ───
   const handleStatusProgress = (order: any) => {
-    const cur = order.deliveryStatus || order.status || "pending"; // deliveryStatus का उपयोग करें, अगर उपलब्ध न हो तो status का उपयोग करें
+    const cur = order.delivery_status || order.status || "pending";
     if (cur === "out_for_delivery") {
       setSelectedOrder(order);
       setOtpDialogOpen(true);
@@ -250,7 +285,11 @@ export default function DeliveryOrdersList({ userId, auth }: { userId: string | 
   const handleOtpConfirmation = () => {
     if (!selectedOrder) return;
     if (otp.trim().length !== 4) {
-      toast({ title: "OTP दर्ज करें", description: "4-अंकों का OTP आवश्यक है।", variant: "destructive" });
+      toast({
+        title: "OTP दर्ज करें",
+        description: "4-अंकों का OTP आवश्यक है।",
+        variant: "destructive",
+      });
       return;
     }
     handleOtpSubmit.mutate({ orderId: selectedOrder.id, otp });
@@ -313,7 +352,9 @@ export default function DeliveryOrdersList({ userId, auth }: { userId: string | 
               <p className="text-2xl font-bold">
                 {
                   orders.filter((o: any) =>
-                    ["ready", "picked_up", "out_for_delivery", "pending"].includes(o.deliveryStatus || o.status)
+                    ["ready", "picked_up", "out_for_delivery", "pending"].includes(
+                      o.delivery_status || o.status
+                    )
                   ).length
                 }
               </p>
@@ -326,7 +367,9 @@ export default function DeliveryOrdersList({ userId, auth }: { userId: string | 
           <CardContent className="p-6 flex items-center space-x-3">
             <CheckCircle className="w-8 h-8 text-green-600" />
             <div>
-              <p className="text-2xl font-bold">{orders.filter((o: any) => (o.deliveryStatus || o.status) === "delivered").length}</p>
+              <p className="text-2xl font-bold">
+                {orders.filter((o: any) => (o.delivery_status || o.status) === "delivered").length}
+              </p>
               <p className="text-sm text-gray-600">पूरे हुए</p>
             </div>
           </CardContent>
@@ -336,7 +379,9 @@ export default function DeliveryOrdersList({ userId, auth }: { userId: string | 
           <CardContent className="p-6 flex items-center space-x-3">
             <Navigation className="w-8 h-8 text-purple-600" />
             <div>
-              <p className="text-2xl font-bold">{orders.filter((o: any) => (o.deliveryStatus || o.status) === "out_for_delivery").length}</p>
+              <p className="text-2xl font-bold">
+                {orders.filter((o: any) => (o.delivery_status || o.status) === "out_for_delivery").length}
+              </p>
               <p className="text-sm text-gray-600">रास्ते में</p>
             </div>
           </CardContent>
@@ -366,8 +411,8 @@ export default function DeliveryOrdersList({ userId, auth }: { userId: string | 
                       {order.items?.length || 0} आइटम • ₹{order.total}
                     </p>
                   </div>
-                  <Badge className={`${statusColor(order.deliveryStatus || order.status)} text-white`}>
-                    {statusText(order.deliveryStatus || order.status)}
+                  <Badge className={`${statusColor(order.delivery_status || order.status)} text-white`}>
+                    {statusText(order.delivery_status || order.status)}
                   </Badge>
                 </div>
               </CardHeader>
@@ -390,8 +435,13 @@ export default function DeliveryOrdersList({ userId, auth }: { userId: string | 
                         <MapPin className="w-4 h-4 mt-0.5" />
                         <div>
                           <p>{order.deliveryAddress?.address || order.deliveryAddress}</p>
-                          <p>{order.deliveryAddress?.city || ""} {order.deliveryAddress?.pincode ? `, ${order.deliveryAddress.pincode}` : ""}</p>
-                          {order.deliveryAddress?.landmark && <p className="text-xs">लैंडमार्क: {order.deliveryAddress.landmark}</p>}
+                          <p>
+                            {order.deliveryAddress?.city || ""}{" "}
+                            {order.deliveryAddress?.pincode ? `, ${order.deliveryAddress.pincode}` : ""}
+                          </p>
+                          {order.deliveryAddress?.landmark && (
+                            <p className="text-xs">लैंडमार्क: {order.deliveryAddress.landmark}</p>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -414,7 +464,9 @@ export default function DeliveryOrdersList({ userId, auth }: { userId: string | 
                             />
                             <div className="flex-1">
                               <p className="font-medium">{item.product.name}</p>
-                              <p className="text-gray-600">Qty: {item.quantity} {item.product.unit}</p>
+                              <p className="text-gray-600">
+                                Qty: {item.quantity} {item.product.unit}
+                              </p>
                             </div>
                           </div>
                         );
@@ -425,7 +477,7 @@ export default function DeliveryOrdersList({ userId, auth }: { userId: string | 
 
                 <div className="flex flex-wrap gap-3 mt-6 pt-4 border-t">
                   {/* "ऑर्डर स्वीकार करें" बटन सिर्फ़ तब दिखेगा जब ऑर्डर किसी को असाइन न हुआ हो */}
-                  {order.deliveryBoyId === null ? (
+                  {order.delivery_boy_id == null ? (
                     <Button
                       size="sm"
                       onClick={() => acceptOrderMutation.mutate(order.id)}
@@ -435,17 +487,35 @@ export default function DeliveryOrdersList({ userId, auth }: { userId: string | 
                     </Button>
                   ) : (
                     <>
-                      <Button variant="outline" size="sm" onClick={() => window.open(`tel:${order.deliveryAddress?.phone || ""}`)}>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => window.open(`tel:${order.deliveryAddress?.phone || ""}`)}
+                      >
                         <Phone className="w-4 h-4 mr-2" /> ग्राहक को कॉल करें
                       </Button>
 
-                      <Button variant="outline" size="sm" onClick={() => window.open(`https://maps.google.com/?q=${encodeURIComponent(`${order.deliveryAddress?.address || ""}, ${order.deliveryAddress?.city || ""}`)}`)}>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
+                          window.open(
+                            `https://maps.google.com/?q=${encodeURIComponent(
+                              `${order.deliveryAddress?.address || ""}, ${order.deliveryAddress?.city || ""}`
+                            )}`
+                          )
+                        }
+                      >
                         <Navigation className="w-4 h-4 mr-2" /> नेविगेट करें
                       </Button>
 
-                      {nextStatus(order.deliveryStatus || order.status) && (
-                        <Button size="sm" onClick={() => handleStatusProgress(order)} disabled={updateStatusMutation.isLoading}>
-                          {nextStatusLabel(order.deliveryStatus || order.status)}
+                      {nextStatus(order.delivery_status || order.status) && (
+                        <Button
+                          size="sm"
+                          onClick={() => handleStatusProgress(order)}
+                          disabled={updateStatusMutation.isLoading}
+                        >
+                          {nextStatusLabel(order.delivery_status || order.status)}
                         </Button>
                       )}
                     </>
