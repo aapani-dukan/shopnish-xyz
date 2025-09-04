@@ -1,4 +1,6 @@
- // client/src/pages/DeliveryOrdersList.tsx
+ // client/src/pages/
+
+// client/src/pages/DeliveryOrdersList.tsx
 import React, { useState, useEffect } from "react";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import {
@@ -46,7 +48,7 @@ const CardTitle = ({ children }: any) => <h2 className="text-xl font-bold">{chil
 const Badge = ({ children, className = "" }: any) => <span className={`px-2 py-1 text-xs rounded-full ${className}`}>{children}</span>;
 
 // -----------------------------------------------------------------------------
-// ## कोर लॉजिक और हेल्पर्स
+// ## स्टेटस हेल्पर्स
 // -----------------------------------------------------------------------------
 const statusColor = (status: string) => {
   switch (status) {
@@ -117,8 +119,19 @@ export default function DeliveryOrdersList({ userId, auth }: { userId: string | 
   const [otp, setOtp] = useState("");
   const [otpDialogOpen, setOtpDialogOpen] = useState(false);
 
-  // API base
   const API_BASE = import.meta.env.VITE_API_BASE_URL || "https://shopnish-lzrf.onrender.com";
+
+  // ─── Helper: Valid Token Fetcher ───
+  const getValidToken = async () => {
+    if (!auth?.currentUser) return null;
+    try {
+      // Force refresh token to avoid expired token
+      return await auth.currentUser.getIdToken(true);
+    } catch (err) {
+      console.error("Token fetch error:", err);
+      return null;
+    }
+  };
 
   // ─── useQuery: ऑर्डर्स फ़ेच करने के लिए
   const { data: orders = [], isLoading } = useQuery({
@@ -126,7 +139,8 @@ export default function DeliveryOrdersList({ userId, auth }: { userId: string | 
     queryFn: async () => {
       if (!userId) return [];
       try {
-        const token = auth ? await auth.currentUser?.getIdToken() : null;
+        const token = await getValidToken();
+        if (!token) throw new Error("अमान्य या समाप्त टोकन");
         const res = await fetch(
           `${API_BASE}/api/delivery/orders?deliveryBoyId=${encodeURIComponent(userId)}&includePending=true`,
           {
@@ -171,104 +185,31 @@ export default function DeliveryOrdersList({ userId, auth }: { userId: string | 
     };
   }, [socket, userId, queryClient]);
 
-  // ─── Mutations ───
-  const updateStatusMutation = useMutation({
-    mutationFn: async ({ orderId, status }: { orderId: number; status: string }) => {
-      const token = auth ? await auth.currentUser?.getIdToken() : null;
-      const response = await fetch(`${API_BASE}/api/delivery/update-status`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ orderId, status }),
-      });
-      if (!response.ok) throw new Error("स्टेटस अपडेट करने में विफल");
-      return response.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["deliveryOrders"] });
-      toast({
-        title: "स्टेटस अपडेट किया गया",
-        description: "ऑर्डर का स्टेटस सफलतापूर्वक अपडेट किया गया।",
-      });
-    },
-    onError: (error) => {
-      console.error("Mutation failed:", error);
-      toast({
-        title: "स्टेटस अपडेट करने में त्रुटि",
-        description: "कृपया पुनः प्रयास करें।",
-        variant: "destructive",
-      });
-    },
-  });
+  // ─── Mutations: सभी API calls में valid token इस्तेमाल करेंगे
+  const createMutationWithToken = (url: string, method = "POST") =>
+    useMutation({
+      mutationFn: async (body: any) => {
+        const token = await getValidToken();
+        if (!token) throw new Error("अमान्य या समाप्त टोकन");
+        const response = await fetch(`${API_BASE}${url}`, {
+          method,
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(body),
+        });
+        if (!response.ok) throw new Error("Mutation failed");
+        return response.json();
+      },
+      onSuccess: () => queryClient.invalidateQueries({ queryKey: ["deliveryOrders"] }),
+      onError: (error) => console.error("Mutation error:", error),
+    });
 
-  const acceptOrderMutation = useMutation({
-    mutationFn: async (orderId: number) => {
-      const token = auth ? await auth.currentUser?.getIdToken() : null;
-      const response = await fetch(`${API_BASE}/api/delivery/accept`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ orderId, deliveryBoyId: userId }),
-      });
-      if (!response.ok) throw new Error("ऑर्डर स्वीकार करने में विफल");
-      return response.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["deliveryOrders"] });
-      toast({
-        title: "ऑर्डर स्वीकार किया गया",
-        description: "यह ऑर्डर अब आपको असाइन किया गया है।",
-      });
-    },
-    onError: (error) => {
-      console.error("Accept order mutation failed:", error);
-      toast({
-        title: "ऑर्डर स्वीकार करने में त्रुटि",
-        description: "कृपया पुनः प्रयास करें।",
-        variant: "destructive",
-      });
-    },
-  });
+  const updateStatusMutation = createMutationWithToken("/api/delivery/update-status");
+  const acceptOrderMutation = createMutationWithToken("/api/delivery/accept");
+  const handleOtpSubmit = createMutationWithToken("/api/delivery/complete-delivery");
 
-  const handleOtpSubmit = useMutation({
-    mutationFn: async ({ orderId, otp }: { orderId: number; otp: string }) => {
-      const token = auth ? await auth.currentUser?.getIdToken() : null;
-      const response = await fetch(`${API_BASE}/api/delivery/complete-delivery`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ orderId, otp }),
-      });
-      if (!response.ok) throw new Error("OTP सबमिशन विफल");
-      return response.json();
-    },
-    onSuccess: () => {
-      setOtp("");
-      setOtpDialogOpen(false);
-      setSelectedOrder(null);
-      toast({
-        title: "डिलीवरी पूरी हुई",
-        description: "ऑर्डर को सफलतापूर्वक डिलीवर किया गया।",
-      });
-      queryClient.invalidateQueries({ queryKey: ["deliveryOrders"] });
-    },
-    onError: (error) => {
-      console.error("OTP submission failed:", error);
-      toast({
-        title: "गलत OTP",
-        description: "कृपया OTP जांचें और फिर से प्रयास करें।",
-        variant: "destructive",
-      });
-    },
-  });
-
-  // ─── Handlers ───
   const handleStatusProgress = (order: any) => {
     const cur = order.deliveryStatus || "pending";
     if (cur === "out_for_delivery") {
@@ -283,14 +224,13 @@ export default function DeliveryOrdersList({ userId, auth }: { userId: string | 
   const handleOtpConfirmation = () => {
     if (!selectedOrder) return;
     if (otp.trim().length !== 4) {
-      toast({
-        title: "OTP दर्ज करें",
-        description: "4-अंकों का OTP आवश्यक है।",
-        variant: "destructive",
-      });
+      toast({ title: "OTP दर्ज करें", description: "4-अंकों का OTP आवश्यक है।", variant: "destructive" });
       return;
     }
     handleOtpSubmit.mutate({ orderId: selectedOrder.id, otp });
+    setOtp("");
+    setOtpDialogOpen(false);
+    setSelectedOrder(null);
   };
 
   const handleLogout = () => {
@@ -298,9 +238,6 @@ export default function DeliveryOrdersList({ userId, auth }: { userId: string | 
     auth.signOut().then(() => window.location.reload());
   };
 
-  // -----------------------------------------------------------------------------
-  // ## JSX रेंडरिंग
-  // -----------------------------------------------------------------------------
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -309,6 +246,7 @@ export default function DeliveryOrdersList({ userId, auth }: { userId: string | 
     );
   }
 
+  // ─── JSX Rendering (UI) ───
   return (
     <div className="min-h-screen bg-gray-50 font-inter text-gray-800">
       <header className="bg-white shadow-sm border-b rounded-b-lg">
@@ -348,11 +286,9 @@ export default function DeliveryOrdersList({ userId, auth }: { userId: string | 
             <Clock className="w-8 h-8 text-yellow-600" />
             <div>
               <p className="text-2xl font-bold">
-                {
-                  orders.filter((o: any) =>
-                    ["ready", "picked_up", "out_for_delivery", "pending"].includes(o.deliveryStatus)
-                  ).length
-                }
+                {orders.filter((o: any) =>
+                  ["ready", "picked_up", "out_for_delivery", "pending"].includes(o.deliveryStatus)
+                ).length}
               </p>
               <p className="text-sm text-gray-600">लंबित</p>
             </div>
@@ -418,6 +354,8 @@ export default function DeliveryOrdersList({ userId, auth }: { userId: string | 
                   <div className="space-y-4">
                     <div>
                       <h4 className="font-medium mb-2">ग्राहक विवरण</h4>
+                      
+                    
                       <p className="font-medium">{order.deliveryAddress?.fullName || order.deliveryAddress}</p>
                       <div className="flex items-center space-x-2 text-sm text-gray-600">
                         <Phone className="w-4 h-4" />
