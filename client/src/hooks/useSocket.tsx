@@ -1,8 +1,6 @@
-// client/src/hooks/useSocket.tsx
-
 import { useEffect, useState, createContext, useContext } from "react";
 import { io, type Socket } from "socket.io-client";
-import { useAuth } from "./useAuth"; // useAuth हुक को आयात करें
+import { useAuth } from "./useAuth";
 
 // Context type अब सिर्फ Socket या null
 const SocketContext = createContext<Socket | null>(null);
@@ -22,7 +20,7 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
     }
 
     // Backend URL environment variable से लें, fallback localhost
-    const socketUrl = import.meta.env.VITE_API_URL || "http://localhost:5001";
+    const socketUrl = import.meta.env.REACT_APP_API_BASE || "http://localhost:5001";
 
     const newSocket = io(socketUrl, {
       withCredentials: true,
@@ -48,7 +46,7 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
       newSocket.disconnect();
       console.log("⚡ Socket disconnected");
     };
-  }, [isAuthenticated, user]);
+  }, [isAuthenticated, user, socket]); // ✅ Added 'socket' to dependencies to avoid re-creating socket on re-renders
 
   return (
     <SocketContext.Provider value={socket}>
