@@ -78,8 +78,6 @@ const statusText = (status: string) => {
 const nextStatus = (status: string) => {
   switch (status) {
     case "ready":
-    case "pending":
-      return "picked_up";
     case "picked_up":
       return "out_for_delivery";
     case "out_for_delivery":
@@ -91,8 +89,7 @@ const nextStatus = (status: string) => {
 const nextStatusLabel = (status: string) => {
   switch (status) {
     case "ready":
-    case "pending":
-      return "पिकअप के रूप में चिह्नित करें";
+      return "डिलीवरी शुरू करें";
     case "picked_up":
       return "डिलीवरी शुरू करें";
     case "out_for_delivery":
@@ -108,7 +105,7 @@ const nextStatusLabel = (status: string) => {
 export default function DeliveryOrdersList({ userId, auth }: { userId: string | null; auth: any }) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const socket = useSocket();
+  const { socket } = useSocket();
 
   const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
   const [otp, setOtp] = useState("");
@@ -124,7 +121,8 @@ export default function DeliveryOrdersList({ userId, auth }: { userId: string | 
       if (!userId) return [];
       try {
         const token = auth ? await auth.currentUser?.getIdToken() : null;
-        const res = await fetch(`${API_BASE}/api/delivery/orders?deliveryBoyId=${encodeURIComponent(userId)}`, {
+        // Fetch orders assigned to the user OR unassigned (pending) orders
+        const res = await fetch(`${API_BASE}/api/delivery/orders?deliveryBoyId=${encodeURIComponent(userId)}&includePending=true`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -186,6 +184,30 @@ export default function DeliveryOrdersList({ userId, auth }: { userId: string | 
     },
   });
 
+  const acceptOrderMutation = useMutation({
+    mutationFn: async (orderId: number) => {
+      const token = auth ? await auth.currentUser?.getIdToken() : null;
+      const response = await fetch(`${API_BASE}/api/delivery/accept-order`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ orderId }),
+      });
+      if (!response.ok) throw new Error("ऑर्डर स्वीकार करने में विफल");
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["deliveryOrders"] });
+      toast({ title: "ऑर्डर स्वीकार किया गया", description: "यह ऑर्डर अब आपको असाइन किया गया है।" });
+    },
+    onError: (error) => {
+      console.error("Accept order mutation failed:", error);
+      toast({ title: "ऑर्डर स्वीकार करने में त्रुटि", description: "कृपया पुनः प्रयास करें।", variant: "destructive" });
+    },
+  });
+
   const handleOtpSubmit = useMutation({
     mutationFn: async ({ orderId, otp }: { orderId: number; otp: string }) => {
       const token = auth ? await auth.currentUser?.getIdToken() : null;
@@ -215,7 +237,7 @@ export default function DeliveryOrdersList({ userId, auth }: { userId: string | 
 
   // ─── Handlers ───
   const handleStatusProgress = (order: any) => {
-    const cur = order.deliveryStatus || order.status || "pending";
+    const cur = order.deliveryStatus || order.status || "pending"; // deliveryStatus का उपयोग करें, अगर उपलब्ध न हो तो status का उपयोग करें
     if (cur === "out_for_delivery") {
       setSelectedOrder(order);
       setOtpDialogOpen(true);
@@ -379,10 +401,9 @@ export default function DeliveryOrdersList({ userId, auth }: { userId: string | 
                     <h4 className="font-medium mb-2">ऑर्डर आइटम्स</h4>
                     <div className="space-y-2 max-h-32 overflow-y-auto pr-2">
                       {order.items?.map((item: any) => {
-                        // डेटा की सुरक्षा के लिए, हम जांच करते हैं कि product object मौजूद है या नहीं
                         if (!item.product) {
                           console.error("Item is missing product data:", item);
-                          return null; // या एक fallback UI component दिखाएं
+                          return null;
                         }
                         return (
                           <div key={item.id} className="flex items-center space-x-3 text-sm">
@@ -403,18 +424,31 @@ export default function DeliveryOrdersList({ userId, auth }: { userId: string | 
                 </div>
 
                 <div className="flex flex-wrap gap-3 mt-6 pt-4 border-t">
-                  <Button variant="outline" size="sm" onClick={() => window.open(`tel:${order.deliveryAddress?.phone || ""}`)}>
-                    <Phone className="w-4 h-4 mr-2" /> ग्राहक को कॉल करें
-                  </Button>
-
-                  <Button variant="outline" size="sm" onClick={() => window.open(`https://maps.google.com/?q=${encodeURIComponent(`${order.deliveryAddress?.address || ""}, ${order.deliveryAddress?.city || ""}`)}`)}>
-                    <Navigation className="w-4 h-4 mr-2" /> नेविगेट करें
-                  </Button>
-
-                  {nextStatus(order.deliveryStatus || order.status) && (
-                    <Button size="sm" onClick={() => handleStatusProgress(order)} disabled={updateStatusMutation.isLoading}>
-                      {nextStatusLabel(order.deliveryStatus || order.status)}
+                  {/* "ऑर्डर स्वीकार करें" बटन सिर्फ़ तब दिखेगा जब ऑर्डर किसी को असाइन न हुआ हो */}
+                  {order.deliveryBoyId === null ? (
+                    <Button
+                      size="sm"
+                      onClick={() => acceptOrderMutation.mutate(order.id)}
+                      disabled={acceptOrderMutation.isLoading}
+                    >
+                      ऑर्डर स्वीकार करें
                     </Button>
+                  ) : (
+                    <>
+                      <Button variant="outline" size="sm" onClick={() => window.open(`tel:${order.deliveryAddress?.phone || ""}`)}>
+                        <Phone className="w-4 h-4 mr-2" /> ग्राहक को कॉल करें
+                      </Button>
+
+                      <Button variant="outline" size="sm" onClick={() => window.open(`https://maps.google.com/?q=${encodeURIComponent(`${order.deliveryAddress?.address || ""}, ${order.deliveryAddress?.city || ""}`)}`)}>
+                        <Navigation className="w-4 h-4 mr-2" /> नेविगेट करें
+                      </Button>
+
+                      {nextStatus(order.deliveryStatus || order.status) && (
+                        <Button size="sm" onClick={() => handleStatusProgress(order)} disabled={updateStatusMutation.isLoading}>
+                          {nextStatusLabel(order.deliveryStatus || order.status)}
+                        </Button>
+                      )}
+                    </>
                   )}
                 </div>
               </CardContent>
@@ -434,4 +468,4 @@ export default function DeliveryOrdersList({ userId, auth }: { userId: string | 
       />
     </div>
   );
-}
+        }
