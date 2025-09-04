@@ -1,5 +1,5 @@
 import { Router, Response } from "express";
-import { db } from "@shared/backend/db";
+import { db } from "../../db";
 import { orders, orderItems, deliveryBoysPgTable } from "@shared/backend/schema";
 import { requireDeliveryAuth, AuthenticatedRequest } from "../middleware/auth";
 import { eq } from "drizzle-orm";
