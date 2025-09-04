@@ -25,16 +25,19 @@ router.get("/orders", async (req: Request, res: Response) => {
         isNull(orders.delivery_boy_id)
       )
     );
-
     const list = await db.query.orders.findMany({
-      where: whereClause,
-      with: {
-        items: { with: { product: true } },
-        seller: true,
-        user: true,
-      },
-      orderBy: (o, { desc }) => [desc(o.createdAt)],
-    });
+  where: or(
+    eq(orders.deliveryStatus, "pending" as any),
+    eq(orders.deliveryBoyId, deliveryBoyId)
+  ),
+  with: {
+    items: { with: { product: true } },
+    seller: true,
+    user: true,
+  },
+  orderBy: (o, { desc }) => [desc(o.createdAt)],
+});
+    
 
     return res.json({ orders: list });
   } catch (err) {
