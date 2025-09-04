@@ -1,6 +1,5 @@
-// client/src/pages/DeliveryOrdersList.tsx
-import React, { useState, useEffect, useCallback } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import React, { useState, useEffect } from "react";
+import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import {
   User,
   LogOut,
@@ -13,14 +12,14 @@ import {
   Loader2,
 } from "lucide-react";
 import DeliveryOtpDialog from "./DeliveryOtpDialog";
-import { useSocket } from "@/hooks/useSocket"; // ensure this hook exists and connects socket
+import { useSocket } from "@/hooks/useSocket";
 
 // -----------------------------------------------------------------------------
-// ## मॉक UI कंपोनेंट और यूटिलिटी फ़ंक्शन (आपके मौजूदा कंपोनेंट्स के जैसा)
+// ## मॉक UI कंपोनेंट और यूटिलिटी फ़ंक्शन
 // -----------------------------------------------------------------------------
 const useToast = () => {
   return {
-    toast: ({ title, description, variant }) => {
+    toast: ({ title, description, variant }: any) => {
       console.log(`Toast: ${title} - ${description} (Variant: ${variant})`);
     },
   };
@@ -109,95 +108,65 @@ const nextStatusLabel = (status: string) => {
 export default function DeliveryOrdersList({ userId, auth }: { userId: string | null; auth: any }) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { socket } = useSocket(); // useSocket hook should provide connected socket or null
+  const socket = useSocket();
 
-  const [orders, setOrders] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
   const [otp, setOtp] = useState("");
   const [otpDialogOpen, setOtpDialogOpen] = useState(false);
 
   // API base
-   
   const API_BASE = import.meta.env.VITE_API_BASE_URL || "https://shopnish-lzrf.onrender.com";
 
-  // ─── fetchOrders: gets both pending (for everyone) and accepted (only assigned to this user)
-  const fetchOrders = useCallback(
-    async (id: string | null) => {
-      setIsLoading(true);
+  // ─── useQuery: ऑर्डर्स फ़ेच करने के लिए
+  const { data: orders = [], isLoading } = useQuery({
+    queryKey: ["deliveryOrders", userId],
+    queryFn: async () => {
+      if (!userId) return [];
       try {
-        if (!id) {
-          setOrders([]);
-          setIsLoading(false);
-          return;
-        }
-
         const token = auth ? await auth.currentUser?.getIdToken() : null;
-
-        const res = await fetch(`${API_BASE}/api/delivery/orders?deliveryBoyId=${encodeURIComponent(id)}`, {
+        const res = await fetch(`${API_BASE}/api/delivery/orders?deliveryBoyId=${encodeURIComponent(userId)}`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
         });
         if (!res.ok) throw new Error("नेटवर्क प्रतिक्रिया ठीक नहीं थी");
         const data = await res.json();
-        setOrders(Array.isArray(data.orders) ? data.orders : []);
+        return Array.isArray(data.orders) ? data.orders : [];
       } catch (err) {
         console.error("ऑर्डर फ़ेच करने में त्रुटि:", err);
         toast({ title: "डेटा फ़ेच करने में त्रुटि", description: "ऑर्डर लाने में समस्या हुई", variant: "destructive" });
-        setOrders([]);
-      } finally {
-        setIsLoading(false);
+        return [];
       }
     },
-    [API_BASE, auth, toast]
-  );
-
-  useEffect(() => {
-    if (userId) fetchOrders(userId);
-    else {
-      setOrders([]);
-      setIsLoading(false);
-    }
-  }, [userId, fetchOrders]);
-
-  // ─── Socket.IO: listen to server events
-  // ─── Socket.IO: listen to server events
-useEffect(() => {
-  if (!socket) return;
-
-  let fetchTimeout: NodeJS.Timeout | null = null;
-
-  const safeFetch = () => {
-    if (fetchTimeout) return; // already scheduled
-    fetchTimeout = setTimeout(() => {
-      if (userId) fetchOrders(userId);
-      fetchTimeout = null;
-    }, 1000); // 1 second में max 1 बार fetch
-  };
-
-  const onOrdersChanged = () => safeFetch();
-  const onNewOrder = () => safeFetch();
-
-  socket.on("delivery:orders-changed", onOrdersChanged);
-  socket.on("new-order", onNewOrder);
-  socket.on("connect", () => {
-    socket.emit("register-client", { role: "delivery", userId: userId || null });
+    enabled: !!userId, // ✅ जब तक userId नहीं है तब तक query न चलाएं
+    refetchInterval: 60000, // 60 सेकंड बाद ऑटोमेटिकली refetch करें (सिर्फ़ एक fallback)
+    staleTime: 60000,
   });
 
-  return () => {
-    socket.off("delivery:orders-changed", onOrdersChanged);
-    socket.off("new-order", onNewOrder);
-    if (fetchTimeout) clearTimeout(fetchTimeout);
-  };
-}, [socket, userId, fetchOrders]);
+  // ─── Socket.IO: listen to server events and invalidate queries
+  useEffect(() => {
+    if (!socket || !userId) return;
 
+    const onOrdersChanged = () => {
+      queryClient.invalidateQueries({ queryKey: ["deliveryOrders"] });
+    };
+
+    socket.on("delivery:orders-changed", onOrdersChanged);
+    socket.on("new-order", onOrdersChanged);
+    socket.on("connect", () => {
+      socket.emit("register-client", { role: "delivery", userId });
+    });
+
+    return () => {
+      socket.off("delivery:orders-changed", onOrdersChanged);
+      socket.off("new-order", onOrdersChanged);
+    };
+  }, [socket, userId, queryClient]);
 
   // ─── Mutations ───
   const updateStatusMutation = useMutation({
     mutationFn: async ({ orderId, status }: { orderId: number; status: string }) => {
       const token = auth ? await auth.currentUser?.getIdToken() : null;
-
       const response = await fetch(`${API_BASE}/api/delivery/update-status`, {
         method: "POST",
         headers: {
@@ -210,9 +179,8 @@ useEffect(() => {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/delivery/orders"] });
+      queryClient.invalidateQueries({ queryKey: ["deliveryOrders"] });
       toast({ title: "स्टेटस अपडेट किया गया", description: "ऑर्डर का स्टेटस सफलतापूर्वक अपडेट किया गया।" });
-      if (userId) fetchOrders(userId);
     },
     onError: (error) => {
       console.error("Mutation failed:", error);
@@ -223,7 +191,6 @@ useEffect(() => {
   const handleOtpSubmit = useMutation({
     mutationFn: async ({ orderId, otp }: { orderId: number; otp: string }) => {
       const token = auth ? await auth.currentUser?.getIdToken() : null;
-
       const response = await fetch(`${API_BASE}/api/delivery/complete-delivery`, {
         method: "POST",
         headers: {
@@ -240,7 +207,7 @@ useEffect(() => {
       setOtpDialogOpen(false);
       setSelectedOrder(null);
       toast({ title: "डिलीवरी पूरी हुई", description: "ऑर्डर को सफलतापूर्वक डिलीवर किया गया।" });
-      if (userId) fetchOrders(userId);
+      queryClient.invalidateQueries({ queryKey: ["deliveryOrders"] });
     },
     onError: (error) => {
       console.error("OTP submission failed:", error);
@@ -325,7 +292,7 @@ useEffect(() => {
             <div>
               <p className="text-2xl font-bold">
                 {
-                  orders.filter((o) =>
+                  orders.filter((o: any) =>
                     ["ready", "picked_up", "out_for_delivery", "pending"].includes(o.deliveryStatus || o.status)
                   ).length
                 }
@@ -339,7 +306,7 @@ useEffect(() => {
           <CardContent className="p-6 flex items-center space-x-3">
             <CheckCircle className="w-8 h-8 text-green-600" />
             <div>
-              <p className="text-2xl font-bold">{orders.filter((o) => (o.deliveryStatus || o.status) === "delivered").length}</p>
+              <p className="text-2xl font-bold">{orders.filter((o: any) => (o.deliveryStatus || o.status) === "delivered").length}</p>
               <p className="text-sm text-gray-600">पूरे हुए</p>
             </div>
           </CardContent>
@@ -349,7 +316,7 @@ useEffect(() => {
           <CardContent className="p-6 flex items-center space-x-3">
             <Navigation className="w-8 h-8 text-purple-600" />
             <div>
-              <p className="text-2xl font-bold">{orders.filter((o) => (o.deliveryStatus || o.status) === "out_for_delivery").length}</p>
+              <p className="text-2xl font-bold">{orders.filter((o: any) => (o.deliveryStatus || o.status) === "out_for_delivery").length}</p>
               <p className="text-sm text-gray-600">रास्ते में</p>
             </div>
           </CardContent>
@@ -369,7 +336,7 @@ useEffect(() => {
             </CardContent>
           </Card>
         ) : (
-          orders.map((order) => (
+          orders.map((order: any) => (
             <Card key={order.id}>
               <CardHeader>
                 <div className="flex items-center justify-between">
@@ -458,4 +425,4 @@ useEffect(() => {
       />
     </div>
   );
-                                                                          }
+}
