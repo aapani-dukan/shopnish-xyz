@@ -50,7 +50,7 @@ export default function Checkout() {
   const { isAuthenticated, user } = useAuth();
   const [searchParams] = useSearchParams();
   
-  // ✅ URL से productId और quantity पैरामीटर प्राप्त करें
+  // URL से productId और quantity पैरामीटर प्राप्त करें
   const directBuyProductId = searchParams.get("productId");
   const directBuyQuantity = searchParams.get("quantity") ? parseInt(searchParams.get("quantity")!) : 1;
 
@@ -66,7 +66,7 @@ export default function Checkout() {
   const [paymentMethod, setPaymentMethod] = useState("cod");
   const [deliveryInstructions, setDeliveryInstructions] = useState("");
 
-  // ✅ कार्ट आइटम या डायरेक्ट बाय प्रोडक्ट फ़ेच करने के लिए एक ही क्वेरी
+  // कार्ट आइटम या डायरेक्ट बाय प्रोडक्ट फ़ेच करने के लिए एक ही क्वेरी
   const { data, isLoading } = useQuery<any>({
     queryKey: [directBuyProductId ? "product" : "/api/cart", directBuyProductId],
     queryFn: async () => {
@@ -104,9 +104,10 @@ export default function Checkout() {
       return await apiRequest("POST", "/api/orders", orderData);
     },
     onSuccess: (data) => {
-      // ✅ यह सुनिश्चित करता है कि ऑर्डर प्लेस होने के बाद कार्ट खाली हो जाए
+      // ✅ सुनिश्चित करें कि जब कार्ट से ऑर्डर दिया जाए तो कार्ट खाली हो जाए
       if (!directBuyProductId) {
-        queryClient.invalidateQueries({ queryKey: ["/api/cart"] });
+        // यह कमांड सीधे कैश से कार्ट का डेटा हटाती है
+        queryClient.removeQueries({ queryKey: ["/api/cart"] });
       }
 
       toast({
@@ -161,7 +162,6 @@ export default function Checkout() {
       total: total.toFixed(2),       
       deliveryCharge: deliveryCharge.toFixed(2), 
       deliveryInstructions,
-      // ✅ items array को सीधे cartItems से मैप करें
       items: cartItems.map(item => ({
         productId: item.productId,
         sellerId: item.product.sellerId,
