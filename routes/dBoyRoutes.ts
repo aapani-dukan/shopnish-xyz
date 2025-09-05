@@ -156,8 +156,6 @@ router.get('/orders', requireDeliveryBoyAuth, async (req: AuthenticatedRequest, 
       ),
       with: {
         items: { with: { product: true } },
-        seller: true,
-        user: true,
       },
       orderBy: (o, { desc }) => [desc(o.createdAt)],
     });
