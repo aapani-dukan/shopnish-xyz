@@ -326,7 +326,12 @@ const { data: orders = [], isLoading } = useQuery({
             </CardContent>
           </Card>
         ) : (
-          orders.map((order: any) => (
+          orders.map((order: any) => {
+            // Check if deliveryAddress is a string or an object
+            const addressData = order.deliveryAddress;
+            const isAddressObject = typeof addressData === 'object' && addressData !== null;
+
+            return (
             <Card key={order.id}>
               <CardHeader>
                 <div className="flex items-center justify-between">
@@ -348,11 +353,10 @@ const { data: orders = [], isLoading } = useQuery({
                     <div>
                       <h4 className="font-medium mb-2">ग्राहक विवरण</h4>
                       
-                    
-                      <p className="font-medium">{order.deliveryAddress?.fullName || order.deliveryAddress}</p>
+                      <p className="font-medium">{isAddressObject ? addressData.fullName : "नाम अनुपलब्ध"}</p>
                       <div className="flex items-center space-x-2 text-sm text-gray-600">
                         <Phone className="w-4 h-4" />
-                        <span>{order.deliveryAddress?.phone || "-"}</span>
+                        <span>{isAddressObject ? addressData.phone || "-" : "-"}</span>
                       </div>
                     </div>
 
@@ -361,13 +365,15 @@ const { data: orders = [], isLoading } = useQuery({
                       <div className="flex items-start space-x-2 text-sm text-gray-600">
                         <MapPin className="w-4 h-4 mt-0.5" />
                         <div>
-                          <p>{order.deliveryAddress?.address || order.deliveryAddress}</p>
-                          <p>
-                            {order.deliveryAddress?.city || ""}{" "}
-                            {order.deliveryAddress?.pincode ? `, ${order.deliveryAddress.pincode}` : ""}
-                          </p>
-                          {order.deliveryAddress?.landmark && (
-                            <p className="text-xs">लैंडमार्क: {order.deliveryAddress.landmark}</p>
+                          <p>{isAddressObject ? addressData.address : addressData}</p>
+                          {isAddressObject && (
+                            <p>
+                              {addressData.city || ""}{" "}
+                              {addressData.pincode ? `, ${addressData.pincode}` : ""}
+                            </p>
+                          )}
+                          {isAddressObject && addressData.landmark && (
+                            <p className="text-xs">लैंडमार्क: {addressData.landmark}</p>
                           )}
                         </div>
                       </div>
@@ -415,7 +421,7 @@ const { data: orders = [], isLoading } = useQuery({
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => window.open(`tel:${order.deliveryAddress?.phone || ""}`)}
+                        onClick={() => window.open(`tel:${isAddressObject ? addressData.phone || "" : ""}`)}
                       >
                         <Phone className="w-4 h-4 mr-2" /> ग्राहक को कॉल करें
                       </Button>
@@ -426,7 +432,7 @@ const { data: orders = [], isLoading } = useQuery({
                         onClick={() =>
                           window.open(
                             `https://maps.google.com/?q=${encodeURIComponent(
-                              `${order.deliveryAddress?.address || ""}, ${order.deliveryAddress?.city || ""}`
+                              `${isAddressObject ? addressData.address || "" : ""}, ${isAddressObject ? addressData.city || "" : ""}`
                             )}`
                           )
                         }
@@ -448,7 +454,8 @@ const { data: orders = [], isLoading } = useQuery({
                 </div>
               </CardContent>
             </Card>
-          ))
+          );
+          })
         )}
       </section>
 
@@ -463,4 +470,4 @@ const { data: orders = [], isLoading } = useQuery({
       />
     </div>
   );
-    }
+}
