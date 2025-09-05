@@ -172,6 +172,8 @@ router.get("/categories", async (req: Request, res: Response) => {
 router.use("/products", productsRouter);
 
 // ✅ Delivery Boy
+
+router.use("/delivery", dBoyRouter);
 router.use("/delivery", orderdBoyRouter);
 
 router.use("/orders",dBoyRouter);
@@ -188,5 +190,8 @@ adminRouter.use("/orders", dBoyRouter);
 
 
 router.use("/admin", adminRouter);
+
+
+
 
 export default router;
