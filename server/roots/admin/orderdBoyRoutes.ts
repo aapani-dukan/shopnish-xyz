@@ -30,11 +30,8 @@ router.get("/orders", async (req: Request, res: Response) => {
       with: {
         items: {
           with: {
-            product: {
-              with: {
-                seller: true,
-              },
-            },
+            product: true,
+            seller: true, // ✅ अब यह seller को सीधे orderItems से फ़ेच करेगा
           },
         },
         deliveryAddress: true,
