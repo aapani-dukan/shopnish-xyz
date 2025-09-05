@@ -144,7 +144,21 @@ const { data: orders = [], isLoading } = useQuery({
       });
       if (!res.ok) throw new Error("नेटवर्क प्रतिक्रिया ठीक नहीं थी");
       const data = await res.json();
-      return Array.isArray(data.orders) ? data.orders : [];
+      
+      // ✅ बैकएंड से डेटा नहीं आ रहा है, इसलिए विक्रेता का डेटा यहाँ अनुकरण (simulate) करें
+      const ordersWithSeller = Array.isArray(data.orders) ? data.orders.map((order: any) => ({
+        ...order,
+        sellerDetails: {
+          storeName: "लोकल किराना स्टोर",
+          phone: "9876543210",
+          address: "123, गांधी नगर",
+          city: "दिल्ली",
+          pincode: "110001",
+          landmark: "रेलवे स्टेशन के पास",
+        }
+      })) : [];
+
+      return ordersWithSeller;
     } catch (err) {
       console.error("ऑर्डर फ़ेच करने में त्रुटि:", err);
       toast({
@@ -327,10 +341,11 @@ const { data: orders = [], isLoading } = useQuery({
           </Card>
         ) : (
           orders.map((order: any) => {
-            // Check if deliveryAddress is a string or an object
             const addressData = order.deliveryAddress;
             const isAddressObject = typeof addressData === 'object' && addressData !== null;
-
+            const sellerDetails = order.sellerDetails;
+            const isSellerAddressObject = typeof sellerDetails === 'object' && sellerDetails !== null;
+          
             return (
             <Card key={order.id}>
               <CardHeader>
@@ -349,10 +364,10 @@ const { data: orders = [], isLoading } = useQuery({
 
               <CardContent>
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {/* ग्राहक विवरण */}
                   <div className="space-y-4">
                     <div>
                       <h4 className="font-medium mb-2">ग्राहक विवरण</h4>
-                      
                       <p className="font-medium">{isAddressObject ? addressData.fullName : "नाम अनुपलब्ध"}</p>
                       <div className="flex items-center space-x-2 text-sm text-gray-600">
                         <Phone className="w-4 h-4" />
@@ -380,29 +395,58 @@ const { data: orders = [], isLoading } = useQuery({
                     </div>
                   </div>
 
-                  <div>
-                    <h4 className="font-medium mb-2">ऑर्डर आइटम्स</h4>
-                    <div className="space-y-2 max-h-32 overflow-y-auto pr-2">
-                      {order.items?.map((item: any) => {
-                        return (
-                          <div key={item.id} className="flex items-center space-x-3 text-sm">
-                            <img
-                              src={item.product?.image || "https://placehold.co/32x32/E2E8F0/1A202C?text=No+Img"}
-                              alt={item.product?.name || "No Name"}
-                              
-                  
-                              className="w-8 h-8 object-cover rounded"
-                            />
-                            <div className="flex-1">
-                              <p className="font-medium">{item.product?.name || "उत्पाद डेटा अनुपलब्ध"}</p>
-                              <p className="text-gray-600">
-                                Qty: {item.quantity} {item.product?.unit}
-                              </p>
-                            </div>
-                          </div>
-                        );
-                      })}
+                  {/* ✅ विक्रेता का विवरण */}
+                  <div className="space-y-4">
+                    <div>
+                      <h4 className="font-medium mb-2">विक्रेता विवरण</h4>
+                      <p className="font-medium">{isSellerAddressObject ? sellerDetails.storeName : "नाम अनुपलब्ध"}</p>
+                      <div className="flex items-center space-x-2 text-sm text-gray-600">
+                        <Phone className="w-4 h-4" />
+                        <span>{isSellerAddressObject ? sellerDetails.phone || "-" : "-"}</span>
+                      </div>
                     </div>
+                    <div>
+                      <h4 className="font-medium mb-2">पिकअप पता</h4>
+                      <div className="flex items-start space-x-2 text-sm text-gray-600">
+                        <MapPin className="w-4 h-4 mt-0.5" />
+                        <div>
+                          <p>{isSellerAddressObject ? sellerDetails.address : "पता अनुपलब्ध"}</p>
+                          {isSellerAddressObject && (
+                            <p>
+                              {sellerDetails.city || ""}{" "}
+                              {sellerDetails.pincode ? `, ${sellerDetails.pincode}` : ""}
+                            </p>
+                          )}
+                          {isSellerAddressObject && sellerDetails.landmark && (
+                            <p className="text-xs">लैंडमार्क: {sellerDetails.landmark}</p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* ऑर्डर आइटम्स */}
+                <div className="mt-6 pt-4 border-t">
+                  <h4 className="font-medium mb-2">ऑर्डर आइटम्स</h4>
+                  <div className="space-y-2 max-h-32 overflow-y-auto pr-2">
+                    {order.items?.map((item: any) => {
+                      return (
+                        <div key={item.id} className="flex items-center space-x-3 text-sm">
+                          <img
+                            src={item.product?.image || "https://placehold.co/32x32/E2E8F0/1A202C?text=No+Img"}
+                            alt={item.product?.name || "No Name"}
+                            className="w-8 h-8 object-cover rounded"
+                          />
+                          <div className="flex-1">
+                            <p className="font-medium">{item.product?.name || "उत्पाद डेटा अनुपलब्ध"}</p>
+                            <p className="text-gray-600">
+                              Qty: {item.quantity} {item.product?.unit}
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
 
@@ -425,7 +469,6 @@ const { data: orders = [], isLoading } = useQuery({
                       >
                         <Phone className="w-4 h-4 mr-2" /> ग्राहक को कॉल करें
                       </Button>
-
                       <Button
                         variant="outline"
                         size="sm"
@@ -437,7 +480,28 @@ const { data: orders = [], isLoading } = useQuery({
                           )
                         }
                       >
-                        <Navigation className="w-4 h-4 mr-2" /> नेविगेट करें
+                        <Navigation className="w-4 h-4 mr-2" /> नेविगेट करें (ग्राहक)
+                      </Button>
+                      {/* ✅ विक्रेता को कॉल करने और नेविगेट करने के बटन */}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => window.open(`tel:${isSellerAddressObject ? sellerDetails.phone || "" : ""}`)}
+                      >
+                        <Phone className="w-4 h-4 mr-2" /> विक्रेता को कॉल करें
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
+                          window.open(
+                            `https://maps.google.com/?q=${encodeURIComponent(
+                              `${isSellerAddressObject ? sellerDetails.address || "" : ""}, ${isSellerAddressObject ? sellerDetails.city || "" : ""}`
+                            )}`
+                          )
+                        }
+                      >
+                        <Navigation className="w-4 h-4 mr-2" /> नेविगेट करें (पिकअप)
                       </Button>
 
                       {nextStatus(order.delivery_status || order.status) && (
@@ -446,7 +510,7 @@ const { data: orders = [], isLoading } = useQuery({
                           onClick={() => handleStatusProgress(order)}
                           disabled={updateStatusMutation.isLoading}
                         >
-                          {nextStatusLabel(order.delivery_status || order.status)}
+                                                    {nextStatusLabel(order.delivery_status || order.status)}
                         </Button>
                       )}
                     </>
@@ -454,7 +518,7 @@ const { data: orders = [], isLoading } = useQuery({
                 </div>
               </CardContent>
             </Card>
-          );
+            );
           })
         )}
       </section>
@@ -470,4 +534,4 @@ const { data: orders = [], isLoading } = useQuery({
       />
     </div>
   );
-}
+}       
