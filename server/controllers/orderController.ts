@@ -11,7 +11,7 @@ interface PlaceOrderOptions {
   cartOrder?: boolean; // true = cart order, false = buy-now
 }
 
-// ✅ Place order (cart or buy now)
+// ✅ Place order (cart or buy now) with safe deliveryAddress
 export const placeOrder = async (
   req: AuthenticatedRequest,
   res: Response,
@@ -24,7 +24,15 @@ export const placeOrder = async (
     const userId = req.user?.id;
     if (!userId) return res.status(401).json({ message: "Unauthorized: User not logged in." });
 
-    const { deliveryAddress, paymentMethod, deliveryInstructions, items, subtotal, total, deliveryCharge } = req.body;
+    const {
+      deliveryAddress: rawDeliveryAddress,
+      paymentMethod,
+      deliveryInstructions,
+      items,
+      subtotal,
+      total,
+      deliveryCharge,
+    } = req.body;
 
     if (!items || items.length === 0)
       return res.status(400).json({ message: "Items list is empty, cannot place an order." });
@@ -36,6 +44,18 @@ export const placeOrder = async (
     const orderPaymentMethod = paymentMethod || "COD";
     const deliveryBoyId = null;
 
+    // ✅ Fallback delivery address for buy-now
+    const deliveryAddress = rawDeliveryAddress || {};
+    const safeAddress = {
+      fullName: deliveryAddress.fullName || req.user?.name || "Unknown Customer",
+      phoneNumber: deliveryAddress.phone || req.user?.phone || "0000000000",
+      addressLine1: deliveryAddress.address || "N/A",
+      addressLine2: deliveryAddress.landmark || "",
+      city: deliveryAddress.city || "Unknown",
+      postalCode: deliveryAddress.pincode || "000000",
+      state: "Rajasthan",
+    };
+
     let newOrder: any;
     let newDeliveryAddressId: number;
 
@@ -43,13 +63,7 @@ export const placeOrder = async (
       // 1️⃣ Insert delivery address
       const [newAddress] = await tx.insert(deliveryAddresses).values({
         userId,
-        fullName: deliveryAddress.fullName,
-        phoneNumber: deliveryAddress.phone,
-        addressLine1: deliveryAddress.address,
-        addressLine2: deliveryAddress.landmark,
-        city: deliveryAddress.city,
-        postalCode: deliveryAddress.pincode,
-        state: "Rajasthan",
+        ...safeAddress,
       }).returning();
 
       newDeliveryAddressId = newAddress.id;
@@ -66,7 +80,7 @@ export const placeOrder = async (
         paymentMethod: orderPaymentMethod,
         deliveryAddressId: newDeliveryAddressId,
         deliveryInstructions,
-        deliveryAddress: JSON.stringify(deliveryAddress),
+        deliveryAddress: JSON.stringify(safeAddress),
         deliveryBoyId,
       }).returning();
 
