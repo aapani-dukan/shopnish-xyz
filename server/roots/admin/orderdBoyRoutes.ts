@@ -1,5 +1,5 @@
 import { Router, Request, Response } from "express";
-import { eq, or } from "drizzle-orm";
+import { and, eq, or, isNull } from "drizzle-orm";
 import { db } from "../../db.ts";
 import { orders, cartItems } from "../../../shared/backend/schema.ts";
 import { getIO } from "../../socket.ts";
@@ -13,7 +13,7 @@ const router = Router();
  
 router.get("/orders", async (req: Request, res: Response) => {
   try {
-    const deliveryBoyId = Number(req.query.deliveryBoyId || "");
+    const deliveryBoyId = String(req.query.deliveryBoyId || "");
     if (!deliveryBoyId) {
       return res.status(400).json({ message: "deliveryBoyId is required" });
     }
@@ -21,19 +21,22 @@ router.get("/orders", async (req: Request, res: Response) => {
     // Fetch orders: pending + assigned
     const assignedOrders = await db.query.orders.findMany({
       where: or(
-        eq(orders.deliveryStatus, "pending" as any),
-        eq(orders.deliveryBoyId, deliveryBoyId)
+        eq(orders.deliveryBoyId, deliveryBoyId),
+        and(
+          eq(orders.deliveryStatus, "pending" as any),
+          isNull(orders.deliveryBoyId)
+        )
       ),
       with: {
         items: {
           with: {
             product: true,
-            seller: true, // ✅ include seller
+            seller: true,
           },
         },
         deliveryAddress: true,
-        deliveryBoy: true, // ✅ optional relation safe
-        customer: true, // user who ordered
+        deliveryBoy: true,
+        customer: true,
       },
       orderBy: (o, { desc }) => [desc(o.createdAt)],
     });
@@ -44,6 +47,7 @@ router.get("/orders", async (req: Request, res: Response) => {
     return res.status(500).json({ message: "Failed to fetch orders" });
   }
 });
+
 /**
  * POST /api/delivery/accept
  */
