@@ -131,33 +131,32 @@ export default function DeliveryOrdersList({ userId, auth }: { userId: string | 
   };
 
   // ─── useQuery: ऑर्डर्स फ़ेच करने के लिए
-  // ─── useQuery: ऑर्डर्स फ़ेच करने के लिए (deliveryBoyId filter हटाया)
-const { data: orders = [], isLoading } = useQuery({
-  queryKey: ["deliveryOrders"],
-  queryFn: async () => {
-    try {
-      const token = await getValidToken();
-      if (!token) throw new Error("अमान्य या समाप्त टोकन");
-      const res = await fetch(`${API_BASE}/api/delivery/orders`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      if (!res.ok) throw new Error("नेटवर्क प्रतिक्रिया ठीक नहीं थी");
-      const data = await res.json();
-      return Array.isArray(data.orders) ? data.orders : [];
-    } catch (err) {
-      console.error("ऑर्डर फ़ेच करने में त्रुटि:", err);
-      toast({
-        title: "डेटा फ़ेच करने में त्रुटि",
-        description: "ऑर्डर लाने में समस्या हुई",
-        variant: "destructive",
-      });
-      return [];
-    }
-  },
-  enabled: !!userId,
-});
+  const { data: orders = [], isLoading } = useQuery({
+    queryKey: ["deliveryOrders"],
+    queryFn: async () => {
+      try {
+        const token = await getValidToken();
+        if (!token) throw new Error("अमान्य या समाप्त टोकन");
+        const res = await fetch(`${API_BASE}/api/delivery/orders`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        if (!res.ok) throw new Error("नेटवर्क प्रतिक्रिया ठीक नहीं थी");
+        const data = await res.json();
+        return Array.isArray(data.orders) ? data.orders : [];
+      } catch (err) {
+        console.error("ऑर्डर फ़ेच करने में त्रुटि:", err);
+        toast({
+          title: "डेटा फ़ेच करने में त्रुटि",
+          description: "ऑर्डर लाने में समस्या हुई",
+          variant: "destructive",
+        });
+        return [];
+      }
+    },
+    enabled: !!userId,
+  });
 
   // ─── Socket.IO: listen to server events and invalidate queries
   useEffect(() => {
@@ -407,10 +406,10 @@ const { data: orders = [], isLoading } = useQuery({
 
                 <div className="flex flex-wrap gap-3 mt-6 pt-4 border-t">
                   {/* "ऑर्डर स्वीकार करें" बटन सिर्फ़ तब दिखेगा जब ऑर्डर किसी को असाइन न हुआ हो */}
-                  {order.delivery_boy_id == null ? (
+                  {/* ✅ यह लाइन बदल दी गई है */}
+                  {order.delivery_boy_id == null && order.deliveryStatus === 'pending' ? (
                     <Button
                       size="sm"
-                      // ✅ यह लाइन बदल दी गई है
                       onClick={() => acceptOrderMutation.mutate({ orderId: order.id })}
                       disabled={acceptOrderMutation.isLoading}
                     >
