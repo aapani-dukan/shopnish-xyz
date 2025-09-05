@@ -150,7 +150,8 @@ router.get('/orders', requireDeliveryBoyAuth, async (req: AuthenticatedRequest, 
       where: or(
         eq(orders.deliveryBoyId, deliveryBoy.id),
         and(
-          eq(orders.status, 'pending'),
+          // ✅ यहाँ 'status' को 'deliveryStatus' से बदल दिया गया है
+          eq(orders.deliveryStatus, 'pending'),
           isNull(orders.deliveryBoyId)
         )
       ),
@@ -202,7 +203,8 @@ router.patch('/orders/:orderId/status', requireDeliveryBoyAuth, async (req: Auth
     }
 
     const [updatedOrder] = await db.update(orders)
-      .set({ status })
+      // ✅ यहाँ 'status' को 'deliveryStatus' से बदल दिया गया है
+      .set({ deliveryStatus: status })
       .where(eq(orders.id, orderId))
       .returning();
 
@@ -260,7 +262,8 @@ router.post('/orders/:orderId/complete-delivery', requireDeliveryBoyAuth, async 
 
     const [updatedOrder] = await db.update(orders)
       .set({
-        status: 'delivered',
+        // ✅ यहाँ 'status' को 'deliveryStatus' से बदल दिया गया है
+        deliveryStatus: 'delivered',
         deliveryOtp: null,
       })
       .where(eq(orders.id, orderId))
@@ -301,11 +304,13 @@ router.post("/accept", requireDeliveryBoyAuth, async (req: AuthenticatedRequest,
 
     const existing = await db.query.orders.findFirst({
       where: eq(orders.id, orderId),
-      columns: { id: true, status: true },
+      // ✅ यहाँ 'status' को 'deliveryStatus' से बदल दिया गया है
+      columns: { id: true, deliveryStatus: true },
     });
 
     if (!existing) return res.status(404).json({ message: "Order not found" });
-    if (existing.status !== 'pending')
+    // ✅ यहाँ 'status' को 'deliveryStatus' से बदल दिया गया है
+    if (existing.deliveryStatus !== 'pending')
       return res.status(409).json({ message: "Order is not pending anymore" });
 
     const deliveryOtp = Math.floor(1000 + Math.random() * 9000).toString();
@@ -314,7 +319,8 @@ router.post("/accept", requireDeliveryBoyAuth, async (req: AuthenticatedRequest,
       .update(orders)
       .set({
         deliveryBoyId: deliveryBoy.id,
-        status: "accepted",
+        // ✅ यहाँ 'status' को 'deliveryStatus' से बदल दिया गया है
+        deliveryStatus: "accepted",
         deliveryOtp,
         deliveryAcceptedAt: new Date(),
       })
