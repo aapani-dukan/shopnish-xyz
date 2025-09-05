@@ -131,32 +131,32 @@ export default function DeliveryOrdersList({ userId, auth }: { userId: string | 
   };
 
   // ─── useQuery: ऑर्डर्स फ़ेच करने के लिए
-  const { data: orders = [], isLoading } = useQuery({
-    queryKey: ["deliveryOrders"],
-    queryFn: async () => {
-      try {
-        const token = await getValidToken();
-        if (!token) throw new Error("अमान्य या समाप्त टोकन");
-        const res = await fetch(`${API_BASE}/api/delivery/orders`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-        if (!res.ok) throw new Error("नेटवर्क प्रतिक्रिया ठीक नहीं थी");
-        const data = await res.json();
-        return Array.isArray(data.orders) ? data.orders : [];
-      } catch (err) {
-        console.error("ऑर्डर फ़ेच करने में त्रुटि:", err);
-        toast({
-          title: "डेटा फ़ेच करने में त्रुटि",
-          description: "ऑर्डर लाने में समस्या हुई",
-          variant: "destructive",
-        });
-        return [];
-      }
-    },
-    enabled: !!userId,
-  });
+const { data: orders = [], isLoading } = useQuery({
+  queryKey: ["deliveryOrders"],
+  queryFn: async () => {
+    try {
+      const token = await getValidToken();
+      if (!token) throw new Error("अमान्य या समाप्त टोकन");
+      const res = await fetch(`${API_BASE}/api/delivery/orders`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      if (!res.ok) throw new Error("नेटवर्क प्रतिक्रिया ठीक नहीं थी");
+      const data = await res.json();
+      return Array.isArray(data.orders) ? data.orders : [];
+    } catch (err) {
+      console.error("ऑर्डर फ़ेच करने में त्रुटि:", err);
+      toast({
+        title: "डेटा फ़ेच करने में त्रुटि",
+        description: "ऑर्डर लाने में समस्या हुई",
+        variant: "destructive",
+      });
+      return [];
+    }
+  },
+  enabled: !!userId,
+});
 
   // ─── Socket.IO: listen to server events and invalidate queries
   useEffect(() => {
@@ -378,23 +378,19 @@ export default function DeliveryOrdersList({ userId, auth }: { userId: string | 
                     <h4 className="font-medium mb-2">ऑर्डर आइटम्स</h4>
                     <div className="space-y-2 max-h-32 overflow-y-auto pr-2">
                       {order.items?.map((item: any) => {
-                        if (!item.product) {
-                          console.error("Item is missing product data:", item);
-                          return null;
-                        }
                         return (
                           <div key={item.id} className="flex items-center space-x-3 text-sm">
                             <img
-                              src={item.product.image || "https://placehold.co/32x32/E2E8F0/1A202C?text=No+Img"}
-                              alt={item.product.name || "No Name"}
+                              src={item.product?.image || "https://placehold.co/32x32/E2E8F0/1A202C?text=No+Img"}
+                              alt={item.product?.name || "No Name"}
                               
                   
                               className="w-8 h-8 object-cover rounded"
                             />
                             <div className="flex-1">
-                              <p className="font-medium">{item.product.name}</p>
+                              <p className="font-medium">{item.product?.name || "उत्पाद डेटा अनुपलब्ध"}</p>
                               <p className="text-gray-600">
-                                Qty: {item.quantity} {item.product.unit}
+                                Qty: {item.quantity} {item.product?.unit}
                               </p>
                             </div>
                           </div>
@@ -406,7 +402,6 @@ export default function DeliveryOrdersList({ userId, auth }: { userId: string | 
 
                 <div className="flex flex-wrap gap-3 mt-6 pt-4 border-t">
                   {/* "ऑर्डर स्वीकार करें" बटन सिर्फ़ तब दिखेगा जब ऑर्डर किसी को असाइन न हुआ हो */}
-                  {/* ✅ यह लाइन बदल दी गई है */}
                   {order.delivery_boy_id == null && order.deliveryStatus === 'pending' ? (
                     <Button
                       size="sm"
@@ -468,4 +463,4 @@ export default function DeliveryOrdersList({ userId, auth }: { userId: string | 
       />
     </div>
   );
-}
+    }
