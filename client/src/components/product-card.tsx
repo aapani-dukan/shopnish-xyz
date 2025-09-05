@@ -176,6 +176,6 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
       </Dialog>
     </div>
   );
-};
+
 
 export default ProductCard;
