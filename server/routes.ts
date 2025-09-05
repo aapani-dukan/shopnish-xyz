@@ -34,7 +34,6 @@ import orderConfirmationRouter from "../routes/orderConfirmationRouter";
 
 import userLoginRouter from "../routes/userRoutes.ts";
 import { verifyToken } from "./middleware/verifyToken";
-import adminOrderRouter from "./roots/admin/orders.ts"; // ✅ सही एडमिन ऑर्डर राउटर जोड़ा
 
 const router = Router();
 
@@ -177,14 +176,15 @@ router.use("/delivery", dBoyRouter);
 
 // ✅ Admin Routes
 const adminRouter = Router();
-// adminRouter.use(requireAdminAuth);
+adminRouter.use(requireAdminAuth);
 adminRouter.use("/products/approve", adminApproveProductRoutes);
 adminRouter.use("/products/reject", adminRejectProductRoutes);
 adminRouter.use("/products", adminProductsRoutes);
 adminRouter.use("/password", adminPasswordRoutes);
 adminRouter.use("/vendors", adminVendorsRoutes);
 adminRouter.use("/delivery-boys", admindBoyRouter);
-adminRouter.use("/orders", adminOrderRouter);
+// ❌ /orders राउट को हटा दिया क्योंकि इसकी कोई फ़ाइल नहीं है
+// adminRouter.use("/orders", dBoyRouter);
 
 
 router.use("/admin", adminRouter);
