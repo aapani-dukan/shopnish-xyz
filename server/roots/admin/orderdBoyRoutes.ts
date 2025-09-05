@@ -10,6 +10,7 @@ const router = Router();
  * GET /api/delivery/orders?deliveryBoyId=UID
  * → Pending orders (deliveryBoyId = null) + Assigned orders (deliveryBoyId = current)
  */
+ 
 router.get("/orders", async (req: Request, res: Response) => {
   try {
     const deliveryBoyId = Number(req.query.deliveryBoyId || "");
@@ -17,26 +18,32 @@ router.get("/orders", async (req: Request, res: Response) => {
       return res.status(400).json({ message: "deliveryBoyId is required" });
     }
 
-    const list = await db.query.orders.findMany({
+    // Fetch orders: pending + assigned
+    const assignedOrders = await db.query.orders.findMany({
       where: or(
         eq(orders.deliveryStatus, "pending" as any),
         eq(orders.deliveryBoyId, deliveryBoyId)
       ),
       with: {
-        items: { with: { product: true } },
-        seller: true,
-        user: true,
+        items: {
+          with: {
+            product: true,
+            seller: true, // ✅ include seller
+          },
+        },
+        deliveryAddress: true,
+        deliveryBoy: true, // ✅ optional relation safe
+        customer: true, // user who ordered
       },
       orderBy: (o, { desc }) => [desc(o.createdAt)],
     });
 
-    return res.json({ orders: list });
+    return res.json({ orders: assignedOrders });
   } catch (err) {
     console.error("GET /delivery/orders error:", err);
     return res.status(500).json({ message: "Failed to fetch orders" });
   }
 });
-
 /**
  * POST /api/delivery/accept
  */
