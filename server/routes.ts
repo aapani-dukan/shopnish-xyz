@@ -1,4 +1,3 @@
-// src/server/indexRouter.ts
 import express, { Router, Request, Response } from "express";
 import { db } from "./db.ts";
 import {
@@ -35,6 +34,7 @@ import orderConfirmationRouter from "../routes/orderConfirmationRouter";
 
 import userLoginRouter from "../routes/userRoutes.ts";
 import { verifyToken } from "./middleware/verifyToken";
+import adminOrderRouter from "./roots/admin/orders.ts"; // ✅ सही एडमिन ऑर्डर राउटर जोड़ा
 
 const router = Router();
 
@@ -172,26 +172,22 @@ router.get("/categories", async (req: Request, res: Response) => {
 router.use("/products", productsRouter);
 
 // ✅ Delivery Boy
-
 router.use("/delivery", dBoyRouter);
 
 
-router.use("/orders",dBoyRouter);
 // ✅ Admin Routes
 const adminRouter = Router();
-adminRouter.use(requireAdminAuth);
+// adminRouter.use(requireAdminAuth);
 adminRouter.use("/products/approve", adminApproveProductRoutes);
 adminRouter.use("/products/reject", adminRejectProductRoutes);
 adminRouter.use("/products", adminProductsRoutes);
 adminRouter.use("/password", adminPasswordRoutes);
 adminRouter.use("/vendors", adminVendorsRoutes);
 adminRouter.use("/delivery-boys", admindBoyRouter);
-adminRouter.use("/orders", dBoyRouter);
+adminRouter.use("/orders", adminOrderRouter);
 
 
 router.use("/admin", adminRouter);
-
-
 
 
 export default router;
