@@ -10,7 +10,7 @@ const router = Router();
  * GET /api/delivery/orders?deliveryBoyId=UID
  * → Pending orders (deliveryBoyId = null) + Assigned orders (deliveryBoyId = current)
  */
- 
+
 router.get("/orders", async (req: Request, res: Response) => {
   try {
     const deliveryBoyId = String(req.query.deliveryBoyId || "");
@@ -30,8 +30,11 @@ router.get("/orders", async (req: Request, res: Response) => {
       with: {
         items: {
           with: {
-            product: true,
-            seller: true,
+            product: {
+              with: {
+                seller: true, // ✅ Corrected: Fetch seller through the product
+              },
+            },
           },
         },
         deliveryAddress: true,
