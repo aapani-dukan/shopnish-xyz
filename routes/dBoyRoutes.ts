@@ -1,5 +1,5 @@
 import { Router, Response, NextFunction, Request } from 'express';
-import { db } from '../../db.ts';
+import { db } from '../server/db.ts';
 import {
   deliveryBoys,
   orders,
@@ -10,11 +10,11 @@ import {
   orderStatusEnum, // ✅ दोनों एनम (enums) को मिलाया गया है
   users,
   cartItems,
-} from '../../../shared/backend/schema';
+} from '../shared/backend/schema';
 import { eq, or, isNull, and } from 'drizzle-orm';
-import { AuthenticatedRequest, verifyToken } from '../../middleware/verifyToken';
-import { requireDeliveryBoyAuth } from '../../middleware/authMiddleware';
-import { getIO } from '../../socket.ts';
+import { AuthenticatedRequest, verifyToken } from '../server/middleware/verifyToken';
+import { requireDeliveryBoyAuth } from '../server/middleware/authMiddleware';
+import { getIO } from '../server/socket.ts';
 
 const router = Router();
 
