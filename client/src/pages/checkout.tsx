@@ -100,9 +100,12 @@ export default function Checkout() {
 
   // Create order mutation
   const createOrderMutation = useMutation({
-    mutationFn: async (orderData: any) => {
-      return await apiRequest("POST", "/api/orders", orderData);
-    },
+  mutationFn: async (orderData: any) => {
+    // डायरेक्ट बाय productId होने पर /buy-now endpoint
+    const url = directBuyProductId ? "/api/orders/buy-now" : "/api/orders";
+    return await apiRequest("POST", url, orderData);
+  },
+  
     onSuccess: (data) => {
       // ✅ सुनिश्चित करें कि जब कार्ट से ऑर्डर दिया जाए तो कार्ट खाली हो जाए
       if (!directBuyProductId) {
