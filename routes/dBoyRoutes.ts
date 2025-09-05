@@ -1,5 +1,5 @@
-import { Router, Response, NextFunction, Request } from 'express';
-import { db } from '../server/db.ts';
+import { Router, Response, NextFunction } from 'express';
+import { db } from '../server/db';
 import {
   deliveryBoys,
   orders,
@@ -7,19 +7,18 @@ import {
   products,
   deliveryAddresses,
   approvalStatusEnum,
-  orderStatusEnum, // ✅ दोनों एनम (enums) को मिलाया गया है
-  users,
-  cartItems,
+  orderStatusEnum,
+  users // ✅ users table को जोड़ा
 } from '../shared/backend/schema';
-import { eq, or, isNull, and } from 'drizzle-orm';
+import { eq, or, and, isNull } from 'drizzle-orm';
 import { AuthenticatedRequest, verifyToken } from '../server/middleware/verifyToken';
 import { requireDeliveryBoyAuth } from '../server/middleware/authMiddleware';
-import { getIO } from '../server/socket.ts';
+import { getIO } from '../server/socket';
 
 const router = Router();
 
 // ✅ Delivery Boy Registration Route
-// URL: /api/delivery/register
+// URL: /api/delivery-boys/register
 router.post('/register', async (req: Request, res: Response) => {
   try {
     const { email, firebaseUid, fullName, vehicleType } = req.body;
@@ -128,65 +127,187 @@ router.post('/login', verifyToken, async (req: AuthenticatedRequest, res: Respon
   }
 });
 
-
-// ✅ दोनों फ़ाइलों से मिलाए गए राउट्स
-// URL: /api/delivery/orders?deliveryBoyId=UID (पेंडिंग + असाइन किए गए ऑर्डर)
-router.get("/orders", async (req: Request, res: Response) => {
+// ✅ UPDATED: /api/delivery/orders (डिलिवरी बॉय के ऑर्डर)
+// अब यह `firebaseUid` का उपयोग करके `deliveryBoyId` का पता लगाता है
+router.get('/orders', requireDeliveryBoyAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const deliveryBoyId = String(req.query.deliveryBoyId || "");
-    if (!deliveryBoyId) {
-      // यह राउट अब केवल deliveryBoyId के साथ काम करेगा
-      return res.status(400).json({ message: "deliveryBoyId is required" });
+    const firebaseUid = req.user?.firebaseUid;
+    if (!firebaseUid) {
+      return res.status(401).json({ message: "Authentication required." });
     }
+    
+    // लॉग इन किए हुए डिलीवरी बॉय का प्रोफाइल ढूंढें
+    const deliveryBoy = await db.query.deliveryBoys.findFirst({
+      where: eq(deliveryBoys.firebaseUid, firebaseUid),
+    });
 
-    // Fetch orders: pending + assigned
-    const assignedOrders = await db.query.orders.findMany({
+    if (!deliveryBoy) {
+      return res.status(404).json({ message: "Delivery Boy profile not found." });
+    }
+    
+    // उन ऑर्डरों को फ़ेच करें जो या तो पेंडिंग हैं या इस डिलीवरी बॉय को असाइन किए गए हैं
+    const list = await db.query.orders.findMany({
       where: or(
-        eq(orders.deliveryBoyId, deliveryBoyId),
+        eq(orders.deliveryBoyId, deliveryBoy.id),
         and(
-          eq(orders.deliveryStatus, "pending" as any),
+          eq(orders.status, 'pending'),
           isNull(orders.deliveryBoyId)
         )
       ),
       with: {
-        items: {
-          with: {
-            product: true,
-            seller: true,
-          },
-        },
-        deliveryAddress: true,
-        deliveryBoy: true,
-        customer: true,
+        items: { with: { product: true } },
+        seller: true,
+        user: true,
       },
       orderBy: (o, { desc }) => [desc(o.createdAt)],
     });
 
-    return res.json({ orders: assignedOrders });
-  } catch (err) {
-    console.error("GET /delivery/orders error:", err);
-    return res.status(500).json({ message: "Failed to fetch orders" });
+    console.log("✅ Fetched orders:", list.length);
+
+    res.status(200).json({ orders: list });
+  } catch (error: any) {
+    console.error("❌ Failed to fetch orders for delivery boy:", error);
+    res.status(500).json({ message: "Failed to fetch orders." });
   }
 });
 
-// ✅ ऑर्डर स्वीकार करें
-// URL: /api/delivery/accept
-router.post("/accept", async (req: Request, res: Response) => {
+// ✅ UPDATED: /api/delivery/orders/:orderId/status (ऑर्डर की स्थिति अपडेट करें)
+router.patch('/orders/:orderId/status', requireDeliveryBoyAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const { orderId, deliveryBoyId } = req.body || {};
-    if (!orderId || !deliveryBoyId) {
+    const firebaseUid = req.user?.firebaseUid;
+    const orderId = Number(req.params.orderId);
+    const { status } = req.body;
+
+    if (!orderId || !status || !firebaseUid) {
+      return res.status(400).json({ message: "Order ID and status are required." });
+    }
+
+    const deliveryBoy = await db.query.deliveryBoys.findFirst({
+      where: eq(deliveryBoys.firebaseUid, firebaseUid),
+    });
+
+    if (!deliveryBoy) {
+      return res.status(404).json({ message: "Delivery Boy profile not found." });
+    }
+
+    const validStatuses = orderStatusEnum.enumValues;
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({ message: "Invalid status provided." });
+    }
+
+    const order = await db.query.orders.findFirst({
+      where: eq(orders.id, orderId),
+    });
+
+    if (order?.deliveryBoyId !== deliveryBoy.id) {
+      return res.status(403).json({ message: "Forbidden: You are not assigned to this order." });
+    }
+
+    const [updatedOrder] = await db.update(orders)
+      .set({ status })
+      .where(eq(orders.id, orderId))
+      .returning();
+
+    if (!updatedOrder) {
+      return res.status(404).json({ message: "Order not found." });
+    }
+
+    res.status(200).json({
+      message: "Order status updated successfully.",
+      order: updatedOrder,
+    });
+
+    getIO().emit("order:update", { type: "status-change", data: updatedOrder });
+
+  } catch (error: any) {
+    console.error("Failed to update order status:", error);
+    res.status(500).json({ message: "Failed to update order status." });
+  }
+});
+
+// ✅ UPDATED: /api/delivery/orders/:orderId/complete-delivery (OTP के साथ डिलीवरी पूरी करें)
+router.post('/orders/:orderId/complete-delivery', requireDeliveryBoyAuth, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const firebaseUid = req.user?.firebaseUid;
+    const orderId = Number(req.params.orderId);
+    const { otp } = req.body;
+
+    if (!orderId || !otp || !firebaseUid) {
+      return res.status(400).json({ message: "Order ID and OTP are required." });
+    }
+
+    const deliveryBoy = await db.query.deliveryBoys.findFirst({
+      where: eq(deliveryBoys.firebaseUid, firebaseUid),
+    });
+
+    if (!deliveryBoy) {
+      return res.status(404).json({ message: "Delivery Boy profile not found." });
+    }
+
+    const order = await db.query.orders.findFirst({
+      where: eq(orders.id, orderId),
+    });
+
+    if (!order) {
+      return res.status(404).json({ message: "Order not found." });
+    }
+
+    if (order.deliveryBoyId !== deliveryBoy.id) {
+      return res.status(403).json({ message: "Forbidden: You are not assigned to this order." });
+    }
+
+    if (order.deliveryOtp !== otp) {
+      return res.status(401).json({ message: "Invalid OTP." });
+    }
+
+    const [updatedOrder] = await db.update(orders)
+      .set({
+        status: 'delivered',
+        deliveryOtp: null,
+      })
+      .where(eq(orders.id, orderId))
+      .returning();
+
+    res.status(200).json({
+      message: "Delivery completed successfully.",
+      order: updatedOrder,
+    });
+
+    getIO().emit("order:update", { type: "delivered", data: updatedOrder });
+
+  } catch (error: any) {
+    console.error("Failed to complete delivery:", error);
+    res.status(500).json({ message: "Failed to complete delivery." });
+  }
+});
+
+// ✅ POST /api/delivery/accept (ऑर्डर स्वीकार करें)
+router.post("/accept", requireDeliveryBoyAuth, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const firebaseUid = req.user?.firebaseUid;
+    const { orderId } = req.body || {};
+    
+    if (!orderId || !firebaseUid) {
       return res
         .status(400)
-        .json({ message: "orderId and deliveryBoyId are required" });
+        .json({ message: "orderId is required" });
+    }
+
+    const deliveryBoy = await db.query.deliveryBoys.findFirst({
+      where: eq(deliveryBoys.firebaseUid, firebaseUid),
+    });
+
+    if (!deliveryBoy) {
+      return res.status(404).json({ message: "Delivery Boy profile not found." });
     }
 
     const existing = await db.query.orders.findFirst({
       where: eq(orders.id, orderId),
-      columns: { id: true, deliveryStatus: true },
+      columns: { id: true, status: true },
     });
 
     if (!existing) return res.status(404).json({ message: "Order not found" });
-    if (existing.deliveryStatus !== "pending")
+    if (existing.status !== 'pending')
       return res.status(409).json({ message: "Order is not pending anymore" });
 
     const deliveryOtp = Math.floor(1000 + Math.random() * 9000).toString();
@@ -194,121 +315,24 @@ router.post("/accept", async (req: Request, res: Response) => {
     const [updated] = await db
       .update(orders)
       .set({
-        deliveryBoyId,
-        deliveryStatus: "accepted" as any,
+        deliveryBoyId: deliveryBoy.id,
+        status: "accepted",
         deliveryOtp,
         deliveryAcceptedAt: new Date(),
       })
       .where(eq(orders.id, orderId))
       .returning();
 
-    getIO().emit("delivery:orders-changed", {
+    getIO().emit("order:update", {
       reason: "accepted",
       orderId,
-      deliveryBoyId,
+      deliveryBoyId: deliveryBoy.id,
     });
 
     return res.json({ message: "Order accepted", order: updated });
   } catch (err) {
     console.error("POST /delivery/accept error:", err);
     return res.status(500).json({ message: "Failed to accept order" });
-  }
-});
-
-// ✅ ऑर्डर की स्थिति अपडेट करें
-// URL: /api/delivery/update-status
-router.post("/update-status", async (req: Request, res: Response) => {
-  try {
-    const { orderId, status } = req.body || {};
-    if (!orderId || !status) {
-      return res
-        .status(400)
-        .json({ message: "orderId and status are required" });
-    }
-
-    const allowed = new Set([
-      "accepted",
-      "picked_up",
-      "out_for_delivery",
-      "delivered",
-    ]);
-    if (!allowed.has(status)) {
-      return res.status(400).json({ message: "Invalid status value" });
-    }
-
-    const [updated] = await db
-      .update(orders)
-      .set({
-        deliveryStatus: status as any,
-        ...(status === "picked_up" && { deliveryPickedAt: new Date() }),
-        ...(status === "out_for_delivery" && { deliveryOutAt: new Date() }),
-        ...(status === "delivered" && { deliveryCompletedAt: new Date() }),
-      })
-      .where(eq(orders.id, orderId))
-      .returning();
-
-    getIO().emit("delivery:orders-changed", {
-      reason: "status-updated",
-      orderId,
-      status,
-    });
-
-    return res.json({ message: "Status updated", order: updated });
-  } catch (err) {
-    console.error("POST /delivery/update-status error:", err);
-    return res.status(500).json({ message: "Failed to update status" });
-  }
-});
-
-// ✅ OTP के साथ डिलीवरी पूरी करें
-// URL: /api/delivery/complete-delivery
-router.post("/complete-delivery", async (req: Request, res: Response) => {
-  try {
-    const { orderId, otp } = req.body || {};
-    if (!orderId || !otp) {
-      return res.status(400).json({ message: "orderId and otp are required" });
-    }
-
-    const existing = await db.query.orders.findFirst({
-      where: eq(orders.id, orderId),
-      columns: {
-        id: true,
-        userId: true,
-        deliveryOtp: true,
-        deliveryStatus: true,
-      },
-    });
-
-    if (!existing) return res.status(404).json({ message: "Order not found" });
-    if (existing.deliveryStatus === "delivered")
-      return res.status(409).json({ message: "Order already delivered" });
-    if (existing.deliveryOtp !== otp)
-      return res.status(401).json({ message: "Invalid OTP" });
-
-    const [updated] = await db
-      .update(orders)
-      .set({
-        deliveryStatus: "delivered" as any,
-        deliveryCompletedAt: new Date(),
-        actualDeliveryTime: new Date(),
-        deliveryOtp: null,
-      })
-      .where(eq(orders.id, orderId))
-      .returning();
-
-    if (existing.userId) {
-      await db.delete(cartItems).where(eq(cartItems.userId, existing.userId));
-    }
-
-    getIO().emit("delivery:orders-changed", {
-      reason: "delivered",
-      orderId,
-    });
-
-    return res.json({ message: "Delivery completed", order: updated });
-  } catch (err) {
-    console.error("POST /delivery/complete-delivery error:", err);
-    return res.status(500).json({ message: "Failed to complete delivery" });
   }
 });
 
