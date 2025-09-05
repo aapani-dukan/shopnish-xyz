@@ -172,8 +172,8 @@ router.get("/categories", async (req: Request, res: Response) => {
 router.use("/products", productsRouter);
 
 // ✅ Delivery Boy
-router.use("/delivery", dBoyRouter);
-dBoyRouter.use("/orders", orderdBoyRouter);
+router.use("/delivery", orderdBoyRouter);
+
 
 // ✅ Admin Routes
 const adminRouter = Router();
@@ -184,7 +184,7 @@ adminRouter.use("/products", adminProductsRoutes);
 adminRouter.use("/password", adminPasswordRoutes);
 adminRouter.use("/vendors", adminVendorsRoutes);
 adminRouter.use("/delivery-boys", admindBoyRouter);
-adminRouter.use("/orders", orderdBoyRouter);
+adminRouter.use("/orders", dBoyRouter);
 
 
 router.use("/admin", adminRouter);
