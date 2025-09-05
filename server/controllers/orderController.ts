@@ -1,14 +1,22 @@
 // server/controllers/orderController.ts
 import { Response } from "express";
 import { v4 as uuidv4 } from "uuid";
-import { db } from "../db"; // तुम्हारा database instance
+import { db } from "../db";
 import { cartItems, deliveryAddresses, orders, orderItems } from "../../shared/backend/schema";
 import { eq } from "drizzle-orm";
 import { AuthenticatedRequest } from "../middleware/authMiddleware";
-import { getIO } from "../socket"; // Socket.IO instance
+import { getIO } from "../socket";
+
+interface PlaceOrderOptions {
+  cartOrder?: boolean; // true = cart order, false = buy-now
+}
 
 // ✅ Place order (cart or buy now)
-export const placeOrder = async (req: AuthenticatedRequest, res: Response) => {
+export const placeOrder = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  options: PlaceOrderOptions = { cartOrder: true }
+) => {
   console.log("🚀 [API] Received request to place order.");
   console.log("📋 [API] Request Body:", req.body);
 
@@ -74,8 +82,10 @@ export const placeOrder = async (req: AuthenticatedRequest, res: Response) => {
         });
       }
 
-      // 4️⃣ Clear cart
-      await tx.delete(cartItems).where(eq(cartItems.userId, userId));
+      // 4️⃣ Clear cart only for cart orders
+      if (options.cartOrder) {
+        await tx.delete(cartItems).where(eq(cartItems.userId, userId));
+      }
     });
 
     // 5️⃣ Emit socket event
@@ -90,10 +100,10 @@ export const placeOrder = async (req: AuthenticatedRequest, res: Response) => {
       items,
     });
 
-    res.status(201).json({ message: "Order placed successfully!", orderId: newOrder.id });
+    return newOrder; // return newOrder for router to use
   } catch (error) {
     console.error("❌ Error placing order:", error);
-    res.status(500).json({ message: "Failed to place order." });
+    throw error; // throw error so router can catch it
   }
 };
 
