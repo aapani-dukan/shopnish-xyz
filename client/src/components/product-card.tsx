@@ -74,20 +74,54 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
     });
   };
 
-  const handleBuyNow = () => {
-    if (!user) {
-      setIsLoginPopupOpen(true);
-      return;
-    }
+  const handleBuyNow = async () => {
+  if (!user) {
+    setIsLoginPopupOpen(true);
+    return;
+  }
 
-    if (product.stock === 0) {
-      toast({
-        title: "Out of Stock",
-        description: "This product is currently unavailable.",
-        variant: "destructive",
-      });
-      return;
-    }
+  if (product.stock === 0) {
+    toast({
+      title: "Out of Stock",
+      description: "This product is currently unavailable.",
+      variant: "destructive",
+    });
+    return;
+  }
+
+  try {
+    const orderResponse = await apiRequest("POST", "/api/orders/buy-now", {
+      items: [
+        {
+          productId: product.id,
+          sellerId: product.sellerId, // अगर sellerId product object में है
+          quantity: 1,
+          unitPrice: Number(product.price),
+          totalPrice: Number(product.price),
+        },
+      ],
+      subtotal: Number(product.price),
+      total: Number(product.price),
+      deliveryCharge: 0,
+      deliveryAddress: user.defaultAddress, // या frontend से select address
+      paymentMethod: "COD",
+      deliveryInstructions: "",
+    });
+
+    toast({
+      title: "Order Placed",
+      description: `Your order for ${product.name} has been placed successfully.`,
+    });
+
+    navigate(`/order-confirmation/${orderResponse.orderId}`);
+  } catch (error: any) {
+    toast({
+      title: "Order Failed",
+      description: error.message || "Failed to place order.",
+      variant: "destructive",
+    });
+  }
+};
 
     addToCartMutation.mutate({
       productId: product.id,
