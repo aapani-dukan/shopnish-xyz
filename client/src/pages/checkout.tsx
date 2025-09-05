@@ -1,8 +1,6 @@
-// client/src/pages/checkout.tsx
-
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -27,7 +25,7 @@ interface CartItem {
     image: string;
     unit: string;
     brand: string;
-   sellerId: number;   
+    sellerId: number;   
   };
 }
 
@@ -49,7 +47,12 @@ export default function Checkout() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { isAuthenticated, user } = useAuth(); // ✅ user को useAuth से निकालें
+  const { isAuthenticated, user } = useAuth();
+  const [searchParams] = useSearchParams();
+  
+  // ✅ URL से productId और quantity पैरामीटर प्राप्त करें
+  const directBuyProductId = searchParams.get("productId");
+  const directBuyQuantity = searchParams.get("quantity") ? parseInt(searchParams.get("quantity")!) : 1;
 
   const [currentStep, setCurrentStep] = useState(1);
   const [deliveryAddress, setDeliveryAddress] = useState<DeliveryAddress>({
@@ -63,10 +66,26 @@ export default function Checkout() {
   const [paymentMethod, setPaymentMethod] = useState("cod");
   const [deliveryInstructions, setDeliveryInstructions] = useState("");
 
-  // ✅ Get cart items using the new API response structure
-  const { data, isLoading } = useQuery<ApiResponse>({
-    queryKey: ["/api/cart"],
-    queryFn: () => apiRequest("GET", "/api/cart"),
+  // ✅ कार्ट आइटम या डायरेक्ट बाय प्रोडक्ट फ़ेच करने के लिए एक ही क्वेरी
+  const { data, isLoading } = useQuery<any>({
+    queryKey: [directBuyProductId ? "product" : "/api/cart", directBuyProductId],
+    queryFn: async () => {
+      if (directBuyProductId) {
+        const product = await apiRequest("GET", `/api/products/${directBuyProductId}`);
+        // डायरेक्ट बाय के लिए नकली कार्ट आइटम बनाएं
+        return { items: [{
+          id: product.id,
+          productId: product.id,
+          quantity: directBuyQuantity,
+          product: {
+            ...product,
+            price: product.price, // सुनिश्चित करें कि कीमत एक स्ट्रिंग के रूप में है
+          }
+        }]};
+      } else {
+        return await apiRequest("GET", "/api/cart");
+      }
+    },
     enabled: isAuthenticated, 
   });
   
@@ -80,16 +99,20 @@ export default function Checkout() {
   const total = subtotal + deliveryCharge;
 
   // Create order mutation
-const createOrderMutation = useMutation({
+  const createOrderMutation = useMutation({
     mutationFn: async (orderData: any) => {
       return await apiRequest("POST", "/api/orders", orderData);
     },
     onSuccess: (data) => {
+      // ✅ यह सुनिश्चित करता है कि ऑर्डर प्लेस होने के बाद कार्ट खाली हो जाए
+      if (!directBuyProductId) {
+        queryClient.invalidateQueries({ queryKey: ["/api/cart"] });
+      }
+
       toast({
         title: "Order Placed Successfully!",
         description: `Order #${data.orderNumber} has been confirmed`,
       });
-      queryClient.invalidateQueries({ queryKey: ["/api/cart"] });
       navigate(`/order-confirmation/${data.orderId}`);
     },
     onError: (error) => {
@@ -99,60 +122,67 @@ const createOrderMutation = useMutation({
         variant: "destructive",
       });
     },
-});
+  });
 
-const handlePlaceOrder = () => {
-  // ✅ ग्राहक डेटा की जाँच करें
-  if (!user || !user.id) {
-    toast({
-      title: "Authentication Error",
-      description: "You must be logged in to place an order.",
-      variant: "destructive",
-    });
-    return;
-  }
-  
-  if (!deliveryAddress.fullName || !deliveryAddress.phone || !deliveryAddress.address || !deliveryAddress.pincode) {
-    toast({
-      title: "Address Required",
-      description: "Please fill in all delivery address fields",
-      variant: "destructive",
-    });
-    return;
-  }
-  
-  if (!cartItems || cartItems.length === 0) {
-    toast({
-      title: "Cart is Empty",
-      description: "Please add items to your cart before placing an order.",
-      variant: "destructive",
-    });
-    return;
-  }
+  const handlePlaceOrder = () => {
+    // ग्राहक डेटा की जाँच करें
+    if (!user || !user.id) {
+      toast({
+        title: "Authentication Error",
+        description: "You must be logged in to place an order.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    if (!deliveryAddress.fullName || !deliveryAddress.phone || !deliveryAddress.address || !deliveryAddress.pincode) {
+      toast({
+        title: "Address Required",
+        description: "Please fill in all delivery address fields",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    if (!cartItems || cartItems.length === 0) {
+      toast({
+        title: "Cart is Empty",
+        description: "Please add items to your cart before placing an order.",
+        variant: "destructive",
+      });
+      return;
+    }
 
-  const orderData = {
-    // ✅ customerId को user.id से जोड़ें
-    customerId: user.id,
-    deliveryAddress,
-    paymentMethod,
-    subtotal: subtotal.toFixed(2), 
-    total: total.toFixed(2),       
-    deliveryCharge: deliveryCharge.toFixed(2), 
-    deliveryInstructions,
-    items: cartItems.map(item => ({
-      productId: item.productId,
-      sellerId: item.product.sellerId,
-      quantity: item.quantity,
-      unitPrice: item.product.price,
-      totalPrice: (parseFloat(item.product.price) * item.quantity).toFixed(2),
-    }))
+    const orderData = {
+      customerId: user.id,
+      deliveryAddress,
+      paymentMethod,
+      subtotal: subtotal.toFixed(2), 
+      total: total.toFixed(2),       
+      deliveryCharge: deliveryCharge.toFixed(2), 
+      deliveryInstructions,
+      // ✅ items array को सीधे cartItems से मैप करें
+      items: cartItems.map(item => ({
+        productId: item.productId,
+        sellerId: item.product.sellerId,
+        quantity: item.quantity,
+        unitPrice: item.product.price,
+        totalPrice: (parseFloat(item.product.price) * item.quantity).toFixed(2),
+      }))
+    };
+
+    createOrderMutation.mutate(orderData);
   };
 
-  createOrderMutation.mutate(orderData);
-};
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full"></div>
+      </div>
+    );
+  }
 
-
-  if (cartItems.length === 0) {
+  if (cartItems.length === 0 && !directBuyProductId) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Card className="w-full max-w-md">
@@ -184,7 +214,7 @@ const handlePlaceOrder = () => {
               >
                 <div
                   className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                    currentStep > step ? <Check className="w-4 h-4" /> : "bg-gray-200"
+                    currentStep > step ? "bg-green-600 text-white" : "bg-gray-200"
                   }`}
                 >
                   {currentStep > step ? <Check className="w-4 h-4" /> : step}
@@ -414,4 +444,3 @@ const handlePlaceOrder = () => {
     </div>
   );
 }
-
