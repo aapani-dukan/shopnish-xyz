@@ -1,7 +1,7 @@
 import { Router, Request, Response } from "express";
 import { and, eq, or, isNull } from "drizzle-orm";
 import { db } from "../../db.ts";
-import { orders, cartItems } from "../../../shared/backend/schema.ts";
+import { orders, orderItems } from "../../../shared/backend/schema.ts";
 import { getIO } from "../../socket.ts";
 
 const router = Router();
@@ -10,7 +10,7 @@ const router = Router();
  * GET /api/delivery/orders?deliveryBoyId=UID
  * → Pending orders (deliveryBoyId = null) + Assigned orders (deliveryBoyId = current)
  */
-
+ 
 router.get("/orders", async (req: Request, res: Response) => {
   try {
     const deliveryBoyId = String(req.query.deliveryBoyId || "");
@@ -32,7 +32,7 @@ router.get("/orders", async (req: Request, res: Response) => {
           with: {
             product: {
               with: {
-                seller: true, // ✅ Corrected: Fetch seller through the product
+                seller: true,
               },
             },
           },
