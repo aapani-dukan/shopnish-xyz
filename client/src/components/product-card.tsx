@@ -15,6 +15,7 @@ interface Product {
   price: string;
   image: string;
   stock: number;
+  sellerId: number; // ✅ add sellerId for buy-now
 }
 
 interface ProductCardProps {
@@ -32,22 +33,16 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
       return await apiRequest("POST", "/api/cart/add", { productId, quantity });
     },
     onSuccess: (data) => {
-      console.log("✅ Cart API Response (onSuccess):", data);
-      
       queryClient.invalidateQueries({ queryKey: ["/api/cart"] });
-      
       toast({
         title: "Added to cart",
-        description: `${product?.name} has been added to your cart.`,
+        description: `${product.name} has been added to your cart.`,
       });
     },
     onError: (error: any) => {
-      console.error("❌ Error adding to cart:", error);
-      const errorMessage = error.message || "An error occurred while adding the item to your cart.";
-      
       toast({
         title: "Failed to add to cart",
-        description: errorMessage,
+        description: error.message || "An error occurred while adding the item to your cart.",
         variant: "destructive",
       });
     },
@@ -68,70 +63,57 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
       return;
     }
 
-    addToCartMutation.mutate({
-      productId: product.id,
-      quantity: 1,
-    });
+    addToCartMutation.mutate({ productId: product.id, quantity: 1 });
   };
 
   const handleBuyNow = async () => {
-  if (!user) {
-    setIsLoginPopupOpen(true);
-    return;
-  }
+    if (!user) {
+      setIsLoginPopupOpen(true);
+      return;
+    }
 
-  if (product.stock === 0) {
-    toast({
-      title: "Out of Stock",
-      description: "This product is currently unavailable.",
-      variant: "destructive",
-    });
-    return;
-  }
+    if (product.stock === 0) {
+      toast({
+        title: "Out of Stock",
+        description: "This product is currently unavailable.",
+        variant: "destructive",
+      });
+      return;
+    }
 
-  try {
-    const orderResponse = await apiRequest("POST", "/api/orders/buy-now", {
-      items: [
-        {
-          productId: product.id,
-          sellerId: product.sellerId, // अगर sellerId product object में है
-          quantity: 1,
-          unitPrice: Number(product.price),
-          totalPrice: Number(product.price),
-        },
-      ],
-      subtotal: Number(product.price),
-      total: Number(product.price),
-      deliveryCharge: 0,
-      deliveryAddress: user.defaultAddress, // या frontend से select address
-      paymentMethod: "COD",
-      deliveryInstructions: "",
-    });
+    try {
+      // direct order placement
+      const orderResponse = await apiRequest("POST", "/api/orders/buy-now", {
+        items: [
+          {
+            productId: product.id,
+            sellerId: product.sellerId,
+            quantity: 1,
+            unitPrice: Number(product.price),
+            totalPrice: Number(product.price),
+          },
+        ],
+        subtotal: Number(product.price),
+        total: Number(product.price),
+        deliveryCharge: 0,
+        deliveryAddress: user.defaultAddress || {}, // frontend select address
+        paymentMethod: "COD",
+        deliveryInstructions: "",
+      });
 
-    toast({
-      title: "Order Placed",
-      description: `Your order for ${product.name} has been placed successfully.`,
-    });
+      toast({
+        title: "Order Placed",
+        description: `Your order for ${product.name} has been placed successfully.`,
+      });
 
-    navigate(`/order-confirmation/${orderResponse.orderId}`);
-  } catch (error: any) {
-    toast({
-      title: "Order Failed",
-      description: error.message || "Failed to place order.",
-      variant: "destructive",
-    });
-  }
-};
-
-    addToCartMutation.mutate({
-      productId: product.id,
-      quantity: 1,
-    }, {
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: ["/api/cart"] });
-        navigate("/checkout"); 
-      },
-    });
+      navigate(`/order-confirmation/${orderResponse.orderId}`);
+    } catch (error: any) {
+      toast({
+        title: "Order Failed",
+        description: error.message || "Failed to place order.",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
@@ -149,9 +131,8 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
         </Button>
         <Button
           onClick={handleBuyNow}
-          disabled={addToCartMutation.isPending || product.stock === 0}
+          disabled={product.stock === 0}
           className="w-full"
-          // ✅ यहाँ से variant="outline" हटा दिया गया है
         >
           Buy Now
         </Button>
@@ -176,6 +157,6 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
       </Dialog>
     </div>
   );
-
+};
 
 export default ProductCard;
