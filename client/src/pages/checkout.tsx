@@ -65,7 +65,11 @@ export default function Checkout() {
   });
   const [paymentMethod, setPaymentMethod] = useState("cod");
   const [deliveryInstructions, setDeliveryInstructions] = useState("");
-
+useEffect(() => {
+  if (directBuyProductId) {
+    setCurrentStep(2); // सीधे delivery address step से शुरू करें
+  }
+}, [directBuyProductId]);
   // कार्ट आइटम या डायरेक्ट बाय प्रोडक्ट फ़ेच करने के लिए एक ही क्वेरी
   const { data, isLoading } = useQuery<any>({
     queryKey: [directBuyProductId ? "product" : "/api/cart", directBuyProductId],
