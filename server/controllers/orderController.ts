@@ -1,15 +1,6 @@
-import { Request, Response } from 'express';
-// ✅ db का सही पथ (Path) सुनिश्चित करें
-import { db } from '../db.ts';
-import { orders, orderItems, deliveryAddresses } from '../../shared/backend/schema.ts';
-import { eq, desc } from 'drizzle-orm';
-import { AuthenticatedRequest } from '../middleware/authMiddleware.ts';
-import { v4 as uuidv4 } from 'uuid';
-import { getIO } from "../socket.ts";// ✅ Socket.IO import किया
+import { cartItems } from '../../shared/backend/schema.ts'; // ✅ cartItems import करें
+import { eq } from 'drizzle-orm'; // ✅ eq import करें
 
-/**
- * ग्राहक के लिए एक नया ऑर्डर प्लेस करने का फ़ंक्शन।
- */
 export const placeOrder = async (req: AuthenticatedRequest, res: Response) => {
   console.log("🚀 [API] Received request to place order.");
   console.log("📋 [API] Request Body:", req.body);
@@ -28,7 +19,6 @@ export const placeOrder = async (req: AuthenticatedRequest, res: Response) => {
       return res.status(400).json({ message: "Items list is empty, cannot place an order." });
     }
 
-    // ✅ सभी "not-null" फ़ील्ड्स के मानों को सुनिश्चित करें
     const orderNumber = `ORD-${uuidv4()}`;
     const parsedSubtotal = parseFloat(subtotal);
     const parsedTotal = parseFloat(total);
@@ -40,7 +30,7 @@ export const placeOrder = async (req: AuthenticatedRequest, res: Response) => {
     let newDeliveryAddressId;
 
     await db.transaction(async (tx) => {
-      // ✅ STEP 1: deliveryAddresses टेबल में नया पता डालें।
+      // STEP 1: deliveryAddresses टेबल में नया पता डालें
       const [newAddress] = await tx.insert(deliveryAddresses).values({
         userId: userId,
         fullName: deliveryAddress.fullName,
@@ -54,7 +44,7 @@ export const placeOrder = async (req: AuthenticatedRequest, res: Response) => {
       
       newDeliveryAddressId = newAddress.id;
 
-      // ✅ STEP 2: orders टेबल में नया ऑर्डर डालें
+      // STEP 2: orders टेबल में नया ऑर्डर डालें
       [newOrder] = await tx.insert(orders).values({
         customerId: userId,
         status: "pending",
@@ -70,7 +60,7 @@ export const placeOrder = async (req: AuthenticatedRequest, res: Response) => {
         deliveryBoyId,
       }).returning();
 
-      // ✅ STEP 3: रिक्वेस्ट बॉडी से प्रत्येक आइटम के लिए orderItems रिकॉर्ड डालें।
+      // STEP 3: orderItems रिकॉर्ड डालें
       for (const item of items) {
         await tx.insert(orderItems).values({
           orderId: newOrder.id,
@@ -81,9 +71,12 @@ export const placeOrder = async (req: AuthenticatedRequest, res: Response) => {
           totalPrice: item.totalPrice,
         });
       }
+
+      // ✅ STEP 4: Cart खाली करना (user के सभी items delete)
+      await tx.delete(cartItems).where(eq(cartItems.userId, userId));
     });
 
-    // ✅ STEP 4: Socket.IO से नए ऑर्डर का इवेंट भेजें
+    // STEP 5: Socket.IO इवेंट भेजें
     getIO().emit("new-order", {
       orderId: newOrder.id,
       orderNumber: newOrder.orderNumber,
@@ -92,7 +85,7 @@ export const placeOrder = async (req: AuthenticatedRequest, res: Response) => {
       status: newOrder.status,
       deliveryStatus: newOrder.deliveryStatus,
       createdAt: newOrder.createdAt,
-      items, // frontend me seller/delivery dashboard ko product dikhane ke liye
+      items,
     });
 
     res.status(201).json({ message: "Order placed successfully!", orderId: newOrder.id });
@@ -100,39 +93,5 @@ export const placeOrder = async (req: AuthenticatedRequest, res: Response) => {
   } catch (error) {
     console.error("❌ Error placing order:", error);
     res.status(500).json({ message: "Failed to place order." });
-  }
-};
-
-
-/**
- * ग्राहक के सभी ऑर्डर फ़ेच करने का फ़ंक्शन।
- */
-export const getUserOrders = async (req: AuthenticatedRequest, res: Response) => {
-  try {
-    const userId = req.user?.id;
-    if (!userId) {
-      return res.status(401).json({ message: "Unauthorized: User not logged in." });
-    }
-
-    const ordersWithItems = await db.query.orders.findMany({
-      where: eq(orders.customerId, userId),
-      with: {
-        items: {
-          with: {
-            product: {
-              with: {
-                seller: true
-              }
-            }
-          }
-        }
-      },
-      orderBy: [desc(orders.createdAt)],
-    });
-    
-    res.status(200).json(ordersWithItems);
-  } catch (error) {
-      console.error("❌ Error fetching orders:", error);
-      res.status(500).json({ message: "Failed to fetch orders." });
   }
 };
