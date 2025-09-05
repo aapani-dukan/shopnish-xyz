@@ -1,6 +1,6 @@
 import { Router, Response, NextFunction } from 'express';
 import { db } from '../server/db';
-import { categories, users, userRoleEnum } from '../shared/backend/schema';
+import { categories, users, userRoleEnum, orders, orderItems, products, deliveryBoys, sellers } from '../shared/backend/schema';
 import { eq, and } from 'drizzle-orm';
 import multer from 'multer';
 import { uploadImage } from '../server/cloudStorage';
@@ -12,7 +12,6 @@ const upload = multer({ dest: 'uploads/' });
 
 /**
  * ✅ adminAuthMiddleware (केवल एडमिन के लिए रूट सुरक्षित करने के लिए)
- * यह सुनिश्चित करता है कि केवल 'admin' भूमिका वाले उपयोगकर्ता ही आगे बढ़ सकते हैं।
  */
 const adminAuthMiddleware = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   if (req.user?.role !== 'admin') {
@@ -23,7 +22,6 @@ const adminAuthMiddleware = async (req: AuthenticatedRequest, res: Response, nex
 
 /**
  * ✅ GET /api/admin/me
- * एक साधारण रूट यह जाँचने के लिए कि क्या उपयोगकर्ता एडमिन है।
  */
 adminRouter.get('/me', adminAuthMiddleware, (req: AuthenticatedRequest, res: Response) => {
   return res.status(200).json({ message: 'Welcome, Admin!', user: req.user });
@@ -31,7 +29,6 @@ adminRouter.get('/me', adminAuthMiddleware, (req: AuthenticatedRequest, res: Res
 
 /**
  * ✅ GET /api/admin/categories
- * सभी कैटेगरीज को फ़ेच करने के लिए।
  */
 adminRouter.get('/categories', adminAuthMiddleware, async (req: AuthenticatedRequest, res: Response) => {
   try {
@@ -44,7 +41,7 @@ adminRouter.get('/categories', adminAuthMiddleware, async (req: AuthenticatedReq
 });
 
 /**
- * ✅ POST /api/admin/categories (नई कैटेगरी बनाएँ)
+ * ✅ POST /api/admin/categories
  */
 adminRouter.post('/categories', adminAuthMiddleware, upload.single('image'), async (req: AuthenticatedRequest, res: Response) => {
   try {
@@ -55,13 +52,11 @@ adminRouter.post('/categories', adminAuthMiddleware, upload.single('image'), asy
       return res.status(400).json({ error: 'Missing required fields: name, slug, or image.' });
     }
 
-    // ✅ जाँच करें कि क्या समान स्लॉग वाली कैटेगरी पहले से मौजूद है
     const [existingCategory] = await db.select().from(categories).where(eq(categories.slug, slug));
     if (existingCategory) {
       return res.status(409).json({ error: 'A category with this slug already exists.' });
     }
     
-    // ✅ क्लाउड स्टोरेज पर इमेज अपलोड करें
     const imageUrl = await uploadImage(file.path, file.originalname);
 
     const newCategoryData = {
@@ -81,6 +76,34 @@ adminRouter.post('/categories', adminAuthMiddleware, upload.single('image'), asy
   } catch (error: any) {
     console.error('❌ Error in POST /api/admin/categories:', error);
     return res.status(500).json({ error: 'Failed to create new category.' });
+  }
+});
+
+/**
+ * ✅ GET /api/admin/orders
+ * सभी orders fetch करने के लिए (admin के लिए)
+ */
+adminRouter.get('/orders', adminAuthMiddleware, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const allOrders = await db.query.orders.findMany({
+      with: {
+        items: {
+          with: {
+            product: true,
+          },
+        },
+        user: true,
+        seller: true,
+        deliveryBoy: true,
+        deliveryAddress: true,
+      },
+      orderBy: (o, { desc }) => [desc(o.createdAt)],
+    });
+
+    return res.status(200).json({ orders: allOrders });
+  } catch (error) {
+    console.error('❌ Error fetching admin orders:', error);
+    return res.status(500).json({ error: 'Failed to fetch admin orders.' });
   }
 });
 
