@@ -173,6 +173,7 @@ router.use("/products", productsRouter);
 
 // ✅ Delivery Boy
 router.use("/delivery", dBoyRouter);
+dBoyRouter.use("/orders", orderdBoyRouter);
 
 // ✅ Admin Routes
 const adminRouter = Router();
@@ -183,7 +184,8 @@ adminRouter.use("/products", adminProductsRoutes);
 adminRouter.use("/password", adminPasswordRoutes);
 adminRouter.use("/vendors", adminVendorsRoutes);
 adminRouter.use("/delivery-boys", admindBoyRouter);
-adminRouter.use("/", orderdBoyRouter);
+adminRouter.use("/orders", orderdBoyRouter);
+
 
 router.use("/admin", adminRouter);
 
