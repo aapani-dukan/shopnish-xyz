@@ -1,6 +1,3 @@
- // client/src/pages/
-
-// client/src/pages/DeliveryOrdersList.tsx
 import React, { useState, useEffect } from "react";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import {
@@ -413,7 +410,8 @@ const { data: orders = [], isLoading } = useQuery({
                   {order.delivery_boy_id == null ? (
                     <Button
                       size="sm"
-                      onClick={() => acceptOrderMutation.mutate(order.id)}
+                      // ✅ यह लाइन बदल दी गई है
+                      onClick={() => acceptOrderMutation.mutate({ orderId: order.id })}
                       disabled={acceptOrderMutation.isLoading}
                     >
                       ऑर्डर स्वीकार करें
@@ -471,4 +469,4 @@ const { data: orders = [], isLoading } = useQuery({
       />
     </div>
   );
-        }
+}
