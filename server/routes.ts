@@ -32,7 +32,7 @@ import cartRouter from "../routes/cartRoutes.ts";
 import dBoyRouter from "../routes/dBoyRoutes.ts";
 import admindBoyRouter from "./roots/admin/admindBoyRoutes.ts";
 import orderConfirmationRouter from "../routes/orderConfirmationRouter";
-import orderdBoyRouter from "./roots/admin/orderdBoyRoutes.ts";
+
 import userLoginRouter from "../routes/userRoutes.ts";
 import { verifyToken } from "./middleware/verifyToken";
 
@@ -174,7 +174,7 @@ router.use("/products", productsRouter);
 // ✅ Delivery Boy
 
 router.use("/delivery", dBoyRouter);
-router.use("/delivery", orderdBoyRouter);
+
 
 router.use("/orders",dBoyRouter);
 // ✅ Admin Routes
