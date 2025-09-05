@@ -7,7 +7,7 @@ import { CheckCircle, Package, Truck, MapPin, Clock, Phone } from "lucide-react"
 import { useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/queryClient";
-import { socket } from "@/lib/socket"; // ✅ socket import
+import { socket } from "@/lib/socket";
 
 interface Order {
   id: number;
@@ -51,8 +51,8 @@ export default function OrderConfirmation() {
   const { isAuthenticated, isLoadingAuth } = useAuth();
   const queryClient = useQueryClient();
 
-  // ✅ Order data fetch
-  const { data: order, isLoading, isError, error } = useQuery({
+  // Order data fetch
+  const { data: order, isLoading, isError, error } = useQuery<Order>({
     queryKey: ["order", orderId],
     queryFn: async () => {
       if (!orderId) throw new Error("Order ID is missing.");
@@ -61,17 +61,7 @@ export default function OrderConfirmation() {
     enabled: !!orderId && isAuthenticated && !isLoadingAuth,
   });
 
-  // ✅ जब ऑर्डर सफलतापूर्वक लोड हो जाता है, तो कार्ट को खाली करें
-  useEffect(() => {
-    // यह लॉजिक केवल तभी चलेगा जब ऑर्डर का डेटा सफलतापूर्वक फ़ेच हो जाए
-    if (order) {
-      // 'cart' क्वेरी को अमान्य (invalidate) करके कार्ट का डेटा हटा दें
-      // यह सुनिश्चित करता है कि जब भी आप कार्ट पेज पर जाएँ, तो वह खाली हो
-      queryClient.invalidateQueries({ queryKey: ["cart"] });
-    }
-  }, [order, queryClient]);
-
-  // ✅ Socket.io real-time updates
+  // Socket.io real-time updates
   useEffect(() => {
     if (!orderId) return;
 
@@ -208,13 +198,14 @@ export default function OrderConfirmation() {
                 className="flex items-center justify-between py-2 border-b last:border-0"
               >
                 <div className="flex items-center space-x-4">
+                  {/* ✅ यह बदलाव null product को संभालता है */}
                   <img
-                    src={item.product.image}
-                    alt={item.product.name}
+                    src={item.product?.image || "https://placehold.co/64x64/E2E8F0/1A202C?text=No+Img"}
+                    alt={item.product?.name || "No Name"}
                     className="h-16 w-16 rounded object-cover"
                   />
                   <div>
-                    <p className="font-medium">{item.product.name}</p>
+                    <p className="font-medium">{item.product?.name || "उत्पाद डेटा अनुपलब्ध"}</p>
                     <p className="text-sm text-gray-600">
                       {item.quantity} x ₹{item.unitPrice}
                     </p>
