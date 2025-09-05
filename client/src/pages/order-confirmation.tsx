@@ -1,5 +1,3 @@
-// client/src/pages/order-confirmation.tsx
-
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -63,6 +61,16 @@ export default function OrderConfirmation() {
     enabled: !!orderId && isAuthenticated && !isLoadingAuth,
   });
 
+  // ✅ जब ऑर्डर सफलतापूर्वक लोड हो जाता है, तो कार्ट को खाली करें
+  useEffect(() => {
+    // यह लॉजिक केवल तभी चलेगा जब ऑर्डर का डेटा सफलतापूर्वक फ़ेच हो जाए
+    if (order) {
+      // 'cart' क्वेरी को अमान्य (invalidate) करके कार्ट का डेटा हटा दें
+      // यह सुनिश्चित करता है कि जब भी आप कार्ट पेज पर जाएँ, तो वह खाली हो
+      queryClient.invalidateQueries({ queryKey: ["cart"] });
+    }
+  }, [order, queryClient]);
+
   // ✅ Socket.io real-time updates
   useEffect(() => {
     if (!orderId) return;
@@ -81,7 +89,7 @@ export default function OrderConfirmation() {
   if (isLoading || isLoadingAuth) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full"></div>
+        <div className="animate-spin w-8 h-8 border-4 border-purple-600 border-t-transparent rounded-full"></div>
       </div>
     );
   }
