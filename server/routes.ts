@@ -183,7 +183,7 @@ adminRouter.use("/products", adminProductsRoutes);
 adminRouter.use("/password", adminPasswordRoutes);
 adminRouter.use("/vendors", adminVendorsRoutes);
 adminRouter.use("/delivery-boys", admindBoyRouter);
-adminRouter.use("/orders", orderdBoyRouter);
+adminRouter.use("/", orderdBoyRouter);
 
 router.use("/admin", adminRouter);
 
