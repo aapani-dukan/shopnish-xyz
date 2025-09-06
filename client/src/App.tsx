@@ -31,7 +31,7 @@ import CategoriesManagement from "@/components/CategoriesManagement"; // ✅ Cat
 import AdminLogin from "@/pages/admin-login";
 import OrderConfirmation from "@/pages/order-confirmation";
 import CustomerOrdersPage from "@/pages/customer/orders";
-import Checkout2 from "./pages/Checkout2"; 
+import Checkout2 from "./pages/checkout2"; 
 // Centralized auth-based routing
 import AuthRedirectGuard from "@/components/auth-redirect-guard";
 import AdminGuard from "@/components/admin-guard";
