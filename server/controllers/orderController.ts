@@ -1,4 +1,3 @@
-// server/controllers/orderController.ts
 import { Response } from "express";
 import { v4 as uuidv4 } from "uuid";
 import { db } from "../db";
@@ -7,22 +6,18 @@ import { eq } from "drizzle-orm";
 import { AuthenticatedRequest } from "../middleware/authMiddleware";
 import { getIO } from "../socket";
 
-interface PlaceOrderOptions {
-  cartOrder?: boolean; // true = cart order, false = buy-now
-}
-
-// ✅ Place order (cart or buy now) with safe deliveryAddress
-export const placeOrder = async (
-  req: AuthenticatedRequest,
-  res: Response,
-  options: PlaceOrderOptions = { cartOrder: true }
-) => {
+/**
+ * Handles placing an order, either from the user's cart or a direct "buy now" action.
+ * @param req The authenticated request object containing user details.
+ * @param res The response object to send back to the client.
+ */
+export const placeOrder = async (req: AuthenticatedRequest, res: Response) => {
   console.log("🚀 [API] Received request to place order.");
-  console.log("📋 [API] Request Body:", req.body);
-
   try {
     const userId = req.user?.id;
-    if (!userId) return res.status(401).json({ message: "Unauthorized: User not logged in." });
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized: User not logged in." });
+    }
 
     const {
       deliveryAddress: rawDeliveryAddress,
@@ -34,75 +29,75 @@ export const placeOrder = async (
       deliveryCharge,
     } = req.body;
 
-    if (!items || items.length === 0)
+    // ✅ Handle empty items list
+    if (!items || items.length === 0) {
       return res.status(400).json({ message: "Items list is empty, cannot place an order." });
+    }
 
+    // Determine if it's a cart order based on the items received
+    // If the items list comes from the cart, we need to clear it later.
+    const isCartOrder = items.some((item: any) => item.fromCart);
+    console.log(`🛒 [API] Is this a cart order? ${isCartOrder}`);
+
+    // Generate a unique order number
     const orderNumber = `ORD-${uuidv4()}`;
-    const parsedSubtotal = parseFloat(subtotal);
-    const parsedTotal = parseFloat(total);
-    const parsedDeliveryCharge = parseFloat(deliveryCharge);
-    const orderPaymentMethod = paymentMethod || "COD";
-    const deliveryBoyId = null;
 
-    // ✅ Fallback delivery address for buy-now
-    const deliveryAddress = rawDeliveryAddress || {};
-    const safeAddress = {
-      fullName: deliveryAddress.fullName || req.user?.name || "Unknown Customer",
-      phoneNumber: deliveryAddress.phone || req.user?.phone || "0000000000",
-      addressLine1: deliveryAddress.address || "N/A",
-      addressLine2: deliveryAddress.landmark || "",
-      city: deliveryAddress.city || "Unknown",
-      postalCode: deliveryAddress.pincode || "000000",
-      state: "Rajasthan",
-    };
+    // Use a transaction to ensure all database operations succeed or fail together
+    const newOrder = await db.transaction(async (tx) => {
+      let newDeliveryAddressId: number;
 
-    let newOrder: any;
-    let newDeliveryAddressId: number;
-
-    await db.transaction(async (tx) => {
       // 1️⃣ Insert delivery address
+      const safeAddress = rawDeliveryAddress || {};
       const [newAddress] = await tx.insert(deliveryAddresses).values({
         userId,
-        ...safeAddress,
+        fullName: safeAddress.fullName || req.user?.name || "Unknown Customer",
+        phoneNumber: safeAddress.phone || req.user?.phone || "0000000000",
+        addressLine1: safeAddress.address || "N/A",
+        addressLine2: safeAddress.landmark || "",
+        city: safeAddress.city || "Unknown",
+        postalCode: safeAddress.pincode || "000000",
+        state: "Rajasthan",
       }).returning();
-
       newDeliveryAddressId = newAddress.id;
 
       // 2️⃣ Insert order
-      [newOrder] = await tx.insert(orders).values({
+      const [orderResult] = await tx.insert(orders).values({
         customerId: userId,
         status: "pending",
         deliveryStatus: "pending",
         orderNumber,
-        subtotal: parsedSubtotal.toFixed(2),
-        total: parsedTotal.toFixed(2),
-        deliveryCharge: parsedDeliveryCharge.toFixed(2),
-        paymentMethod: orderPaymentMethod,
+        subtotal: parseFloat(subtotal).toFixed(2),
+        total: parseFloat(total).toFixed(2),
+        deliveryCharge: parseFloat(deliveryCharge).toFixed(2),
+        paymentMethod: paymentMethod || "COD",
         deliveryAddressId: newDeliveryAddressId,
         deliveryInstructions,
         deliveryAddress: JSON.stringify(safeAddress),
-        deliveryBoyId,
+        deliveryBoyId: null,
       }).returning();
 
       // 3️⃣ Insert order items
       for (const item of items) {
         await tx.insert(orderItems).values({
-          orderId: newOrder.id,
+          orderId: orderResult.id,
           productId: item.productId,
           sellerId: item.sellerId,
           quantity: item.quantity,
-          unitPrice: item.unitPrice,
-          totalPrice: item.totalPrice,
+          unitPrice: parseFloat(item.unitPrice),
+          totalPrice: parseFloat(item.totalPrice),
         });
       }
 
-      // 4️⃣ Clear cart only for cart orders
-      if (options.cartOrder) {
+      // 4️⃣ Clear cart only if it's a cart order
+      if (isCartOrder) {
         await tx.delete(cartItems).where(eq(cartItems.userId, userId));
+        console.log("🛒 [API] Cart cleared as part of order placement.");
       }
+      
+      return orderResult;
     });
 
-    // 5️⃣ Emit socket event
+    // 5️⃣ Emit socket event for new order
     getIO().emit("new-order", {
       orderId: newOrder.id,
       orderNumber: newOrder.orderNumber,
@@ -114,23 +109,14 @@ export const placeOrder = async (
       items,
     });
 
-    return newOrder; // return newOrder for router to use
+    res.status(201).json({ 
+        message: "Order placed successfully!", 
+        orderId: newOrder.id,
+        orderNumber: newOrder.orderNumber,
+        data: newOrder 
+    });
   } catch (error) {
     console.error("❌ Error placing order:", error);
-    throw error; // throw error so router can catch it
-  }
-};
-
-// ✅ Get orders for logged-in user
-export const getUserOrders = async (req: AuthenticatedRequest, res: Response) => {
-  try {
-    const userId = req.user?.id;
-    if (!userId) return res.status(401).json({ message: "Unauthorized" });
-
-    const userOrders = await db.select().from(orders).where(eq(orders.customerId, userId));
-    res.status(200).json({ orders: userOrders });
-  } catch (error) {
-    console.error("❌ Error fetching user orders:", error);
-    res.status(500).json({ message: "Failed to fetch orders." });
+    res.status(500).json({ message: "Failed to place order." });
   }
 };
