@@ -3,7 +3,7 @@ import { Response } from "express";
 import { v4 as uuidv4 } from "uuid";
 import { db } from "../db";
 import { cartItems, deliveryAddresses, orders, orderItems } from "../../shared/backend/schema";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, and } from "drizzle-orm";
 import { AuthenticatedRequest } from "../middleware/authMiddleware";
 import { getIO } from "../socket";
 
