@@ -1,7 +1,5 @@
-// client/src/pages/ProductDetail.tsx
-
 import { useState } from "react";
-import { useParams } from "react-router-dom"; 
+import { useParams, useNavigate } from "react-router-dom"; 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Star, ShoppingCart, Heart, Share2, Plus, Minus } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -51,6 +49,7 @@ interface Category {
 
 export default function ProductDetail() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const [quantity, setQuantity] = useState(1);
   const [selectedImage, setSelectedImage] = useState(0);
   const { toast } = useToast();
@@ -127,6 +126,21 @@ export default function ProductDetail() {
       productId: product.id,
       quantity,
     });
+  };
+
+  // ✅ New function for "Buy Now" button
+  const handleBuyNow = () => {
+    if (!product || typeof id === 'undefined') {
+      console.error("Product data or ID is missing. Cannot proceed with purchase.");
+      toast({
+          title: "Error",
+          description: "Product data is not available. Please try again.",
+          variant: "destructive",
+      });
+      return;
+    }
+    // ✅ Navigate directly to checkout page with product and quantity as query params
+    navigate(`/checkout?productId=${id}&quantity=${quantity}`);
   };
 
   const renderStars = (rating: number) => {
@@ -318,8 +332,19 @@ export default function ProductDetail() {
                   </>
                 )}
               </Button>
-              
-              <div className="flex space-x-4">
+              <Button
+                onClick={handleBuyNow}
+                disabled={product.stock === 0}
+                size="lg"
+                className="w-full bg-primary/20 hover:bg-primary/30 text-primary"
+              >
+                Buy Now
+              </Button>
+            </div>
+            
+            <Separator />
+
+            <div className="flex space-x-4">
                 <Button variant="outline" size="lg" className="flex-1">
                   <Heart className="mr-2 h-5 w-5" />
                   Add to Wishlist
@@ -328,7 +353,6 @@ export default function ProductDetail() {
                   <Share2 className="mr-2 h-5 w-5" />
                   Share
                 </Button>
-              </div>
             </div>
           </div>
         </div>
@@ -389,5 +413,4 @@ export default function ProductDetail() {
       <Footer />
     </div>
   );
-}
-
+                }
