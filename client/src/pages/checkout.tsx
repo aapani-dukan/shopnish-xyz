@@ -114,9 +114,8 @@ useEffect(() => {
       // ✅ सुनिश्चित करें कि जब कार्ट से ऑर्डर दिया जाए तो कार्ट खाली हो जाए
       if (!directBuyProductId) {
         // यह कमांड सीधे कैश से कार्ट का डेटा हटाती है
-        queryClient.removeQueries({ queryKey: ["/api/cart"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/cart"] });
       }
-
       toast({
         title: "Order Placed Successfully!",
         description: `Order #${data.orderNumber} has been confirmed`,
