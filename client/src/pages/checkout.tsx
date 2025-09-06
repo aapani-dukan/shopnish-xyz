@@ -1,4 +1,4 @@
-// client/src/pages/Checkout.tsx
+// client/src/pages/Checkout.tsx (पूरा अपडेटेड कोड)
 
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -74,36 +74,32 @@ export default function Checkout() {
   }, [directBuyProductId]);
 
   // ✅ यह सबसे महत्वपूर्ण बदलाव है।
-  // "Buy Now" के लिए अलग useQuery
-  const { data: directBuyData, isLoading: isProductLoading } = useQuery<any>({
-    queryKey: ['product', directBuyProductId],
+  const { data, isLoading } = useQuery<any>({
+    queryKey: ['checkoutItems', directBuyProductId],
     queryFn: async () => {
-      const product = await apiRequest("GET", `/api/products/${directBuyProductId}`);
-      return {
-        items: [{
+      // यदि directBuyProductId मौजूद है तो सीधे प्रोडक्ट फ़ेच करें
+      if (directBuyProductId) {
+        const product = await apiRequest("GET", `/api/products/${directBuyProductId}`);
+        return { items: [{
           productId: product.id,
           quantity: directBuyQuantity,
           product: {
             ...product,
             price: product.price,
           }
-        }]
-      };
+        }]};
+      } else {
+        // अन्यथा, कार्ट से आइटम फ़ेच करें
+        return await apiRequest("GET", "/api/cart");
+      }
     },
-    enabled: isAuthenticated && !!directBuyProductId,
-  });
-
-  // Cart के लिए अलग useQuery
-  const { data: cartData, isLoading: isCartLoading } = useQuery<any>({
-    queryKey: ['/api/cart'],
-    queryFn: () => apiRequest("GET", "/api/cart"),
-    enabled: isAuthenticated && !directBuyProductId,
+    // ✅ 'enabled' प्रॉपर्टी का उपयोग करें। यह सुनिश्चित करता है कि जब तक isAuthenticated सही न हो
+    // और यह पता न चल जाए कि URL में productId है या नहीं, तब तक API कॉल न हो।
+    enabled: isAuthenticated && searchParams.has("productId") === !!directBuyProductId,
   });
   
-  // Conditionally choose which data to use
-  const cartItems = directBuyProductId ? directBuyData?.items || [] : cartData?.items || [];
-  const isLoading = directBuyProductId ? isProductLoading : isCartLoading;
-
+  const cartItems = data?.items || [];
+  
   const subtotal = cartItems.reduce((sum, item) =>
     sum + (parseFloat(item.product.price) * item.quantity), 0
   );
@@ -153,7 +149,6 @@ export default function Checkout() {
       return;
     }
     
-    // ✅ cartItems की जाँच करें, जो अब दोनों स्रोतों से डेटा ले रहा है
     if (!cartItems || cartItems.length === 0) {
       toast({
         title: "No Items to Order",
@@ -192,7 +187,6 @@ export default function Checkout() {
     );
   }
 
-  // ✅ यह बदलाव है: अब यह केवल तभी खाली कार्ट पेज दिखाएगा जब URL में productId नहीं होगा
   if (cartItems.length === 0 && !directBuyProductId) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -449,3 +443,4 @@ export default function Checkout() {
     </div>
   );
 }
+
