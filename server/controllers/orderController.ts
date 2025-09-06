@@ -115,6 +115,7 @@ export const placeOrderBuyNow = async (req: AuthenticatedRequest, res: Response)
  * @param req The authenticated request object containing user details.
  * @param res The response object to send back to the client.
  */
+
 export const placeOrderFromCart = async (req: AuthenticatedRequest, res: Response) => {
   console.log("🚀 [API] Received request to place order from cart.");
   try {
@@ -133,7 +134,6 @@ export const placeOrderFromCart = async (req: AuthenticatedRequest, res: Respons
       deliveryCharge,
     } = req.body;
 
-    // Ensure that the items array is not empty
     if (!items || items.length === 0) {
       return res.status(400).json({ message: "Items list is empty, cannot place an order." });
     }
@@ -173,21 +173,21 @@ export const placeOrderFromCart = async (req: AuthenticatedRequest, res: Respons
         deliveryBoyId: null,
       }).returning();
 
-      // 3️⃣ Insert order items
+      // 3️⃣ Update order items and associate them with the new order
       for (const item of items) {
-        await tx.insert(orderItems).values({
-          orderId: orderResult.id,
-          productId: item.productId,
-          sellerId: item.sellerId,
-          quantity: item.quantity,
-          unitPrice: parseFloat(item.unitPrice),
-          totalPrice: parseFloat(item.totalPrice),
-        });
+        await tx.update(orderItems)
+          .set({ 
+            orderId: orderResult.id,
+            status: "placed" // ✅ The key change: update status instead of deleting
+          })
+          .where(and(
+            eq(orderItems.userId, userId),
+            eq(orderItems.productId, item.productId),
+            eq(orderItems.status, 'in_cart') // Only update items that are currently in the cart
+          ));
       }
 
-      // 4️⃣ Clear cart
-      await tx.delete(cartItems).where(eq(cartItems.userId, userId));
-      console.log("🛒 [API] Cart cleared as part of order placement.");
+      console.log("✅ Cart items moved to order status.");
       
       return orderResult;
     });
