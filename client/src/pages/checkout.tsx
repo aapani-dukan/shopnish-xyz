@@ -52,7 +52,6 @@ export default function Checkout() {
   const { isAuthenticated, user } = useAuth();
   const [searchParams] = useSearchParams();
   
-  // URL से productId और quantity पैरामीटर प्राप्त करें
   const directBuyProductId = searchParams.get("productId");
   const directBuyQuantity = searchParams.get("quantity") ? parseInt(searchParams.get("quantity")!) : 1;
 
@@ -70,58 +69,54 @@ export default function Checkout() {
 
   useEffect(() => {
     if (directBuyProductId) {
-      setCurrentStep(2); // सीधे delivery address step से शुरू करें
+      setCurrentStep(2);
     }
   }, [directBuyProductId]);
 
-  // ✅ यह महत्वपूर्ण बदलाव है
-  const { data, isLoading } = useQuery<any>({
-    queryKey: ['checkoutItems', directBuyProductId, isAuthenticated],
+  // ✅ यह सबसे महत्वपूर्ण बदलाव है।
+  // "Buy Now" के लिए अलग useQuery
+  const { data: directBuyData, isLoading: isProductLoading } = useQuery<any>({
+    queryKey: ['product', directBuyProductId],
     queryFn: async () => {
-      if (!isAuthenticated) {
-        // यदि यूजर लॉग इन नहीं है तो कुछ भी फ़ेच न करें
-        return { items: [] };
-      }
-
-      if (directBuyProductId) {
-        const product = await apiRequest("GET", `/api/products/${directBuyProductId}`);
-        // डायरेक्ट बाय के लिए नकली कार्ट आइटम बनाएं
-        return { items: [{
-          id: product.id,
+      const product = await apiRequest("GET", `/api/products/${directBuyProductId}`);
+      return {
+        items: [{
           productId: product.id,
           quantity: directBuyQuantity,
           product: {
             ...product,
             price: product.price,
           }
-        }]};
-      } else {
-        return await apiRequest("GET", "/api/cart");
-      }
+        }]
+      };
     },
+    enabled: isAuthenticated && !!directBuyProductId,
+  });
+
+  // Cart के लिए अलग useQuery
+  const { data: cartData, isLoading: isCartLoading } = useQuery<any>({
+    queryKey: ['/api/cart'],
+    queryFn: () => apiRequest("GET", "/api/cart"),
+    enabled: isAuthenticated && !directBuyProductId,
   });
   
-  const cartItems = data?.items || [];
-  
-  // Calculate totals
+  // Conditionally choose which data to use
+  const cartItems = directBuyProductId ? directBuyData?.items || [] : cartData?.items || [];
+  const isLoading = directBuyProductId ? isProductLoading : isCartLoading;
+
   const subtotal = cartItems.reduce((sum, item) =>
     sum + (parseFloat(item.product.price) * item.quantity), 0
   );
   const deliveryCharge = subtotal >= 500 ? 0 : 25;
   const total = subtotal + deliveryCharge;
 
-  // Create order mutation
   const createOrderMutation = useMutation({
-  mutationFn: async (orderData: any) => {
-    // डायरेक्ट बाय productId होने पर /buy-now endpoint
-    const url = directBuyProductId ? "/api/orders/buy-now" : "/api/orders";
-    return await apiRequest("POST", url, orderData);
-  },
-  
+    mutationFn: async (orderData: any) => {
+      const url = directBuyProductId ? "/api/orders/buy-now" : "/api/orders";
+      return await apiRequest("POST", url, orderData);
+    },
     onSuccess: (data) => {
-      // ✅ सुनिश्चित करें कि जब कार्ट से ऑर्डर दिया जाए तो कार्ट खाली हो जाए
       if (!directBuyProductId) {
-        // यह कमांड सीधे कैश से कार्ट का डेटा हटाती है
         queryClient.invalidateQueries({ queryKey: ["/api/cart"] });
       }
       toast({
@@ -140,7 +135,6 @@ export default function Checkout() {
   });
 
   const handlePlaceOrder = () => {
-    // ग्राहक डेटा की जाँच करें
     if (!user || !user.id) {
       toast({
         title: "Authentication Error",
@@ -159,10 +153,11 @@ export default function Checkout() {
       return;
     }
     
+    // ✅ cartItems की जाँच करें, जो अब दोनों स्रोतों से डेटा ले रहा है
     if (!cartItems || cartItems.length === 0) {
       toast({
-        title: "Cart is Empty",
-        description: "Please add items to your cart before placing an order.",
+        title: "No Items to Order",
+        description: "There are no items to place an order.",
         variant: "destructive",
       });
       return;
@@ -183,7 +178,6 @@ export default function Checkout() {
         unitPrice: item.product.price,
         totalPrice: (parseFloat(item.product.price) * item.quantity).toFixed(2),
       })),
-      // ✅ बैकएंड को बताने के लिए कि यह कार्ट ऑर्डर है या नहीं
       cartOrder: !directBuyProductId,
     };
 
@@ -198,6 +192,7 @@ export default function Checkout() {
     );
   }
 
+  // ✅ यह बदलाव है: अब यह केवल तभी खाली कार्ट पेज दिखाएगा जब URL में productId नहीं होगा
   if (cartItems.length === 0 && !directBuyProductId) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -244,10 +239,7 @@ export default function Checkout() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Main Content */}
           <div className="lg:col-span-2 space-y-6">
-
-            {/* Step 1: Cart Review */}
             {currentStep === 1 && (
               <Card>
                 <CardHeader>
@@ -258,8 +250,8 @@ export default function Checkout() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    {cartItems.map((item) => (
-                      <div key={item.id} className="flex items-center space-x-4 py-4 border-b">
+                    {cartItems.map((item, index) => (
+                      <div key={item.id || index} className="flex items-center space-x-4 py-4 border-b">
                         <img
                           src={item.product.image}
                           alt={item.product.name}
@@ -286,7 +278,6 @@ export default function Checkout() {
               </Card>
             )}
 
-            {/* Step 2: Delivery Address */}
             {currentStep === 2 && (
               <Card>
                 <CardHeader>
@@ -375,7 +366,6 @@ export default function Checkout() {
               </Card>
             )}
 
-            {/* Step 3: Payment */}
             {currentStep === 3 && (
               <Card>
                 <CardHeader>
@@ -423,7 +413,6 @@ export default function Checkout() {
             )}
           </div>
 
-          {/* Order Summary */}
           <div>
             <Card className="sticky top-4">
               <CardHeader>
@@ -460,4 +449,3 @@ export default function Checkout() {
     </div>
   );
 }
-
