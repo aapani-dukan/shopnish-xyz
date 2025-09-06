@@ -31,7 +31,7 @@ import CategoriesManagement from "@/components/CategoriesManagement"; // ✅ Cat
 import AdminLogin from "@/pages/admin-login";
 import OrderConfirmation from "@/pages/order-confirmation";
 import CustomerOrdersPage from "@/pages/customer/orders";
-
+import Checkout2 from "./pages/Checkout2"; 
 // Centralized auth-based routing
 import AuthRedirectGuard from "@/components/auth-redirect-guard";
 import AdminGuard from "@/components/admin-guard";
@@ -53,6 +53,9 @@ function App() {
                 <Route path="/product/:id" element={<ProductDetail />} />
                 <Route path="/cart" element={<Cart />} />
                 <Route path="/checkout" element={<Checkout />} />
+                   
+                <Rout path="/checkout2" element={<Checkout2 />}/>
+       
                 <Route path="/auth" element={<AuthPage />} />
                 <Route path="/login" element={<LoginPage />} />
                 <Route path="/admin-login" element={<AdminLogin />} />
