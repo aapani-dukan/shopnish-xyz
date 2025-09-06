@@ -142,7 +142,7 @@ export const placeOrderFromCart = async (req: AuthenticatedRequest, res: Respons
 
     const newOrder = await db.transaction(async (tx) => {
       let newDeliveryAddressId: number;
-
+      
       // 1️⃣ Insert delivery address
       const safeAddress = rawDeliveryAddress || {};
       const [newAddress] = await tx.insert(deliveryAddresses).values({
@@ -172,27 +172,32 @@ export const placeOrderFromCart = async (req: AuthenticatedRequest, res: Respons
         deliveryAddress: JSON.stringify(safeAddress),
         deliveryBoyId: null,
       }).returning();
-
-      // 3️⃣ Update order items and associate them with the new order
+      
+      // ✅ 3️⃣ The corrected logic to update orderItems
       for (const item of items) {
-        await tx.update(orderItems)
-          .set({ 
-            orderId: orderResult.id,
-            status: "placed" // ✅ The key change: update status instead of deleting
-          })
-          .where(and(
-            eq(orderItems.userId, userId),
-            eq(orderItems.productId, item.productId),
-            eq(orderItems.status, 'in_cart') // Only update items that are currently in the cart
-          ));
+          const [updatedItem] = await tx.update(orderItems)
+              .set({
+                  orderId: orderResult.id,
+                  status: 'placed'
+              })
+              .where(and(
+                  eq(orderItems.userId, userId),
+                  eq(orderItems.productId, item.productId),
+                  eq(orderItems.status, 'in_cart')
+              ))
+              .returning();
+          
+          if (!updatedItem) {
+              // यदि कोई आइटम नहीं मिला तो ट्रांजेक्शन रोलबैक करें
+              throw new Error("Cart item not found or already placed.");
+          }
       }
-
-      console.log("✅ Cart items moved to order status.");
+      
+      console.log("✅ Cart items moved to 'placed' status and associated with new order.");
       
       return orderResult;
     });
 
-    // ✅ Socket.IO event now emitted here, before the final response
     getIO().emit("new-order", {
       orderId: newOrder.id,
       orderNumber: newOrder.orderNumber,
@@ -215,6 +220,8 @@ export const placeOrderFromCart = async (req: AuthenticatedRequest, res: Respons
     res.status(500).json({ message: "Failed to place order." });
   }
 };
+
+
 
 /**
  * Fetches all orders for the authenticated user.
