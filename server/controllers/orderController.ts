@@ -1,3 +1,4 @@
+// orderController.ts
 import { Response } from "express";
 import { v4 as uuidv4 } from "uuid";
 import { db } from "../db";
@@ -85,6 +86,7 @@ export const placeOrderBuyNow = async (req: AuthenticatedRequest, res: Response)
       return orderResult;
     });
 
+    // ✅ Socket.IO event now emitted here, before the final response
     getIO().emit("new-order", {
       orderId: newOrder.id,
       orderNumber: newOrder.orderNumber,
@@ -190,6 +192,7 @@ export const placeOrderFromCart = async (req: AuthenticatedRequest, res: Respons
       return orderResult;
     });
 
+    // ✅ Socket.IO event now emitted here, before the final response
     getIO().emit("new-order", {
       orderId: newOrder.id,
       orderNumber: newOrder.orderNumber,
@@ -241,3 +244,4 @@ export const getUserOrders = async (req: AuthenticatedRequest, res: Response) =>
     res.status(500).json({ message: "Failed to fetch orders." });
   }
 };
+      
