@@ -175,7 +175,9 @@ useEffect(() => {
         quantity: item.quantity,
         unitPrice: item.product.price,
         totalPrice: (parseFloat(item.product.price) * item.quantity).toFixed(2),
-      }))
+      })),
+      // ✅ बैकएंड को बताने के लिए कि यह कार्ट ऑर्डर है या नहीं
+      cartOrder: !directBuyProductId,
     };
 
     createOrderMutation.mutate(orderData);
