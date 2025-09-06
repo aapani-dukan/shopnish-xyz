@@ -81,7 +81,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
       return;
     }
 
-    navigate("/checkout", {
+    navigate("/checkout2", {
       state: {
         items: [{
           productId: product.id,
