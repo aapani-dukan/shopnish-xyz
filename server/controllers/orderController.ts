@@ -2,7 +2,7 @@ import { Response } from "express";
 import { v4 as uuidv4 } from "uuid";
 import { db } from "../db";
 import { cartItems, deliveryAddresses, orders, orderItems } from "../../shared/backend/schema";
-import { eq } from "drizzle-orm";
+import { eq, desc } from "drizzle-orm";
 import { AuthenticatedRequest } from "../middleware/authMiddleware";
 import { getIO } from "../socket";
 
@@ -29,14 +29,13 @@ export const placeOrder = async (req: AuthenticatedRequest, res: Response) => {
       deliveryCharge,
     } = req.body;
 
-    // ✅ Handle empty items list
+    // Handle empty items list
     if (!items || items.length === 0) {
       return res.status(400).json({ message: "Items list is empty, cannot place an order." });
     }
 
-    // Determine if it's a cart order based on the items received
-    // If the items list comes from the cart, we need to clear it later.
-    const isCartOrder = items.some((item: any) => item.fromCart);
+    // Use the explicit flag from the frontend to determine if it's a cart order
+    const isCartOrder = req.body.cartOrder;
     console.log(`🛒 [API] Is this a cart order? ${isCartOrder}`);
 
     // Generate a unique order number
@@ -118,5 +117,34 @@ export const placeOrder = async (req: AuthenticatedRequest, res: Response) => {
   } catch (error) {
     console.error("❌ Error placing order:", error);
     res.status(500).json({ message: "Failed to place order." });
+  }
+};
+
+/**
+ * Fetches all orders for the authenticated user.
+ * @param req The authenticated request object.
+ * @param res The response object.
+ */
+export const getUserOrders = async (req: AuthenticatedRequest, res: Response) => {
+  console.log("🔄 [API] Received request to get user orders.");
+  try {
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized: User not logged in." });
+    }
+
+    const userOrders = await db.query.orders.findMany({
+      where: eq(orders.customerId, userId),
+      with: {
+        orderItems: true,
+      },
+      orderBy: [desc(orders.createdAt)],
+    });
+
+    console.log(`✅ [API] Found ${userOrders.length} orders for user ${userId}.`);
+    res.status(200).json(userOrders);
+  } catch (error) {
+    console.error("❌ Error fetching user orders:", error);
+    res.status(500).json({ message: "Failed to fetch orders." });
   }
 };
