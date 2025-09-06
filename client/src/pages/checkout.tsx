@@ -169,7 +169,7 @@ useEffect(() => {
       deliveryCharge: deliveryCharge.toFixed(2), 
       deliveryInstructions,
       items: cartItems.map(item => ({
-        productId: item.productId,
+        productId: item.product.id,
         sellerId: item.product.sellerId,
         quantity: item.quantity,
         unitPrice: item.product.price,
