@@ -2,7 +2,8 @@
 import { Response } from "express";
 import { v4 as uuidv4 } from "uuid";
 import { db } from "../db";
-import { cartItems, deliveryAddresses, orders, orderItems } from "../../shared/backend/schema";
+// ✅ cartItems को हटाकर केवल आवश्यक स्कीमा import करें
+import { deliveryAddresses, orders, orderItems } from "../../shared/backend/schema";
 import { eq, desc, and } from "drizzle-orm";
 import { AuthenticatedRequest } from "../middleware/authMiddleware";
 import { getIO } from "../socket";
@@ -73,6 +74,7 @@ export const placeOrderBuyNow = async (req: AuthenticatedRequest, res: Response)
 
       // 3️⃣ Insert order items
       for (const item of items) {
+        // ✅ यह बदलाव है: अब cartItems के बजाय orderItems में नया आइटम डालें
         await tx.insert(orderItems).values({
           orderId: orderResult.id,
           productId: item.productId,
@@ -80,6 +82,8 @@ export const placeOrderBuyNow = async (req: AuthenticatedRequest, res: Response)
           quantity: item.quantity,
           unitPrice: parseFloat(item.unitPrice),
           totalPrice: parseFloat(item.totalPrice),
+          status: 'placed', // 'buy now' आइटम के लिए स्टेटस 'placed' होगा
+          userId, // userId भी जोड़ें
         });
       }
       
@@ -112,10 +116,7 @@ export const placeOrderBuyNow = async (req: AuthenticatedRequest, res: Response)
 
 /**
  * Handles placing an order from the user's cart.
- * @param req The authenticated request object containing user details.
- * @param res The response object to send back to the client.
  */
-
 export const placeOrderFromCart = async (req: AuthenticatedRequest, res: Response) => {
   console.log("🚀 [API] Received request to place order from cart.");
   try {
@@ -222,7 +223,6 @@ export const placeOrderFromCart = async (req: AuthenticatedRequest, res: Respons
 };
 
 
-
 /**
  * Fetches all orders for the authenticated user.
  * @param req The authenticated request object.
@@ -251,4 +251,4 @@ export const getUserOrders = async (req: AuthenticatedRequest, res: Response) =>
     res.status(500).json({ message: "Failed to fetch orders." });
   }
 };
-      
+
