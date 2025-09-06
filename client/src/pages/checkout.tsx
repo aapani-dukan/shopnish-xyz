@@ -1,3 +1,5 @@
+// client/src/pages/Checkout.tsx
+
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useSearchParams } from "react-router-dom";
@@ -65,15 +67,22 @@ export default function Checkout() {
   });
   const [paymentMethod, setPaymentMethod] = useState("cod");
   const [deliveryInstructions, setDeliveryInstructions] = useState("");
-useEffect(() => {
-  if (directBuyProductId) {
-    setCurrentStep(2); // सीधे delivery address step से शुरू करें
-  }
-}, [directBuyProductId]);
-  // कार्ट आइटम या डायरेक्ट बाय प्रोडक्ट फ़ेच करने के लिए एक ही क्वेरी
+
+  useEffect(() => {
+    if (directBuyProductId) {
+      setCurrentStep(2); // सीधे delivery address step से शुरू करें
+    }
+  }, [directBuyProductId]);
+
+  // ✅ यह महत्वपूर्ण बदलाव है
   const { data, isLoading } = useQuery<any>({
-    queryKey: [directBuyProductId ? "product" : "/api/cart", directBuyProductId],
+    queryKey: ['checkoutItems', directBuyProductId, isAuthenticated],
     queryFn: async () => {
+      if (!isAuthenticated) {
+        // यदि यूजर लॉग इन नहीं है तो कुछ भी फ़ेच न करें
+        return { items: [] };
+      }
+
       if (directBuyProductId) {
         const product = await apiRequest("GET", `/api/products/${directBuyProductId}`);
         // डायरेक्ट बाय के लिए नकली कार्ट आइटम बनाएं
@@ -83,14 +92,13 @@ useEffect(() => {
           quantity: directBuyQuantity,
           product: {
             ...product,
-            price: product.price, // सुनिश्चित करें कि कीमत एक स्ट्रिंग के रूप में है
+            price: product.price,
           }
         }]};
       } else {
         return await apiRequest("GET", "/api/cart");
       }
     },
-    enabled: isAuthenticated, 
   });
   
   const cartItems = data?.items || [];
@@ -169,7 +177,7 @@ useEffect(() => {
       deliveryCharge: deliveryCharge.toFixed(2), 
       deliveryInstructions,
       items: cartItems.map(item => ({
-        productId: item.product.id,
+        productId: item.productId,
         sellerId: item.product.sellerId,
         quantity: item.quantity,
         unitPrice: item.product.price,
@@ -452,3 +460,4 @@ useEffect(() => {
     </div>
   );
 }
+
