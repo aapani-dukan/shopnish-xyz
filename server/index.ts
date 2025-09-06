@@ -4,14 +4,14 @@ import cors from "cors";
 import apiRouter from "./routes";
 import "./lib/firebaseAdmin.ts";
 import { createServer, type Server } from "http";
-import { drizzle } from "drizzle-orm/node-postgres";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
-import { Pool } from "pg";
 import path from "path";
 import { fileURLToPath } from "url";
 import cookieParser from "cookie-parser";
 
-// ✅ सिर्फ यही import चाहिए
+// ✅ Import the single database instance
+import { db, databasePool } from "./db.ts";
+
 import { initSocket } from "./socket.ts";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -39,19 +39,6 @@ app.use(cookieParser());
 
 // --- Drizzle Migrations ---
 async function runMigrations() {
-  const connectionString = process.env.DATABASE_URL;
-  if (!connectionString) {
-    console.error("❌ DATABASE_URL is not set.");
-    return;
-  }
-
-  const pool = new Pool({
-    connectionString,
-    ssl: { rejectUnauthorized: false },
-  });
-
-  const db = drizzle(pool);
-
   try {
     const migrationsPath = path.resolve(__dirname, "migrations");
     await migrate(db, { migrationsFolder: migrationsPath });
@@ -62,13 +49,9 @@ async function runMigrations() {
     } else {
       console.error("❌ Migration Error:", error);
     }
-  } finally {
-    try {
-      await pool.end();
-    } catch (poolError) {
-      console.error("❌ Failed to close pool:", poolError);
-    }
-  }
+  } 
+  // ❌ Removed the 'finally' block that closed the pool.
+  // The pool should stay open for the server's lifetime.
 }
 
 // --- Start Server ---
@@ -138,13 +121,13 @@ async function runMigrations() {
     console.error("❌ Server Error:", err);
     res.status(status).json({ message });
 
-    if (process.env.NODE_ENV !== "production") throw err;
+    // ❌ This line has been removed to prevent server crashes in production
+    // if (process.env.NODE_ENV !== "production") throw err;
   });
 
   const port = process.env.PORT || 5001;
   server = createServer(app);
 
-  // ✅ सिर्फ यही call चाहिए (Socket logic अब socket.ts में centralized है)
   initSocket(server);
 
   server.listen({ port, host: "0.0.0.0" }, () =>
