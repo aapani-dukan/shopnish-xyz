@@ -81,40 +81,21 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
       return;
     }
 
-    try {
-      // direct order placement
-      const orderResponse = await apiRequest("POST", "/api/orders/buy-now", {
-        items: [
-          {
-            productId: product.id,
-            sellerId: product.sellerId,
-            quantity: 1,
-            unitPrice: Number(product.price),
-            totalPrice: Number(product.price),
-          },
-        ],
-        subtotal: Number(product.price),
-        total: Number(product.price),
-        deliveryCharge: 0,
-        deliveryAddress: user.defaultAddress || {}, // frontend select address
-        paymentMethod: "COD",
-        deliveryInstructions: "",
-      });
-
-      toast({
-        title: "Order Placed",
-        description: `Your order for ${product.name} has been placed successfully.`,
-      });
-
-      navigate(`/order-confirmation/${orderResponse.orderId}`);
-    } catch (error: any) {
-      toast({
-        title: "Order Failed",
-        description: error.message || "Failed to place order.",
-        variant: "destructive",
-      });
-    }
+    navigate("/checkout", {
+      state: {
+        items: [{
+          productId: product.id,
+          name: product.name,
+          image: product.image,
+          price: Number(product.price),
+          quantity: 1,
+          sellerId: product.sellerId,
+        }],
+        from: "buy-now"
+      }
+    });
   };
+
 
   return (
     <div className="p-4 border rounded-lg">
