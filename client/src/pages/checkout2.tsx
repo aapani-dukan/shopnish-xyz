@@ -42,6 +42,7 @@ export default function Checkout2() {
   const { isAuthenticated, user } = useAuth();
   const [searchParams] = useSearchParams();
   
+  // ✅ URL से productId और quantity पढ़ें
   const directBuyProductId = searchParams.get("productId");
   const directBuyQuantity = searchParams.get("quantity") ? parseInt(searchParams.get("quantity")!) : 1;
 
@@ -59,22 +60,21 @@ export default function Checkout2() {
 
   useEffect(() => {
     if (directBuyProductId) {
-      setCurrentStep(1); // Buy Now के लिए सीधे Cart Review से शुरू करें
+      setCurrentStep(1); 
     }
   }, [directBuyProductId]);
 
   const { data: productData, isLoading } = useQuery<ProductItem>({
     queryKey: ['product', directBuyProductId],
     queryFn: () => apiRequest("GET", `/api/products/${directBuyProductId}`),
-    enabled: isAuthenticated && !!directBuyProductId, // केवल तब चलें जब productId उपलब्ध हो
+    // ✅ यह महत्वपूर्ण है: यह सुनिश्चित करता है कि केवल तभी API कॉल हो जब productId मौजूद हो।
+    enabled: isAuthenticated && !!directBuyProductId, 
   });
 
-  // Calculate totals
   const subtotal = productData ? parseFloat(productData.price) * directBuyQuantity : 0;
   const deliveryCharge = subtotal >= 500 ? 0 : 25;
   const total = subtotal + deliveryCharge;
 
-  // Create order mutation
   const createOrderMutation = useMutation({
     mutationFn: (orderData: any) => apiRequest("POST", "/api/orders/buy-now", orderData),
     onSuccess: (data) => {
@@ -386,6 +386,5 @@ export default function Checkout2() {
       </div>
     </div>
   );
-}
-
-                
+                }
+            
