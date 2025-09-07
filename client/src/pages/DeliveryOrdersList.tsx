@@ -504,7 +504,7 @@ export default function DeliveryOrdersList({ userId, auth }: { userId: string | 
               </CardContent>
             </Card>
           );
-        })}
+        })
       </section>
 
       {/* OTP Dialog */}
