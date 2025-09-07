@@ -59,8 +59,7 @@ export const placeOrderBuyNow = async (req: AuthenticatedRequest, res: Response)
       // 2️⃣ Insert order
       const [orderResult] = await tx.insert(orders).values({
         customerId: userId,
-        status: "pending",
-        deliveryStatus: "pending",
+        status: "pending", // ✅ अब केवल status का उपयोग हो रहा है
         orderNumber,
         subtotal: parseFloat(subtotal).toFixed(2),
         total: parseFloat(total).toFixed(2),
@@ -96,8 +95,7 @@ export const placeOrderBuyNow = async (req: AuthenticatedRequest, res: Response)
       orderNumber: newOrder.orderNumber,
       customerId: newOrder.customerId,
       total: newOrder.total,
-      status: newOrder.status,
-      deliveryStatus: newOrder.deliveryStatus,
+      status: newOrder.status, // ✅ अब केवल status भेज रहा है
       createdAt: newOrder.createdAt,
       items,
     });
@@ -161,8 +159,7 @@ export const placeOrderFromCart = async (req: AuthenticatedRequest, res: Respons
       // 2️⃣ Insert order
       const [orderResult] = await tx.insert(orders).values({
         customerId: userId,
-        status: "pending",
-        deliveryStatus: "pending",
+        status: "pending", // ✅ अब केवल status का उपयोग हो रहा है
         orderNumber,
         subtotal: parseFloat(subtotal).toFixed(2),
         total: parseFloat(total).toFixed(2),
@@ -204,8 +201,7 @@ export const placeOrderFromCart = async (req: AuthenticatedRequest, res: Respons
       orderNumber: newOrder.orderNumber,
       customerId: newOrder.customerId,
       total: newOrder.total,
-      status: newOrder.status,
-      deliveryStatus: newOrder.deliveryStatus,
+      status: newOrder.status, // ✅ अब केवल status भेज रहा है
       createdAt: newOrder.createdAt,
       items,
     });
@@ -251,4 +247,4 @@ export const getUserOrders = async (req: AuthenticatedRequest, res: Response) =>
     res.status(500).json({ message: "Failed to fetch orders." });
   }
 };
-
+  
