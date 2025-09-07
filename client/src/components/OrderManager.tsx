@@ -6,7 +6,7 @@ import { useQueryClient, useMutation } from "@tanstack/react-query";
 import { OrderWithItems, Seller, orderStatusEnum } from "@shared/backend/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { useSocket } from "@/hooks/useSocket"; // ✅ नया import
+import { useSocket } from "@/hooks/useSocket";
 import { useEffect } from "react";
 
 interface OrderManagerProps {
@@ -25,7 +25,6 @@ const getStatusBadgeVariant = (status: string) => {
     case "preparing":
       return "warning";
     case "ready_for_pickup":
-    case "out_for_delivery":
       return "info";
     case "delivered":
       return "success";
@@ -37,6 +36,40 @@ const getStatusBadgeVariant = (status: string) => {
   }
 };
 
+const getDeliveryStatusBadgeVariant = (status: string) => {
+  switch (status) {
+    case "pending":
+      return "secondary";
+    case "accepted":
+      return "info";
+    case "picked_up":
+      return "info";
+    case "out_for_delivery":
+      return "warning";
+    case "delivered":
+      return "success";
+    default:
+      return "secondary";
+  }
+};
+
+const deliveryStatusText = (status: string) => {
+  switch (status) {
+    case "pending":
+      return "डिलीवरी के लिए लंबित";
+    case "accepted":
+      return "डिलीवरी के लिए स्वीकार किया गया";
+    case "picked_up":
+      return "पिकअप किया गया";
+    case "out_for_delivery":
+      return "डिलीवरी के लिए निकला";
+    case "delivered":
+      return "डिलीवर किया गया";
+    default:
+      return "लागू नहीं";
+  }
+};
+
 export default function OrderManager({
   orders,
   isLoading,
@@ -45,27 +78,35 @@ export default function OrderManager({
 }: OrderManagerProps) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
-  const { socket } = useSocket(); // ✅ socket instance
+  const { socket } = useSocket();
 
   // ---------------- SOCKET.IO LISTENERS ----------------
   useEffect(() => {
     if (!socket || !seller) return;
 
-    // जब किसी order का status बदले
-    socket.on("order-status-updated", (updatedOrder: OrderWithItems) => {
-      console.log("📦 Order status updated:", updatedOrder);
-
-      // React Query cache invalidate → orders दुबारा fetch
+    // ✅ सेलर के स्टेटस अपडेट को सुनें
+    socket.on("order:status-updated", (updatedOrder: OrderWithItems) => {
+      console.log("📦 Order status updated by seller:", updatedOrder);
       queryClient.invalidateQueries({ queryKey: ["/api/sellers/orders"] });
-
       toast({
         title: "Order Updated",
         description: `Order #${updatedOrder.id} is now ${updatedOrder.status}`,
       });
     });
 
+    // ✅ डिलीवरी बॉय के स्टेटस अपडेट को सुनें (सिर्फ़ जानकारी के लिए)
+    socket.on("order:delivery-status-updated", (updatedOrder: OrderWithItems) => {
+      console.log("🚚 Order delivery status updated:", updatedOrder);
+      queryClient.invalidateQueries({ queryKey: ["/api/sellers/orders"] });
+      toast({
+        title: "Delivery Status Updated",
+        description: `Order #${updatedOrder.id} is now ${updatedOrder.deliveryStatus}`,
+      });
+    });
+
     return () => {
-      socket.off("order-status-updated");
+      socket.off("order:status-updated");
+      socket.off("order:delivery-status-updated");
     };
   }, [socket, seller, queryClient, toast]);
 
@@ -183,11 +224,18 @@ export default function OrderManager({
               <h2 className="font-bold text-lg">
                 Order #{order.orderNumber || order.id}
               </h2>
-              <Badge variant={getStatusBadgeVariant(order.status as string)}>
-                {order.status}
-              </Badge>
+              <div className="flex items-center space-x-2 mt-2 md:mt-0">
+                <Badge variant={getStatusBadgeVariant(order.status as string)}>
+                  {order.status}
+                </Badge>
+                {order.status === "ready_for_pickup" && order.deliveryStatus && (
+                  <Badge variant={getDeliveryStatusBadgeVariant(order.deliveryStatus as string)}>
+                    {deliveryStatusText(order.deliveryStatus as string)}
+                  </Badge>
+                )}
+              </div>
             </div>
-
+            
             {/* ✅ Customer */}
             {order.customer && order.deliveryAddress && (
               <p className="text-sm">
@@ -252,4 +300,4 @@ export default function OrderManager({
       <CardContent>{renderContent()}</CardContent>
     </Card>
   );
-}
+      }
