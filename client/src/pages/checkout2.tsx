@@ -41,7 +41,11 @@ export default function Checkout2() {
   const queryClient = useQueryClient();
   const { isAuthenticated, user } = useAuth();
   const [searchParams] = useSearchParams();
-  
+  console.log("Entire searchParams object:", Array.from(searchParams.entries()));
+  const directBuyProductId = searchParams.get("productId");
+  const directBuyQuantity = searchParams.get("quantity") ? parseInt(searchParams.get("quantity")!) : 1;
+  console.log("directBuyProductId is:", directBuyProductId);
+  console.log("directBuyQuantity is:", directBuyQuantity);
   // ✅ URL से productId और quantity पढ़ें
   const directBuyProductId = searchParams.get("productId");
   const directBuyQuantity = searchParams.get("quantity") ? parseInt(searchParams.get("quantity")!) : 1;
