@@ -454,7 +454,7 @@ const { data: orders = [], isLoading } = useQuery({
                         size="sm"
                         onClick={() =>
                           window.open(
-                            `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+                            `http://googleusercontent.com/maps.google.com/maps?q=${encodeURIComponent(
                               `${isAddressObject ? addressData.address || "" : ""}, ${isAddressObject ? addressData.city || "" : ""}`
                             )}`
                           )
@@ -475,7 +475,7 @@ const { data: orders = [], isLoading } = useQuery({
                         size="sm"
                         onClick={() =>
                           window.open(
-                            `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+                            `http://googleusercontent.com/maps.google.com/maps?q=${encodeURIComponent(
                               `${isSellerAddressObject ? sellerDetails.address || "" : ""}, ${isSellerAddressObject ? sellerDetails.city || "" : ""}`
                             )}`
                           )
@@ -512,5 +512,5 @@ const { data: orders = [], isLoading } = useQuery({
       />
     </div>
   );
-        }
+    }
                             
