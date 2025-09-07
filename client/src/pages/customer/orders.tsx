@@ -9,11 +9,12 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Package } from "lucide-react";
 import { socket } from "@/lib/socket"; // ✅ socket.io client helper
 
-// इंटरफ़ेस (Interface) जो API से आने वाले डेटा को परिभाषित करता है।
+// इंटरफ़ेस जो API से आने वाले डेटा को परिभाषित करता है।
 interface CustomerOrder {
   id: number;
   orderNumber: string;
-  status: string;
+  status: string; // ✅ सेलर का स्टेटस
+  deliveryStatus: string; // ✅ डिलीवरी बॉय का स्टेटस
   total: string;
   createdAt: string;
 }
@@ -22,6 +23,9 @@ interface CustomerOrder {
 const statusBadgeVariants = {
   pending: "secondary",
   accepted: "secondary",
+  preparing: "secondary",
+  ready_for_pickup: "secondary",
+  picked_up: "info",
   out_for_delivery: "info",
   delivered: "success",
   cancelled: "destructive",
@@ -29,8 +33,36 @@ const statusBadgeVariants = {
   default: "secondary",
 };
 
-const getStatusBadgeVariant = (status: string) => {
+const getStatusBadgeVariant = (status: string, deliveryStatus: string) => {
+  if (deliveryStatus) {
+    return statusBadgeVariants[deliveryStatus] || statusBadgeVariants.default;
+  }
   return statusBadgeVariants[status] || statusBadgeVariants.default;
+};
+
+// दोनों स्टेटस को मिलाकर एक कंबाइंड टेक्स्ट बनाता है
+const getCombinedStatus = (status: string, deliveryStatus: string) => {
+  if (deliveryStatus === "picked_up") return "पिकअप हो गया";
+  if (deliveryStatus === "out_for_delivery") return "रास्ते में है";
+  if (deliveryStatus === "delivered") return "डिलीवर हो गया";
+  
+  // अगर deliveryStatus नहीं है या अभी तक शुरू नहीं हुआ है, तो seller status दिखाओ
+  switch (status) {
+    case "pending":
+      return "लंबित";
+    case "accepted":
+      return "स्वीकृत";
+    case "preparing":
+      return "तैयार हो रहा है";
+    case "ready_for_pickup":
+      return "पिकअप के लिए तैयार";
+    case "cancelled":
+      return "रद्द कर दिया गया";
+    case "rejected":
+      return "अस्वीकृत";
+    default:
+      return "Unknown";
+  }
 };
 
 // ग्राहक के ऑर्डर दिखाने वाला मुख्य कंपोनेंट।
@@ -53,14 +85,21 @@ export default function CustomerOrdersPage() {
 
   // ✅ Socket.IO से order updates सुनें
   useEffect(() => {
-    socket.on("order:update", (updatedOrder) => {
-      console.log("📦 Order update received:", updatedOrder);
-      // cache refresh कर दो
+    // सेलर द्वारा अपडेट किया गया स्टेटस
+    socket.on("order:status-updated", (updatedOrder) => {
+      console.log("📦 Order update received from seller:", updatedOrder);
+      queryClient.invalidateQueries({ queryKey: ["customerOrders"] });
+    });
+
+    // डिलीवरी बॉय द्वारा अपडेट किया गया स्टेटस
+    socket.on("order:delivery-status-updated", (updatedOrder) => {
+      console.log("🚚 Order update received from delivery boy:", updatedOrder);
       queryClient.invalidateQueries({ queryKey: ["customerOrders"] });
     });
 
     return () => {
-      socket.off("order:update");
+      socket.off("order:status-updated");
+      socket.off("order:delivery-status-updated");
     };
   }, [queryClient]);
 
@@ -118,8 +157,8 @@ export default function CustomerOrdersPage() {
             <CardHeader className="p-0 mb-4">
               <CardTitle className="flex justify-between items-center text-lg">
                 <span>Order #{order.orderNumber}</span>
-                <Badge variant={getStatusBadgeVariant(order.status)}>
-                  {order.status}
+                <Badge variant={getStatusBadgeVariant(order.status, order.deliveryStatus)}>
+                  {getCombinedStatus(order.status, order.deliveryStatus)}
                 </Badge>
               </CardTitle>
             </CardHeader>
@@ -140,7 +179,7 @@ export default function CustomerOrdersPage() {
                 <div>
                   <p>
                     <span className="font-medium text-gray-800">Status:</span>{" "}
-                    {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+                    {getCombinedStatus(order.status, order.deliveryStatus)}
                   </p>
                 </div>
               </div>
