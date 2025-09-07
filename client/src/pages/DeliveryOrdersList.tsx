@@ -120,7 +120,6 @@ export default function DeliveryOrdersList({ userId, auth }: { userId: string | 
 
   const API_BASE = import.meta.env.VITE_API_BASE_URL || "https://shopnish-lzrf.onrender.com";
 
-  // ─── Helper: Valid Token Fetcher ───
   const getValidToken = async () => {
     if (!auth?.currentUser) return null;
     try {
@@ -131,7 +130,6 @@ export default function DeliveryOrdersList({ userId, auth }: { userId: string | 
     }
   };
 
-  // ─── useQuery: ऑर्डर्स फ़ेच करने के लिए
   const { data: orders = [], isLoading } = useQuery({
     queryKey: ["deliveryOrders"],
     queryFn: async () => {
@@ -145,7 +143,6 @@ export default function DeliveryOrdersList({ userId, auth }: { userId: string | 
         });
         if (!res.ok) throw new Error("नेटवर्क प्रतिक्रिया ठीक नहीं थी");
         const data = await res.json();
-        
         return Array.isArray(data.orders) ? data.orders : [];
       } catch (err) {
         console.error("ऑर्डर फ़ेच करने में त्रुटि:", err);
@@ -160,7 +157,6 @@ export default function DeliveryOrdersList({ userId, auth }: { userId: string | 
     enabled: !!userId,
   });
 
-  // ─── Socket.IO: listen to server events and invalidate queries
   useEffect(() => {
     if (!socket || !userId) return;
 
@@ -180,7 +176,6 @@ export default function DeliveryOrdersList({ userId, auth }: { userId: string | 
     };
   }, [socket, userId, queryClient]);
 
-  // ─── Mutations: सभी API calls में valid token इस्तेमाल करेंगे
   const createMutationWithToken = (url: string, method = "PATCH") =>
     useMutation({
       mutationFn: async (body: any) => {
@@ -241,7 +236,6 @@ export default function DeliveryOrdersList({ userId, auth }: { userId: string | 
     );
   }
 
-  // ─── JSX Rendering (UI) ───
   return (
     <div className="min-h-screen bg-gray-50 font-inter text-gray-800">
       <header className="bg-white shadow-sm border-b rounded-b-lg">
@@ -328,183 +322,176 @@ export default function DeliveryOrdersList({ userId, auth }: { userId: string | 
             </CardContent>
           </Card>
         ) : (
-          orders.map((order: any) => {
-            const addressData = order.deliveryAddress;
-            const isAddressObject = typeof addressData === 'object' && addressData !== null;
-            const sellerDetails = order.sellerDetails || order.items[0]?.product?.seller;
-            const isSellerAddressObject = typeof sellerDetails === 'object' && sellerDetails !== null;
+          <>
+            {orders.map((order: any) => {
+              const addressData = order.deliveryAddress;
+              const isAddressObject = typeof addressData === 'object' && addressData !== null;
+              const sellerDetails = order.sellerDetails || order.items[0]?.product?.seller;
+              const isSellerAddressObject = typeof sellerDetails === 'object' && sellerDetails !== null;
           
-            return (
-            <Card key={order.id}>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle>ऑर्डर #{order.orderNumber}</CardTitle>
-                    <p className="text-sm text-gray-600">
-                      {order.items?.length || 0} आइटम • ₹{order.total}
-                    </p>
-                  </div>
-                  <Badge className={`${statusColor(order.delivery_status)} text-white`}>
-                    {statusText(order.delivery_status)}
-                  </Badge>
-                </div>
-              </CardHeader>
-
-              <CardContent>
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  {/* ग्राहक विवरण */}
-                  <div className="space-y-4">
-                    <div>
-                      <h4 className="font-medium mb-2">ग्राहक विवरण</h4>
-                      <p className="font-medium">{isAddressObject ? addressData.fullName : "नाम अनुपलब्ध"}</p>
-                      <div className="flex items-center space-x-2 text-sm text-gray-600">
-                        <Phone className="w-4 h-4" />
-                        <span>{isAddressObject ? addressData.phone || "-" : "-"}</span>
+              return (
+                <Card key={order.id}>
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <CardTitle>ऑर्डर #{order.orderNumber}</CardTitle>
+                        <p className="text-sm text-gray-600">
+                          {order.items?.length || 0} आइटम • ₹{order.total}
+                        </p>
                       </div>
+                      <Badge className={`${statusColor(order.delivery_status)} text-white`}>
+                        {statusText(order.delivery_status)}
+                      </Badge>
                     </div>
+                  </CardHeader>
 
-                    <div>
-                      <h4 className="font-medium mb-2">डिलीवरी पता</h4>
-                      <div className="flex items-start space-x-2 text-sm text-gray-600">
-                        <MapPin className="w-4 h-4 mt-0.5" />
+                  <CardContent>
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                      {/* ग्राहक विवरण */}
+                      <div className="space-y-4">
                         <div>
-                          <p>{isAddressObject ? addressData.address : addressData}</p>
-                          {isAddressObject && (
-                            <p>
-                              {addressData.city || ""}{" "}
-                              {addressData.pincode ? `, ${addressData.pincode}` : ""}
-                            </p>
-                          )}
-                          {isAddressObject && addressData.landmark && (
-                            <p className="text-xs">लैंडमार्क: {addressData.landmark}</p>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* ✅ विक्रेता का विवरण */}
-                  <div className="space-y-4">
-                    <div>
-                      <h4 className="font-medium mb-2">विक्रेता विवरण</h4>
-                      <p className="font-medium">{isSellerAddressObject ? sellerDetails.name : "नाम अनुपलब्ध"}</p>
-                      <div className="flex items-center space-x-2 text-sm text-gray-600">
-                        <Phone className="w-4 h-4" />
-                        <span>{isSellerAddressObject ? sellerDetails.phone || "-" : "-"}</span>
-                      </div>
-                    </div>
-                    <div>
-                      <h4 className="font-medium mb-2">पिकअप पता</h4>
-                      <div className="flex items-start space-x-2 text-sm text-gray-600">
-                        <MapPin className="w-4 h-4 mt-0.5" />
-                        <div>
-                          <p>{isSellerAddressObject ? sellerDetails.address : "पता अनुपलब्ध"}</p>
-                          {isSellerAddressObject && (
-                            <p>
-                              {sellerDetails.city || ""}{" "}
-                              {sellerDetails.pincode ? `, ${sellerDetails.pincode}` : ""}
-                            </p>
-                          )}
-                          {isSellerAddressObject && sellerDetails.landmark && (
-                            <p className="text-xs">लैंडमार्क: {sellerDetails.landmark}</p>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* ऑर्डर आइटम्स */}
-                <div className="mt-6 pt-4 border-t">
-                  <h4 className="font-medium mb-2">ऑर्डर आइटम्स</h4>
-                  <div className="space-y-2 max-h-32 overflow-y-auto pr-2">
-                    {order.items?.map((item: any) => {
-                      return (
-                        <div key={item.id} className="flex items-center space-x-3 text-sm">
-                          <img
-                            src={item.product?.image || "https://placehold.co/32x32/E2E8F0/1A202C?text=No+Img"}
-                            alt={item.product?.name || "No Name"}
-                            className="w-8 h-8 object-cover rounded"
-                          />
-                          <div className="flex-1">
-                            <p className="font-medium">{item.product?.name || "उत्पाद डेटा अनुपलब्ध"}</p>
-                            <p className="text-gray-600">
-                              Qty: {item.quantity} {item.product?.unit}
-                            </p>
+                          <h4 className="font-medium mb-2">ग्राहक विवरण</h4>
+                          <p className="font-medium">{isAddressObject ? addressData.fullName : "नाम अनुपलब्ध"}</p>
+                          <div className="flex items-center space-x-2 text-sm text-gray-600">
+                            <Phone className="w-4 h-4" />
+                            <span>{isAddressObject ? addressData.phone || "-" : "-"}</span>
                           </div>
                         </div>
-                      );
-                    })}
-                  </div>
-                </div>
 
-                <div className="flex flex-wrap gap-3 mt-6 pt-4 border-t">
-                  {/* "ऑर्डर स्वीकार करें" बटन सिर्फ़ तब दिखेगा जब ऑर्डर किसी को असाइन न हुआ हो */}
-                  {order.delivery_boy_id == null && order.status === 'ready_for_pickup' ? (
-                    <Button
-                      size="sm"
-                      onClick={() => acceptOrderMutation.mutate({ orderId: order.id })}
-                      disabled={acceptOrderMutation.isLoading}
-                    >
-                      ऑर्डर स्वीकार करें
-                    </Button>
-                  ) : (
-                    <>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() =>
-                          {
-                            const query = encodeURIComponent(
-                              `${isAddressObject ? addressData.address || "" : ""}, ${isAddressObject ? addressData.city || "" : ""}`
-                            );
-                            const url = `https://www.google.com/maps?q=${query}`;
-                            window.open(url, "_blank");
-                          }
-                        }
-                      >
-                        <Navigation className="w-4 h-4 mr-2" /> नेविगेट करें (ग्राहक)
-                      </Button>
-                      {/* ✅ विक्रेता को कॉल करने और नेविगेट करने के बटन */}
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => window.open(`tel:${isSellerAddressObject ? sellerDetails.phone || "" : ""}`)}
-                      >
-                        <Phone className="w-4 h-4 mr-2" /> विक्रेता को कॉल करें
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() =>
-                          {
-                            const query = encodeURIComponent(
-                              `${isSellerAddressObject ? sellerDetails.address || "" : ""}, ${isSellerAddressObject ? sellerDetails.city || "" : ""}`
-                            );
-                            const url = `https://www.google.com/maps?q=${query}`;
-                            window.open(url, "_blank");
-                          }
-                        }
-                      >
-                        <Navigation className="w-4 h-4 mr-2" /> नेविगेट करें (पिकअप)
-                      </Button>
+                        <div>
+                          <h4 className="font-medium mb-2">डिलीवरी पता</h4>
+                          <div className="flex items-start space-x-2 text-sm text-gray-600">
+                            <MapPin className="w-4 h-4 mt-0.5" />
+                            <div>
+                              <p>{isAddressObject ? addressData.address : addressData}</p>
+                              {isAddressObject && (
+                                <p>
+                                  {addressData.city || ""}{" "}
+                                  {addressData.pincode ? `, ${addressData.pincode}` : ""}
+                                </p>
+                              )}
+                              {isAddressObject && addressData.landmark && (
+                                <p className="text-xs">लैंडमार्क: {addressData.landmark}</p>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
 
-                      {nextStatus(order.delivery_status || order.status) && (
+                      {/* विक्रेता विवरण */}
+                      <div className="space-y-4">
+                        <div>
+                          <h4 className="font-medium mb-2">विक्रेता विवरण</h4>
+                          <p className="font-medium">{isSellerAddressObject ? sellerDetails.name : "नाम अनुपलब्ध"}</p>
+                          <div className="flex items-center space-x-2 text-sm text-gray-600">
+                            <Phone className="w-4 h-4" />
+                            <span>{isSellerAddressObject ? sellerDetails.phone || "-" : "-"}</span>
+                          </div>
+                        </div>
+                        <div>
+                          <h4 className="font-medium mb-2">पिकअप पता</h4>
+                          <div className="flex items-start space-x-2 text-sm text-gray-600">
+                            <MapPin className="w-4 h-4 mt-0.5" />
+                            <div>
+                              <p>{isSellerAddressObject ? sellerDetails.address : "पता अनुपलब्ध"}</p>
+                              {isSellerAddressObject && (
+                                <p>
+                                  {sellerDetails.city || ""}{" "}
+                                  {sellerDetails.pincode ? `, ${sellerDetails.pincode}` : ""}
+                                </p>
+                              )}
+                              {isSellerAddressObject && sellerDetails.landmark && (
+                                <p className="text-xs">लैंडमार्क: {sellerDetails.landmark}</p>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* ऑर्डर आइटम्स */}
+                    <div className="mt-6 pt-4 border-t">
+                      <h4 className="font-medium mb-2">ऑर्डर आइटम्स</h4>
+                      <div className="space-y-2 max-h-32 overflow-y-auto pr-2">
+                        {order.items?.map((item: any) => (
+                          <div key={item.id} className="flex items-center space-x-3 text-sm">
+                            <img
+                              src={item.product?.image || "https://placehold.co/32x32/E2E8F0/1A202C?text=No+Img"}
+                              alt={item.product?.name || "No Name"}
+                              className="w-8 h-8 object-cover rounded"
+                            />
+                            <div className="flex-1">
+                              <p className="font-medium">{item.product?.name || "उत्पाद डेटा अनुपलब्ध"}</p>
+                              <p className="text-gray-600">
+                                Qty: {item.quantity} {item.product?.unit}
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Action buttons */}
+                    <div className="flex flex-wrap gap-3 mt-6 pt-4 border-t">
+                      {order.delivery_boy_id == null && order.status === 'ready_for_pickup' ? (
                         <Button
                           size="sm"
-                          onClick={() => handleStatusProgress(order)}
-                          disabled={updateStatusMutation.isLoading}
+                          onClick={() => acceptOrderMutation.mutate({ orderId: order.id })}
+                          disabled={acceptOrderMutation.isLoading}
                         >
-                          {nextStatusLabel(order.delivery_status || order.status)}
+                          ऑर्डर स्वीकार करें
                         </Button>
+                      ) : (
+                        <>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              const query = encodeURIComponent(
+                                `${isAddressObject ? addressData.address || "" : ""}, ${isAddressObject ? addressData.city || "" : ""}`
+                              );
+                              window.open(`https://www.google.com/maps?q=${query}`, "_blank");
+                            }}
+                          >
+                            <Navigation className="w-4 h-4 mr-2" /> नेविगेट करें (ग्राहक)
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => window.open(`tel:${isSellerAddressObject ? sellerDetails.phone || "" : ""}`)}
+                          >
+                            <Phone className="w-4 h-4 mr-2" /> विक्रेता को कॉल करें
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              const query = encodeURIComponent(
+                                `${isSellerAddressObject ? sellerDetails.address || "" : ""}, ${isSellerAddressObject ? sellerDetails.city || "" : ""}`
+                              );
+                              window.open(`https://www.google.com/maps?q=${query}`, "_blank");
+                            }}
+                          >
+                            <Navigation className="w-4 h-4 mr-2" /> नेविगेट करें (पिकअप)
+                          </Button>
+                          {nextStatus(order.delivery_status || order.status) && (
+                            <Button
+                              size="sm"
+                              onClick={() => handleStatusProgress(order)}
+                              disabled={updateStatusMutation.isLoading}
+                            >
+                              {nextStatusLabel(order.delivery_status || order.status)}
+                            </Button>
+                          )}
+                        </>
                       )}
-                    </>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          );
-        })
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </>
+        )}
       </section>
 
       {/* OTP Dialog */}
@@ -512,9 +499,9 @@ export default function DeliveryOrdersList({ userId, auth }: { userId: string | 
         isOpen={otpDialogOpen}
         onOpenChange={setOtpDialogOpen}
         otp={otp}
-            setOtp={setOtp}
+        setOtp={setOtp}
         onConfirm={handleOtpConfirmation}
       />
     </div>
   );
-}
+                    }
