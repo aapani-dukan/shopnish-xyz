@@ -1,5 +1,3 @@
-// client/src/components/product-card.tsx
-
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -32,7 +30,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
     mutationFn: async ({ productId, quantity }: { productId: number; quantity: number }) => {
       return await apiRequest("POST", "/api/cart/add", { productId, quantity });
     },
-    onSuccess: (data) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/cart"] });
       toast({
         title: "Added to cart",
@@ -66,7 +64,8 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
     addToCartMutation.mutate({ productId: product.id, quantity: 1 });
   };
 
-  const handleBuyNow = async () => {
+  // ✅ Cleaned up single Buy Now function
+  const handleBuyNow = () => {
     if (!user) {
       setIsLoginPopupOpen(true);
       return;
@@ -81,11 +80,9 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
       return;
     }
 
-  const handleBuyNow = () => {
-  console.log("➡️ Buy Now clicked for Product ID:", product.id);
-  navigate(`/checkout2/${product.id}?quantity=1`);
-};
-
+    console.log("➡️ Buy Now clicked for Product ID:", product.id);
+    navigate(`/checkout2/${product.id}?quantity=1`);
+  };
 
   return (
     <div className="p-4 border rounded-lg">
@@ -114,7 +111,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
           <DialogHeader>
             <DialogTitle>Login Required</DialogTitle>
             <DialogDescription>
-              Please log in to add items to your cart.
+              Please log in to add items to your cart or buy now.
             </DialogDescription>
           </DialogHeader>
           <div className="flex justify-end gap-2">
