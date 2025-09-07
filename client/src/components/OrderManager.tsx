@@ -10,11 +10,12 @@ import { useToast } from "@/hooks/use-toast";
 import { useSocket } from "@/hooks/useSocket";
 import { useEffect } from "react";
 
-interface OrderManagerProps {
-  orders: OrderWithItems[] | undefined;
-  isLoading: boolean;
-  error: Error | null;
-  seller: Seller;
+// ✅ नया इंटरफ़ेस जो deliveryBoy को शामिल करता है
+interface OrderWithDeliveryBoy extends OrderWithItems {
+  deliveryBoy?: {
+    id: number;
+    name: string;
+  };
 }
 
 const getStatusBadgeVariant = (status: string) => {
@@ -80,7 +81,6 @@ export default function OrderManager({
   useEffect(() => {
     if (!socket || !seller) return;
 
-    // ✅ सभी स्टेटस अपडेट को सुनें
     const onOrderStatusUpdated = (updatedOrder: OrderWithItems) => {
       console.log("📦 Order status updated:", updatedOrder);
       queryClient.invalidateQueries({ queryKey: ["/api/sellers/orders"] });
@@ -178,7 +178,6 @@ export default function OrderManager({
             पिकअप के लिए तैयार
           </Button>
         );
-      // ✅ सेलर अब डिलीवरी से संबंधित स्टेटस को अपडेट नहीं कर सकता
       default:
         return null;
     }
@@ -205,7 +204,7 @@ export default function OrderManager({
 
     return (
       <div className="space-y-4">
-        {orders.map((order) => (
+        {orders.map((order: OrderWithDeliveryBoy) => (
           <div key={order.id} className="border rounded-lg p-4 mb-4">
             <div className="flex flex-col md:flex-row md:justify-between md:items-center mb-2">
               <h2 className="font-bold text-lg">
@@ -227,6 +226,13 @@ export default function OrderManager({
                     order.deliveryAddress.fullName ||
                     "अज्ञात"}
                 </strong>
+              </p>
+            )}
+
+            {/* ✅ Delivery Boy Info */}
+            {order.deliveryBoy && (
+              <p className="text-sm text-muted-foreground mt-1">
+                डिलीवरी बॉय: <strong>{order.deliveryBoy.name}</strong>
               </p>
             )}
 
