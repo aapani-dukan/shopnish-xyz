@@ -23,7 +23,6 @@ import SellerApplyPage from "@/pages/seller-apply";
 import SellerStatusPage from "@/pages/seller-status";
 import NotFound from "@/pages/not-found";
 import AdminDashboard from "@/pages/admin-dashboard";
-import DeliveryDashboard from "@/pages/delivery-dashboard";
 import DeliveryApplyPage from "@/pages/delivery-apply";
 import DeliveryLogin from "@/pages/delivery-login";
 import LoginPage from "@/pages/login";
@@ -35,6 +34,7 @@ import Checkout2 from "./pages/checkout2";
 // Centralized auth-based routing
 import AuthRedirectGuard from "@/components/auth-redirect-guard";
 import AdminGuard from "@/components/admin-guard";
+import DeliveryOrdersList from "@/pages/DeliveryOrdersList"; // ✅ सही कंपोनेंट का नाम
 
 function App() {
   const [isCartModalOpen, setIsCartModalOpen] = useState(false);
@@ -65,7 +65,7 @@ function App() {
                 <Route path="/seller-dashboard" element={<AuthRedirectGuard><SellerDashboard /></AuthRedirectGuard>} />
                 <Route path="/seller-apply" element={<AuthRedirectGuard><SellerApplyPage /></AuthRedirectGuard>} />
                 <Route path="/seller-status" element={<AuthRedirectGuard><SellerStatusPage /></AuthRedirectGuard>} />
-                <Route path="/delivery-dashboard" element={<AuthRedirectGuard><DeliveryDashboard /></AuthRedirectGuard>} />
+                <Route path="/delivery-dashboard" element={<AuthRedirectGuard><DeliveryOrdersList /></AuthRedirectGuard>} /> {/* ✅ DeliveryDashboard को DeliveryOrdersList से बदला गया */}
                 <Route path="/delivery-apply" element={<AuthRedirectGuard><DeliveryApplyPage /></AuthRedirectGuard>} />
                 <Route path="/customer/orders" element={<AuthRedirectGuard><CustomerOrdersPage /></AuthRedirectGuard>} />
                 <Route path="/order-confirmation/:orderId" element={<OrderConfirmation />} />
