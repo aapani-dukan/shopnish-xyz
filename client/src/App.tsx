@@ -101,8 +101,8 @@ function App() {
 // ✅ एक नया हेल्पर कंपोनेंट जो DeliveryOrdersList को ऑथ डेटा पास करेगा
 function DeliveryOrdersListWithAuth() {
   const { authState, isLoadingAuth } = useAuth();
-
-  if (isLoadingAuth) {
+  
+  if (isLoadingAuth || !authState?.user) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
@@ -111,7 +111,7 @@ function DeliveryOrdersListWithAuth() {
   }
 
   // ✅ सुरक्षा जांच: सुनिश्चित करें कि authState और user दोनों मौजूद हैं।
-  if (!authState || !authState.user) {
+  if (!authState.auth) {
     return null; 
   }
 
