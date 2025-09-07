@@ -130,18 +130,19 @@ export default function ProductDetail() {
 
   // ✅ New function for "Buy Now" button
   const handleBuyNow = () => {
-    if (!product || typeof id === 'undefined') {
-      console.error("Product data or ID is missing. Cannot proceed with purchase.");
-      toast({
-          title: "Error",
-          description: "Product data is not available. Please try again.",
-          variant: "destructive",
-      });
-      return;
-    }
-    // ✅ Navigate directly to checkout page with product and quantity as query params
-    console.log("➡️ Navigating with ID:", id, "and Quantity:", quantity);
-navigate(`/checkout2/${id}?quantity=${quantity}`);
+  if (!product || !product.id) {
+    console.error("Product data is missing. Cannot proceed with purchase.");
+    toast({
+      title: "Error",
+      description: "Product data is not available. Please try again.",
+      variant: "destructive",
+    });
+    return;
+  }
+
+  // ✅ Navigate with product.id instead of param id
+  console.log("➡️ Navigating with Product ID:", product.id, "and Quantity:", quantity);
+  navigate(`/checkout2/${product.id}?quantity=${quantity}`);
 };
   const renderStars = (rating: number) => {
     return (
