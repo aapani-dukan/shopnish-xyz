@@ -1,3 +1,4 @@
+// client/src/pages/seller/OrderManager.tsx
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -26,6 +27,10 @@ const getStatusBadgeVariant = (status: string) => {
       return "warning";
     case "ready_for_pickup":
       return "info";
+    case "picked_up":
+      return "info";
+    case "out_for_delivery":
+      return "warning";
     case "delivered":
       return "success";
     case "cancelled":
@@ -36,37 +41,28 @@ const getStatusBadgeVariant = (status: string) => {
   }
 };
 
-const getDeliveryStatusBadgeVariant = (status: string) => {
+const getStatusText = (status: string) => {
   switch (status) {
     case "pending":
-      return "secondary";
+      return "लंबित";
     case "accepted":
-      return "info";
-    case "picked_up":
-      return "info";
-    case "out_for_delivery":
-      return "warning";
-    case "delivered":
-      return "success";
-    default:
-      return "secondary";
-  }
-};
-
-const deliveryStatusText = (status: string) => {
-  switch (status) {
-    case "pending":
-      return "डिलीवरी के लिए लंबित";
-    case "accepted":
-      return "डिलीवरी के लिए स्वीकार किया गया";
+      return "स्वीकृत";
+    case "preparing":
+      return "तैयार हो रहा है";
+    case "ready_for_pickup":
+      return "पिकअप के लिए तैयार";
     case "picked_up":
       return "पिकअप किया गया";
     case "out_for_delivery":
       return "डिलीवरी के लिए निकला";
     case "delivered":
       return "डिलीवर किया गया";
+    case "cancelled":
+      return "रद्द कर दिया गया";
+    case "rejected":
+      return "अस्वीकृत";
     default:
-      return "लागू नहीं";
+      return "अज्ञात";
   }
 };
 
@@ -84,29 +80,20 @@ export default function OrderManager({
   useEffect(() => {
     if (!socket || !seller) return;
 
-    // ✅ सेलर के स्टेटस अपडेट को सुनें
-    socket.on("order:status-updated", (updatedOrder: OrderWithItems) => {
-      console.log("📦 Order status updated by seller:", updatedOrder);
+    // ✅ सभी स्टेटस अपडेट को सुनें
+    const onOrderStatusUpdated = (updatedOrder: OrderWithItems) => {
+      console.log("📦 Order status updated:", updatedOrder);
       queryClient.invalidateQueries({ queryKey: ["/api/sellers/orders"] });
       toast({
         title: "Order Updated",
-        description: `Order #${updatedOrder.id} is now ${updatedOrder.status}`,
+        description: `Order #${updatedOrder.id} is now ${getStatusText(updatedOrder.status)}`,
       });
-    });
+    };
 
-    // ✅ डिलीवरी बॉय के स्टेटस अपडेट को सुनें (सिर्फ़ जानकारी के लिए)
-    socket.on("order:delivery-status-updated", (updatedOrder: OrderWithItems) => {
-      console.log("🚚 Order delivery status updated:", updatedOrder);
-      queryClient.invalidateQueries({ queryKey: ["/api/sellers/orders"] });
-      toast({
-        title: "Delivery Status Updated",
-        description: `Order #${updatedOrder.id} is now ${updatedOrder.deliveryStatus}`,
-      });
-    });
+    socket.on("order:status-updated", onOrderStatusUpdated);
 
     return () => {
-      socket.off("order:status-updated");
-      socket.off("order:delivery-status-updated");
+      socket.off("order:status-updated", onOrderStatusUpdated);
     };
   }, [socket, seller, queryClient, toast]);
 
@@ -162,14 +149,14 @@ export default function OrderManager({
               onClick={() => handleStatusUpdate(order.id, "accepted")}
               disabled={isPending}
             >
-              Accept
+              स्वीकार करें
             </Button>
             <Button
               variant="destructive"
               onClick={() => handleStatusUpdate(order.id, "rejected")}
               disabled={isPending}
             >
-              Reject
+              अस्वीकार करें
             </Button>
           </>
         );
@@ -179,7 +166,7 @@ export default function OrderManager({
             onClick={() => handleStatusUpdate(order.id, "preparing")}
             disabled={isPending}
           >
-            Start Preparing
+            तैयार करना शुरू करें
           </Button>
         );
       case "preparing":
@@ -188,10 +175,10 @@ export default function OrderManager({
             onClick={() => handleStatusUpdate(order.id, "ready_for_pickup")}
             disabled={isPending}
           >
-            Ready for Pickup
+            पिकअप के लिए तैयार
           </Button>
         );
-      // ✅ अब सेलर 'out_for_delivery' या 'delivered' को अपडेट नहीं कर सकता
+      // ✅ सेलर अब डिलीवरी से संबंधित स्टेटस को अपडेट नहीं कर सकता
       default:
         return null;
     }
@@ -209,11 +196,11 @@ export default function OrderManager({
     }
 
     if (error) {
-      return <p className="text-red-500">Error loading orders: {error.message}</p>;
+      return <p className="text-red-500">ऑर्डर लोड करने में त्रुटि: {error.message}</p>;
     }
 
     if (!orders || orders.length === 0) {
-      return <p className="text-muted-foreground">No orders yet.</p>;
+      return <p className="text-muted-foreground">अभी कोई ऑर्डर नहीं है।</p>;
     }
 
     return (
@@ -222,42 +209,37 @@ export default function OrderManager({
           <div key={order.id} className="border rounded-lg p-4 mb-4">
             <div className="flex flex-col md:flex-row md:justify-between md:items-center mb-2">
               <h2 className="font-bold text-lg">
-                Order #{order.orderNumber || order.id}
+                ऑर्डर #{order.orderNumber || order.id}
               </h2>
               <div className="flex items-center space-x-2 mt-2 md:mt-0">
                 <Badge variant={getStatusBadgeVariant(order.status as string)}>
-                  {order.status}
+                  {getStatusText(order.status)}
                 </Badge>
-                {order.status === "ready_for_pickup" && order.deliveryStatus && (
-                  <Badge variant={getDeliveryStatusBadgeVariant(order.deliveryStatus as string)}>
-                    {deliveryStatusText(order.deliveryStatus as string)}
-                  </Badge>
-                )}
               </div>
             </div>
             
             {/* ✅ Customer */}
             {order.customer && order.deliveryAddress && (
               <p className="text-sm">
-                Customer:{" "}
+                ग्राहक:{" "}
                 <strong>
                   {order.customer.firstName ||
                     order.deliveryAddress.fullName ||
-                    "Unknown"}
+                    "अज्ञात"}
                 </strong>
               </p>
             )}
 
             {/* ✅ Payment Info */}
             <p className="text-sm text-muted-foreground">
-              Payment: <strong>{order.paymentMethod || "N/A"}</strong> (
-              {order.paymentStatus || "Pending"})
+              भुगतान: <strong>{order.paymentMethod || "लागू नहीं"}</strong> (
+              {order.paymentStatus || "लंबित"})
             </p>
             <p className="text-sm text-muted-foreground">
-              Total: <strong>₹{Number(order.total ?? 0).toLocaleString()}</strong>
+              कुल: <strong>₹{Number(order.total ?? 0).toLocaleString()}</strong>
             </p>
             <p className="text-sm text-muted-foreground">
-              Ordered On: {new Date(order.createdAt).toLocaleString()}
+              ऑर्डर किया गया: {new Date(order.createdAt).toLocaleString()}
             </p>
 
             {/* ✅ Items */}
@@ -271,10 +253,10 @@ export default function OrderManager({
                   />
                   <div>
                     <p className="font-semibold">
-                      {item.product?.name || item.name || "Unnamed Product"}
+                      {item.product?.name || item.name || "अनाम उत्पाद"}
                     </p>
                     <p className="text-sm text-gray-500">
-                      Qty: {item.quantity} × ₹
+                      मात्रा: {item.quantity} × ₹
                       {Number(item.unitPrice ?? item.product?.price ?? 0).toLocaleString()}
                     </p>
                   </div>
@@ -295,9 +277,9 @@ export default function OrderManager({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Your Orders</CardTitle>
+        <CardTitle>आपके ऑर्डर्स</CardTitle>
       </CardHeader>
       <CardContent>{renderContent()}</CardContent>
     </Card>
   );
-      }
+}
