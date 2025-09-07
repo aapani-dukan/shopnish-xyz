@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -40,13 +40,13 @@ export default function Checkout2() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { isAuthenticated, user } = useAuth();
-  const [searchParams] = useSearchParams();
   
-  // ✅ URL से productId और quantity पढ़ें (केवल एक बार घोषित किया गया)
+  // ✅ useSearchParams के बजाय सीधे URL से पैरामीटर पढ़ें
+  const searchParams = new URLSearchParams(window.location.search);
   const directBuyProductId = searchParams.get("productId");
   const directBuyQuantity = searchParams.get("quantity") ? parseInt(searchParams.get("quantity")!) : 1;
-  
-  // ✅ कंसोल में अतिरिक्त लॉगिंग
+
+  // कंसोल में अतिरिक्त लॉगिंग ताकि आप देख सकें कि मान सही है या नहीं
   console.log("➡️ Checkout2 page loaded.");
   console.log("➡️ URL Search Params:", Array.from(searchParams.entries()));
   console.log("➡️ Extracted directBuyProductId:", directBuyProductId);
