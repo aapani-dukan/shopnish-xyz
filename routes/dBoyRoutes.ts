@@ -171,14 +171,14 @@ router.get('/orders', requireDeliveryBoyAuth, async (req: AuthenticatedRequest, 
 });
 
 // ✅ UPDATED: /api/delivery/orders/:orderId/status (ऑर्डर की स्थिति अपडेट करें)
-// यह केवल 'delivery_status' कॉलम को अपडेट करता है और डिलीवरी बॉय के लिए मान्य स्थितियों की जाँच करता है
+// अब यह केवल 'status' कॉलम को अपडेट करता है
 router.patch('/orders/:orderId/status', requireDeliveryBoyAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const firebaseUid = req.user?.firebaseUid;
     const orderId = Number(req.params.orderId);
-    const { delivery_status } = req.body;
+    const { newStatus } = req.body;
 
-    if (!orderId || !delivery_status || !firebaseUid) {
+    if (!orderId || !newStatus || !firebaseUid) {
       return res.status(400).json({ message: "Order ID and status are required." });
     }
 
@@ -191,9 +191,9 @@ router.patch('/orders/:orderId/status', requireDeliveryBoyAuth, async (req: Auth
     }
 
     // डिलीवरी बॉय के लिए मान्य स्थितियों की सूची
-    const validDeliveryStatuses = ['picked_up', 'out_for_delivery', 'delivered'];
-    if (!validDeliveryStatuses.includes(delivery_status)) {
-      return res.status(400).json({ message: "Invalid delivery status provided." });
+    const validStatusesForDeliveryBoy = ['picked_up', 'out_for_delivery'];
+    if (!validStatusesForDeliveryBoy.includes(newStatus)) {
+      return res.status(400).json({ message: "Invalid status provided." });
     }
 
     const order = await db.query.orders.findFirst({
@@ -205,7 +205,7 @@ router.patch('/orders/:orderId/status', requireDeliveryBoyAuth, async (req: Auth
     }
 
     const [updatedOrder] = await db.update(orders)
-      .set({ deliveryStatus: delivery_status })
+      .set({ status: newStatus as typeof orderStatusEnum.enumValues[number] })
       .where(eq(orders.id, orderId))
       .returning();
 
@@ -218,7 +218,7 @@ router.patch('/orders/:orderId/status', requireDeliveryBoyAuth, async (req: Auth
       order: updatedOrder,
     });
 
-    getIO().emit("order:update", { type: "delivery-status-change", data: updatedOrder });
+    getIO().emit("order:update", { type: "status-change", data: updatedOrder });
 
   } catch (error: any) {
     console.error("Failed to update order status:", error);
@@ -263,7 +263,7 @@ router.post('/orders/:orderId/complete-delivery', requireDeliveryBoyAuth, async 
 
     const [updatedOrder] = await db.update(orders)
       .set({
-        deliveryStatus: 'delivered',
+        status: 'delivered', // अब केवल 'status' कॉलम अपडेट हो रहा है
         deliveryOtp: null,
       })
       .where(eq(orders.id, orderId))
@@ -283,7 +283,6 @@ router.post('/orders/:orderId/complete-delivery', requireDeliveryBoyAuth, async 
 });
 
 // ✅ POST /api/delivery/accept (ऑर्डर स्वीकार करें)
-// अब यह 'status' को 'ready_for_pickup' पर जाँचता है और 'deliveryStatus' को 'accepted' पर अपडेट करता है
 router.post("/accept", requireDeliveryBoyAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const firebaseUid = req.user?.firebaseUid;
@@ -305,7 +304,7 @@ router.post("/accept", requireDeliveryBoyAuth, async (req: AuthenticatedRequest,
 
     const existing = await db.query.orders.findFirst({
       where: eq(orders.id, orderId),
-      columns: { id: true, status: true, deliveryStatus: true, deliveryBoyId: true },
+      columns: { id: true, status: true, deliveryBoyId: true }, // केवल 'status' कॉलम का उपयोग
     });
 
     if (!existing) return res.status(404).json({ message: "Order not found" });
@@ -321,7 +320,7 @@ router.post("/accept", requireDeliveryBoyAuth, async (req: AuthenticatedRequest,
       .update(orders)
       .set({
         deliveryBoyId: deliveryBoy.id,
-        deliveryStatus: "accepted",
+        status: "accepted", // अब 'status' कॉलम अपडेट हो रहा है
         deliveryOtp,
         deliveryAcceptedAt: new Date(),
       })
@@ -342,3 +341,4 @@ router.post("/accept", requireDeliveryBoyAuth, async (req: AuthenticatedRequest,
 });
 
 export default router;
+
