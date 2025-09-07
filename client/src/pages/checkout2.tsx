@@ -42,8 +42,15 @@ export default function Checkout2() {
   const { isAuthenticated, user } = useAuth();
   const [searchParams] = useSearchParams();
   
+  // ✅ URL से productId और quantity पढ़ें (केवल एक बार घोषित किया गया)
   const directBuyProductId = searchParams.get("productId");
   const directBuyQuantity = searchParams.get("quantity") ? parseInt(searchParams.get("quantity")!) : 1;
+  
+  // ✅ कंसोल में अतिरिक्त लॉगिंग
+  console.log("➡️ Checkout2 page loaded.");
+  console.log("➡️ URL Search Params:", Array.from(searchParams.entries()));
+  console.log("➡️ Extracted directBuyProductId:", directBuyProductId);
+  console.log("➡️ Extracted directBuyQuantity:", directBuyQuantity);
 
   const [currentStep, setCurrentStep] = useState(1);
   const [deliveryAddress, setDeliveryAddress] = useState<DeliveryAddress>({
@@ -58,6 +65,7 @@ export default function Checkout2() {
   const [deliveryInstructions, setDeliveryInstructions] = useState("");
 
   useEffect(() => {
+    console.log("➡️ useEffect triggered. directBuyProductId:", directBuyProductId);
     if (directBuyProductId) {
       setCurrentStep(1); 
     }
@@ -68,6 +76,8 @@ export default function Checkout2() {
     queryFn: () => apiRequest("GET", `/api/products/${directBuyProductId}`),
     enabled: isAuthenticated && !!directBuyProductId, 
   });
+  
+  console.log("➡️ useQuery status: isLoading=", isLoading, ", productData=", productData);
 
   const subtotal = productData ? parseFloat(productData.price) * directBuyQuantity : 0;
   const deliveryCharge = subtotal >= 500 ? 0 : 25;
@@ -83,6 +93,7 @@ export default function Checkout2() {
       navigate(`/order-confirmation/${data.orderId}`);
     },
     onError: (error) => {
+      console.error("❌ Order placement failed:", error);
       toast({
         title: "Order Failed",
         description: "Failed to place order. Please try again.",
@@ -92,6 +103,7 @@ export default function Checkout2() {
   });
 
   const handlePlaceOrder = () => {
+    console.log("➡️ Place Order button clicked.");
     if (!user || !user.id) {
       toast({
         title: "Authentication Error",
