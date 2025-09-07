@@ -342,4 +342,3 @@ router.post("/accept", requireDeliveryBoyAuth, async (req: AuthenticatedRequest,
 });
 
 export default router;
-    
