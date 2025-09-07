@@ -452,13 +452,6 @@ const { data: orders = [], isLoading } = useQuery({
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => window.open(`tel:${isAddressObject ? addressData.phone || "" : ""}`)}
-                      >
-                        <Phone className="w-4 h-4 mr-2" /> ग्राहक को कॉल करें
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
                         onClick={() =>
                           window.open(
                             `https://maps.google.com/?q=${encodeURIComponent(
@@ -513,10 +506,11 @@ const { data: orders = [], isLoading } = useQuery({
       <DeliveryOtpDialog
         isOpen={otpDialogOpen}
         onOpenChange={setOtpDialogOpen}
-               otp={otp}
+        otp={otp}
         setOtp={setOtp}
         onConfirm={handleOtpConfirmation}
       />
     </div>
   );
 } 
+                    
