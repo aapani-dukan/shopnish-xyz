@@ -28,20 +28,22 @@ export interface User {
   name: string | null;
   role: "customer" | "seller" | "admin" | "delivery";
   sellerProfile?: SellerInfo | null;
-  idToken: string;
+  idToken?: string; // idToken को वैकल्पिक बनाया गया है क्योंकि यह हर जगह मौजूद नहीं होगा
 }
 
-// ✅ auth context type में isAdmin जोड़ा गया है
+// ✅ auth context type में नया फ़ंक्शन जोड़ा गया है
 interface AuthContextType {
   user: User | null;
   isLoadingAuth: boolean;
   isAuthenticated: boolean;
-  isAdmin: boolean; // ✅ नया: isAdmin property जोड़ा गया
+  isAdmin: boolean;
   error: AuthError | null;
   clearError: () => void;
   signIn: (usePopup?: boolean) => Promise<FirebaseUser | null>;
   signOut: () => Promise<void>;
   refetchUser: () => void;
+  // ✅ नया फ़ंक्शन: backend से प्राप्त user data को सेट करने के लिए
+  loginWithBackendUser: (userData: User) => void; 
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -50,11 +52,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoadingAuth, setIsLoadingAuth] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [isAdmin, setIsAdmin] = useState(false); // ✅ नया: isAdmin state जोड़ा गया
+  const [isAdmin, setIsAdmin] = useState(false);
   const [authError, setAuthError] = useState<AuthError | null>(null);
   const queryClient = useQueryClient();
 
-  // ✅ `clearError` को यहाँ ठीक से परिभाषित किया गया है
   const clearError = useCallback(() => {
     setAuthError(null);
   }, []);
@@ -90,7 +91,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           
           setUser(currentUser);
           setIsAuthenticated(true);
-          // ✅ नया: बैकएंड से प्राप्त role के आधार पर isAdmin state सेट करें
           setIsAdmin(currentUser.role === 'admin'); 
           console.log("✅ User successfully authenticated and profile fetched from backend.");
           
@@ -99,14 +99,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           await auth.signOut();
           setAuthError(e as AuthError);
           setIsAuthenticated(false);
-          setIsAdmin(false); // ✅ नया: लॉगआउट होने पर isAdmin को false करें
+          setIsAdmin(false);
           setUser(null);
         }
       } else {
         console.log("❌ Firebase auth state changed: User is logged out.");
         setUser(null);
         setIsAuthenticated(false);
-        setIsAdmin(false); // ✅ नया: लॉगआउट होने पर isAdmin को false करें
+        setIsAdmin(false);
         queryClient.clear();
       }
       setIsLoadingAuth(false);
@@ -134,7 +134,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setAuthError(null);
       setUser(null);
       setIsAuthenticated(false);
-      setIsAdmin(false); // ✅ नया: साइन आउट होने पर isAdmin को false करें
+      setIsAdmin(false);
       queryClient.clear();
     } catch (err: any) {
       setAuthError(err as AuthError);
@@ -162,29 +162,36 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         };
         setUser(currentUser);
         setIsAuthenticated(true);
-        // ✅ नया: refetch के बाद isAdmin state सेट करें
         setIsAdmin(currentUser.role === 'admin'); 
       } catch (e) {
         console.error("Failed to refetch user data:", e);
         setAuthError(e as AuthError);
         setIsAuthenticated(false);
-        setIsAdmin(false); // ✅ नया: refetch विफल होने पर isAdmin को false करें
+        setIsAdmin(false);
       }
     }
     setIsLoadingAuth(false);
+  }, []);
+
+  // ✅ नया फ़ंक्शन: backend से प्राप्त user data को सेट करने के लिए
+  const loginWithBackendUser = useCallback((userData: User) => {
+    setUser(userData);
+    setIsAuthenticated(true);
+    setIsLoadingAuth(false);
+    setIsAdmin(userData.role === 'admin');
   }, []);
 
   const authContextValue = {
     user,
     isLoadingAuth,
     isAuthenticated,
-    isAdmin, // ✅ नया: context value में isAdmin को शामिल करें
+    isAdmin,
     error: authError,
-    // ✅ इसे यहां जोड़ा गया है
     clearError,
     signIn,
     signOut,
     refetchUser,
+    loginWithBackendUser, // ✅ context value में नया फ़ंक्शन शामिल करें
   };
 
   return (
