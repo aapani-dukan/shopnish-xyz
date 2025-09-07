@@ -81,20 +81,19 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
       return;
     }
 
-    navigate("/checkout2", {
-      state: {
-        items: [{
-          productId: product.id,
-          name: product.name,
-          image: product.image,
-          price: Number(product.price),
-          quantity: 1,
-          sellerId: product.sellerId,
-        }],
-        from: "buy-now"
-      }
-    });
-  };
+  navigate(`/checkout2/${product.id}`, {
+  state: {
+    items: [{
+      productId: product.id,
+      name: product.name,
+      image: product.image,
+      price: Number(product.price),
+      quantity: 1,
+      sellerId: product.sellerId,
+    }],
+    from: "buy-now"
+  }
+});
 
 
   return (
