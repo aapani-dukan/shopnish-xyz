@@ -43,16 +43,9 @@ export default function Checkout2() {
   
   // ✅ useParams का उपयोग करके productId को सीधे URL से पढ़ें
   const { id: directBuyProductId } = useParams<{ id: string }>();
-  // ✅ quantity को useSearchParams का उपयोग करके पढ़ें (यह काम करेगा)
+  // ✅ quantity को useSearchParams का उपयोग करके पढ़ें
   const [searchParams] = useSearchParams();
   const directBuyQuantity = searchParams.get("quantity") ? parseInt(searchParams.get("quantity")!) : 1;
-
-  // कंसोल में अतिरिक्त लॉगिंग ताकि आप देख सकें कि मान सही है या नहीं
-  console.log("➡️ Checkout2 page loaded.");
-  console.log("➡️ URL Params:", { directBuyProductId });
-  console.log("➡️ URL Search Params:", Array.from(searchParams.entries()));
-  console.log("➡️ Extracted directBuyProductId:", directBuyProductId);
-  console.log("➡️ Extracted directBuyQuantity:", directBuyQuantity);
 
   const [currentStep, setCurrentStep] = useState(1);
   const [deliveryAddress, setDeliveryAddress] = useState<DeliveryAddress>({
@@ -66,21 +59,15 @@ export default function Checkout2() {
   const [paymentMethod, setPaymentMethod] = useState("cod");
   const [deliveryInstructions, setDeliveryInstructions] = useState("");
 
-  useEffect(() => {
-    console.log("➡️ useEffect triggered. directBuyProductId:", directBuyProductId);
-    if (directBuyProductId) {
-      setCurrentStep(1); 
-    }
-  }, [directBuyProductId]);
-
-  const { data: productData, isLoading } = useQuery<ProductItem>({
+  // इस useEffect को हटा दिया गया है ताकि पहला स्टेप दिखे।
+  
+  // ✅ useQuery को अपडेट किया गया है ताकि यह directBuyProductId का उपयोग करके एक ही प्रोडक्ट को फ़ेच करे
+  const { data: productData, isLoading, error } = useQuery<ProductItem>({
     queryKey: ['product', directBuyProductId],
     queryFn: () => apiRequest("GET", `/api/products/${directBuyProductId}`),
     enabled: isAuthenticated && !!directBuyProductId, 
   });
   
-  console.log("➡️ useQuery status: isLoading=", isLoading, ", productData=", productData);
-
   const subtotal = productData ? parseFloat(productData.price) * directBuyQuantity : 0;
   const deliveryCharge = subtotal >= 500 ? 0 : 25;
   const total = subtotal + deliveryCharge;
@@ -105,7 +92,6 @@ export default function Checkout2() {
   });
 
   const handlePlaceOrder = () => {
-    console.log("➡️ Place Order button clicked.");
     if (!user || !user.id) {
       toast({
         title: "Authentication Error",
@@ -154,10 +140,26 @@ export default function Checkout2() {
     createOrderMutation.mutate(orderData);
   };
 
-  if (isLoading || !productData) {
+  if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full"></div>
+      </div>
+    );
+  }
+
+  if (error || !productData) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Card className="w-full max-w-md">
+          <CardContent className="pt-6 text-center">
+            <h3 className="text-lg font-medium mb-2">Product Not Found</h3>
+            <p className="text-gray-600 mb-4">The product you're looking for doesn't exist or is not available.</p>
+            <Link to="/">
+              <Button>Go to Home Page</Button>
+            </Link>
+          </CardContent>
+        </Card>
       </div>
     );
   }
