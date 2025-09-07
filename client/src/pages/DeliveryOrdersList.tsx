@@ -16,7 +16,7 @@ import DeliveryOtpDialog from "./DeliveryOtpDialog";
 import { useSocket } from "@/hooks/useSocket";
 
 // -----------------------------------------------------------------------------
-// ## मॉक UI कंपोनेंट आणि यूटिलिटी फंक्शन्स
+// ## मॉक UI कंपोनेंट और यूटिलिटी फ़ंक्शंस
 // -----------------------------------------------------------------------------
 const useToast = () => {
   return {
@@ -46,15 +46,15 @@ const CardTitle = ({ children }: any) => <h2 className="text-xl font-bold">{chil
 const Badge = ({ children, className = "" }: any) => <span className={`px-2 py-1 text-xs rounded-full ${className}`}>{children}</span>;
 
 // -----------------------------------------------------------------------------
-// ## स्थिती हेल्पर्स
+// ## स्थिति हेल्पर्स
 // -----------------------------------------------------------------------------
 const statusColor = (status: string) => {
   switch (status) {
     case "ready_for_pickup":
     case "pending":
+    case "accepted":
       return "bg-yellow-500";
     case "picked_up":
-    case "accepted":
       return "bg-blue-500";
     case "out_for_delivery":
       return "bg-purple-500";
@@ -67,17 +67,18 @@ const statusColor = (status: string) => {
 
 const statusText = (status: string) => {
   switch (status) {
-    case "ready_for_pickup":
     case "pending":
-      return "पिकअपसाठी तयार";
-    case "picked_up":
-      return "पिकअप केले";
+      return "लंबित";
     case "accepted":
-      return "स्वीकारले";
+      return "स्वीकृत";
+    case "ready_for_pickup":
+      return "पिकअप के लिए तैयार";
+    case "picked_up":
+      return "पिकअप हो गया";
     case "out_for_delivery":
-      return "डिलिव्हरीसाठी निघाले";
+      return "डिलीवरी के लिए निकला";
     case "delivered":
-      return "डिलिव्हरी झाली";
+      return "डिलीवर हो गया";
     default:
       return status;
   }
@@ -101,11 +102,11 @@ const nextStatusLabel = (status: string) => {
   switch (status) {
     case "accepted":
     case "ready_for_pickup":
-      return "पिकअप केले";
+      return "पिकअप हो गया";
     case "picked_up":
-      return "डिलिव्हरीसाठी निघाले";
+      return "डिलीवरी के लिए निकला";
     case "out_for_delivery":
-      return "डिलिव्हरी पूर्ण करा";
+      return "डिलीवरी पूरी करें";
     default:
       return "";
   }
@@ -130,7 +131,7 @@ export default function DeliveryOrdersList({ userId, auth }: { userId: string | 
     try {
       return await auth.currentUser.getIdToken(true);
     } catch (err) {
-      console.error("Token fetch error:", err);
+      console.error("टोकन लाने में त्रुटि:", err);
       return null;
     }
   };
@@ -140,20 +141,20 @@ export default function DeliveryOrdersList({ userId, auth }: { userId: string | 
     queryFn: async () => {
       try {
         const token = await getValidToken();
-        if (!token) throw new Error("अमान्य किंवा कालबाह्य टोकन");
+        if (!token) throw new Error("अमान्य या पुराना टोकन");
         const res = await fetch(`${API_BASE}/api/delivery/orders`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
         });
-        if (!res.ok) throw new Error("नेटवर्क प्रतिसाद ठीक नव्हता");
+        if (!res.ok) throw new Error("नेटवर्क प्रतिक्रिया ठीक नहीं थी");
         const data = await res.json();
         return Array.isArray(data.orders) ? data.orders : [];
       } catch (err) {
-        console.error("ऑर्डर आणण्यात त्रुटी:", err);
+        console.error("ऑर्डर लाने में त्रुटि:", err);
         toast({
-          title: "डेटा आणण्यात त्रुटी",
-          description: "ऑर्डर आणताना समस्या आली",
+          title: "डेटा लाने में त्रुटि",
+          description: "ऑर्डर लाते समय कोई समस्या आई",
           variant: "destructive",
         });
         return [];
@@ -184,7 +185,7 @@ export default function DeliveryOrdersList({ userId, auth }: { userId: string | 
   const acceptOrderMutation = useMutation({
     mutationFn: async (orderId: number) => {
       const token = await getValidToken();
-      if (!token) throw new Error("अमान्य किंवा कालबाह्य टोकन");
+      if (!token) throw new Error("अमान्य या पुराना टोकन");
       const response = await fetch(`${API_BASE}/api/delivery/accept`, {
         method: 'POST',
         headers: {
@@ -193,17 +194,17 @@ export default function DeliveryOrdersList({ userId, auth }: { userId: string | 
         },
         body: JSON.stringify({ orderId }),
       });
-      if (!response.ok) throw new Error("ऑर्डर स्वीकारणे अयशस्वी");
+      if (!response.ok) throw new Error("ऑर्डर स्वीकार करने में विफल");
       return response.json();
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["deliveryOrders"] }),
-    onError: (error) => console.error("Mutation error:", error),
+    onError: (error) => console.error("म्यूटेशन त्रुटि:", error),
   });
 
   const updateStatusMutation = useMutation({
     mutationFn: async ({ orderId, newStatus }: { orderId: number, newStatus: string }) => {
       const token = await getValidToken();
-      if (!token) throw new Error("अमान्य किंवा कालबाह्य टोकन");
+      if (!token) throw new Error("अमान्य या पुराना टोकन");
       const response = await fetch(`${API_BASE}/api/delivery/orders/${orderId}/status`, {
         method: 'PATCH',
         headers: {
@@ -212,17 +213,17 @@ export default function DeliveryOrdersList({ userId, auth }: { userId: string | 
         },
         body: JSON.stringify({ newStatus }),
       });
-      if (!response.ok) throw new Error("स्टेटस अपडेट अयशस्वी");
+      if (!response.ok) throw new Error("स्टेटस अपडेट करने में विफल");
       return response.json();
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["deliveryOrders"] }),
-    onError: (error) => console.error("Mutation error:", error),
+    onError: (error) => console.error("म्यूटेशन त्रुटि:", error),
   });
 
   const handleOtpSubmitMutation = useMutation({
     mutationFn: async ({ orderId, otp }: { orderId: number, otp: string }) => {
       const token = await getValidToken();
-      if (!token) throw new Error("अमान्य किंवा कालबाह्य टोकन");
+      if (!token) throw new Error("अमान्य या पुराना टोकन");
       const response = await fetch(`${API_BASE}/api/delivery/orders/${orderId}/complete-delivery`, {
         method: 'POST',
         headers: {
@@ -231,11 +232,11 @@ export default function DeliveryOrdersList({ userId, auth }: { userId: string | 
         },
         body: JSON.stringify({ otp }),
       });
-      if (!response.ok) throw new Error("डिलिव्हरी पूर्ण करणे अयशस्वी");
+      if (!response.ok) throw new Error("डिलीवरी पूरी करने में विफल");
       return response.json();
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["deliveryOrders"] }),
-    onError: (error) => console.error("Mutation error:", error),
+    onError: (error) => console.error("म्यूटेशन त्रुटि:", error),
   });
 
   const handleStatusProgress = (order: any) => {
@@ -252,7 +253,7 @@ export default function DeliveryOrdersList({ userId, auth }: { userId: string | 
   const handleOtpConfirmation = () => {
     if (!selectedOrder) return;
     if (otp.trim().length !== 4) {
-      toast({ title: "OTP प्रविष्ट करा", description: "4-अंकी OTP आवश्यक आहे.", variant: "destructive" });
+      toast({ title: "OTP दर्ज करें", description: "4-अंकों का OTP आवश्यक है।", variant: "destructive" });
       return;
     }
     handleOtpSubmitMutation.mutate({ orderId: selectedOrder.id, otp });
@@ -283,8 +284,8 @@ export default function DeliveryOrdersList({ userId, auth }: { userId: string | 
               <User className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h1 className="text-xl font-bold">डिलिव्हरी डॅशबोर्ड</h1>
-              <p className="text-sm text-gray-600">पुन्हा स्वागत आहे, डिलिव्हरी बॉय!</p>
+              <h1 className="text-xl font-bold">डिलीवरी डैशबोर्ड</h1>
+              <p className="text-sm text-gray-600">फिर से स्वागत है, डिलीवरी बॉय!</p>
             </div>
           </div>
           <div className="flex space-x-2">
@@ -303,7 +304,7 @@ export default function DeliveryOrdersList({ userId, auth }: { userId: string | 
             <Package className="w-8 h-8 text-blue-600" />
             <div>
               <p className="text-2xl font-bold">{orders.length}</p>
-              <p className="text-sm text-gray-600">एकूण ऑर्डर</p>
+              <p className="text-sm text-gray-600">कुल ऑर्डर</p>
             </div>
           </CardContent>
         </Card>
@@ -317,7 +318,7 @@ export default function DeliveryOrdersList({ userId, auth }: { userId: string | 
                   ["ready_for_pickup", "picked_up", "out_for_delivery", "pending", "accepted"].includes(o.status)
                 ).length}
               </p>
-              <p className="text-sm text-gray-600">प्रलंबित</p>
+              <p className="text-sm text-gray-600">लंबित</p>
             </div>
           </CardContent>
         </Card>
@@ -329,7 +330,7 @@ export default function DeliveryOrdersList({ userId, auth }: { userId: string | 
               <p className="text-2xl font-bold">
                 {orders.filter((o: any) => o.status === "delivered").length}
               </p>
-              <p className="text-sm text-gray-600">पूर्ण झाले</p>
+              <p className="text-sm text-gray-600">पूरे हुए</p>
             </div>
           </CardContent>
         </Card>
@@ -341,7 +342,7 @@ export default function DeliveryOrdersList({ userId, auth }: { userId: string | 
               <p className="text-2xl font-bold">
                 {orders.filter((o: any) => o.status === "out_for_delivery").length}
               </p>
-              <p className="text-sm text-gray-600">रस्त्यावर</p>
+              <p className="text-sm text-gray-600">रास्ते में</p>
             </div>
           </CardContent>
         </Card>
@@ -349,14 +350,14 @@ export default function DeliveryOrdersList({ userId, auth }: { userId: string | 
 
       {/* Orders list */}
       <section className="max-w-6xl mx-auto px-4 pb-16 space-y-6">
-        <h2 className="text-2xl font-bold">असाइन केलेले / उपलब्ध ऑर्डर</h2>
+        <h2 className="text-2xl font-bold">असाइन किए गए / उपलब्ध ऑर्डर</h2>
 
         {orders.length === 0 ? (
           <Card>
             <CardContent className="py-12 text-center">
               <Package className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-              <h3 className="text-lg font-medium mb-2">कोणतीही ऑर्डर उपलब्ध नाही</h3>
-              <p className="text-gray-600">नवीन ऑर्डरसाठी नंतर तपासा.</p>
+              <h3 className="text-lg font-medium mb-2">कोई ऑर्डर उपलब्ध नहीं</h3>
+              <p className="text-gray-600">नए ऑर्डर के लिए बाद में जाँच करें।</p>
             </CardContent>
           </Card>
         ) : (
@@ -374,7 +375,7 @@ export default function DeliveryOrdersList({ userId, auth }: { userId: string | 
                       <div>
                         <CardTitle>ऑर्डर #{order.orderNumber}</CardTitle>
                         <p className="text-sm text-gray-600">
-                          {order.items?.length || 0} आयटम • ₹{order.total}
+                          {order.items?.length || 0} आइटम • ₹{order.total}
                         </p>
                       </div>
                       <Badge className={`${statusColor(order.status)} text-white`}>
@@ -385,11 +386,11 @@ export default function DeliveryOrdersList({ userId, auth }: { userId: string | 
 
                   <CardContent>
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                      {/* ग्राहक तपशील */}
+                      {/* ग्राहक विवरण */}
                       <div className="space-y-4">
                         <div>
-                          <h4 className="font-medium mb-2">ग्राहक तपशील</h4>
-                          <p className="font-medium">{isAddressObject ? addressData.fullName : "नाव उपलब्ध नाही"}</p>
+                          <h4 className="font-medium mb-2">ग्राहक विवरण</h4>
+                          <p className="font-medium">{isAddressObject ? addressData.fullName : "नाम उपलब्ध नहीं"}</p>
                           <div className="flex items-center space-x-2 text-sm text-gray-600">
                             <Phone className="w-4 h-4" />
                             <span>{isAddressObject ? addressData.phone || "-" : "-"}</span>
@@ -397,7 +398,7 @@ export default function DeliveryOrdersList({ userId, auth }: { userId: string | 
                         </div>
 
                         <div>
-                          <h4 className="font-medium mb-2">डिलिव्हरी पत्ता</h4>
+                          <h4 className="font-medium mb-2">डिलीवरी पता</h4>
                           <div className="flex items-start space-x-2 text-sm text-gray-600">
                             <MapPin className="w-4 h-4 mt-0.5" />
                             <div>
@@ -409,29 +410,29 @@ export default function DeliveryOrdersList({ userId, auth }: { userId: string | 
                                 </p>
                               )}
                               {isAddressObject && addressData.landmark && (
-                                <p className="text-xs">लँडमार्क: {addressData.landmark}</p>
+                                <p className="text-xs">लैंडमार्क: {addressData.landmark}</p>
                               )}
                             </div>
                           </div>
                         </div>
                       </div>
 
-                      {/* विक्रेता तपशील */}
+                      {/* विक्रेता विवरण */}
                       <div className="space-y-4">
                         <div>
-                          <h4 className="font-medium mb-2">विक्रेता तपशील</h4>
-                          <p className="font-medium">{isSellerAddressObject ? sellerDetails.name : "नाव उपलब्ध नाही"}</p>
+                          <h4 className="font-medium mb-2">विक्रेता विवरण</h4>
+                          <p className="font-medium">{isSellerAddressObject ? sellerDetails.name : "नाम उपलब्ध नहीं"}</p>
                           <div className="flex items-center space-x-2 text-sm text-gray-600">
                             <Phone className="w-4 h-4" />
                             <span>{isSellerAddressObject ? sellerDetails.phone || "-" : "-"}</span>
                           </div>
                         </div>
                         <div>
-                          <h4 className="font-medium mb-2">पिकअप पत्ता</h4>
+                          <h4 className="font-medium mb-2">पिकअप पता</h4>
                           <div className="flex items-start space-x-2 text-sm text-gray-600">
                             <MapPin className="w-4 h-4 mt-0.5" />
                             <div>
-                              <p>{isSellerAddressObject ? sellerDetails.address : "पत्ता उपलब्ध नाही"}</p>
+                              <p>{isSellerAddressObject ? sellerDetails.address : "पता उपलब्ध नहीं"}</p>
                               {isSellerAddressObject && (
                                 <p>
                                   {sellerDetails.city || ""}{" "}
@@ -439,7 +440,7 @@ export default function DeliveryOrdersList({ userId, auth }: { userId: string | 
                                 </p>
                               )}
                               {isSellerAddressObject && sellerDetails.landmark && (
-                                <p className="text-xs">लँडमार्क: {sellerDetails.landmark}</p>
+                                <p className="text-xs">लैंडमार्क: {sellerDetails.landmark}</p>
                               )}
                             </div>
                           </div>
@@ -447,9 +448,9 @@ export default function DeliveryOrdersList({ userId, auth }: { userId: string | 
                       </div>
                     </div>
 
-                    {/* ऑर्डर आयटम */}
+                    {/* ऑर्डर आइटम */}
                     <div className="mt-6 pt-4 border-t">
-                      <h4 className="font-medium mb-2">ऑर्डर आयटम</h4>
+                      <h4 className="font-medium mb-2">ऑर्डर आइटम</h4>
                       <div className="space-y-2 max-h-32 overflow-y-auto pr-2">
                         {order.items?.map((item: any) => (
                           <div key={item.id} className="flex items-center space-x-3 text-sm">
@@ -459,9 +460,9 @@ export default function DeliveryOrdersList({ userId, auth }: { userId: string | 
                               className="w-8 h-8 object-cover rounded"
                             />
                             <div className="flex-1">
-                              <p className="font-medium">{item.product?.name || "उत्पाद डेटा उपलब्ध नाही"}</p>
+                              <p className="font-medium">{item.product?.name || "उत्पाद डेटा उपलब्ध नहीं"}</p>
                               <p className="text-gray-600">
-                                प्रमाण: {item.quantity} {item.product?.unit}
+                                मात्रा: {item.quantity} {item.product?.unit}
                               </p>
                             </div>
                           </div>
@@ -469,15 +470,15 @@ export default function DeliveryOrdersList({ userId, auth }: { userId: string | 
                       </div>
                     </div>
 
-                    {/* ॲक्शन बटन्स */}
+                    {/* एक्शन बटन */}
                     <div className="flex flex-wrap gap-3 mt-6 pt-4 border-t">
-                      {order.deliveryBoyId == null && order.status === 'ready_for_pickup' ? (
+                      {!order.deliveryBoyId && ["pending", "accepted", "ready_for_pickup"].includes(order.status) ? (
                         <Button
                           size="sm"
                           onClick={() => acceptOrderMutation.mutate(order.id)}
                           disabled={acceptOrderMutation.isLoading}
                         >
-                          ऑर्डर स्वीकार करा
+                          ऑर्डर स्वीकार करें
                         </Button>
                       ) : (
                         <>
@@ -491,14 +492,14 @@ export default function DeliveryOrdersList({ userId, auth }: { userId: string | 
                               window.open(`https://www.google.com/maps?q=${query}`, "_blank");
                             }}
                           >
-                            <Navigation className="w-4 h-4 mr-2" /> नेव्हिगेट करा (ग्राहक)
+                            <Navigation className="w-4 h-4 mr-2" /> नेविगेट करें (ग्राहक)
                           </Button>
                           <Button
                             variant="outline"
                             size="sm"
                             onClick={() => window.open(`tel:${isSellerAddressObject ? sellerDetails.phone || "" : ""}`)}
                           >
-                            <Phone className="w-4 h-4 mr-2" /> विक्रेत्याला कॉल करा
+                            <Phone className="w-4 h-4 mr-2" /> विक्रेता को कॉल करें
                           </Button>
                           <Button
                             variant="outline"
@@ -510,7 +511,7 @@ export default function DeliveryOrdersList({ userId, auth }: { userId: string | 
                               window.open(`https://www.google.com/maps?q=${query}`, "_blank");
                             }}
                           >
-                            <Navigation className="w-4 h-4 mr-2" /> नेव्हिगेट करा (पिकअप)
+                            <Navigation className="w-4 h-4 mr-2" /> नेविगेट करें (पिकअप)
                           </Button>
                           {nextStatus(order.status) && (
                             <Button
@@ -542,4 +543,5 @@ export default function DeliveryOrdersList({ userId, auth }: { userId: string | 
       />
     </div>
   );
-                    }
+}
+            
