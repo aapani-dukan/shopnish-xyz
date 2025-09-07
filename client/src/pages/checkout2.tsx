@@ -41,12 +41,7 @@ export default function Checkout2() {
   const queryClient = useQueryClient();
   const { isAuthenticated, user } = useAuth();
   const [searchParams] = useSearchParams();
-  console.log("Entire searchParams object:", Array.from(searchParams.entries()));
-  const directBuyProductId = searchParams.get("productId");
-  const directBuyQuantity = searchParams.get("quantity") ? parseInt(searchParams.get("quantity")!) : 1;
-  console.log("directBuyProductId is:", directBuyProductId);
-  console.log("directBuyQuantity is:", directBuyQuantity);
-  // ✅ URL से productId और quantity पढ़ें
+  
   const directBuyProductId = searchParams.get("productId");
   const directBuyQuantity = searchParams.get("quantity") ? parseInt(searchParams.get("quantity")!) : 1;
 
@@ -67,12 +62,10 @@ export default function Checkout2() {
       setCurrentStep(1); 
     }
   }, [directBuyProductId]);
-  console.log("directBuyProductId is:", directBuyProductId);
 
   const { data: productData, isLoading } = useQuery<ProductItem>({
     queryKey: ['product', directBuyProductId],
     queryFn: () => apiRequest("GET", `/api/products/${directBuyProductId}`),
-    // ✅ यह महत्वपूर्ण है: यह सुनिश्चित करता है कि केवल तभी API कॉल हो जब productId मौजूद हो।
     enabled: isAuthenticated && !!directBuyProductId, 
   });
 
@@ -391,5 +384,4 @@ export default function Checkout2() {
       </div>
     </div>
   );
-                }
-            
+}
