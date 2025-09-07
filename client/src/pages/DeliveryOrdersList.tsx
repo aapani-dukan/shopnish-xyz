@@ -503,7 +503,7 @@ export default function DeliveryOrdersList({ userId, auth }: { userId: string | 
                           </Button>
                           <Button
                             variant="outline"
-                            size="sm"
+                                                       size="sm"
                             onClick={() => {
                               const query = encodeURIComponent(
                                 `${isSellerAddressObject ? sellerDetails.address || "" : ""}, ${isSellerAddressObject ? sellerDetails.city || "" : ""}`
@@ -541,7 +541,9 @@ export default function DeliveryOrdersList({ userId, auth }: { userId: string | 
         setOtp={setOtp}
        onConfirm={handleOtpConfirmation}
       />
-    </div>
+    </Div>
   );
 }
+
+                            
             
