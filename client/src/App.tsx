@@ -3,7 +3,7 @@ import { Routes, Route } from "react-router-dom";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "./lib/queryClient";
 import { Toaster } from "@/components/ui/toaster";
-import { AuthProvider, useAuth } from "@/hooks/useAuth"; // ✅ useAuth को आयात किया गया
+import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { SocketProvider } from "@/hooks/useSocket";
 
@@ -31,7 +31,8 @@ import AdminLogin from "@/pages/admin-login";
 import OrderConfirmation from "@/pages/order-confirmation";
 import CustomerOrdersPage from "@/pages/customer/orders";
 import Checkout2 from "./pages/checkout2"; 
-import DeliveryOrdersList from "@/pages/DeliveryOrdersList"; // ✅ DeliveryOrdersList को सीधे आयात करें
+import DeliveryOrdersList from "@/pages/DeliveryOrdersList";
+import { Loader2 } from "lucide-react"; // ✅ Loader2 आइकन जोड़ा गया
 
 // Centralized auth-based routing
 import AuthRedirectGuard from "@/components/auth-redirect-guard";
@@ -39,13 +40,20 @@ import AdminGuard from "@/components/admin-guard";
 
 // ✅ DeliveryOrdersList को सीधे रेंडर करने के लिए एक Wrapper कंपोनेंट बनाया गया
 function DeliveryRouteWrapper() {
-  const { authState } = useAuth();
+  const { authState, isLoadingAuth } = useAuth(); // ✅ isLoadingAuth जोड़ा गया
   const { user, auth } = authState;
+
+  // ✅ जब तक प्रमाणीकरण लोड हो रहा है तब तक लोडिंग स्थिति दिखाएं
+  if (isLoadingAuth) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+      </div>
+    );
+  }
   
-  // यदि उपयोगकर्ता लॉग इन नहीं है, तो AuthRedirectGuard उसे साइन-इन पर रीडायरेक्ट कर देगा।
-  // यदि उपयोगकर्ता लॉग इन है, तो हम आवश्यक props पास करेंगे।
   if (!user) {
-    return null; // AuthRedirectGuard इस स्थिति को संभाल लेगा
+    return null; 
   }
 
   return <DeliveryOrdersList userId={user.uid} auth={auth} />;
@@ -81,7 +89,7 @@ function App() {
                 <Route path="/seller-dashboard" element={<AuthRedirectGuard><SellerDashboard /></AuthRedirectGuard>} />
                 <Route path="/seller-apply" element={<AuthRedirectGuard><SellerApplyPage /></AuthRedirectGuard>} />
                 <Route path="/seller-status" element={<AuthRedirectGuard><SellerStatusPage /></AuthRedirectGuard>} />
-                <Route path="/delivery-dashboard" element={<AuthRedirectGuard><DeliveryRouteWrapper /></AuthRedirectGuard>} /> {/* ✅ Wrapper का उपयोग करें */}
+                <Route path="/delivery-dashboard" element={<AuthRedirectGuard><DeliveryRouteWrapper /></AuthRedirectGuard>} />
                 <Route path="/delivery-apply" element={<AuthRedirectGuard><DeliveryApplyPage /></AuthRedirectGuard>} />
                 <Route path="/customer/orders" element={<AuthRedirectGuard><CustomerOrdersPage /></AuthRedirectGuard>} />
                 <Route path="/order-confirmation/:orderId" element={<OrderConfirmation />} />
