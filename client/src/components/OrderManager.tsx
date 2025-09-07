@@ -21,6 +21,10 @@ const getStatusBadgeVariant = (status: string) => {
     case "pending":
       return "secondary";
     case "accepted":
+      return "info";
+    case "preparing":
+      return "warning";
+    case "ready_for_pickup":
     case "out_for_delivery":
       return "info";
     case "delivered":
@@ -131,21 +135,22 @@ export default function OrderManager({
       case "accepted":
         return (
           <Button
-            onClick={() => handleStatusUpdate(order.id, "out_for_delivery")}
+            onClick={() => handleStatusUpdate(order.id, "preparing")}
             disabled={isPending}
           >
-            Out for Delivery
+            Start Preparing
           </Button>
         );
-      case "out_for_delivery":
+      case "preparing":
         return (
           <Button
-            onClick={() => handleStatusUpdate(order.id, "delivered")}
+            onClick={() => handleStatusUpdate(order.id, "ready_for_pickup")}
             disabled={isPending}
           >
-            Delivered
+            Ready for Pickup
           </Button>
         );
+      // ✅ अब सेलर 'out_for_delivery' या 'delivered' को अपडेट नहीं कर सकता
       default:
         return null;
     }
