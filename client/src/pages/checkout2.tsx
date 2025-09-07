@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom"; // useParams को इम्पोर्ट करें
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -41,13 +41,15 @@ export default function Checkout2() {
   const queryClient = useQueryClient();
   const { isAuthenticated, user } = useAuth();
   
-  // ✅ useSearchParams के बजाय सीधे URL से पैरामीटर पढ़ें
-  const searchParams = new URLSearchParams(window.location.search);
-  const directBuyProductId = searchParams.get("productId");
+  // ✅ useParams का उपयोग करके productId को सीधे URL से पढ़ें
+  const { id: directBuyProductId } = useParams<{ id: string }>();
+  // ✅ quantity को useSearchParams का उपयोग करके पढ़ें (यह काम करेगा)
+  const [searchParams] = useSearchParams();
   const directBuyQuantity = searchParams.get("quantity") ? parseInt(searchParams.get("quantity")!) : 1;
 
   // कंसोल में अतिरिक्त लॉगिंग ताकि आप देख सकें कि मान सही है या नहीं
   console.log("➡️ Checkout2 page loaded.");
+  console.log("➡️ URL Params:", { directBuyProductId });
   console.log("➡️ URL Search Params:", Array.from(searchParams.entries()));
   console.log("➡️ Extracted directBuyProductId:", directBuyProductId);
   console.log("➡️ Extracted directBuyQuantity:", directBuyQuantity);
