@@ -101,7 +101,6 @@ function App() {
 // ✅ एक नया हेल्पर कंपोनेंट जो DeliveryOrdersList को ऑथ डेटा पास करेगा
 function DeliveryOrdersListWithAuth() {
   const { authState, isLoadingAuth } = useAuth();
-  const { user, auth } = authState;
 
   if (isLoadingAuth) {
     return (
@@ -111,11 +110,12 @@ function DeliveryOrdersListWithAuth() {
     );
   }
 
-  if (!user) {
+  // ✅ सुरक्षा जांच: सुनिश्चित करें कि authState और user दोनों मौजूद हैं।
+  if (!authState || !authState.user) {
     return null; 
   }
 
-  return <DeliveryOrdersList userId={user.uid} auth={auth} />;
+  return <DeliveryOrdersList userId={authState.user.uid} auth={authState.auth} />;
 }
 
 
