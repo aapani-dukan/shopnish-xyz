@@ -1,3 +1,4 @@
+// client/src/pages/DeliveryOrdersList.tsx
 import React, { useState, useEffect } from "react";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import {
@@ -131,33 +132,33 @@ export default function DeliveryOrdersList({ userId, auth }: { userId: string | 
   };
 
   // ─── useQuery: ऑर्डर्स फ़ेच करने के लिए
-const { data: orders = [], isLoading } = useQuery({
-  queryKey: ["deliveryOrders"],
-  queryFn: async () => {
-    try {
-      const token = await getValidToken();
-      if (!token) throw new Error("अमान्य या समाप्त टोकन");
-      const res = await fetch(`${API_BASE}/api/delivery/orders`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      if (!res.ok) throw new Error("नेटवर्क प्रतिक्रिया ठीक नहीं थी");
-      const data = await res.json();
-      
-      return Array.isArray(data.orders) ? data.orders : [];
-    } catch (err) {
-      console.error("ऑर्डर फ़ेच करने में त्रुटि:", err);
-      toast({
-        title: "डेटा फ़ेच करने में त्रुटि",
-        description: "ऑर्डर लाने में समस्या हुई",
-        variant: "destructive",
-      });
-      return [];
-    }
-  },
-  enabled: !!userId,
-});
+  const { data: orders = [], isLoading } = useQuery({
+    queryKey: ["deliveryOrders"],
+    queryFn: async () => {
+      try {
+        const token = await getValidToken();
+        if (!token) throw new Error("अमान्य या समाप्त टोकन");
+        const res = await fetch(`${API_BASE}/api/delivery/orders`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        if (!res.ok) throw new Error("नेटवर्क प्रतिक्रिया ठीक नहीं थी");
+        const data = await res.json();
+        
+        return Array.isArray(data.orders) ? data.orders : [];
+      } catch (err) {
+        console.error("ऑर्डर फ़ेच करने में त्रुटि:", err);
+        toast({
+          title: "डेटा फ़ेच करने में त्रुटि",
+          description: "ऑर्डर लाने में समस्या हुई",
+          variant: "destructive",
+        });
+        return [];
+      }
+    },
+    enabled: !!userId,
+  });
 
   // ─── Socket.IO: listen to server events and invalidate queries
   useEffect(() => {
@@ -453,11 +454,13 @@ const { data: orders = [], isLoading } = useQuery({
                         variant="outline"
                         size="sm"
                         onClick={() =>
-                          window.open(
-                            `http://googleusercontent.com/maps.google.com/maps?q=${encodeURIComponent(
+                          {
+                            const query = encodeURIComponent(
                               `${isAddressObject ? addressData.address || "" : ""}, ${isAddressObject ? addressData.city || "" : ""}`
-                            )}`
-                          )
+                            );
+                            const url = `https://www.google.com/maps?q=${query}`;
+                            window.open(url, "_blank");
+                          }
                         }
                       >
                         <Navigation className="w-4 h-4 mr-2" /> नेविगेट करें (ग्राहक)
@@ -474,11 +477,13 @@ const { data: orders = [], isLoading } = useQuery({
                         variant="outline"
                         size="sm"
                         onClick={() =>
-                          window.open(
-                            `http://googleusercontent.com/maps.google.com/maps?q=${encodeURIComponent(
+                          {
+                            const query = encodeURIComponent(
                               `${isSellerAddressObject ? sellerDetails.address || "" : ""}, ${isSellerAddressObject ? sellerDetails.city || "" : ""}`
-                            )}`
-                          )
+                            );
+                            const url = `https://www.google.com/maps?q=${query}`;
+                            window.open(url, "_blank");
+                          }
                         }
                       >
                         <Navigation className="w-4 h-4 mr-2" /> नेविगेट करें (पिकअप)
@@ -507,10 +512,9 @@ const { data: orders = [], isLoading } = useQuery({
         isOpen={otpDialogOpen}
         onOpenChange={setOtpDialogOpen}
         otp={otp}
-        setOtp={setOtp}
+            setOtp={setOtp}
         onConfirm={handleOtpConfirmation}
       />
     </div>
   );
-    }
-                            
+}
