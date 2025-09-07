@@ -1,8 +1,8 @@
 // client/src/pages/Checkout2.tsx
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useNavigate, useParams, useSearchParams } from "react-router-dom"; // useParams को इम्पोर्ट करें
+import { useNavigate, useParams, useSearchParams, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -12,8 +12,13 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { ShoppingCart, MapPin, CreditCard, Check } from "lucide-react";
-import { Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth"; 
+
+interface SellerInfo {
+  id: number;
+  businessName: string;
+  city: string;
+}
 
 interface ProductItem {
   id: number;
@@ -23,7 +28,8 @@ interface ProductItem {
   image: string;
   unit: string;
   brand: string;
-  sellerId: number;   
+  sellerId: number; 
+  seller?: SellerInfo;   // ✅ अब seller की info भी handle होगी
 }
 
 interface DeliveryAddress {
@@ -40,10 +46,8 @@ export default function Checkout2() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { isAuthenticated, user } = useAuth();
-  
-  // ✅ useParams का उपयोग करके productId को सीधे URL से पढ़ें
+
   const { id: directBuyProductId } = useParams<{ id: string }>();
-  // ✅ quantity को useSearchParams का उपयोग करके पढ़ें
   const [searchParams] = useSearchParams();
   const directBuyQuantity = searchParams.get("quantity") ? parseInt(searchParams.get("quantity")!) : 1;
 
@@ -59,15 +63,13 @@ export default function Checkout2() {
   const [paymentMethod, setPaymentMethod] = useState("cod");
   const [deliveryInstructions, setDeliveryInstructions] = useState("");
 
-  // इस useEffect को हटा दिया गया है ताकि पहला स्टेप दिखे।
-  
-  // ✅ useQuery को अपडेट किया गया है ताकि यह directBuyProductId का उपयोग करके एक ही प्रोडक्ट को फ़ेच करे
+  // ✅ Product API call
   const { data: productData, isLoading, error } = useQuery<ProductItem>({
     queryKey: ['product', directBuyProductId],
     queryFn: () => apiRequest("GET", `/api/products/${directBuyProductId}`),
-    enabled: isAuthenticated && !!directBuyProductId, 
+    enabled: !!directBuyProductId,  // login requirement हटा दिया
   });
-  
+
   const subtotal = productData ? parseFloat(productData.price) * directBuyQuantity : 0;
   const deliveryCharge = subtotal >= 500 ? 0 : 25;
   const total = subtotal + deliveryCharge;
@@ -100,7 +102,7 @@ export default function Checkout2() {
       });
       return;
     }
-    
+
     if (!deliveryAddress.fullName || !deliveryAddress.phone || !deliveryAddress.address || !deliveryAddress.pincode) {
       toast({
         title: "Address Required",
@@ -123,9 +125,9 @@ export default function Checkout2() {
       customerId: user.id,
       deliveryAddress,
       paymentMethod,
-      subtotal: subtotal.toFixed(2), 
-      total: total.toFixed(2),       
-      deliveryCharge: deliveryCharge.toFixed(2), 
+      subtotal: subtotal.toFixed(2),
+      total: total.toFixed(2),
+      deliveryCharge: deliveryCharge.toFixed(2),
       deliveryInstructions,
       items: [{
         productId: productData.id,
@@ -167,15 +169,14 @@ export default function Checkout2() {
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-6xl mx-auto px-4">
+        {/* Steps */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Checkout</h1>
           <div className="flex space-x-4">
             {[1, 2, 3].map((step) => (
               <div
                 key={step}
-                className={`flex items-center space-x-2 ${
-                  currentStep >= step ? "text-green-600" : "text-gray-400"
-                }`}
+                className={`flex items-center space-x-2 ${currentStep >= step ? "text-green-600" : "text-gray-400"}`}
               >
                 <div
                   className={`w-8 h-8 rounded-full flex items-center justify-center ${
@@ -192,6 +193,7 @@ export default function Checkout2() {
           </div>
         </div>
 
+        {/* Content */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 space-y-6">
             {currentStep === 1 && (
@@ -204,22 +206,24 @@ export default function Checkout2() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                      <div className="flex items-center space-x-4 py-4 border-b">
-                        <img
-                          src={productData.image}
-                          alt={productData.name}
-                          className="w-16 h-16 object-cover rounded-lg"
-                        />
-                        <div className="flex-1">
-                          <h3 className="font-medium">{productData.name}</h3>
-                          <p className="text-sm text-gray-600">{productData.nameHindi}</p>
-                          <p className="text-sm text-gray-500">{productData.brand} • {productData.unit}</p>
-                        </div>
-                        <div className="text-right">
-                          <p className="font-medium">₹{productData.price} × {directBuyQuantity}</p>
-                          <p className="text-sm text-gray-600">₹{(parseFloat(productData.price) * directBuyQuantity).toFixed(2)}</p>
-                        </div>
+                    <div className="flex items-center space-x-4 py-4 border-b">
+                      <img
+                        src={productData.image}
+                        alt={productData.name}
+                        className="w-16 h-16 object-cover rounded-lg"
+                      />
+                      <div className="flex-1">
+                        <h3 className="font-medium">{productData.name}</h3>
+                        <p className="text-sm text-gray-600">{productData.nameHindi}</p>
+                        <p className="text-sm text-gray-500">{productData.brand} • {productData.unit}</p>
                       </div>
+                      <div className="text-right">
+                        <p className="font-medium">₹{productData.price} × {directBuyQuantity}</p>
+                        <p className="text-sm text-gray-600">
+                          ₹{(parseFloat(productData.price) * directBuyQuantity).toFixed(2)}
+                        </p>
+                      </div>
+                    </div>
                     <div className="pt-4">
                       <Button onClick={() => setCurrentStep(2)} className="w-full">
                         Proceed to Delivery Address
@@ -239,6 +243,7 @@ export default function Checkout2() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
+                  {/* Address Form */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <Label htmlFor="fullName">Full Name</Label>
@@ -365,6 +370,7 @@ export default function Checkout2() {
             )}
           </div>
 
+          {/* ✅ Order Summary */}
           <div>
             <Card className="sticky top-4">
               <CardHeader>
@@ -373,7 +379,7 @@ export default function Checkout2() {
               <CardContent>
                 <div className="space-y-3">
                   <div className="flex justify-between">
-                    <span>Subtotal (1 item)</span>
+                    <span>Subtotal ({directBuyQuantity} item{directBuyQuantity > 1 ? "s" : ""})</span>
                     <span>₹{subtotal.toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between">
@@ -390,7 +396,12 @@ export default function Checkout2() {
                   </div>
                   <div className="text-sm text-gray-600">
                     <p>Estimated delivery: Within 1 hour</p>
-                    <p>From: Kumar General Store, Jaipur</p>
+                    <p>
+                      From:{" "}
+                      {productData.seller?.businessName
+                        ? `${productData.seller.businessName}, ${productData.seller.city}`
+                        : "Our Partner Store"}
+                    </p>
                   </div>
                 </div>
               </CardContent>
@@ -400,4 +411,4 @@ export default function Checkout2() {
       </div>
     </div>
   );
-}
+                        }
