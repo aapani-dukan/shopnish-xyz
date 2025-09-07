@@ -49,7 +49,7 @@ const Badge = ({ children, className = "" }: any) => <span className={`px-2 py-1
 // -----------------------------------------------------------------------------
 const statusColor = (status: string) => {
   switch (status) {
-    case "ready":
+    case "ready_for_pickup":
     case "pending":
       return "bg-yellow-500";
     case "picked_up":
@@ -65,7 +65,7 @@ const statusColor = (status: string) => {
 
 const statusText = (status: string) => {
   switch (status) {
-    case "ready":
+    case "ready_for_pickup":
     case "pending":
       return "पिकअप के लिए तैयार";
     case "picked_up":
@@ -81,7 +81,8 @@ const statusText = (status: string) => {
 
 const nextStatus = (status: string) => {
   switch (status) {
-    case "ready":
+    case "ready_for_pickup":
+      return "picked_up";
     case "picked_up":
       return "out_for_delivery";
     case "out_for_delivery":
@@ -93,10 +94,10 @@ const nextStatus = (status: string) => {
 
 const nextStatusLabel = (status: string) => {
   switch (status) {
-    case "ready":
-      return "डिलीवरी शुरू करें";
+    case "ready_for_pickup":
+      return "पिकअप किया गया";
     case "picked_up":
-      return "डिलीवरी शुरू करें";
+      return "डिलीवरी के लिए निकला";
     case "out_for_delivery":
       return "डिलीवरी पूरी करें";
     default:
@@ -122,7 +123,6 @@ export default function DeliveryOrdersList({ userId, auth }: { userId: string | 
   const getValidToken = async () => {
     if (!auth?.currentUser) return null;
     try {
-      // Force refresh token to avoid expired token
       return await auth.currentUser.getIdToken(true);
     } catch (err) {
       console.error("Token fetch error:", err);
@@ -145,20 +145,7 @@ const { data: orders = [], isLoading } = useQuery({
       if (!res.ok) throw new Error("नेटवर्क प्रतिक्रिया ठीक नहीं थी");
       const data = await res.json();
       
-      // ✅ बैकएंड से डेटा नहीं आ रहा है, इसलिए विक्रेता का डेटा यहाँ अनुकरण (simulate) करें
-      const ordersWithSeller = Array.isArray(data.orders) ? data.orders.map((order: any) => ({
-        ...order,
-        sellerDetails: {
-          storeName: "लोकल किराना स्टोर",
-          phone: "9876543210",
-          address: "123, गांधी नगर",
-          city: "दिल्ली",
-          pincode: "110001",
-          landmark: "रेलवे स्टेशन के पास",
-        }
-      })) : [];
-
-      return ordersWithSeller;
+      return Array.isArray(data.orders) ? data.orders : [];
     } catch (err) {
       console.error("ऑर्डर फ़ेच करने में त्रुटि:", err);
       toast({
@@ -193,7 +180,7 @@ const { data: orders = [], isLoading } = useQuery({
   }, [socket, userId, queryClient]);
 
   // ─── Mutations: सभी API calls में valid token इस्तेमाल करेंगे
-  const createMutationWithToken = (url: string, method = "POST") =>
+  const createMutationWithToken = (url: string, method = "PATCH") =>
     useMutation({
       mutationFn: async (body: any) => {
         const token = await getValidToken();
@@ -214,18 +201,18 @@ const { data: orders = [], isLoading } = useQuery({
     });
 
   const updateStatusMutation = createMutationWithToken("/api/delivery/update-status");
-  const acceptOrderMutation = createMutationWithToken("/api/delivery/accept");
+  const acceptOrderMutation = createMutationWithToken("/api/delivery/accept", "POST");
   const handleOtpSubmit = createMutationWithToken("/api/delivery/complete-delivery");
 
   const handleStatusProgress = (order: any) => {
-    const cur = order.deliveryStatus || "pending";
+    const cur = order.delivery_status || "pending";
     if (cur === "out_for_delivery") {
       setSelectedOrder(order);
       setOtpDialogOpen(true);
       return;
     }
     const next = nextStatus(cur);
-    if (next) updateStatusMutation.mutate({ orderId: order.id, status: next });
+    if (next) updateStatusMutation.mutate({ orderId: order.id, delivery_status: next });
   };
 
   const handleOtpConfirmation = () => {
@@ -294,7 +281,7 @@ const { data: orders = [], isLoading } = useQuery({
             <div>
               <p className="text-2xl font-bold">
                 {orders.filter((o: any) =>
-                  ["ready", "picked_up", "out_for_delivery", "pending"].includes(o.deliveryStatus)
+                  ["ready_for_pickup", "picked_up", "out_for_delivery", "pending"].includes(o.delivery_status)
                 ).length}
               </p>
               <p className="text-sm text-gray-600">लंबित</p>
@@ -307,7 +294,7 @@ const { data: orders = [], isLoading } = useQuery({
             <CheckCircle className="w-8 h-8 text-green-600" />
             <div>
               <p className="text-2xl font-bold">
-                {orders.filter((o: any) => o.deliveryStatus === "delivered").length}
+                {orders.filter((o: any) => o.delivery_status === "delivered").length}
               </p>
               <p className="text-sm text-gray-600">पूरे हुए</p>
             </div>
@@ -319,7 +306,7 @@ const { data: orders = [], isLoading } = useQuery({
             <Navigation className="w-8 h-8 text-purple-600" />
             <div>
               <p className="text-2xl font-bold">
-                {orders.filter((o: any) => o.deliveryStatus === "out_for_delivery").length}
+                {orders.filter((o: any) => o.delivery_status === "out_for_delivery").length}
               </p>
               <p className="text-sm text-gray-600">रास्ते में</p>
             </div>
@@ -343,7 +330,7 @@ const { data: orders = [], isLoading } = useQuery({
           orders.map((order: any) => {
             const addressData = order.deliveryAddress;
             const isAddressObject = typeof addressData === 'object' && addressData !== null;
-            const sellerDetails = order.sellerDetails;
+            const sellerDetails = order.sellerDetails || order.items[0]?.product?.seller;
             const isSellerAddressObject = typeof sellerDetails === 'object' && sellerDetails !== null;
           
             return (
@@ -356,8 +343,8 @@ const { data: orders = [], isLoading } = useQuery({
                       {order.items?.length || 0} आइटम • ₹{order.total}
                     </p>
                   </div>
-                  <Badge className={`${statusColor(order.deliveryStatus)} text-white`}>
-                    {statusText(order.deliveryStatus)}
+                  <Badge className={`${statusColor(order.delivery_status)} text-white`}>
+                    {statusText(order.delivery_status)}
                   </Badge>
                 </div>
               </CardHeader>
@@ -399,7 +386,7 @@ const { data: orders = [], isLoading } = useQuery({
                   <div className="space-y-4">
                     <div>
                       <h4 className="font-medium mb-2">विक्रेता विवरण</h4>
-                      <p className="font-medium">{isSellerAddressObject ? sellerDetails.storeName : "नाम अनुपलब्ध"}</p>
+                      <p className="font-medium">{isSellerAddressObject ? sellerDetails.name : "नाम अनुपलब्ध"}</p>
                       <div className="flex items-center space-x-2 text-sm text-gray-600">
                         <Phone className="w-4 h-4" />
                         <span>{isSellerAddressObject ? sellerDetails.phone || "-" : "-"}</span>
@@ -452,7 +439,7 @@ const { data: orders = [], isLoading } = useQuery({
 
                 <div className="flex flex-wrap gap-3 mt-6 pt-4 border-t">
                   {/* "ऑर्डर स्वीकार करें" बटन सिर्फ़ तब दिखेगा जब ऑर्डर किसी को असाइन न हुआ हो */}
-                  {order.delivery_boy_id == null && order.deliveryStatus === 'pending' ? (
+                  {order.delivery_boy_id == null && order.status === 'ready_for_pickup' ? (
                     <Button
                       size="sm"
                       onClick={() => acceptOrderMutation.mutate({ orderId: order.id })}
@@ -510,7 +497,7 @@ const { data: orders = [], isLoading } = useQuery({
                           onClick={() => handleStatusProgress(order)}
                           disabled={updateStatusMutation.isLoading}
                         >
-                                                    {nextStatusLabel(order.delivery_status || order.status)}
+                          {nextStatusLabel(order.delivery_status || order.status)}
                         </Button>
                       )}
                     </>
@@ -518,20 +505,18 @@ const { data: orders = [], isLoading } = useQuery({
                 </div>
               </CardContent>
             </Card>
-            );
-          })
-        )}
+          );
+        })}
       </section>
 
+      {/* OTP Dialog */}
       <DeliveryOtpDialog
-        selectedOrder={selectedOrder}
-        otp={otp}
+        isOpen={otpDialogOpen}
+        onOpenChange={setOtpDialogOpen}
+               otp={otp}
         setOtp={setOtp}
-        otpDialogOpen={otpDialogOpen}
-        setOtpDialogOpen={setOtpDialogOpen}
-        handleOtpConfirmation={handleOtpConfirmation}
-        isSubmitting={handleOtpSubmit.isLoading}
+        onConfirm={handleOtpConfirmation}
       />
     </div>
   );
-}       
+} 
