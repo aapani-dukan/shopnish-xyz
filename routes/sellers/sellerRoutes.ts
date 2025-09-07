@@ -316,6 +316,12 @@ sellerRouter.patch("/orders/:orderId/status", requireSellerAuth, async (req: Aut
       return res.status(400).json({ error: "Order ID and new status are required." });
     }
 
+    // ✅ सेलर के लिए मान्य स्टेटस की जाँच करें
+    const validStatusesForSeller = ['processing', 'ready_for_pickup', 'completed', 'cancelled'];
+    if (!validStatusesForSeller.includes(newStatus)) {
+      return res.status(400).json({ error: "Invalid status provided." });
+    }
+
     const parsedOrderId = parseInt(orderId, 10);
     if (isNaN(parsedOrderId)) {
       return res.status(400).json({ error: "Invalid order ID." });
@@ -363,3 +369,4 @@ sellerRouter.patch("/orders/:orderId/status", requireSellerAuth, async (req: Aut
 });
 
 export default sellerRouter;
+  
