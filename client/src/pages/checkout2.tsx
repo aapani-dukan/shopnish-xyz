@@ -63,6 +63,7 @@ export default function Checkout2() {
       setCurrentStep(1); 
     }
   }, [directBuyProductId]);
+  console.log("directBuyProductId is:", directBuyProductId);
 
   const { data: productData, isLoading } = useQuery<ProductItem>({
     queryKey: ['product', directBuyProductId],
