@@ -50,11 +50,12 @@ function App() {
               <Routes>
                 {/* Public routes */}
                 <Route path="/" element={<HomePage />} />
-                <Route path="/product/:id" element={<ProductDetail />} />
+                <Route path="/products/:id" element={<ProductDetail />} />
                 <Route path="/cart" element={<Cart />} />
                 <Route path="/checkout" element={<Checkout />} />
-                   
-                <Route path="/checkout2" element={<Checkout2 />}/>
+                <Route path="/checkout2/:id" element={<Checkout2 />} />
+                
+                
        
                 <Route path="/auth" element={<AuthPage />} />
                 <Route path="/login" element={<LoginPage />} />
