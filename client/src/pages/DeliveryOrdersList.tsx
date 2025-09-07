@@ -54,6 +54,7 @@ const statusColor = (status: string) => {
     case "pending":
       return "bg-yellow-500";
     case "picked_up":
+    case "accepted":
       return "bg-blue-500";
     case "out_for_delivery":
       return "bg-purple-500";
@@ -71,6 +72,8 @@ const statusText = (status: string) => {
       return "पिकअप के लिए तैयार";
     case "picked_up":
       return "पिकअप किया गया";
+    case "accepted":
+      return "स्वीकार किया गया";
     case "out_for_delivery":
       return "डिलीवरी के लिए निकला";
     case "delivered":
@@ -82,6 +85,7 @@ const statusText = (status: string) => {
 
 const nextStatus = (status: string) => {
   switch (status) {
+    case "accepted":
     case "ready_for_pickup":
       return "picked_up";
     case "picked_up":
@@ -95,6 +99,7 @@ const nextStatus = (status: string) => {
 
 const nextStatusLabel = (status: string) => {
   switch (status) {
+    case "accepted":
     case "ready_for_pickup":
       return "पिकअप किया गया";
     case "picked_up":
@@ -196,19 +201,19 @@ export default function DeliveryOrdersList({ userId, auth }: { userId: string | 
       onError: (error) => console.error("Mutation error:", error),
     });
 
-  const updateStatusMutation = createMutationWithToken("/api/delivery/update-status");
+  const updateStatusMutation = createMutationWithToken("/api/delivery/orders/:orderId/status");
   const acceptOrderMutation = createMutationWithToken("/api/delivery/accept", "POST");
-  const handleOtpSubmit = createMutationWithToken("/api/delivery/complete-delivery");
+  const handleOtpSubmit = createMutationWithToken("/api/delivery/orders/:orderId/complete-delivery");
 
   const handleStatusProgress = (order: any) => {
-    const cur = order.delivery_status || "pending";
+    const cur = order.status || "pending";
     if (cur === "out_for_delivery") {
       setSelectedOrder(order);
       setOtpDialogOpen(true);
       return;
     }
     const next = nextStatus(cur);
-    if (next) updateStatusMutation.mutate({ orderId: order.id, delivery_status: next });
+    if (next) updateStatusMutation.mutate({ orderId: order.id, newStatus: next });
   };
 
   const handleOtpConfirmation = () => {
@@ -276,7 +281,7 @@ export default function DeliveryOrdersList({ userId, auth }: { userId: string | 
             <div>
               <p className="text-2xl font-bold">
                 {orders.filter((o: any) =>
-                  ["ready_for_pickup", "picked_up", "out_for_delivery", "pending"].includes(o.delivery_status)
+                  ["ready_for_pickup", "picked_up", "out_for_delivery", "pending"].includes(o.status)
                 ).length}
               </p>
               <p className="text-sm text-gray-600">लंबित</p>
@@ -289,7 +294,7 @@ export default function DeliveryOrdersList({ userId, auth }: { userId: string | 
             <CheckCircle className="w-8 h-8 text-green-600" />
             <div>
               <p className="text-2xl font-bold">
-                {orders.filter((o: any) => o.delivery_status === "delivered").length}
+                {orders.filter((o: any) => o.status === "delivered").length}
               </p>
               <p className="text-sm text-gray-600">पूरे हुए</p>
             </div>
@@ -301,7 +306,7 @@ export default function DeliveryOrdersList({ userId, auth }: { userId: string | 
             <Navigation className="w-8 h-8 text-purple-600" />
             <div>
               <p className="text-2xl font-bold">
-                {orders.filter((o: any) => o.delivery_status === "out_for_delivery").length}
+                {orders.filter((o: any) => o.status === "out_for_delivery").length}
               </p>
               <p className="text-sm text-gray-600">रास्ते में</p>
             </div>
@@ -339,8 +344,8 @@ export default function DeliveryOrdersList({ userId, auth }: { userId: string | 
                           {order.items?.length || 0} आइटम • ₹{order.total}
                         </p>
                       </div>
-                      <Badge className={`${statusColor(order.delivery_status)} text-white`}>
-                        {statusText(order.delivery_status)}
+                      <Badge className={`${statusColor(order.status)} text-white`}>
+                        {statusText(order.status)}
                       </Badge>
                     </div>
                   </CardHeader>
@@ -433,7 +438,7 @@ export default function DeliveryOrdersList({ userId, auth }: { userId: string | 
 
                     {/* Action buttons */}
                     <div className="flex flex-wrap gap-3 mt-6 pt-4 border-t">
-                      {order.delivery_boy_id == null && order.status === 'ready_for_pickup' ? (
+                      {order.deliveryBoyId == null && order.status === 'ready_for_pickup' ? (
                         <Button
                           size="sm"
                           onClick={() => acceptOrderMutation.mutate({ orderId: order.id })}
@@ -474,13 +479,13 @@ export default function DeliveryOrdersList({ userId, auth }: { userId: string | 
                           >
                             <Navigation className="w-4 h-4 mr-2" /> नेविगेट करें (पिकअप)
                           </Button>
-                          {nextStatus(order.delivery_status || order.status) && (
+                          {nextStatus(order.status) && (
                             <Button
                               size="sm"
                               onClick={() => handleStatusProgress(order)}
                               disabled={updateStatusMutation.isLoading}
                             >
-                              {nextStatusLabel(order.delivery_status || order.status)}
+                              {nextStatusLabel(order.status)}
                             </Button>
                           )}
                         </>
@@ -500,8 +505,8 @@ export default function DeliveryOrdersList({ userId, auth }: { userId: string | 
         onOpenChange={setOtpDialogOpen}
         otp={otp}
         setOtp={setOtp}
-        onConfirm={handleOtpConfirmation}
+       onConfirm={handleOtpConfirmation}
       />
     </div>
   );
-                    }
+}
