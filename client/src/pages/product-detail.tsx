@@ -140,7 +140,7 @@ export default function ProductDetail() {
       return;
     }
     // ✅ Navigate directly to checkout page with product and quantity as query params
-    
+    console.log("➡️ Navigating with ID:", id, "and Quantity:", quantity);
 navigate(`/checkout2/${id}?quantity=${quantity}`);
 };
   const renderStars = (rating: number) => {
