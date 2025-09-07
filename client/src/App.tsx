@@ -32,33 +32,11 @@ import OrderConfirmation from "@/pages/order-confirmation";
 import CustomerOrdersPage from "@/pages/customer/orders";
 import Checkout2 from "./pages/checkout2"; 
 import DeliveryOrdersList from "@/pages/DeliveryOrdersList";
-import { Loader2 } from "lucide-react"; // ✅ Loader2 आइकन जोड़ा गया
+import { Loader2 } from "lucide-react";
 
 // Centralized auth-based routing
 import AuthRedirectGuard from "@/components/auth-redirect-guard";
 import AdminGuard from "@/components/admin-guard";
-
-// ✅ DeliveryOrdersList को सीधे रेंडर करने के लिए एक Wrapper कंपोनेंट बनाया गया
-function DeliveryRouteWrapper() {
-  const { authState, isLoadingAuth } = useAuth(); // ✅ isLoadingAuth जोड़ा गया
-  const { user, auth } = authState;
-
-  // ✅ जब तक प्रमाणीकरण लोड हो रहा है तब तक लोडिंग स्थिति दिखाएं
-  if (isLoadingAuth) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
-      </div>
-    );
-  }
-  
-  if (!user) {
-    return null; 
-  }
-
-  return <DeliveryOrdersList userId={user.uid} auth={auth} />;
-}
-
 
 function App() {
   const [isCartModalOpen, setIsCartModalOpen] = useState(false);
@@ -89,7 +67,14 @@ function App() {
                 <Route path="/seller-dashboard" element={<AuthRedirectGuard><SellerDashboard /></AuthRedirectGuard>} />
                 <Route path="/seller-apply" element={<AuthRedirectGuard><SellerApplyPage /></AuthRedirectGuard>} />
                 <Route path="/seller-status" element={<AuthRedirectGuard><SellerStatusPage /></AuthRedirectGuard>} />
-                <Route path="/delivery-dashboard" element={<AuthRedirectGuard><DeliveryRouteWrapper /></AuthRedirectGuard>} />
+                <Route 
+                  path="/delivery-dashboard" 
+                  element={
+                    <AuthRedirectGuard>
+                      <DeliveryOrdersListWithAuth />
+                    </AuthRedirectGuard>
+                  } 
+                />
                 <Route path="/delivery-apply" element={<AuthRedirectGuard><DeliveryApplyPage /></AuthRedirectGuard>} />
                 <Route path="/customer/orders" element={<AuthRedirectGuard><CustomerOrdersPage /></AuthRedirectGuard>} />
                 <Route path="/order-confirmation/:orderId" element={<OrderConfirmation />} />
@@ -112,5 +97,26 @@ function App() {
     </QueryClientProvider>
   );
 }
+
+// ✅ एक नया हेल्पर कंपोनेंट जो DeliveryOrdersList को ऑथ डेटा पास करेगा
+function DeliveryOrdersListWithAuth() {
+  const { authState, isLoadingAuth } = useAuth();
+  const { user, auth } = authState;
+
+  if (isLoadingAuth) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return null; 
+  }
+
+  return <DeliveryOrdersList userId={user.uid} auth={auth} />;
+}
+
 
 export default App;
