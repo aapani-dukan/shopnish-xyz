@@ -2,24 +2,24 @@ import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-// ✅ wouter के बजाय react-router-dom से useNavigate इंपोर्ट करें
 import { useNavigate } from "react-router-dom";
 import { Truck } from "lucide-react";
-// ✅ Firebase से ज़रूरी फंक्शन्स इंपोर्ट करें
 import { signInWithPopup, GoogleAuthProvider } from "firebase/auth";
 import { auth } from "@/lib/firebase";
+// ✅ useAuth हुक को आयात करें
+import { useAuth } from "@/hooks/useAuth";
 
 export default function DeliveryLogin() {
-  // ✅ navigate हुक का उपयोग करें
   const navigate = useNavigate();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
+  // ✅ useAuth से loginWithBackendUser को प्राप्त करें
+  const { loginWithBackendUser } = useAuth();
 
   const handleGoogleLogin = async () => {
     setLoading(true);
     try {
       const provider = new GoogleAuthProvider();
-      // ✅ अब सीधे पॉप-अप से लॉग-इन करें
       const result = await signInWithPopup(auth, provider);
 
       if (result && result.user) {
@@ -27,8 +27,6 @@ export default function DeliveryLogin() {
         const token = await user.getIdToken();
 
         const response = await fetch("/api/delivery/login", {
-  
-
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -55,6 +53,10 @@ export default function DeliveryLogin() {
 
         localStorage.setItem("deliveryBoyToken", token);
         localStorage.setItem("deliveryBoyEmail", deliveryBoy.email || "");
+
+        // ✅ loginWithBackendUser को कॉल करें ताकि auth state अपडेट हो जाए
+        //    यह सुनिश्चित करेगा कि dashboard पर एक खाली पेज न दिखे
+        loginWithBackendUser(deliveryBoy);
 
         if (deliveryBoy.approvalStatus === "approved") {
           toast({ title: "Login Successful", description: `Welcome ${deliveryBoy.name || deliveryBoy.email}` });
