@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import DeliveryOtpDialog from "./DeliveryOtpDialog";
 import { useSocket } from "@/hooks/useSocket";
+import { useAuth } from "@/hooks/useAuth"; // ✅ useAuth को यहाँ आयात करें
 
 // -----------------------------------------------------------------------------
 // ## मॉक UI कंपोनेंट और यूटिलिटी फ़ंक्शंस
@@ -115,10 +116,11 @@ const nextStatusLabel = (status: string) => {
 // -----------------------------------------------------------------------------
 // ## मुख्य React कंपोनेंट: DeliveryOrdersList
 // -----------------------------------------------------------------------------
-export default function DeliveryOrdersList({ userId, auth }: { userId: string | null; auth: any }) {
+export default function DeliveryOrdersList() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { socket } = useSocket();
+  const socket = useSocket();
+  const { user, auth, isLoadingAuth } = useAuth(); // ✅ useAuth से सीधे user, auth, और isLoadingAuth प्राप्त करें
 
   const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
   const [otp, setOtp] = useState("");
@@ -160,11 +162,13 @@ export default function DeliveryOrdersList({ userId, auth }: { userId: string | 
         return [];
       }
     },
-    enabled: !!userId,
+    // ✅ `user` ऑब्जेक्ट के मौजूद होने पर ही query को चलाएं
+    enabled: !!user,
   });
 
   useEffect(() => {
-    if (!socket || !userId) return;
+    // ✅ `socket` और `user` दोनों के मौजूद होने पर ही listener सेट करें
+    if (!socket || !user) return;
 
     const onOrdersChanged = () => {
       queryClient.invalidateQueries({ queryKey: ["deliveryOrders"] });
@@ -172,15 +176,16 @@ export default function DeliveryOrdersList({ userId, auth }: { userId: string | 
 
     socket.on("delivery:orders-changed", onOrdersChanged);
     socket.on("new-order", onOrdersChanged);
-    socket.on("connect", () => {
-      socket.emit("register-client", { role: "delivery", userId });
-    });
 
+    // ✅ सॉकेट पंजीकरण लॉजिक को हटा दिया गया है क्योंकि यह useSocket हुक में है।
+    
     return () => {
       socket.off("delivery:orders-changed", onOrdersChanged);
       socket.off("new-order", onOrdersChanged);
     };
-  }, [socket, userId, queryClient]);
+    // ✅ Dependencies: केवल socket और user पर निर्भर रहें
+  }, [socket, user, queryClient]);
+
 
   const acceptOrderMutation = useMutation({
     mutationFn: async (orderId: number) => {
@@ -267,7 +272,7 @@ export default function DeliveryOrdersList({ userId, auth }: { userId: string | 
     auth.signOut().then(() => window.location.reload());
   };
 
-  if (isLoading) {
+  if (isLoadingAuth || isLoading || !user) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
@@ -275,6 +280,7 @@ export default function DeliveryOrdersList({ userId, auth }: { userId: string | 
     );
   }
 
+  // ✅ जब user मौजूद हो तो बाकी कंपोनेंट रेंडर करें
   return (
     <div className="min-h-screen bg-gray-50 font-inter text-gray-800">
       <header className="bg-white shadow-sm border-b rounded-b-lg">
@@ -296,8 +302,6 @@ export default function DeliveryOrdersList({ userId, auth }: { userId: string | 
           </div>
         </div>
       </header>
-
-      {/* Metrics */}
       <section className="max-w-6xl mx-auto px-4 py-8 grid grid-cols-1 md:grid-cols-4 gap-6">
         <Card>
           <CardContent className="p-6 flex items-center space-x-3">
@@ -308,7 +312,6 @@ export default function DeliveryOrdersList({ userId, auth }: { userId: string | 
             </div>
           </CardContent>
         </Card>
-
         <Card>
           <CardContent className="p-6 flex items-center space-x-3">
             <Clock className="w-8 h-8 text-yellow-600" />
@@ -322,7 +325,6 @@ export default function DeliveryOrdersList({ userId, auth }: { userId: string | 
             </div>
           </CardContent>
         </Card>
-
         <Card>
           <CardContent className="p-6 flex items-center space-x-3">
             <CheckCircle className="w-8 h-8 text-green-600" />
@@ -334,7 +336,6 @@ export default function DeliveryOrdersList({ userId, auth }: { userId: string | 
             </div>
           </CardContent>
         </Card>
-
         <Card>
           <CardContent className="p-6 flex items-center space-x-3">
             <Navigation className="w-8 h-8 text-purple-600" />
@@ -347,11 +348,8 @@ export default function DeliveryOrdersList({ userId, auth }: { userId: string | 
           </CardContent>
         </Card>
       </section>
-
-      {/* Orders list */}
       <section className="max-w-6xl mx-auto px-4 pb-16 space-y-6">
         <h2 className="text-2xl font-bold">असाइन किए गए / उपलब्ध ऑर्डर</h2>
-
         {orders.length === 0 ? (
           <Card>
             <CardContent className="py-12 text-center">
@@ -383,10 +381,8 @@ export default function DeliveryOrdersList({ userId, auth }: { userId: string | 
                       </Badge>
                     </div>
                   </CardHeader>
-
                   <CardContent>
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                      {/* ग्राहक विवरण */}
                       <div className="space-y-4">
                         <div>
                           <h4 className="font-medium mb-2">ग्राहक विवरण</h4>
@@ -396,7 +392,6 @@ export default function DeliveryOrdersList({ userId, auth }: { userId: string | 
                             <span>{isAddressObject ? addressData.phone || "-" : "-"}</span>
                           </div>
                         </div>
-
                         <div>
                           <h4 className="font-medium mb-2">डिलीवरी पता</h4>
                           <div className="flex items-start space-x-2 text-sm text-gray-600">
@@ -416,8 +411,6 @@ export default function DeliveryOrdersList({ userId, auth }: { userId: string | 
                           </div>
                         </div>
                       </div>
-
-                      {/* विक्रेता विवरण */}
                       <div className="space-y-4">
                         <div>
                           <h4 className="font-medium mb-2">विक्रेता विवरण</h4>
@@ -447,8 +440,6 @@ export default function DeliveryOrdersList({ userId, auth }: { userId: string | 
                         </div>
                       </div>
                     </div>
-
-                    {/* ऑर्डर आइटम */}
                     <div className="mt-6 pt-4 border-t">
                       <h4 className="font-medium mb-2">ऑर्डर आइटम</h4>
                       <div className="space-y-2 max-h-32 overflow-y-auto pr-2">
@@ -469,8 +460,6 @@ export default function DeliveryOrdersList({ userId, auth }: { userId: string | 
                         ))}
                       </div>
                     </div>
-
-                    {/* एक्शन बटन */}
                     <div className="flex flex-wrap gap-3 mt-6 pt-4 border-t">
                       {!order.deliveryBoyId && ["pending", "accepted", "ready_for_pickup"].includes(order.status) ? (
                         <Button
@@ -503,7 +492,7 @@ export default function DeliveryOrdersList({ userId, auth }: { userId: string | 
                           </Button>
                           <Button
                             variant="outline"
-                                                       size="sm"
+                            size="sm"
                             onClick={() => {
                               const query = encodeURIComponent(
                                 `${isSellerAddressObject ? sellerDetails.address || "" : ""}, ${isSellerAddressObject ? sellerDetails.city || "" : ""}`
@@ -532,8 +521,6 @@ export default function DeliveryOrdersList({ userId, auth }: { userId: string | 
           </>
         )}
       </section>
-
-      {/* OTP डायलॉग */}
       <DeliveryOtpDialog
         isOpen={otpDialogOpen}
         onOpenChange={setOtpDialogOpen}
@@ -544,6 +531,3 @@ export default function DeliveryOrdersList({ userId, auth }: { userId: string | 
     </div>
   );
 }
-
-                            
-            
