@@ -5,7 +5,8 @@ import { queryClient } from "./lib/queryClient";
 import { Toaster } from "@/components/ui/toaster";
 import { AuthProvider } from "@/hooks/useAuth";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { SocketProvider } from "@/hooks/useSocket";
+// ✅ SocketProvider को हटा दें
+// import { SocketProvider } from "@/hooks/useSocket";
 
 // Layouts and components
 import Header from "./components/header";
@@ -30,8 +31,10 @@ import CategoriesManagement from "@/components/CategoriesManagement";
 import AdminLogin from "@/pages/admin-login";
 import OrderConfirmation from "@/pages/order-confirmation";
 import CustomerOrdersPage from "@/pages/customer/orders";
-import Checkout2 from "./pages/checkout2"; 
+import Checkout2 from "./pages/checkout2";
 import DeliveryOrdersList from "@/pages/DeliveryOrdersList";
+// ✅ SocketProvider को यहाँ आयात करें
+import { SocketProvider } from "@/hooks/useSocket";
 
 // Centralized auth-based routing
 import AuthRedirectGuard from "@/components/auth-redirect-guard";
@@ -44,53 +47,51 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <AuthProvider>
-          <SocketProvider>
-            <Toaster />
-            <Header onCartClick={() => setIsCartModalOpen(true)} />
-            <main className="min-h-screen">
-              <Routes>
-                {/* Public routes */}
-                <Route path="/" element={<HomePage />} />
-                <Route path="/products/:id" element={<ProductDetail />} />
-                <Route path="/cart" element={<Cart />} />
-                <Route path="/checkout" element={<Checkout />} />
-                <Route path="/checkout2/:id" element={<Checkout2 />} />
-                
-                
-       
-                <Route path="/auth" element={<AuthPage />} />
-                <Route path="/login" element={<LoginPage />} />
-                <Route path="/admin-login" element={<AdminLogin />} />
-                <Route path="/delivery-login" element={<DeliveryLogin />} />
-                {/* Protected - Normal Auth */}
-                <Route path="/seller-dashboard" element={<AuthRedirectGuard><SellerDashboard /></AuthRedirectGuard>} />
-                <Route path="/seller-apply" element={<AuthRedirectGuard><SellerApplyPage /></AuthRedirectGuard>} />
-                <Route path="/seller-status" element={<AuthRedirectGuard><SellerStatusPage /></AuthRedirectGuard>} />
-                <Route 
-                  path="/delivery-dashboard" 
-                  element={
-                    <AuthRedirectGuard>
-                      {/* ✅ सीधे DeliveryOrdersList को रेंडर करें */}
+          {/* ✅ SocketProvider को यहाँ से हटा दिया गया है */}
+          <Toaster />
+          <Header onCartClick={() => setIsCartModalOpen(true)} />
+          <main className="min-h-screen">
+            <Routes>
+              {/* Public routes */}
+              <Route path="/" element={<HomePage />} />
+              <Route path="/products/:id" element={<ProductDetail />} />
+              <Route path="/cart" element={<Cart />} />
+              <Route path="/checkout" element={<Checkout />} />
+              <Route path="/checkout2/:id" element={<Checkout2 />} />
+              <Route path="/auth" element={<AuthPage />} />
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/admin-login" element={<AdminLogin />} />
+              <Route path="/delivery-login" element={<DeliveryLogin />} />
+              {/* Protected - Normal Auth */}
+              <Route path="/seller-dashboard" element={<AuthRedirectGuard><SellerDashboard /></AuthRedirectGuard>} />
+              <Route path="/seller-apply" element={<AuthRedirectGuard><SellerApplyPage /></AuthRedirectGuard>} />
+              <Route path="/seller-status" element={<AuthRedirectGuard><SellerStatusPage /></AuthRedirectGuard>} />
+              <Route 
+                path="/delivery-dashboard" 
+                element={
+                  <AuthRedirectGuard>
+                    {/* ✅ SocketProvider को यहाँ जोड़ा गया है */}
+                    <SocketProvider>
                       <DeliveryOrdersList />
-                    </AuthRedirectGuard>
-                  } 
-                />
-                <Route path="/delivery-apply" element={<AuthRedirectGuard><DeliveryApplyPage /></AuthRedirectGuard>} />
-                <Route path="/customer/orders" element={<AuthRedirectGuard><CustomerOrdersPage /></AuthRedirectGuard>} />
-                <Route path="/order-confirmation/:orderId" element={<OrderConfirmation />} />
+                    </SocketProvider>
+                  </AuthRedirectGuard>
+                } 
+              />
+              <Route path="/delivery-apply" element={<AuthRedirectGuard><DeliveryApplyPage /></AuthRedirectGuard>} />
+              <Route path="/customer/orders" element={<AuthRedirectGuard><CustomerOrdersPage /></AuthRedirectGuard>} />
+              <Route path="/order-confirmation/:orderId" element={<OrderConfirmation />} />
 
-                {/* Protected - Admin */}
-                <Route path="/admin" element={<AdminGuard><AdminLayout /></AdminGuard>}>
-                  <Route path="dashboard" element={<AdminDashboard />} />
-                  <Route path="categories" element={<CategoriesManagement />} />
-                </Route>
-                
-                {/* 404 */}
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </main>
-            <CartModal isOpen={isCartModalOpen} onClose={() => setIsCartModalOpen(false)} />
-          </SocketProvider>
+              {/* Protected - Admin */}
+              <Route path="/admin" element={<AdminGuard><AdminLayout /></AdminGuard>}>
+                <Route path="dashboard" element={<AdminDashboard />} />
+                <Route path="categories" element={<CategoriesManagement />} />
+              </Route>
+              
+              {/* 404 */}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </main>
+          <CartModal isOpen={isCartModalOpen} onClose={() => setIsCartModalOpen(false)} />
         </AuthProvider>
       </TooltipProvider>
     </QueryClientProvider>
