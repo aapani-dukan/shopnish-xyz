@@ -6,78 +6,46 @@ import { useNavigate } from "react-router-dom";
 import { Truck } from "lucide-react";
 import { signInWithPopup, GoogleAuthProvider } from "firebase/auth";
 import { auth } from "@/lib/firebase";
-// ✅ useAuth हुक को आयात करें
 import { useAuth } from "@/hooks/useAuth";
+import { apiRequest } from "@/lib/queryClient"; // ✅ apiRequest आयात करें
 
 export default function DeliveryLogin() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
-  // ✅ useAuth से loginWithBackendUser को प्राप्त करें
-  const { loginWithBackendUser } = useAuth();
+  // ✅ useAuth से backendLogin प्राप्त करें
+  const { backendLogin } = useAuth();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
 
-  const handleGoogleLogin = async () => {
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
     setLoading(true);
     try {
-      const provider = new GoogleAuthProvider();
-      const result = await signInWithPopup(auth, provider);
+      // ✅ अब सीधे useAuth के backendLogin फंक्शन को कॉल करें
+      const user = await backendLogin(email, password);
+      
+      localStorage.setItem("deliveryBoyToken", user.idToken || ""); // ✅ यदि आवश्यक हो तो idToken को सेव करें
+      localStorage.setItem("deliveryBoyEmail", user.email || "");
 
-      if (result && result.user) {
-        const user = result.user;
-        const token = await user.getIdToken();
-
-        const response = await fetch("/api/delivery/login", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            firebaseUid: user.uid,
-            email: user.email || "",
-            name: user.displayName || user.email || "",
-          }),
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.message || "Failed to authenticate with backend.");
-        }
-
-        const backendResponse = await response.json();
-        const deliveryBoy = backendResponse.user;
-
-        if (!deliveryBoy) {
-          throw new Error("Delivery boy data not received from backend.");
-        }
-
-        localStorage.setItem("deliveryBoyToken", token);
-        localStorage.setItem("deliveryBoyEmail", deliveryBoy.email || "");
-
-        // ✅ loginWithBackendUser को कॉल करें ताकि auth state अपडेट हो जाए
-        //    यह सुनिश्चित करेगा कि dashboard पर एक खाली पेज न दिखे
-        loginWithBackendUser(deliveryBoy);
-
-        if (deliveryBoy.approvalStatus === "approved") {
-          toast({ title: "Login Successful", description: `Welcome ${deliveryBoy.name || deliveryBoy.email}` });
-          navigate("/delivery-dashboard");
-        } else {
-          toast({
-            title: "Approval Pending",
-            description: "You are not approved yet. Please wait for admin approval.",
-            variant: "destructive",
-          });
-        }
-      }
-    } catch (err: any) {
-      console.error("Delivery login (popup) failed:", err);
-      if (err.code !== 'auth/popup-closed-by-user' && err.code !== 'auth/cancelled-popup-request') {
+      if (user.role === "delivery" && user.sellerProfile?.approvalStatus === "approved") {
+        toast({ title: "Login Successful", description: `Welcome ${user.name || user.email}` });
+        navigate("/delivery-dashboard");
+      } else {
         toast({
-          title: "Login Failed",
-          description: err.message || "Something went wrong during login.",
+          title: "Approval Pending",
+          description: "You are not approved yet. Please wait for admin approval.",
           variant: "destructive",
         });
       }
+
+    } catch (err: any) {
+      console.error("Delivery login failed:", err);
+      toast({
+        title: "Login Failed",
+        description: err.message || "Something went wrong during login.",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
@@ -98,13 +66,25 @@ export default function DeliveryLogin() {
             <CardTitle className="text-2xl font-bold">Welcome Delivery Boy</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <Button
-              className="w-full"
-              onClick={handleGoogleLogin}
-              disabled={loading}
-            >
-              {loading ? "Checking..." : "Login with Google"}
-            </Button>
+            <form onSubmit={handleLogin} className="space-y-4">
+                <Input 
+                    type="email" 
+                    placeholder="Email" 
+                    value={email} 
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                />
+                <Input 
+                    type="password" 
+                    placeholder="Password" 
+                    value={password} 
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                />
+                <Button className="w-full" type="submit" disabled={loading}>
+                    {loading ? "Logging in..." : "Login"}
+                </Button>
+            </form>
             <Button
               variant="outline"
               className="w-full"
@@ -122,3 +102,4 @@ export default function DeliveryLogin() {
     </div>
   );
 }
+
