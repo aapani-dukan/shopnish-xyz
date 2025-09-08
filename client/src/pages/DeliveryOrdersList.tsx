@@ -490,9 +490,15 @@ export default function DeliveryOrdersList() {
                           <Button
                             variant="outline"
                             size="sm"
+                            onClick={() => window.open(`tel:${isSellerAddressObject ? sellerDetails.phone || "" : ""}`)}
+                          >
+                            <Phone className="w-4 h-4 mr-2" /> विक्रेता को कॉल करें
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
                             onClick={() => {
-                              
-                                const query = encodeURIComponent(
+                              const query = encodeURIComponent(
                                 `${isSellerAddressObject ? sellerDetails.address || "" : ""}, ${isSellerAddressObject ? sellerDetails.city || "" : ""}`
                               );
                               window.open(`https://www.google.com/maps?q=${query}`, "_blank");
@@ -529,3 +535,4 @@ export default function DeliveryOrdersList() {
     </div>
   );
 }
+   
