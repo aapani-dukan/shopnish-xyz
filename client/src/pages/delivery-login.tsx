@@ -7,13 +7,14 @@ import { Truck } from "lucide-react";
 import { signInWithPopup, GoogleAuthProvider } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { useAuth } from "@/hooks/useAuth";
-import { apiRequest } from "@/lib/queryClient"; // ✅ apiRequest आयात करें
+import { apiRequest } from "@/lib/queryClient"; 
+// ✅ यहाँ नया import जोड़ा गया है
+import { Input } from "@/components/ui/input"; 
 
 export default function DeliveryLogin() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
-  // ✅ useAuth से backendLogin प्राप्त करें
   const { backendLogin } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -22,10 +23,9 @@ export default function DeliveryLogin() {
     e.preventDefault();
     setLoading(true);
     try {
-      // ✅ अब सीधे useAuth के backendLogin फंक्शन को कॉल करें
       const user = await backendLogin(email, password);
       
-      localStorage.setItem("deliveryBoyToken", user.idToken || ""); // ✅ यदि आवश्यक हो तो idToken को सेव करें
+      localStorage.setItem("deliveryBoyToken", user.idToken || ""); 
       localStorage.setItem("deliveryBoyEmail", user.email || "");
 
       if (user.role === "delivery" && user.sellerProfile?.approvalStatus === "approved") {
