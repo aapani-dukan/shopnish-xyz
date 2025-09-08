@@ -3,8 +3,7 @@ import { Routes, Route } from "react-router-dom";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "./lib/queryClient";
 import { Toaster } from "@/components/ui/toaster";
-// ✅ useAuth से सीधे user, isLoadingAuth और auth को प्राप्त करें
-import { AuthProvider, useAuth } from "@/hooks/useAuth";
+import { AuthProvider } from "@/hooks/useAuth";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { SocketProvider } from "@/hooks/useSocket";
 
@@ -33,7 +32,6 @@ import OrderConfirmation from "@/pages/order-confirmation";
 import CustomerOrdersPage from "@/pages/customer/orders";
 import Checkout2 from "./pages/checkout2"; 
 import DeliveryOrdersList from "@/pages/DeliveryOrdersList";
-import { Loader2 } from "lucide-react";
 
 // Centralized auth-based routing
 import AuthRedirectGuard from "@/components/auth-redirect-guard";
@@ -72,7 +70,8 @@ function App() {
                   path="/delivery-dashboard" 
                   element={
                     <AuthRedirectGuard>
-                      <DeliveryOrdersListWithAuth />
+                      {/* ✅ सीधे DeliveryOrdersList को रेंडर करें */}
+                      <DeliveryOrdersList />
                     </AuthRedirectGuard>
                   } 
                 />
@@ -97,27 +96,5 @@ function App() {
     </QueryClientProvider>
   );
 }
-
-// ✅ एक नया हेल्पर कंपोनेंट जो DeliveryOrdersList को ऑथ डेटा पास करेगा
-function DeliveryOrdersListWithAuth() {
-  // ✅ useAuth से सीधे user, isLoadingAuth और auth को प्राप्त करें
-  const { user, isLoadingAuth, auth } = useAuth();
-  
-  if (isLoadingAuth || !user) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
-      </div>
-    );
-  }
-
-  // ✅ सुरक्षा जांच: सुनिश्चित करें कि auth ऑब्जेक्ट भी मौजूद है।
-  if (!auth) {
-    return null; 
-  }
-
-  return <DeliveryOrdersList userId={user.uid} auth={auth} />;
-}
-
 
 export default App;
