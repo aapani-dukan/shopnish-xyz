@@ -23,15 +23,14 @@ export interface SellerInfo {
 
 export interface User {
   id: string;
-  uid: string;
+  uid?: string;
   email: string | null;
   name: string | null;
   role: "customer" | "seller" | "admin" | "delivery";
   sellerProfile?: SellerInfo | null;
-  idToken?: string; // idToken को वैकल्पिक बनाया गया है क्योंकि यह हर जगह मौजूद नहीं होगा
+  idToken?: string;
 }
 
-// ✅ auth context type में नया फ़ंक्शन जोड़ा गया है
 interface AuthContextType {
   user: User | null;
   isLoadingAuth: boolean;
@@ -43,7 +42,7 @@ interface AuthContextType {
   signOut: () => Promise<void>;
   refetchUser: () => void;
   // ✅ नया फ़ंक्शन: backend से प्राप्त user data को सेट करने के लिए
-  loginWithBackendUser: (userData: User) => void; 
+  backendLogin: (email: string, password: string) => Promise<User>; 
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -173,12 +172,38 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     setIsLoadingAuth(false);
   }, []);
 
-  // ✅ नया फ़ंक्शन: backend से प्राप्त user data को सेट करने के लिए
-  const loginWithBackendUser = useCallback((userData: User) => {
-    setUser(userData);
-    setIsAuthenticated(true);
-    setIsLoadingAuth(false);
-    setIsAdmin(userData.role === 'admin');
+  const backendLogin = useCallback(async (email: string, password: string): Promise<User> => {
+    setAuthError(null);
+    setIsLoadingAuth(true);
+    try {
+      const res = await apiRequest("POST", "/api/delivery/login", { email, password });
+      const backendUser = res.user;
+
+      if (!backendUser) {
+        throw new Error("Invalid user data received from backend.");
+      }
+
+      // ✅ auth state को मैन्युअल रूप से अपडेट करें
+      const currentUser: User = {
+        id: backendUser.id,
+        email: backendUser.email,
+        name: backendUser.name,
+        role: backendUser.role,
+        sellerProfile: backendUser.sellerProfile || null,
+      };
+
+      setUser(currentUser);
+      setIsAuthenticated(true);
+      setIsAdmin(currentUser.role === 'admin');
+      setIsLoadingAuth(false);
+
+      return currentUser;
+
+    } catch (err: any) {
+      setAuthError(err as AuthError);
+      setIsLoadingAuth(false);
+      throw err;
+    }
   }, []);
 
   const authContextValue = {
@@ -191,7 +216,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     signIn,
     signOut,
     refetchUser,
-    loginWithBackendUser, // ✅ context value में नया फ़ंक्शन शामिल करें
+    backendLogin, // ✅ context value में नया फ़ंक्शन शामिल करें
   };
 
   return (
