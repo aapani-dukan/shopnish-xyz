@@ -3,6 +3,7 @@ import { Routes, Route } from "react-router-dom";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "./lib/queryClient";
 import { Toaster } from "@/components/ui/toaster";
+// ✅ useAuth से सीधे user, isLoadingAuth और auth को प्राप्त करें
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { SocketProvider } from "@/hooks/useSocket";
@@ -80,7 +81,6 @@ function App() {
                 <Route path="/order-confirmation/:orderId" element={<OrderConfirmation />} />
 
                 {/* Protected - Admin */}
-                {/* ✅ एडमिन राउट को AdminLayout के अंदर रखा गया है */}
                 <Route path="/admin" element={<AdminGuard><AdminLayout /></AdminGuard>}>
                   <Route path="dashboard" element={<AdminDashboard />} />
                   <Route path="categories" element={<CategoriesManagement />} />
@@ -100,9 +100,10 @@ function App() {
 
 // ✅ एक नया हेल्पर कंपोनेंट जो DeliveryOrdersList को ऑथ डेटा पास करेगा
 function DeliveryOrdersListWithAuth() {
-  const { authState, isLoadingAuth } = useAuth();
+  // ✅ useAuth से सीधे user, isLoadingAuth और auth को प्राप्त करें
+  const { user, isLoadingAuth, auth } = useAuth();
   
-  if (isLoadingAuth || !authState?.user) {
+  if (isLoadingAuth || !user) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
@@ -110,12 +111,12 @@ function DeliveryOrdersListWithAuth() {
     );
   }
 
-  // ✅ सुरक्षा जांच: सुनिश्चित करें कि authState और user दोनों मौजूद हैं।
-  if (!authState.auth) {
+  // ✅ सुरक्षा जांच: सुनिश्चित करें कि auth ऑब्जेक्ट भी मौजूद है।
+  if (!auth) {
     return null; 
   }
 
-  return <DeliveryOrdersList userId={authState.user.uid} auth={authState.auth} />;
+  return <DeliveryOrdersList userId={user.uid} auth={auth} />;
 }
 
 
