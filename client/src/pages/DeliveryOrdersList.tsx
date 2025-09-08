@@ -15,6 +15,7 @@ import {
 import DeliveryOtpDialog from "./DeliveryOtpDialog";
 import { useAuth } from "@/hooks/useAuth";
 import io from "socket.io-client";
+import { apiRequest } from "@/lib/queryClient";
 
 // -----------------------------------------------------------------------------
 // ## मॉक UI कंपोनेंट और यूटिलिटी फ़ंक्शंस
@@ -153,33 +154,27 @@ export default function DeliveryOrdersList() {
     }
   };
 
-  const { data: orders = [], isLoading } = useQuery({
-    queryKey: ["deliveryOrders"],
-    queryFn: async () => {
-      try {
-        const token = await getValidToken();
-        if (!token) throw new Error("अमान्य या पुराना टोकन");
-        const res = await fetch(`${API_BASE}/api/delivery/orders`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-        if (!res.ok) throw new Error("नेटवर्क प्रतिक्रिया ठीक नहीं थी");
-        const data = await res.json();
-        return Array.isArray(data.orders) ? data.orders : [];
-      } catch (err) {
-        console.error("ऑर्डर लाने में त्रुटि:", err);
-        toast({
-          title: "डेटा लाने में त्रुटि",
-          description: "ऑर्डर लाते समय कोई समस्या आई",
-          variant: "destructive",
-        });
-        return [];
-      }
-    },
-    enabled: !!user,
-  });
 
+const { data: orders = [], isLoading } = useQuery({
+  queryKey: ["deliveryOrders"],
+  queryFn: async () => {
+    try {
+      // ✅ अब token interceptor अपने आप लगा देगा
+      const res = await apiRequest("GET", "/api/delivery/orders");
+      return Array.isArray(res.orders) ? res.orders : [];
+    } catch (err) {
+      console.error("ऑर्डर लाने में त्रुटि:", err);
+      toast({
+        title: "डेटा लाने में त्रुटि",
+        description: "ऑर्डर लाते समय कोई समस्या आई",
+        variant: "destructive",
+      });
+      return [];
+    }
+  },
+  enabled: !!user,
+});
+  
   useEffect(() => {
     if (!socket || !user) return;
 
