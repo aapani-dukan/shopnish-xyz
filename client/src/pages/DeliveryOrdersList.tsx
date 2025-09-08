@@ -13,8 +13,8 @@ import {
   Loader2,
 } from "lucide-react";
 import DeliveryOtpDialog from "./DeliveryOtpDialog";
-import { useAuth } from "@/hooks/useAuth";
-import io from "socket.io-client";
+import { useSocket } from "@/hooks/useSocket";
+import { useAuth } from "@/hooks/useAuth"; 
 
 // -----------------------------------------------------------------------------
 // ## मॉक UI कंपोनेंट और यूटिलिटी फ़ंक्शंस
@@ -119,7 +119,8 @@ const nextStatusLabel = (status: string) => {
 export default function DeliveryOrdersList() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { user, auth, isLoadingAuth } = useAuth();
+  const socket = useSocket();
+  const { user, auth, isLoadingAuth } = useAuth(); 
 
   const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
   const [otp, setOtp] = useState("");
@@ -127,23 +128,8 @@ export default function DeliveryOrdersList() {
 
   const API_BASE = import.meta.env.VITE_API_BASE_URL || "https://shopnish-lzrf.onrender.com";
 
-  // Socket setup
-  const [socket, setSocket] = useState<any | null>(null);
-  useEffect(() => {
-    if (user && !socket) {
-      const newSocket = io(API_BASE, {
-        transports: ["websocket"],
-        withCredentials: true,
-      });
-
-      newSocket.on("connect", () => {
-        newSocket.emit("register-client", { role: "delivery", userId: user.uid });
-      });
-      setSocket(newSocket);
-    }
-  }, [user, socket, API_BASE]);
-
   const getValidToken = async () => {
+    // ✅ सुनिश्चित करें कि auth.currentUser मौजूद है
     if (!auth?.currentUser) return null;
     try {
       return await auth.currentUser.getIdToken(true);
@@ -158,6 +144,7 @@ export default function DeliveryOrdersList() {
     queryFn: async () => {
       try {
         const token = await getValidToken();
+        // ✅ यहाँ टोकन की जांच करें
         if (!token) throw new Error("अमान्य या पुराना टोकन");
         const res = await fetch(`${API_BASE}/api/delivery/orders`, {
           headers: {
@@ -177,7 +164,8 @@ export default function DeliveryOrdersList() {
         return [];
       }
     },
-    enabled: !!user,
+    // ✅`user` के बजाय `auth.currentUser` का उपयोग करें ताकि यह सुनिश्चित हो सके कि Firebase auth पूरी तरह से लोड है
+    enabled: !!auth?.currentUser,
   });
 
   useEffect(() => {
@@ -497,14 +485,14 @@ export default function DeliveryOrdersList() {
                             size="sm"
                             onClick={() => window.open(`tel:${isSellerAddressObject ? sellerDetails.phone || "" : ""}`)}
                           >
-                            
-                      <Phone className="w-4 h-4 mr-2" /> विक्रेता को कॉल करें
+                            <Phone className="w-4 h-4 mr-2" /> विक्रेता को कॉल करें
                           </Button>
                           <Button
                             variant="outline"
                             size="sm"
                             onClick={() => {
-                              const query = encodeURIComponent(
+                              
+                                const query = encodeURIComponent(
                                 `${isSellerAddressObject ? sellerDetails.address || "" : ""}, ${isSellerAddressObject ? sellerDetails.city || "" : ""}`
                               );
                               window.open(`https://www.google.com/maps?q=${query}`, "_blank");
