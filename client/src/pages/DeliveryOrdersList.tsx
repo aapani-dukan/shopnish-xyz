@@ -16,7 +16,7 @@ import DeliveryOtpDialog from "./DeliveryOtpDialog";
 import { useAuth } from "@/hooks/useAuth";
 import io from "socket.io-client";
 import { apiRequest } from "@/lib/queryClient";
-
+  import api from "@/lib/api";
 // -----------------------------------------------------------------------------
 // ## मॉक UI कंपोनेंट और यूटिलिटी फ़ंक्शंस
 // -----------------------------------------------------------------------------
@@ -192,43 +192,26 @@ const { data: orders = [], isLoading } = useQuery({
   }, [socket, user, queryClient]);
 
 
-  const acceptOrderMutation = useMutation({
-    mutationFn: async (orderId: number) => {
-      const token = await getValidToken();
-      if (!token) throw new Error("अमान्य या पुराना टोकन");
-      const response = await fetch(`${API_BASE}/api/delivery/accept`, {
-        method: 'POST',
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ orderId }),
-      });
-      if (!response.ok) throw new Error("ऑर्डर स्वीकार करने में विफल");
-      return response.json();
-    },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["deliveryOrders"] }),
-    onError: (error) => console.error("म्यूटेशन त्रुटि:", error),
-  });
 
-  const updateStatusMutation = useMutation({
-    mutationFn: async ({ orderId, newStatus }: { orderId: number, newStatus: string }) => {
-      const token = await getValidToken();
-      if (!token) throw new Error("अमान्य या पुराना टोकन");
-      const response = await fetch(`${API_BASE}/api/delivery/orders/${orderId}/status`, {
-        method: 'PATCH',
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ newStatus }),
-      });
-      if (!response.ok) throw new Error("स्टेटस अपडेट करने में विफल");
-      return response.json();
-    },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["deliveryOrders"] }),
-    onError: (error) => console.error("म्यूटेशन त्रुटि:", error),
-  });
+const acceptOrderMutation = useMutation({
+  mutationFn: async (orderId: number) => {
+    const response = await api.post("/api/delivery/accept", { orderId });
+    return response.data;
+  },
+  onSuccess: () => queryClient.invalidateQueries({ queryKey: ["deliveryOrders"] }),
+  onError: (error) => console.error("म्यूटेशन त्रुटि:", error),
+});
+
+const updateStatusMutation = useMutation({
+  mutationFn: async ({ orderId, newStatus }: { orderId: number; newStatus: string }) => {
+    const response = await api.patch(`/api/delivery/orders/${orderId}/status`, {
+      newStatus,
+    });
+    return response.data;
+  },
+  onSuccess: () => queryClient.invalidateQueries({ queryKey: ["deliveryOrders"] }),
+  onError: (error) => console.error("म्यूटेशन त्रुटि:", error),
+});
 
   const handleOtpSubmitMutation = useMutation({
     mutationFn: async ({ orderId, otp }: { orderId: number, otp: string }) => {
