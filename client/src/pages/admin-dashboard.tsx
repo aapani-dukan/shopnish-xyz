@@ -4,7 +4,7 @@ import { toast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Check, X, Loader2 } from "lucide-react";
 import api from "@/lib/api";
-import { socket } from "@/lib/socket"; // ✅ socket import
+import { useSocket } from "@/hooks/useSocket"; // ✅ socket import
 
 // Interfaces
 interface Vendor {
@@ -28,12 +28,15 @@ interface DeliveryBoy {
   rejectionReason?: string;
 }
 
-const AdminDashboard: React.FC = () => {
+ const AdminDashboard: React.FC = () => {
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState("pending-vendors");
+  const socket = useSocket(); // ✅ socket from context
 
   // ✅ socket.io real-time updates
   useEffect(() => {
+    if (!socket) return;
+
     socket.on("admin:vendor-updated", () => {
       queryClient.invalidateQueries({ queryKey: ["adminPendingVendors"] });
       queryClient.invalidateQueries({ queryKey: ["adminApprovedVendors"] });
@@ -54,7 +57,7 @@ const AdminDashboard: React.FC = () => {
       socket.off("admin:product-updated");
       socket.off("admin:deliveryboy-updated");
     };
-  }, [queryClient]);
+  }, [socket, queryClient]);
 
   // Vendors API calls
   const { data: pendingVendors } = useQuery<Vendor[]>({
@@ -257,7 +260,7 @@ const AdminDashboard: React.FC = () => {
     }
   };
 
-  return (
+   return (
     <div className="p-4 bg-gray-50 min-h-screen font-inter">
       <h1 className="text-2xl font-bold mb-4">Admin Dashboard</h1>
       <div className="flex space-x-4 mb-6">
