@@ -75,7 +75,7 @@ export default function OrderManager({
 }: OrderManagerProps) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
-  const { socket } = useSocket();
+  const socket = useSocket();
 
   // ---------------- SOCKET.IO LISTENERS ----------------
   useEffect(() => {
