@@ -154,7 +154,18 @@ export default function DeliveryOrdersList() {
     }
   };
 
+const renderOrderCard = (order: any) => {
+  const addressData = order.deliveryAddress;
+  const isAddressObject = typeof addressData === 'object' && addressData !== null;
+  const sellerDetails = order.sellerDetails || order.items[0]?.product?.seller;
+  const isSellerAddressObject = typeof sellerDetails === 'object' && sellerDetails !== null;
 
+  return (
+    <Card key={order.id}>
+      {/* 👇 आपका पूरा CardHeader + CardContent का JSX यहाँ 그대로 रहेगा */}
+    </Card>
+  );
+};
 const { data: orders = [], isLoading } = useQuery({
   queryKey: ["deliveryOrders"],
   queryFn: async () => {
@@ -289,52 +300,50 @@ const updateStatusMutation = useMutation({
           </div>
         </div>
       </header>
-      <section className="max-w-6xl mx-auto px-4 py-8 grid grid-cols-1 md:grid-cols-4 gap-6">
-        <Card>
-          <CardContent className="p-6 flex items-center space-x-3">
-            <Package className="w-8 h-8 text-blue-600" />
-            <div>
-              <p className="text-2xl font-bold">{orders.length}</p>
-              <p className="text-sm text-gray-600">कुल ऑर्डर</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-6 flex items-center space-x-3">
-            <Clock className="w-8 h-8 text-yellow-600" />
-            <div>
-              <p className="text-2xl font-bold">
-                {orders.filter((o: any) =>
-                  ["ready_for_pickup", "picked_up", "out_for_delivery", "pending", "accepted"].includes(o.status)
-                ).length}
-              </p>
-              <p className="text-sm text-gray-600">लंबित</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-6 flex items-center space-x-3">
-            <CheckCircle className="w-8 h-8 text-green-600" />
-            <div>
-              <p className="text-2xl font-bold">
-                {orders.filter((o: any) => o.status === "delivered").length}
-              </p>
-              <p className="text-sm text-gray-600">पूरे हुए</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-6 flex items-center space-x-3">
-            <Navigation className="w-8 h-8 text-purple-600" />
-            <div>
-              <p className="text-2xl font-bold">
-                {orders.filter((o: any) => o.status === "out_for_delivery").length}
-              </p>
-              <p className="text-sm text-gray-600">रास्ते में</p>
-            </div>
-          </CardContent>
-        </Card>
-      </section>
+
+
+      // ...
+<section className="max-w-6xl mx-auto px-4 pb-16 space-y-10">
+  {/* ✅ Available Orders */}
+  <div>
+    <h2 className="text-2xl font-bold mb-4">उपलब्ध ऑर्डर</h2>
+    {orders.filter((o: any) => !o.deliveryBoyId && o.status === "ready_for_pickup").length === 0 ? (
+      <Card>
+        <CardContent className="py-12 text-center">
+          <Package className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+          <h3 className="text-lg font-medium mb-2">कोई उपलब्ध ऑर्डर नहीं</h3>
+          <p className="text-gray-600">नए ऑर्डर के लिए बाद में जाँच करें।</p>
+        </CardContent>
+      </Card>
+    ) : (
+      <>
+        {orders
+          .filter((o: any) => !o.deliveryBoyId && o.status === "ready_for_pickup")
+          .map((order: any) => renderOrderCard(order))}
+      </>
+    )}
+  </div>
+
+  {/* ✅ My Orders */}
+  <div>
+    <h2 className="text-2xl font-bold mb-4">मेरे ऑर्डर</h2>
+    {orders.filter((o: any) => o.deliveryBoyId).length === 0 ? (
+      <Card>
+        <CardContent className="py-12 text-center">
+          <Package className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+          <h3 className="text-lg font-medium mb-2">कोई असाइन ऑर्डर नहीं</h3>
+          <p className="text-gray-600">आपको अभी तक कोई ऑर्डर असाइन नहीं किया गया है।</p>
+        </CardContent>
+      </Card>
+    ) : (
+      <>
+        {orders
+          .filter((o: any) => o.deliveryBoyId)
+          .map((order: any) => renderOrderCard(order))}
+      </>
+    )}
+  </div>
+</section>
       <section className="max-w-6xl mx-auto px-4 pb-16 space-y-6">
         <h2 className="text-2xl font-bold">असाइन किए गए / उपलब्ध ऑर्डर</h2>
         {orders.length === 0 ? (
