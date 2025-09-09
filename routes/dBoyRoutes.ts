@@ -129,30 +129,13 @@ router.post('/login', verifyToken, async (req: AuthenticatedRequest, res: Respon
 
 // ✅ UPDATED: /api/delivery/orders (डिलिवरी बॉय के ऑर्डर)
 // यह उन ऑर्डरों को फ़ेच करेगा जो 'ready_for_pickup' हैं और किसी को असाइन नहीं किए गए हैं।
-router.get('/orders', requireDeliveryBoyAuth, async (req: AuthenticatedRequest, res: Response) => {
+// ✅ AVAILABLE Orders (Unassigned + Ready for Pickup)
+router.get('/orders/available', requireDeliveryBoyAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const firebaseUid = req.user?.firebaseUid;
-    if (!firebaseUid) {
-      return res.status(401).json({ message: "Authentication required." });
-    }
-    
-    // लॉग इन किए हुए डिलीवरी बॉय का प्रोफाइल ढूंढें
-    const deliveryBoy = await db.query.deliveryBoys.findFirst({
-      where: eq(deliveryBoys.firebaseUid, firebaseUid),
-    });
-
-    if (!deliveryBoy) {
-      return res.status(404).json({ message: "Delivery Boy profile not found." });
-    }
-    
-    // उन ऑर्डरों को फ़ेच करें जो या तो इस डिलीवरी बॉय को असाइन किए गए हैं या पिकअप के लिए तैयार हैं
     const list = await db.query.orders.findMany({
-      where: or(
-        eq(orders.deliveryBoyId, deliveryBoy.id),
-        and(
-          eq(orders.status, 'ready_for_pickup'),
-          isNull(orders.deliveryBoyId)
-        )
+      where: and(
+        eq(orders.status, 'ready_for_pickup'),
+        isNull(orders.deliveryBoyId)
       ),
       with: {
         items: { with: { product: { with: { seller: true } } } },
@@ -161,12 +144,46 @@ router.get('/orders', requireDeliveryBoyAuth, async (req: AuthenticatedRequest, 
       orderBy: (o, { desc }) => [desc(o.createdAt)],
     });
 
-    console.log("✅ Fetched orders:", list.length);
+    console.log("✅ Available orders fetched:", list.length);
 
     res.status(200).json({ orders: list });
   } catch (error: any) {
-    console.error("❌ Failed to fetch orders for delivery boy:", error);
-    res.status(500).json({ message: "Failed to fetch orders." });
+    console.error("❌ Failed to fetch available orders:", error);
+    res.status(500).json({ message: "Failed to fetch available orders." });
+  }
+});
+
+// ✅ MY Orders (Assigned to this Delivery Boy)
+router.get('/orders/my', requireDeliveryBoyAuth, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const firebaseUid = req.user?.firebaseUid;
+    if (!firebaseUid) {
+      return res.status(401).json({ message: "Authentication required." });
+    }
+    
+    const deliveryBoy = await db.query.deliveryBoys.findFirst({
+      where: eq(deliveryBoys.firebaseUid, firebaseUid),
+    });
+
+    if (!deliveryBoy) {
+      return res.status(404).json({ message: "Delivery Boy profile not found." });
+    }
+
+    const list = await db.query.orders.findMany({
+      where: eq(orders.deliveryBoyId, deliveryBoy.id),
+      with: {
+        items: { with: { product: { with: { seller: true } } } },
+        deliveryAddress: true,
+      },
+      orderBy: (o, { desc }) => [desc(o.createdAt)],
+    });
+
+    console.log("✅ My orders fetched:", list.length);
+
+    res.status(200).json({ orders: list });
+  } catch (error: any) {
+    console.error("❌ Failed to fetch my orders:", error);
+    res.status(500).json({ message: "Failed to fetch my orders." });
   }
 });
 
