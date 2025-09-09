@@ -192,6 +192,6 @@ export default function CustomerOrdersPage() {
       </div>
     </div>
   );
-  }
+  
 
  
