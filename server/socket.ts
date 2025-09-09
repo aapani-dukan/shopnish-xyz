@@ -1,23 +1,28 @@
-// socket.ts
 import { Server } from "socket.io";
 import type { Server as HTTPServer } from "http";
 
 let io: Server | null = null;
 
-/**
- * Initialize Socket.IO with HTTP server
- * या manually setIO से भी global io set किया जा सकता है
- */
 export function initSocket(server: HTTPServer) {
   io = new Server(server, {
     cors: {
       origin: process.env.CLIENT_URL || "*",
       methods: ["GET", "POST"],
+      credentials: true,
     },
   });
 
   io.on("connection", (socket) => {
     console.log("🔌 New client connected:", socket.id);
+
+    // ✅ Delivery / Seller / Admin clients register कर सकें
+    socket.on("register-client", (data) => {
+      console.log("📦 Registered client:", data);
+      if (data?.role && data?.userId) {
+        socket.join(`${data.role}:${data.userId}`);
+        console.log(`✅ Client ${socket.id} joined room ${data.role}:${data.userId}`);
+      }
+    });
 
     socket.on("chat:message", (msg) => {
       console.log("💬 Message received:", msg);
@@ -38,17 +43,11 @@ export function initSocket(server: HTTPServer) {
   return io;
 }
 
-/**
- * Manually set the global io instance
- */
 export function setIO(serverIO: Server) {
   io = serverIO;
   console.log("✅ Global Socket.IO instance set via setIO");
 }
 
-/**
- * Get the current io instance
- */
 export function getIO(): Server {
   if (!io) {
     throw new Error("❌ Socket.IO not initialized. Call initSocket or setIO first.");
