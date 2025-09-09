@@ -66,6 +66,7 @@ const getStatusText = (status: string) => {
 // ग्राहक के ऑर्डर दिखाने वाला मुख्य कंपोनेंट।
 export default function CustomerOrdersPage() {
   const queryClient = useQueryClient();
+  const socket = useSocket(); // 🔥 पहले यहीं declare करो
 
   // TanStack Query का उपयोग करके API से ऑर्डर फ़ेच करें।
   const {
@@ -83,18 +84,6 @@ export default function CustomerOrdersPage() {
 
   // ✅ Socket.IO से order updates सुनें
   useEffect(() => {
-    // सेलर और डिलीवरी बॉय दोनों से अपडेट सुनने के लिए अब एक ही इव्हेंट का उपयोग
-    const onOrderStatusUpdated = (updatedOrder) => {
-      console.log("📦 Order update received:", updatedOrder);
-      queryClient.invalidateQueries({ queryKey: ["customerOrders"] });
-    };
-
-    socket.on("order:status-updated", onOrderStatusUpdated);
-
-    const socket = useSocket();
-
-  // ✅ Socket.IO से order updates सुनें
-  useEffect(() => {
     const onOrderStatusUpdated = (updatedOrder: CustomerOrder) => {
       console.log("📦 Order update received:", updatedOrder);
       queryClient.invalidateQueries({ queryKey: ["customerOrders"] });
@@ -106,6 +95,10 @@ export default function CustomerOrdersPage() {
       socket.off("order:status-updated", onOrderStatusUpdated);
     };
   }, [socket, queryClient]);
+
+  ...
+  // नीचे का बाकी JSX वैसा ही रहेगा
+}
 
   // लोडिंग की स्थिति को हैंडल करें।
   if (isLoading) {
