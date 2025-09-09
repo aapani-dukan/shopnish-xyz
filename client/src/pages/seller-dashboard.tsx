@@ -32,7 +32,7 @@ export default function SellerDashboard() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState("products");
-  const { socket } = useSocket();
+  const socket = useSocket();
   const { user, isAuthenticated } = useAuth();
 
   // ----------------- SOCKET.IO LOGIC -----------------
