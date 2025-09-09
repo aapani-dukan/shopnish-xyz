@@ -8,18 +8,18 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Package } from "lucide-react";
-import { useSocket } from "@/hooks/useSocket"; // ✅ socket.io client helper
+import { useSocket } from "@/hooks/useSocket"; // socket.io client helper
 
-// इंटरफ़ेस जो API से आने वाले डेटा को परिभाषित करता है।
+// API से आने वाले ऑर्डर डेटा का इंटरफ़ेस
 interface CustomerOrder {
   id: number;
   orderNumber: string;
-  status: string; // ✅ अब केवल एक ही स्टेटस कॉलम का उपयोग
+  status: string;
   total: string;
   createdAt: string;
 }
 
-// ऑर्डर स्टेटस के लिए बैज का वेरिएंट (रंग) निर्धारित करता है।
+// स्टेटस के लिए बैज वेरिएंट
 const statusBadgeVariants = {
   pending: "secondary",
   accepted: "info",
@@ -37,44 +37,27 @@ const getStatusBadgeVariant = (status: string) => {
   return statusBadgeVariants[status as keyof typeof statusBadgeVariants] || statusBadgeVariants.default;
 };
 
-// स्टेटस टेक्स्ट निर्धारित करता है।
+// स्टेटस का टेक्स्ट
 const getStatusText = (status: string) => {
   switch (status) {
-    case "pending":
-      return "लंबित";
-    case "accepted":
-      return "स्वीकृत";
-    case "preparing":
-      return "तैयार हो रहा है";
-    case "ready_for_pickup":
-      return "पिकअप के लिए तैयार";
-    case "picked_up":
-      return "पिकअप हो गया";
-    case "out_for_delivery":
-      return "रास्ते में है";
-    case "delivered":
-      return "डिलीवर हो गया";
-    case "cancelled":
-      return "रद्द कर दिया गया";
-    case "rejected":
-      return "अस्वीकृत";
-    default:
-      return "अज्ञात";
+    case "pending": return "लंबित";
+    case "accepted": return "स्वीकृत";
+    case "preparing": return "तैयार हो रहा है";
+    case "ready_for_pickup": return "पिकअप के लिए तैयार";
+    case "picked_up": return "पिकअप हो गया";
+    case "out_for_delivery": return "रास्ते में है";
+    case "delivered": return "डिलीवर हो गया";
+    case "cancelled": return "रद्द कर दिया गया";
+    case "rejected": return "अस्वीकृत";
+    default: return "अज्ञात";
   }
 };
 
-// ग्राहक के ऑर्डर दिखाने वाला मुख्य कंपोनेंट।
 export default function CustomerOrdersPage() {
   const queryClient = useQueryClient();
-  const socket = useSocket(); // 🔥 पहले यहीं declare करो
+  const socket = useSocket();
 
-  // TanStack Query का उपयोग करके API से ऑर्डर फ़ेच करें।
-  const {
-    data: orders,
-    isLoading,
-    isError,
-    error,
-  } = useQuery({
+  const { data: orders, isLoading, isError, error } = useQuery({
     queryKey: ["customerOrders"],
     queryFn: async () => {
       const response = await apiRequest("GET", "/api/orders");
@@ -82,7 +65,7 @@ export default function CustomerOrdersPage() {
     },
   });
 
-  // ✅ Socket.IO से order updates सुनें
+  // Socket.IO से ऑर्डर अपडेट्स सुनें
   useEffect(() => {
     const onOrderStatusUpdated = (updatedOrder: CustomerOrder) => {
       console.log("📦 Order update received:", updatedOrder);
@@ -96,10 +79,7 @@ export default function CustomerOrdersPage() {
     };
   }, [socket, queryClient]);
 
-  // नीचे का बाकी JSX वैसा ही रहेगा
-}
-
-  // लोडिंग की स्थिति को हैंडल करें।
+  // लोडिंग
   if (isLoading) {
     return (
       <div className="container mx-auto p-4">
@@ -113,7 +93,7 @@ export default function CustomerOrdersPage() {
     );
   }
 
-  // एरर की स्थिति को हैंडल करें।
+  // एरर
   if (isError) {
     return (
       <div className="container mx-auto p-4 text-center">
@@ -127,7 +107,7 @@ export default function CustomerOrdersPage() {
     );
   }
 
-  // ✅ खाली डेटा को हैंडल करें।
+  // कोई ऑर्डर नहीं है
   if (!orders || orders.length === 0) {
     return (
       <div className="container mx-auto p-4 text-center">
@@ -143,7 +123,7 @@ export default function CustomerOrdersPage() {
     );
   }
 
-  // ऑर्डरों को प्रदर्शित करें।
+  // ऑर्डर लिस्ट दिखाएँ
   return (
     <div className="container mx-auto p-4">
       <h1 className="text-2xl font-bold mb-6">आपके ऑर्डर्स</h1>
@@ -192,6 +172,4 @@ export default function CustomerOrdersPage() {
       </div>
     </div>
   );
-  
-
- 
+}
