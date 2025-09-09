@@ -7,7 +7,7 @@ import { CheckCircle, Package, Truck, MapPin, Clock, Phone } from "lucide-react"
 import { useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/queryClient";
-import { socket } from "@/lib/socket";
+import { useSocket } from "@/hooks/useSocket";
 
 interface Order {
   id: number;
@@ -62,19 +62,19 @@ export default function OrderConfirmation() {
   });
 
   // Socket.io real-time updates
-  useEffect(() => {
-    if (!orderId) return;
+  import { useSocket } from "@/hooks/useSocket";
 
-    socket.on("order:status-updated", (updatedOrder: Order) => {
-      if (updatedOrder.id.toString() === orderId) {
-        queryClient.setQueryData(["order", orderId], updatedOrder);
-      }
-    });
+const socket = useSocket();
 
-    return () => {
-      socket.off("order:status-updated");
-    };
-  }, [orderId, queryClient]);
+useEffect(() => {
+  socket.on("order:update", (data) => {
+    console.log("📦", data);
+  });
+
+  return () => {
+    socket.off("order:update");
+  };
+}, [socket]);
 
   if (isLoading || isLoadingAuth) {
     return (
