@@ -17,7 +17,7 @@ import { useAuth } from "@/hooks/useAuth";
 import io from "socket.io-client";
 import { apiRequest } from "@/lib/queryClient";
 import api from "@/lib/api";
-
+import { useSocket } from "@/hooks/useSocket";
 // -----------------------------------------------------------------------------
 // ## मॉक UI कंपोनेंट और यूटिलिटी फ़ंक्शंस
 // -----------------------------------------------------------------------------
@@ -130,32 +130,31 @@ export default function DeliveryOrdersList() {
   const API_BASE = import.meta.env.VITE_API_BASE_URL || "https://shopnish-lzrf.onrender.com";
 
   // Socket setup
-  
-const [socket, setSocket] = useState<any | null>(null);
+
+  // Socket setup (local state use करने की बजाय global useSocket इस्तेमाल करो)
+
+const socket = useSocket();
 
 useEffect(() => {
-  if (user) {
-    const newSocket = io(API_BASE, {
-      transports: ["websocket"],
-      withCredentials: true,
-    });
+  if (!socket || !user) return;
 
-    newSocket.on("connect", () => {
-      console.log("✅ Socket connected:", newSocket.id);
-      newSocket.emit("register-client", { role: "delivery", userId: user.uid });
-    });
+  // ✅ जब नया order आए या orders change हों तो refresh कर दो
+  const onOrdersChanged = () => {
+    queryClient.invalidateQueries({ queryKey: ["deliveryOrders"] });
+  };
 
-    newSocket.on("disconnect", () => {
-      console.log("❌ Socket disconnected:", newSocket.id);
-    });
+  socket.emit("register-client", { role: "delivery", userId: user.uid });
 
-    setSocket(newSocket);
+  socket.on("delivery:orders-changed", onOrdersChanged);
+  socket.on("new-order", onOrdersChanged);
 
-    return () => {
-      newSocket.disconnect();
-    };
-  }
-}, [user, API_BASE]); // ✅ socket को dependency से हटा दिया
+  return () => {
+    socket.off("delivery:orders-changed", onOrdersChanged);
+    socket.off("new-order", onOrdersChanged);
+  };
+}, [socket, user, queryClient]);
+  
+// ✅ socket को dependency से हटा दिया
   const getValidToken = async () => {
     if (!auth?.currentUser) return null;
     try {
