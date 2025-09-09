@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Package } from "lucide-react";
-import { socket } from "@/lib/socket"; // ✅ socket.io client helper
+import { useSocket } from "@/hooks/useSocket"; // ✅ socket.io client helper
 
 // इंटरफ़ेस जो API से आने वाले डेटा को परिभाषित करता है।
 interface CustomerOrder {
@@ -91,10 +91,19 @@ export default function CustomerOrdersPage() {
 
     socket.on("order:status-updated", onOrderStatusUpdated);
 
-    return () => {
-      socket.off("order:status-updated", onOrderStatusUpdated);
-    };
-  }, [queryClient]);
+    
+
+const socket = useSocket();
+
+useEffect(() => {
+  socket.on("order:status-updated", (data) => {
+    console.log("📦", data);
+  });
+
+  return () => {
+    socket.off("order:status-updated");
+  };
+}, [socket]);
 
   // लोडिंग की स्थिति को हैंडल करें।
   if (isLoading) {
