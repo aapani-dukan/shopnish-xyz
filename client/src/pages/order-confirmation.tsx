@@ -3,11 +3,11 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle, Package, Truck, MapPin, Clock, Phone } from "lucide-react";
+import { CheckCircle, Package, MapPin, Clock, Phone } from "lucide-react";
 import { useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/queryClient";
-import { useSocket } from "@/hooks/useSocket"; // ✅ सही जगह import
+import { useSocket } from "@/hooks/useSocket";
 
 interface Order {
   id: number;
@@ -50,7 +50,7 @@ export default function OrderConfirmation() {
   const navigate = useNavigate();
   const { isAuthenticated, isLoadingAuth } = useAuth();
   const queryClient = useQueryClient();
-  const socket = useSocket(); // ✅ socket hook
+  const socket = useSocket();
 
   // Order data fetch
   const { data: order, isLoading, isError, error } = useQuery<Order>({
@@ -62,25 +62,21 @@ export default function OrderConfirmation() {
     enabled: !!orderId && isAuthenticated && !isLoadingAuth,
   });
 
-  // ✅ Socket listener
+  // ✅ Socket real-time updates
   useEffect(() => {
     if (!socket || !orderId) return;
 
-    const handleOrderUpdate = (data: any) => {
-      console.log("📦 Order update received:", data);
-
+    const handleUpdate = (data: { orderId: number }) => {
       if (data.orderId === Number(orderId)) {
-        queryClient.setQueryData(["order", orderId], (prev: any) => ({
-          ...prev,
-          ...data,
-        }));
+        console.log("📦 Order updated:", data);
+        queryClient.invalidateQueries({ queryKey: ["order", orderId] });
       }
     };
 
-    socket.on("order:update", handleOrderUpdate);
+    socket.on("order:update", handleUpdate);
 
     return () => {
-      socket.off("order:update", handleOrderUpdate);
+      socket.off("order:update", handleUpdate);
     };
   }, [socket, orderId, queryClient]);
 
@@ -207,17 +203,12 @@ export default function OrderConfirmation() {
               >
                 <div className="flex items-center space-x-4">
                   <img
-                    src={
-                      item.product?.image ||
-                      "https://placehold.co/64x64/E2E8F0/1A202C?text=No+Img"
-                    }
+                    src={item.product?.image || "https://placehold.co/64x64/E2E8F0/1A202C?text=No+Img"}
                     alt={item.product?.name || "No Name"}
                     className="h-16 w-16 rounded object-cover"
                   />
                   <div>
-                    <p className="font-medium">
-                      {item.product?.name || "उत्पाद डेटा अनुपलब्ध"}
-                    </p>
+                    <p className="font-medium">{item.product?.name || "उत्पाद डेटा अनुपलब्ध"}</p>
                     <p className="text-sm text-gray-600">
                       {item.quantity} x ₹{item.unitPrice}
                     </p>
