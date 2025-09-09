@@ -7,7 +7,7 @@ import { CheckCircle, Package, Truck, MapPin, Clock, Phone } from "lucide-react"
 import { useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/queryClient";
-import { useSocket } from "@/hooks/useSocket";
+import { useSocket } from "@/hooks/useSocket"; // ✅ सही जगह import
 
 interface Order {
   id: number;
@@ -50,6 +50,7 @@ export default function OrderConfirmation() {
   const navigate = useNavigate();
   const { isAuthenticated, isLoadingAuth } = useAuth();
   const queryClient = useQueryClient();
+  const socket = useSocket(); // ✅ socket hook
 
   // Order data fetch
   const { data: order, isLoading, isError, error } = useQuery<Order>({
@@ -61,20 +62,27 @@ export default function OrderConfirmation() {
     enabled: !!orderId && isAuthenticated && !isLoadingAuth,
   });
 
-  // Socket.io real-time updates
-  import { useSocket } from "@/hooks/useSocket";
+  // ✅ Socket listener
+  useEffect(() => {
+    if (!socket || !orderId) return;
 
-const socket = useSocket();
+    const handleOrderUpdate = (data: any) => {
+      console.log("📦 Order update received:", data);
 
-useEffect(() => {
-  socket.on("order:update", (data) => {
-    console.log("📦", data);
-  });
+      if (data.orderId === Number(orderId)) {
+        queryClient.setQueryData(["order", orderId], (prev: any) => ({
+          ...prev,
+          ...data,
+        }));
+      }
+    };
 
-  return () => {
-    socket.off("order:update");
-  };
-}, [socket]);
+    socket.on("order:update", handleOrderUpdate);
+
+    return () => {
+      socket.off("order:update", handleOrderUpdate);
+    };
+  }, [socket, orderId, queryClient]);
 
   if (isLoading || isLoadingAuth) {
     return (
@@ -198,14 +206,18 @@ useEffect(() => {
                 className="flex items-center justify-between py-2 border-b last:border-0"
               >
                 <div className="flex items-center space-x-4">
-                  {/* ✅ यह बदलाव null product को संभालता है */}
                   <img
-                    src={item.product?.image || "https://placehold.co/64x64/E2E8F0/1A202C?text=No+Img"}
+                    src={
+                      item.product?.image ||
+                      "https://placehold.co/64x64/E2E8F0/1A202C?text=No+Img"
+                    }
                     alt={item.product?.name || "No Name"}
                     className="h-16 w-16 rounded object-cover"
                   />
                   <div>
-                    <p className="font-medium">{item.product?.name || "उत्पाद डेटा अनुपलब्ध"}</p>
+                    <p className="font-medium">
+                      {item.product?.name || "उत्पाद डेटा अनुपलब्ध"}
+                    </p>
                     <p className="text-sm text-gray-600">
                       {item.quantity} x ₹{item.unitPrice}
                     </p>
