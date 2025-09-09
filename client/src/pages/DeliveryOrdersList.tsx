@@ -130,21 +130,32 @@ export default function DeliveryOrdersList() {
   const API_BASE = import.meta.env.VITE_API_BASE_URL || "https://shopnish-lzrf.onrender.com";
 
   // Socket setup
-  const [socket, setSocket] = useState<any | null>(null);
-  useEffect(() => {
-    if (user && !socket) {
-      const newSocket = io(API_BASE, {
-        transports: ["websocket"],
-        withCredentials: true,
-      });
+  
+const [socket, setSocket] = useState<any | null>(null);
 
-      newSocket.on("connect", () => {
-        newSocket.emit("register-client", { role: "delivery", userId: user.uid });
-      });
-      setSocket(newSocket);
-    }
-  }, [user, socket, API_BASE]);
+useEffect(() => {
+  if (user) {
+    const newSocket = io(API_BASE, {
+      transports: ["websocket"],
+      withCredentials: true,
+    });
 
+    newSocket.on("connect", () => {
+      console.log("✅ Socket connected:", newSocket.id);
+      newSocket.emit("register-client", { role: "delivery", userId: user.uid });
+    });
+
+    newSocket.on("disconnect", () => {
+      console.log("❌ Socket disconnected:", newSocket.id);
+    });
+
+    setSocket(newSocket);
+
+    return () => {
+      newSocket.disconnect();
+    };
+  }
+}, [user, API_BASE]); // ✅ socket को dependency से हटा दिया
   const getValidToken = async () => {
     if (!auth?.currentUser) return null;
     try {
