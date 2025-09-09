@@ -96,7 +96,6 @@ export default function CustomerOrdersPage() {
     };
   }, [socket, queryClient]);
 
-  ...
   // नीचे का बाकी JSX वैसा ही रहेगा
 }
 
