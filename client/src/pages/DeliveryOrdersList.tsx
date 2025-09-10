@@ -343,21 +343,7 @@ useEffect(() => {
     enabled: !!user,
   });
   
-  useEffect(() => {
-    if (!socket || !user) return;
-
-    const onOrdersChanged = () => {
-      queryClient.invalidateQueries({ queryKey: ["deliveryOrders"] });
-    };
-
-    socket.on("delivery:orders-changed", onOrdersChanged);
-    socket.on("new-order", onOrdersChanged);
-
-    return () => {
-      socket.off("delivery:orders-changed", onOrdersChanged);
-      socket.off("new-order", onOrdersChanged);
-    };
-  }, [socket, user, queryClient]);
+  
 
 
   const acceptOrderMutation = useMutation({
