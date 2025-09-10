@@ -14,10 +14,11 @@ import {
 } from "lucide-react";
 import DeliveryOtpDialog from "./DeliveryOtpDialog";
 import { useAuth } from "@/hooks/useAuth";
-import io from "socket.io-client";
+
 import { apiRequest } from "@/lib/queryClient";
 import api from "@/lib/api";
 import { useSocket } from "@/hooks/useSocket";
+
 // -----------------------------------------------------------------------------
 // ## मॉक UI कंपोनेंट और यूटिलिटी फ़ंक्शंस
 // -----------------------------------------------------------------------------
@@ -83,7 +84,7 @@ const statusText = (status: string) => {
     case "delivered":
       return "डिलीवर हो गया";
     default:
-      return status;
+      return status || "अज्ञात";
   }
 };
 
@@ -129,32 +130,29 @@ export default function DeliveryOrdersList() {
 
   const API_BASE = import.meta.env.VITE_API_BASE_URL || "https://shopnish-lzrf.onrender.com";
 
-  // Socket setup
+  // ✅ socket global provider से
+  const socket = useSocket();
 
-  // Socket setup (local state use करने की बजाय global useSocket इस्तेमाल करो)
-const socket = useSocket();
+  useEffect(() => {
+    if (!socket || !user) return;
 
-useEffect(() => {
-  if (!socket || !user) return;
+    const onOrdersChanged = () => {
+      queryClient.invalidateQueries({ queryKey: ["deliveryOrders"] });
+    };
 
-  const onOrdersChanged = () => {
-    queryClient.invalidateQueries({ queryKey: ["deliveryOrders"] });
-  };
+    // ✅ register delivery client
+    socket.emit("register-client", { role: "delivery", userId: user.uid });
 
-  // ✅ register delivery client
-  socket.emit("register-client", { role: "delivery", userId: user.uid });
+    // ✅ listen for order changes
+    socket.on("delivery:orders-changed", onOrdersChanged);
+    socket.on("new-order", onOrdersChanged);
 
-  // ✅ listen for order changes
-  socket.on("delivery:orders-changed", onOrdersChanged);
-  socket.on("new-order", onOrdersChanged);
+    return () => {
+      socket.off("delivery:orders-changed", onOrdersChanged);
+      socket.off("new-order", onOrdersChanged);
+    };
+  }, [socket, user, queryClient]);
 
-  return () => {
-    socket.off("delivery:orders-changed", onOrdersChanged);
-    socket.off("new-order", onOrdersChanged);
-  };
-}, [socket, user, queryClient]);
-
-// ✅ socket को dependency से हटा दिया
   const getValidToken = async () => {
     if (!auth?.currentUser) return null;
     try {
@@ -165,106 +163,120 @@ useEffect(() => {
     }
   };
 
+  // ✅ Safe Rendering with null-checks
   const renderOrderCard = (order: any) => {
-    const addressData = order.deliveryAddress;
-    const isAddressObject = typeof addressData === 'object' && addressData !== null;
-    const sellerDetails = order.sellerDetails || order.items[0]?.product?.seller;
-    const isSellerAddressObject = typeof sellerDetails === 'object' && sellerDetails !== null;
-  
+    if (!order) return null;
+
+    const addressData = order?.deliveryAddress ?? null;
+    const isAddressObject = typeof addressData === "object" && addressData !== null;
+
+    const sellerDetails = order?.sellerDetails ?? order?.items?.[0]?.product?.seller ?? null;
+    const isSellerAddressObject = typeof sellerDetails === "object" && sellerDetails !== null;
+
     return (
-      <Card key={order.id}>
+      <Card key={order?.id ?? Math.random()}>
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle>ऑर्डर #{order.orderNumber}</CardTitle>
+              <CardTitle>ऑर्डर #{order?.orderNumber ?? "N/A"}</CardTitle>
               <p className="text-sm text-gray-600">
-                {order.items?.length || 0} आइटम • ₹{order.total}
+                {order?.items?.length || 0} आइटम • ₹{order?.total ?? 0}
               </p>
             </div>
-            <Badge className={`${statusColor(order.status)} text-white`}>
-              {statusText(order.status)}
+            <Badge className={`${statusColor(order?.status)} text-white`}>
+              {statusText(order?.status)}
             </Badge>
           </div>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* ग्राहक विवरण */}
             <div className="space-y-4">
               <div>
                 <h4 className="font-medium mb-2">ग्राहक विवरण</h4>
-                <p className="font-medium">{isAddressObject ? addressData.fullName : "नाम उपलब्ध नहीं"}</p>
+                <p className="font-medium">{isAddressObject ? addressData?.fullName ?? "नाम उपलब्ध नहीं" : "नाम उपलब्ध नहीं"}</p>
                 <div className="flex items-center space-x-2 text-sm text-gray-600">
                   <Phone className="w-4 h-4" />
-                  <span>{isAddressObject ? addressData.phone || "-" : "-"}</span>
+                  <span>{isAddressObject ? addressData?.phone ?? "-" : "-"}</span>
                 </div>
               </div>
+
+              {/* डिलीवरी पता */}
               <div>
                 <h4 className="font-medium mb-2">डिलीवरी पता</h4>
                 <div className="flex items-start space-x-2 text-sm text-gray-600">
                   <MapPin className="w-4 h-4 mt-0.5" />
                   <div>
-                    <p>{isAddressObject ? addressData.address : addressData}</p>
+                    <p>{isAddressObject ? addressData?.address ?? "पता उपलब्ध नहीं" : "पता उपलब्ध नहीं"}</p>
                     {isAddressObject && (
                       <p>
-                        {addressData.city || ""}{" "}
-                        {addressData.pincode ? `, ${addressData.pincode}` : ""}
+                        {addressData?.city ?? ""}{" "}
+                        {addressData?.pincode ? `, ${addressData?.pincode}` : ""}
                       </p>
                     )}
-                    {isAddressObject && addressData.landmark && (
-                      <p className="text-xs">लैंडमार्क: {addressData.landmark}</p>
+                    {isAddressObject && addressData?.landmark && (
+                      <p className="text-xs">लैंडमार्क: {addressData?.landmark}</p>
                     )}
                   </div>
                 </div>
               </div>
             </div>
+
+            {/* विक्रेता विवरण */}
             <div className="space-y-4">
               <div>
                 <h4 className="font-medium mb-2">विक्रेता विवरण</h4>
-                <p className="font-medium">{isSellerAddressObject ? sellerDetails.name : "नाम उपलब्ध नहीं"}</p>
+                <p className="font-medium">{isSellerAddressObject ? sellerDetails?.name ?? "नाम उपलब्ध नहीं" : "नाम उपलब्ध नहीं"}</p>
                 <div className="flex items-center space-x-2 text-sm text-gray-600">
                   <Phone className="w-4 h-4" />
-                  <span>{isSellerAddressObject ? sellerDetails.phone || "-" : "-"}</span>
+                  <span>{isSellerAddressObject ? sellerDetails?.phone ?? "-" : "-"}</span>
                 </div>
               </div>
+
+              {/* पिकअप पता */}
               <div>
                 <h4 className="font-medium mb-2">पिकअप पता</h4>
                 <div className="flex items-start space-x-2 text-sm text-gray-600">
                   <MapPin className="w-4 h-4 mt-0.5" />
                   <div>
-                    <p>{isSellerAddressObject ? sellerDetails.address : "पता उपलब्ध नहीं"}</p>
+                    <p>{isSellerAddressObject ? sellerDetails?.address ?? "पता उपलब्ध नहीं" : "पता उपलब्ध नहीं"}</p>
                     {isSellerAddressObject && (
                       <p>
-                        {sellerDetails.city || ""}{" "}
-                        {sellerDetails.pincode ? `, ${sellerDetails.pincode}` : ""}
+                        {sellerDetails?.city ?? ""}{" "}
+                        {sellerDetails?.pincode ? `, ${sellerDetails?.pincode}` : ""}
                       </p>
                     )}
-                    {isSellerAddressObject && sellerDetails.landmark && (
-                      <p className="text-xs">लैंडमार्क: {sellerDetails.landmark}</p>
+                    {isSellerAddressObject && sellerDetails?.landmark && (
+                      <p className="text-xs">लैंडमार्क: {sellerDetails?.landmark}</p>
                     )}
                   </div>
                 </div>
               </div>
             </div>
           </div>
+
+          {/* ऑर्डर आइटम्स */}
           <div className="mt-6 pt-4 border-t">
             <h4 className="font-medium mb-2">ऑर्डर आइटम</h4>
             <div className="space-y-2 max-h-32 overflow-y-auto pr-2">
-              {order.items?.map((item: any) => (
-                <div key={item.id} className="flex items-center space-x-3 text-sm">
+              {order?.items?.map((item: any) => (
+                <div key={item?.id ?? Math.random()} className="flex items-center space-x-3 text-sm">
                   <img
-                    src={item.product?.image || "https://placehold.co/32x32/E2E8F0/1A202C?text=No+Img"}
-                    alt={item.product?.name || "No Name"}
+                    src={item?.product?.image || "https://placehold.co/32x32/E2E8F0/1A202C?text=No+Img"}
+                    alt={item?.product?.name || "No Name"}
                     className="w-8 h-8 object-cover rounded"
                   />
                   <div className="flex-1">
-                    <p className="font-medium">{item.product?.name || "उत्पाद डेटा उपलब्ध नहीं"}</p>
+                    <p className="font-medium">{item?.product?.name || "उत्पाद डेटा उपलब्ध नहीं"}</p>
                     <p className="text-gray-600">
-                      मात्रा: {item.quantity} {item.product?.unit}
+                      मात्रा: {item?.quantity ?? 0} {item?.product?.unit ?? ""}
                     </p>
                   </div>
                 </div>
-              ))}
+              )) ?? <p className="text-sm text-gray-500">कोई आइटम नहीं</p>}
             </div>
           </div>
+
           <div className="flex flex-wrap gap-3 mt-6 pt-4 border-t">
             {!order.deliveryBoyId && ["pending", "accepted", "ready_for_pickup"].includes(order.status) ? (
               <Button
