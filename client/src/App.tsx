@@ -64,14 +64,18 @@ function App() {
                 <Route path="/seller-dashboard" element={<AuthRedirectGuard><SellerDashboard /></AuthRedirectGuard>} />
                 <Route path="/seller-apply" element={<AuthRedirectGuard><SellerApplyPage /></AuthRedirectGuard>} />
                 <Route path="/seller-status" element={<AuthRedirectGuard><SellerStatusPage /></AuthRedirectGuard>} />
-                <Route 
-                  path="/delivery-dashboard" 
-                  element={
-                    <AuthRedirectGuard>
-                      <DeliveryOrdersList />
-                    </AuthRedirectGuard>
-                  } 
-                />
+            
+
+<Route 
+  path="/delivery-dashboard" 
+  element={
+    <AuthRedirectGuard>
+      <SocketProvider>
+        <DeliveryOrdersList />
+      </SocketProvider>
+    </AuthRedirectGuard>
+  } 
+/>
                 <Route path="/delivery-apply" element={<AuthRedirectGuard><DeliveryApplyPage /></AuthRedirectGuard>} />
                 <Route path="/customer/orders" element={<AuthRedirectGuard><CustomerOrdersPage /></AuthRedirectGuard>} />
                 
