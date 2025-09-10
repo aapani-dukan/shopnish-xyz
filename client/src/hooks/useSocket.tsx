@@ -10,26 +10,34 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
 
   useEffect(() => {
     if (isAuthenticated && user) {
-      const socketUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:5001";
-      const newSocket = io(socketUrl, { withCredentials: true });
+      const socketUrl =
+        import.meta.env.VITE_API_BASE_URL || "http://localhost:5001";
+
+      const newSocket = io(socketUrl, {
+        transports: ["websocket"], // ⚡ recommended
+        withCredentials: true,
+      });
 
       setSocket(newSocket);
 
       newSocket.on("connect", () => {
         console.log("✅ Socket connected:", newSocket.id);
+
+        // ✅ Firebase user.uid का इस्तेमाल करो
         newSocket.emit("register-client", {
-          role: user.role,
-          userId: user.id,
+          role: user.role || "customer", // अगर role missing हो तो default
+          userId: user.uid,
         });
+      });
+
+      newSocket.on("disconnect", () => {
+        console.log("❌ Socket disconnected:", newSocket.id);
       });
 
       return () => {
         newSocket.disconnect();
-        console.log("⚡ Socket disconnected");
+        setSocket(null);
       };
-    } else if (socket) {
-      socket.disconnect();
-      setSocket(null);
     }
   }, [isAuthenticated, user]);
 
