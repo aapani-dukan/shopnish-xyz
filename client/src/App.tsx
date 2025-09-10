@@ -74,8 +74,17 @@ function App() {
                 />
                 <Route path="/delivery-apply" element={<AuthRedirectGuard><DeliveryApplyPage /></AuthRedirectGuard>} />
                 <Route path="/customer/orders" element={<AuthRedirectGuard><CustomerOrdersPage /></AuthRedirectGuard>} />
-                <Route path="/order-confirmation/:orderId" element={<OrderConfirmation />} />
+                
 
+                <Route
+  path="/order-confirmation/:orderId"
+  element={
+    <AuthRedirectGuard>
+      <OrderConfirmation />
+    </AuthRedirectGuard>
+  }
+/>
+                
                 {/* Protected - Admin */}
                 <Route path="/admin" element={<AdminGuard><AdminLayout /></AdminGuard>}>
                   <Route path="dashboard" element={<AdminDashboard />} />
