@@ -70,9 +70,9 @@ function App() {
   path="/delivery-dashboard" 
   element={
     <AuthRedirectGuard>
-      <SocketProvider>
+      
         <DeliveryOrdersList />
-      </SocketProvider>
+      
     </AuthRedirectGuard>
   } 
 />
