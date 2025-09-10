@@ -119,32 +119,30 @@ const nextStatusLabel = (status: string) => {
 // -----------------------------------------------------------------------------
 // ## मुख्य React कंपोनेंट: DeliveryOrdersList
 // -----------------------------------------------------------------------------
+
 export default function DeliveryOrdersList() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { user, auth, isLoadingAuth } = useAuth();
+  const socket = useSocket();  // ✅ SocketProvider से hook
 
+  // ✅ Loader while auth or socket is not ready
+  if (isLoadingAuth || !user || !socket) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+        <p className="text-gray-500 mt-2">Connecting to server...</p>
+      </div>
+    );
+  }
+  
   const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
   const [otp, setOtp] = useState("");
   const [otpDialogOpen, setOtpDialogOpen] = useState(false);
 
   const API_BASE = import.meta.env.VITE_API_BASE_URL || "https://shopnish-lzrf.onrender.com";
 
-  // ✅ socket global provider से
-
-
-const socket = useSocket();
-
-// ✅ Safe check before using socket
-if (!socket) {
-  // आप चाहे तो loader दिखा सकते हैं
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <p className="text-gray-500">Connecting to server...</p>
-    </div>
-  );
-}
-
+  // ✅ socket global provider
 useEffect(() => {
   if (!socket || !user) return;
 
