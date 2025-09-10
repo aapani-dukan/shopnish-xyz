@@ -131,37 +131,39 @@ export default function DeliveryOrdersList() {
   const API_BASE = import.meta.env.VITE_API_BASE_URL || "https://shopnish-lzrf.onrender.com";
 
   // ✅ socket global provider से
-  const socket = useSocket();
 
-  useEffect(() => {
-    if (!socket || !user) return;
 
-    const onOrdersChanged = () => {
-      queryClient.invalidateQueries({ queryKey: ["deliveryOrders"] });
-    };
+const socket = useSocket();
 
-    // ✅ register delivery client
-    socket.emit("register-client", { role: "delivery", userId: user.uid });
+// ✅ Safe check before using socket
+if (!socket) {
+  // आप चाहे तो loader दिखा सकते हैं
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <p className="text-gray-500">Connecting to server...</p>
+    </div>
+  );
+}
 
-    // ✅ listen for order changes
-    socket.on("delivery:orders-changed", onOrdersChanged);
-    socket.on("new-order", onOrdersChanged);
+useEffect(() => {
+  if (!socket || !user) return;
 
-    return () => {
-      socket.off("delivery:orders-changed", onOrdersChanged);
-      socket.off("new-order", onOrdersChanged);
-    };
-  }, [socket, user, queryClient]);
-
-  const getValidToken = async () => {
-    if (!auth?.currentUser) return null;
-    try {
-      return await auth.currentUser.getIdToken(true);
-    } catch (err) {
-      console.error("टोकन लाने में त्रुटि:", err);
-      return null;
-    }
+  const onOrdersChanged = () => {
+    queryClient.invalidateQueries({ queryKey: ["deliveryOrders"] });
   };
+
+  // ✅ register delivery client
+  socket.emit("register-client", { role: "delivery", userId: user.uid });
+
+  // ✅ listen for order changes
+  socket.on("delivery:orders-changed", onOrdersChanged);
+  socket.on("new-order", onOrdersChanged);
+
+  return () => {
+    socket.off("delivery:orders-changed", onOrdersChanged);
+    socket.off("new-order", onOrdersChanged);
+  };
+}, [socket, user, queryClient]);
 
   // ✅ Safe Rendering with null-checks
   const renderOrderCard = (order: any) => {
