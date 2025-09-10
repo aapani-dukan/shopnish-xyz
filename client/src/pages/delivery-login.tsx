@@ -29,7 +29,7 @@ export default function DeliveryLogin() {
           email: user.email || "",
           name: user.displayName || user.email || "",
         });
-
+         const deliveryBoy = { ...backendResponse.user, role: "delivery" };
         const deliveryBoy = backendResponse.user;
 
         if (!deliveryBoy) {
