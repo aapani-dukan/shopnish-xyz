@@ -30,7 +30,7 @@ export default function DeliveryLogin() {
           name: user.displayName || user.email || "",
         });
          const deliveryBoy = { ...backendResponse.user, role: "delivery" };
-        const deliveryBoy = backendResponse.user;
+        
 
         if (!deliveryBoy) {
           throw new Error("Delivery boy data not received from backend.");
