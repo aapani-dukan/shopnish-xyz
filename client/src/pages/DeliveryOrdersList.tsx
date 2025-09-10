@@ -132,19 +132,19 @@ export default function DeliveryOrdersList() {
   // Socket setup
 
   // Socket setup (local state use करने की बजाय global useSocket इस्तेमाल करो)
-
 const socket = useSocket();
 
 useEffect(() => {
   if (!socket || !user) return;
 
-  // ✅ जब नया order आए या orders change हों तो refresh कर दो
   const onOrdersChanged = () => {
     queryClient.invalidateQueries({ queryKey: ["deliveryOrders"] });
   };
 
+  // ✅ register delivery client
   socket.emit("register-client", { role: "delivery", userId: user.uid });
 
+  // ✅ listen for order changes
   socket.on("delivery:orders-changed", onOrdersChanged);
   socket.on("new-order", onOrdersChanged);
 
@@ -153,7 +153,7 @@ useEffect(() => {
     socket.off("new-order", onOrdersChanged);
   };
 }, [socket, user, queryClient]);
-  
+
 // ✅ socket को dependency से हटा दिया
   const getValidToken = async () => {
     if (!auth?.currentUser) return null;
