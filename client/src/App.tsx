@@ -25,7 +25,7 @@ import AdminLogin from "@/pages/admin-login";
 import OrderConfirmation from "@/pages/order-confirmation";
 import CustomerOrdersPage from "@/pages/customer/orders";
 import Checkout2 from "./pages/checkout2";
-import DeliveryDashboard from "@/pages/DeliveryDashbkard";
+import DeliveryDashboard from "@/pages/DeliveryDashboard";
 
 // Protected / Auth-based
 import AuthRedirectGuard from "@/components/auth-redirect-guard";
