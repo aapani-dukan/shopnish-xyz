@@ -42,7 +42,7 @@ export default function DeliveryLogin() {
 
         if (deliveryBoy.approvalStatus === "approved") {
           toast({ title: "Login Successful", description: `Welcome ${deliveryBoy.name || deliveryBoy.email}` });
-          navigate("/delivery-dashboard");
+          navigate("/delivery-page");
         } else {
           toast({
             title: "Approval Pending",
