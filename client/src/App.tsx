@@ -44,7 +44,7 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <AuthProvider>
-          <SocketProvider> {/* ✅ Global wrapper */}
+         {/* <SocketProvider>  ✅ Global wrapper */}
             <Toaster />
             <Header onCartClick={() => setIsCartModalOpen(true)} />
             <main className="min-h-screen">
@@ -100,7 +100,7 @@ function App() {
               </Routes>
             </main>
             <CartModal isOpen={isCartModalOpen} onClose={() => setIsCartModalOpen(false)} />
-          </SocketProvider>
+          {/* </SocketProvider>*/}
         </AuthProvider>
       </TooltipProvider>
     </QueryClientProvider>
