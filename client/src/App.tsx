@@ -1,11 +1,5 @@
 import { useState } from "react";
 import { Routes, Route } from "react-router-dom";
-import { QueryClientProvider } from "@tanstack/react-query";
-import { queryClient } from "./lib/queryClient";
-import { Toaster } from "@/components/ui/toaster";
-import { AuthProvider } from "@/hooks/useAuth";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { SocketProvider } from "@/hooks/useSocket"; // ✅ Global SocketProvider
 
 // Layouts and components
 import Header from "./components/header";
@@ -33,77 +27,49 @@ import CustomerOrdersPage from "@/pages/customer/orders";
 import Checkout2 from "./pages/checkout2";
 import DeliveryOrdersList from "@/pages/DeliveryOrdersList";
 
-// Centralized auth-based routing
-import AuthRedirectGuard from "@/components/auth-redirect-guard";
+// Protected routes
 import AdminGuard from "@/components/admin-guard";
 
 function App() {
   const [isCartModalOpen, setIsCartModalOpen] = useState(false);
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <AuthProvider>
-         {/* <SocketProvider>  ✅ Global wrapper */}
-            <Toaster />
-            <Header onCartClick={() => setIsCartModalOpen(true)} />
-            <main className="min-h-screen">
-              <Routes>
-                {/* Public routes */}
-                <Route path="/" element={<HomePage />} />
-                <Route path="/products/:id" element={<ProductDetail />} />
-                <Route path="/cart" element={<Cart />} />
-                <Route path="/checkout" element={<Checkout />} />
-                <Route path="/checkout2/:id" element={<Checkout2 />} />
-                <Route path="/auth" element={<AuthPage />} />
-                <Route path="/login" element={<LoginPage />} />
-                <Route path="/admin-login" element={<AdminLogin />} />
-                <Route path="/delivery-login" element={<DeliveryLogin />} />
+    <>
+      <Header onCartClick={() => setIsCartModalOpen(true)} />
+      <main className="min-h-screen">
+        <Routes>
+          {/* Public routes */}
+          <Route path="/" element={<HomePage />} />
+          <Route path="/products/:id" element={<ProductDetail />} />
+          <Route path="/cart" element={<Cart />} />
+          <Route path="/checkout" element={<Checkout />} />
+          <Route path="/checkout2/:id" element={<Checkout2 />} />
+          <Route path="/auth" element={<AuthPage />} />
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/admin-login" element={<AdminLogin />} />
+          <Route path="/delivery-login" element={<DeliveryLogin />} />
 
-                {/* Protected - Normal Auth */}
-                <Route path="/seller-dashboard" element={<AuthRedirectGuard><SellerDashboard /></AuthRedirectGuard>} />
-                <Route path="/seller-apply" element={<AuthRedirectGuard><SellerApplyPage /></AuthRedirectGuard>} />
-                <Route path="/seller-status" element={<AuthRedirectGuard><SellerStatusPage /></AuthRedirectGuard>} />
-            
+          {/* Protected routes */}
+          <Route path="/seller-dashboard" element={<SellerDashboard />} />
+          <Route path="/seller-apply" element={<SellerApplyPage />} />
+          <Route path="/seller-status" element={<SellerStatusPage />} />
+          <Route path="/delivery-dashboard" element={<DeliveryOrdersList />} />
+          <Route path="/delivery-apply" element={<DeliveryApplyPage />} />
+          <Route path="/customer/orders" element={<CustomerOrdersPage />} />
+          <Route path="/order-confirmation/:orderId" element={<OrderConfirmation />} />
 
-<Route 
-  path="/delivery-dashboard" 
-  element={
-    <AuthRedirectGuard>
-      
-        <DeliveryOrdersList />
-      
-    </AuthRedirectGuard>
-  } 
-/>
-                <Route path="/delivery-apply" element={<AuthRedirectGuard><DeliveryApplyPage /></AuthRedirectGuard>} />
-                <Route path="/customer/orders" element={<AuthRedirectGuard><CustomerOrdersPage /></AuthRedirectGuard>} />
-                
+          {/* Admin */}
+          <Route path="/admin" element={<AdminGuard><AdminLayout /></AdminGuard>}>
+            <Route path="dashboard" element={<AdminDashboard />} />
+            <Route path="categories" element={<CategoriesManagement />} />
+          </Route>
 
-                <Route
-  path="/order-confirmation/:orderId"
-  element={
-    <AuthRedirectGuard>
-      <OrderConfirmation />
-    </AuthRedirectGuard>
-  }
-/>
-                
-                {/* Protected - Admin */}
-                <Route path="/admin" element={<AdminGuard><AdminLayout /></AdminGuard>}>
-                  <Route path="dashboard" element={<AdminDashboard />} />
-                  <Route path="categories" element={<CategoriesManagement />} />
-                </Route>
-                
-                {/* 404 */}
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </main>
-            <CartModal isOpen={isCartModalOpen} onClose={() => setIsCartModalOpen(false)} />
-          {/* </SocketProvider>*/}
-        </AuthProvider>
-      </TooltipProvider>
-    </QueryClientProvider>
+          {/* 404 */}
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </main>
+      <CartModal isOpen={isCartModalOpen} onClose={() => setIsCartModalOpen(false)} />
+    </>
   );
 }
 
