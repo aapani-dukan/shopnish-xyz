@@ -119,53 +119,64 @@ const nextStatusLabel = (status: string) => {
 // -----------------------------------------------------------------------------
 // ## मुख्य React कंपोनेंट: DeliveryOrdersList
 // -----------------------------------------------------------------------------
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "https://shopnish-lzrf.onrender.com";
 
 export default function DeliveryOrdersList() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { user, auth, isLoadingAuth } = useAuth();
-  const socket = useSocket();  // ✅ SocketProvider से hook
+  const socket = useSocket();
 
-  // ✅ Loader while auth or socket is not ready
+  const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
+  const [otp, setOtp] = useState("");
+  const [otpDialogOpen, setOtpDialogOpen] = useState(false);
+
+  // Loader while auth or socket not ready
   if (isLoadingAuth || !user || !socket) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50">
         <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
         <p className="text-gray-500 mt-2">Connecting to server...</p>
       </div>
     );
   }
-  
-  const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
-  const [otp, setOtp] = useState("");
-  const [otpDialogOpen, setOtpDialogOpen] = useState(false);
 
-  const API_BASE = import.meta.env.VITE_API_BASE_URL || "https://shopnish-lzrf.onrender.com";
+  // Fetch delivery orders
+  const { data: orders } = useQuery({
+    queryKey: ["deliveryOrders"],
+    queryFn: async () => {
+      const res = await fetch(`${API_BASE}/api/delivery/orders`, {
+        headers: { Authorization: `Bearer ${auth?.token}` },
+      });
+      if (!res.ok) throw new Error("Failed to fetch orders");
+      return res.json();
+    },
+  });
 
-  // ✅ socket global provider
-useEffect(() => {
-  if (!socket || !user) return;
+  // Socket listeners
+  useEffect(() => {
+    if (!socket || !user) return;
 
-  const onOrdersChanged = () => {
-    queryClient.invalidateQueries({ queryKey: ["deliveryOrders"] });
-  };
+    const onOrdersChanged = () => {
+      queryClient.invalidateQueries({ queryKey: ["deliveryOrders"] });
+    };
 
-  // ✅ register delivery client
-  socket.emit("register-client", { role: "delivery", userId: user.uid });
+    socket.emit("register-client", { role: "delivery", userId: user.uid });
+    socket.on("delivery:orders-changed", onOrdersChanged);
+    socket.on("new-order", onOrdersChanged);
 
-  // ✅ listen for order changes
-  socket.on("delivery:orders-changed", onOrdersChanged);
-  socket.on("new-order", onOrdersChanged);
+    return () => {
+      socket.off("delivery:orders-changed", onOrdersChanged);
+      socket.off("new-order", onOrdersChanged);
+    };
+  }, [socket, user, queryClient]);
 
-  return () => {
-    socket.off("delivery:orders-changed", onOrdersChanged);
-    socket.off("new-order", onOrdersChanged);
-  };
-}, [socket, user, queryClient]);
-
-  // ✅ Safe Rendering with null-checks
+  // Render single order card
   const renderOrderCard = (order: any) => {
     if (!order) return null;
+    
+
+  
 
     const addressData = order?.deliveryAddress ?? null;
     const isAddressObject = typeof addressData === "object" && addressData !== null;
