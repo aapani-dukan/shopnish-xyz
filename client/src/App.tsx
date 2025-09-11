@@ -76,7 +76,7 @@ function App() {
             }
           />
           <Route
-            path="/delivery-dashboard"
+            path="/delivery-page"
             element={
               <AuthRedirectGuard>
                 <DeliveryDashboard />
