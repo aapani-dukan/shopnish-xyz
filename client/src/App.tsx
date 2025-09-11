@@ -27,7 +27,8 @@ import CustomerOrdersPage from "@/pages/customer/orders";
 import Checkout2 from "./pages/checkout2";
 import DeliveryOrdersList from "@/pages/DeliveryOrdersList";
 
-// Protected routes
+// Protected / Auth-based
+import AuthRedirectGuard from "@/components/auth-redirect-guard";
 import AdminGuard from "@/components/admin-guard";
 
 function App() {
@@ -50,16 +51,72 @@ function App() {
           <Route path="/delivery-login" element={<DeliveryLogin />} />
 
           {/* Protected routes */}
-          <Route path="/seller-dashboard" element={<SellerDashboard />} />
-          <Route path="/seller-apply" element={<SellerApplyPage />} />
-          <Route path="/seller-status" element={<SellerStatusPage />} />
-          <Route path="/delivery-dashboard" element={<DeliveryOrdersList />} />
-          <Route path="/delivery-apply" element={<DeliveryApplyPage />} />
-          <Route path="/customer/orders" element={<CustomerOrdersPage />} />
-          <Route path="/order-confirmation/:orderId" element={<OrderConfirmation />} />
+          <Route
+            path="/seller-dashboard"
+            element={
+              <AuthRedirectGuard>
+                <SellerDashboard />
+              </AuthRedirectGuard>
+            }
+          />
+          <Route
+            path="/seller-apply"
+            element={
+              <AuthRedirectGuard>
+                <SellerApplyPage />
+              </AuthRedirectGuard>
+            }
+          />
+          <Route
+            path="/seller-status"
+            element={
+              <AuthRedirectGuard>
+                <SellerStatusPage />
+              </AuthRedirectGuard>
+            }
+          />
+          <Route
+            path="/delivery-dashboard"
+            element={
+              <AuthRedirectGuard>
+                <DeliveryOrdersList />
+              </AuthRedirectGuard>
+            }
+          />
+          <Route
+            path="/delivery-apply"
+            element={
+              <AuthRedirectGuard>
+                <DeliveryApplyPage />
+              </AuthRedirectGuard>
+            }
+          />
+          <Route
+            path="/customer/orders"
+            element={
+              <AuthRedirectGuard>
+                <CustomerOrdersPage />
+              </AuthRedirectGuard>
+            }
+          />
+          <Route
+            path="/order-confirmation/:orderId"
+            element={
+              <AuthRedirectGuard>
+                <OrderConfirmation />
+              </AuthRedirectGuard>
+            }
+          />
 
           {/* Admin */}
-          <Route path="/admin" element={<AdminGuard><AdminLayout /></AdminGuard>}>
+          <Route
+            path="/admin"
+            element={
+              <AdminGuard>
+                <AdminLayout />
+              </AdminGuard>
+            }
+          >
             <Route path="dashboard" element={<AdminDashboard />} />
             <Route path="categories" element={<CategoriesManagement />} />
           </Route>
