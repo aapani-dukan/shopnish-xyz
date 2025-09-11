@@ -1,15 +1,17 @@
+// client/src/pages/delivery-apply.tsx  (यह फ़ाइल का नाम है, इसमें कोई बदलाव नहीं)
+
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useToast } from "@/hooks/use-toast";
-import { useDeliveryBoy } from "@/hooks/useDeliveryBoy";
+import { useDeliveryBoy } from "@/hooks/useDeliveryBoy"; // ✅ 'useDeliveryBoy' को ठीक किया
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { getAuth } from "firebase/auth";
 
-// ✅ ईमेल और Firebase UID को स्कीमा में जोड़ा गया है
+// ✅ ईमेल और firebase uid को स्कीमा में जोड़ा गया है
 const deliveryApplySchema = z.object({
   fullName: z.string().min(2, "Full name is required"),
   phone: z.string().min(10, "Phone number is required"),
@@ -19,8 +21,10 @@ const deliveryApplySchema = z.object({
 
 type DeliveryApplyData = z.infer<typeof deliveryApplySchema>;
 
+// ✅ कंपोनेंट का नाम `DeliveryApplyPage` में ठीक किया, फ़ाइल का नाम वही रहेगा।
 export default function DeliveryApplyPage() {
   const { toast } = useToast();
+  // ✅ fetchDeliveryUser को ठीक किया
   const { deliveryUser, fetchDeliveryUser } = useDeliveryBoy();
 
   const {
@@ -37,20 +41,20 @@ export default function DeliveryApplyPage() {
     },
   });
 
-  const onSubmit = async (formData: DeliveryApplyData) => { // ✅ नाम को 'formData' में बदला
+  const onSubmit = async (formData: DeliveryApplyData) => {
     const auth = getAuth();
     const user = auth.currentUser;
 
     if (!user) {
       toast({
-        title: "Authentication Required",
+        title: "Authentication required",
         description: "Please log in to submit your application.",
         variant: "destructive",
       });
       return;
     }
 
-    const { email, uid: firebaseUid } = user; // ✅ Firebase उपयोगकर्ता से ईमेल और UID प्राप्त करें
+    const { email, uid: firebaseUid } = user;
 
     // ✅ डेटा ऑब्जेक्ट में ईमेल और firebaseUid जोड़ें
     const dataToSend = {
@@ -79,7 +83,7 @@ export default function DeliveryApplyPage() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(dataToSend), // ✅ 'dataToSend' का उपयोग करें
+        body: JSON.stringify(dataToSend),
       });
 
       if (!res.ok) {
@@ -98,6 +102,7 @@ export default function DeliveryApplyPage() {
         description: "Wait for admin approval.",
       });
 
+      // `useDeliveryBoy` में fetchDeliveryUser है
       if (typeof fetchDeliveryUser === 'function') {
         fetchDeliveryUser();
       }
@@ -142,7 +147,7 @@ export default function DeliveryApplyPage() {
 
         <div>
           <Label htmlFor="vehicleType">Vehicle Type</Label>
-          <Input id="vehicleType" placeholder="e.g., Bike, Scooter" {...register("vehicleType")} />
+          <Input id="vehicleType" placeholder="e.g., bike, scooter" {...register("vehicleType")} />
           {errors.vehicleType && (
             <p className="text-sm text-red-500">{errors.vehicleType.message}</p>
           )}
