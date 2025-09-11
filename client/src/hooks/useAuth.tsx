@@ -2,7 +2,7 @@
 
 import { useEffect, useState, createContext, useContext, useCallback, useMemo } from "react"; // `useMemo` जोड़ा
 import { User as FirebaseUser } from "firebase/auth";
-import { useQueryClient } from 'tanstack/react-query'; // `useQueryClient` में `usequeryclient` को ठीक किया
+import { useQueryClient } from '@tanstack/react-query'; // `useQueryClient` में `usequeryclient` को ठीक किया
 import { 
   auth,
   onAuthStateChanged, // `onAuthStateChanged` में `onauthstatechanged` को ठीक किया
