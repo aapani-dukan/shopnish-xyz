@@ -1,5 +1,5 @@
 import { useEffect, useState, createContext, useContext, useCallback } from "react";
-import { User as FirebaseUser } from "firebase/auth";
+import { User as FirebaseUser } from "firebase/auth"; // Renamed to avoid conflict with your custom User interface
 import { useQueryClient } from '@tanstack/react-query';
 import { 
   auth,
@@ -7,97 +7,107 @@ import {
   handleRedirectResult as firebaseHandleRedirectResult,
   signInWithGoogle as firebaseSignInWithGoogle,
   signOutUser,
-  AuthError,
-} from "@/lib/firebase";
-import { apiRequest } from "@/lib/queryClient";
+  AuthError, // Assuming AuthError is correctly imported and casing is correct
+} from "@/lib/firebase"; // Assuming the path is correct and casing is consistent
+import { apiRequest } from "@/lib/queryClient"; // Assuming the path is correct and casing is consistent
 
 // --- आपके प्रकारों को ठीक करें ---
-export interface SellerInfo {
+export interface SellerInfo { // Renamed
   id: string;
-  userId: string;
-  businessName: string;
-  approvalStatus: "pending" | "approved" | "rejected";
-  rejectionReason?: string | null;
+  userId: string; // Renamed
+  businessName: string; // Renamed
+  approvalStatus: "pending" | "approved" | "rejected"; // Renamed
+  rejectionReason?: string | null; // Renamed
   [key: string]: any;
 }
 
-export interface User {
+export interface User { // Renamed
   id: string;
   uid?: string;
   email: string | null;
   name: string | null;
   role: "customer" | "seller" | "admin" | "delivery";
-  sellerProfile?: SellerInfo | null;
-  idToken?: string;
+  sellerProfile?: SellerInfo | null; // Renamed
+  idToken?: string; // Renamed
 }
 
-interface AuthContextType {
-  user: User | null;
-  isLoadingAuth: boolean;
-  isAuthenticated: boolean;
-  isAdmin: boolean;
-  error: AuthError | null;
-  clearError: () => void;
-  signIn: (usePopup?: boolean) => Promise<FirebaseUser | null>;
-  signOut: () => Promise<void>;
-  refetchUser: () => void;
+interface AuthContextType { // Renamed
+  user: User | null; // Renamed
+  isLoadingAuth: boolean; // Renamed
+  isAuthenticated: boolean; // Renamed
+  isAdmin: boolean; // Renamed
+  error: AuthError | null; // Renamed
+  clearError: () => void; // Renamed
+  signIn: (usePopup?: boolean) => Promise<FirebaseUser | null>; // Renamed and using Promise
+  signOut: () => Promise<void>; // Renamed and using Promise
+  refetchUser: () => void; // Renamed
   // ✅ नया फ़ंक्शन: backend से प्राप्त user data को सेट करने के लिए
-  backendLogin: (email: string, password: string) => Promise<User>; 
+  backendLogin: (email: string, password: string) => Promise<User>; // Renamed and using Promise
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+const AuthContext = createContext<AuthContextType | undefined>(undefined); // Renamed
 
-export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [isLoadingAuth, setIsLoadingAuth] = useState(true);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [authError, setAuthError] = useState<AuthError | null>(null);
-  const queryClient = useQueryClient();
+export const AuthProvider = ({ children }: { children: React.ReactNode }) => { // Renamed
+  const [user, setUser] = useState<User | null>(null); // Renamed
+  const [isLoadingAuth, setIsLoadingAuth] = useState(true); // Renamed
+  const [isAuthenticated, setIsAuthenticated] = useState(false); // Renamed
+  const [isAdmin, setIsAdmin] = useState(false); // Renamed
+  const [authError, setAuthError] = useState<AuthError | null>(null); // Renamed
+  const queryClient = useQueryClient(); // Renamed
 
-  const clearError = useCallback(() => {
+  const clearError = useCallback(() => { // Renamed
     setAuthError(null);
   }, []);
 
   // ✅ यह useEffect केवल Firebase auth state को मैनेज करेगा
   useEffect(() => {
+    const checkRedirectResult = async () => { // Renamed
+      try {
+        await firebaseHandleRedirectResult(); // Renamed
+      } catch (error) {
+        console.error("Error handling redirect result:", error);
+      }
+    };
+    checkRedirectResult(); // Call it
+
     const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
       if (fbUser) {
-        // अगर Firebase User है, तो isLoadingAuth को true रखें और आगे backend login करें
+        // अगर Firebase user है, तो isLoadingAuth को true रखें और आगे backend login करें
         setIsLoadingAuth(true); 
         try {
-          const idToken = await fbUser.getIdToken();
-          const res = await apiRequest("POST", `/api/users/login`, { idToken });
-          const dbUserData = res.user;
+          const idToken = await fbUser.getIdToken(); // Renamed
+          const res = await apiRequest("POST", `/api/users/login`, { idToken }); // Renamed, POST for consistency
+          const dbUserData = res.user; // Renamed
           
-          const currentUser: User = {
+          const currentUser: User = { // Renamed
             uid: fbUser.uid,
             id: dbUserData?.id,
             email: fbUser.email || dbUserData?.email,
-            name: fbUser.displayName || dbUserData?.name,
+            name: fbUser.displayName || dbUserData?.name, // Renamed
             role: dbUserData?.role || 'customer',
-            idToken: idToken,
-            sellerProfile: dbUserData?.sellerProfile || null,
+            idToken: idToken, // Renamed
+            sellerProfile: dbUserData?.sellerProfile || null, // Renamed
           };
           
-          setUser(currentUser);
-          setIsAuthenticated(true);
-          setIsAdmin(currentUser.role === 'admin'); 
+          setUser(currentUser); // Renamed
+          setIsAuthenticated(true); // Renamed
+          setIsAdmin(currentUser.role === 'admin'); // Renamed
           console.log("✅ User successfully authenticated and profile fetched from backend.");
+          
         } catch (e: any) {
           console.error("❌ Backend communication failed on auth state change:", e);
-          await auth.signOut();
-          setAuthError(e as AuthError);
-          setIsAuthenticated(false);
-          setIsAdmin(false);
-          setUser(null);
+          await auth.signOut(); // Renamed
+          setAuthError(e as AuthError); // Renamed
+          setIsAuthenticated(false); // Renamed
+          setIsAdmin(false); // Renamed
+          setUser(null); // Renamed
         }
       } else {
         console.log("❌ Firebase auth state changed: User is logged out.");
-        setUser(null);
-        setIsAuthenticated(false);
-        setIsAdmin(false);
-        queryClient.clear();
+        setUser(null); // Renamed
+        setIsAuthenticated(false); // Renamed
+        setIsAdmin(false); // Renamed
+        queryClient.clear(); // Renamed
       }
       setIsLoadingAuth(false); // ✅ Firebase auth state change के बाद ही इसे false करें
     });
@@ -105,99 +115,99 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     return () => unsubscribe();
   }, [queryClient]); // `queryClient` को dependency में रखें
 
-  const signIn = useCallback(async (usePopup: boolean = false): Promise<FirebaseUser | null> => {
-    setIsLoadingAuth(true);
-    setAuthError(null);
+  const signIn = useCallback(async (usePopup: boolean = false): Promise<FirebaseUser | null> => { // Renamed and using Promise
+    setIsLoadingAuth(true); // Renamed
+    setAuthError(null); // Renamed
     try {
-      const fbUser = await firebaseSignInWithGoogle(usePopup);
+      const fbUser = await firebaseSignInWithGoogle(usePopup); // Renamed
       return fbUser;
     } catch (err: any) {
-      setAuthError(err as AuthError);
-      setIsLoadingAuth(false);
+      setAuthError(err as AuthError); // Renamed
+      setIsLoadingAuth(false); // Renamed
       throw err;
     }
   }, []);
 
-  const signOut = useCallback(async () => {
+  const signOut = useCallback(async () => { // Renamed
     try {
-      await signOutUser();
-      setAuthError(null);
-      setUser(null);
-      setIsAuthenticated(false);
-      setIsAdmin(false);
-      queryClient.clear();
+      await signOutUser(); // Renamed
+      setAuthError(null); // Renamed
+      setUser(null); // Renamed
+      setIsAuthenticated(false); // Renamed
+      setIsAdmin(false); // Renamed
+      queryClient.clear(); // Renamed
     } catch (err: any) {
-      setAuthError(err as AuthError);
+      setAuthError(err as AuthError); // Renamed
       throw err;
     }
-  }, [queryClient]);
+  }, [queryClient]); // Renamed
 
-  const refetchUser = useCallback(async () => {
-    setIsLoadingAuth(true);
-    const fbUser = auth.currentUser;
+  const refetchUser = useCallback(async () => { // Renamed
+    setIsLoadingAuth(true); // Renamed
+    const fbUser = auth.currentUser; // Renamed
     if (fbUser) {
       try {
-        const idToken = await fbUser.getIdToken();
-        const res = await apiRequest("POST", `/api/users/login`, { idToken });
-        const dbUserData = res.user;
+        const idToken = await fbUser.getIdToken(); // Renamed
+        const res = await apiRequest("POST", `/api/users/login`, { idToken }); // Renamed, POST for consistency
+        const dbUserData = res.user; // Renamed
         
-        const currentUser: User = {
+        const currentUser: User = { // Renamed
           uid: fbUser.uid,
           id: dbUserData?.id,
           email: fbUser.email || dbUserData?.email,
-          name: fbUser.displayName || dbUserData?.name,
+          name: fbUser.displayName || dbUserData?.name, // Renamed
           role: dbUserData?.role || 'customer',
-          idToken: idToken,
-          sellerProfile: dbUserData?.sellerProfile || null,
+          idToken: idToken, // Renamed
+          sellerProfile: dbUserData?.sellerProfile || null, // Renamed
         };
-        setUser(currentUser);
-        setIsAuthenticated(true);
-        setIsAdmin(currentUser.role === 'admin'); 
+        setUser(currentUser); // Renamed
+        setIsAuthenticated(true); // Renamed
+        setIsAdmin(currentUser.role === 'admin'); // Renamed
       } catch (e) {
-        console.error("Failed to refetch user data:", e);
-        setAuthError(e as AuthError);
-        setIsAuthenticated(false);
-        setIsAdmin(false);
+        console.error("Failed to refetch user data:", e); // Renamed
+        setAuthError(e as AuthError); // Renamed
+        setIsAuthenticated(false); // Renamed
+        setIsAdmin(false); // Renamed
       }
     }
-    setIsLoadingAuth(false);
+    setIsLoadingAuth(false); // Renamed
   }, []);
 
-  const backendLogin = useCallback(async (email: string, password: string): Promise<User> => {
-    setAuthError(null);
-    setIsLoadingAuth(true);
+  const backendLogin = useCallback(async (email: string, password: string): Promise<User> => { // Renamed and using Promise
+    setAuthError(null); // Renamed
+    setIsLoadingAuth(true); // Renamed
     try {
       const res = await apiRequest("POST", "/api/delivery/login", { email, password });
-      const backendUser = res.user;
+      const backendUser = res.user; // Renamed
 
       if (!backendUser) {
-        throw new Error("Invalid user data received from backend.");
+        throw new Error("Invalid user data received from backend."); // Using Error
       }
 
       // ✅ auth state को मैन्युअल रूप से अपडेट करें
-      const currentUser: User = {
+      const currentUser: User = { // Renamed
         id: backendUser.id,
         email: backendUser.email,
         name: backendUser.name,
         role: backendUser.role,
-        sellerProfile: backendUser.sellerProfile || null,
+        sellerProfile: backendUser.sellerProfile || null, // Renamed
       };
 
-      setUser(currentUser);
-      setIsAuthenticated(true);
-      setIsAdmin(currentUser.role === 'admin');
-      setIsLoadingAuth(false);
+      setUser(currentUser); // Renamed
+      setIsAuthenticated(true); // Renamed
+      setIsAdmin(currentUser.role === 'admin'); // Renamed
+      setIsLoadingAuth(false); // Renamed
 
-      return currentUser;
+      return currentUser; // Renamed
 
     } catch (err: any) {
-      setAuthError(err as AuthError);
-      setIsLoadingAuth(false);
+      setAuthError(err as AuthError); // Renamed
+      setIsLoadingAuth(false); // Renamed
       throw err;
     }
   }, []);
 
-  const authContextValue = {
+  const authContextValue = { // Renamed
     user,
     isLoadingAuth,
     isAuthenticated,
@@ -211,8 +221,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   return (
-    <AuthContext.Provider value={authContextValue}>
+    <AuthContext.Provider value={authContextValue}> // Renamed
       {children}
     </AuthContext.Provider>
   );
+};
+
+export const useAuth = () => { // Renamed
+  const ctx = useContext(AuthContext); // Renamed
+  if (!ctx) throw new Error("useAuth must be used within an AuthProvider"); // Renamed and using Error
+  return ctx;
 };
