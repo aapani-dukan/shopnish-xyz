@@ -10,24 +10,20 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/hooks/useAuth";
 import { SocketProvider } from "@/hooks/useSocket";
-import AuthRedirectGuard from "@/components/auth-redirect-guard";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <AuthProvider>
-          {/* ✅ AuthRedirectGuard wrapper at top-level */}
-          <AuthRedirectGuard>
+    <BrowserRouter> {/* ✅ Router at the top */}
+      <QueryClientProvider client={queryClient}>
+        <TooltipProvider>
+          <AuthProvider>
             <SocketProvider>
               <Toaster />
-              <BrowserRouter>
-                <App />
-              </BrowserRouter>
+              <App />
             </SocketProvider>
-          </AuthRedirectGuard>
-        </AuthProvider>
-      </TooltipProvider>
-    </QueryClientProvider>
+          </AuthProvider>
+        </TooltipProvider>
+      </QueryClientProvider>
+    </BrowserRouter>
   </React.StrictMode>
 );
