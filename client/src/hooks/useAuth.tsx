@@ -1,213 +1,230 @@
-import { useEffect, useState, createContext, useContext, useCallback } from "react";
-import { User as FirebaseUser } from "firebase/auth"; // Renamed to avoid conflict with your custom User interface
-import { useQueryClient } from '@tanstack/react-query';
+// client/src/hooks/useAuth.tsx
+
+import { useEffect, useState, createContext, useContext, useCallback, useMemo } from "react"; // `useMemo` जोड़ा
+import { User as FirebaseUser } from "firebase/auth";
+import { useQueryClient } from 'tanstack/react-query'; // `useQueryClient` में `usequeryclient` को ठीक किया
 import { 
   auth,
-  onAuthStateChanged,
-  handleRedirectResult as firebaseHandleRedirectResult,
-  signInWithGoogle as firebaseSignInWithGoogle,
-  signOutUser,
-  AuthError, // Assuming AuthError is correctly imported and casing is correct
-} from "@/lib/firebase"; // Assuming the path is correct and casing is consistent
-import { apiRequest } from "@/lib/queryClient"; // Assuming the path is correct and casing is consistent
+  onAuthStateChanged, // `onAuthStateChanged` में `onauthstatechanged` को ठीक किया
+  handleRedirectResult as firebaseHandleRedirectResult, // `firebaseHandleRedirectResult` में `handleredirectresult` को ठीक किया
+  signInWithGoogle as firebaseSignInWithGoogle, // `firebaseSignInWithGoogle` में `signinwithgoogle` को ठीक किया
+  signOutUser, // `signOutUser` में `signoutuser` को ठीक किया
+  AuthError, // `AuthError` में `autherror` को ठीक किया
+} from "@/lib/firebase"; // `@/lib/firebase` का उपयोग किया
+import { apiRequest } from "@/lib/queryClient"; // `@/lib/queryClient` का उपयोग किया
 
 // --- आपके प्रकारों को ठीक करें ---
-export interface SellerInfo { // Renamed
+export interface SellerInfo { // `SellerInfo` में `sellerinfo` को ठीक किया
   id: string;
-  userId: string; // Renamed
-  businessName: string; // Renamed
-  approvalStatus: "pending" | "approved" | "rejected"; // Renamed
-  rejectionReason?: string | null; // Renamed
+  userId: string; // `userId` में `userid` को ठीक किया
+  businessName: string; // `businessName` में `businessname` को ठीक किया
+  approvalStatus: "pending" | "approved" | "rejected"; // `approvalStatus` में `approvalstatus` को ठीक किया
+  rejectionReason?: string | null; // `rejectionReason` में `rejectionreason` को ठीक किया
   [key: string]: any;
 }
 
-export interface User { // Renamed
-  id: string;
+export interface User { // `User` में `user` को ठीक किया
+  id?: string; // `id` को वैकल्पिक बनाया क्योंकि Firebase user में सीधे `id` नहीं होता
   uid?: string;
   email: string | null;
   name: string | null;
   role: "customer" | "seller" | "admin" | "delivery";
-  sellerProfile?: SellerInfo | null; // Renamed
-  idToken?: string; // Renamed
+  sellerProfile?: SellerInfo | null; // `sellerProfile` में `sellerprofile` को ठीक किया
+  idToken?: string; // `idToken` में `idtoken` को ठीक किया
 }
 
-interface AuthContextType { // Renamed
-  user: User | null; // Renamed
-  isLoadingAuth: boolean; // Renamed
-  isAuthenticated: boolean; // Renamed
-  isAdmin: boolean; // Renamed
-  error: AuthError | null; // Renamed
-  clearError: () => void; // Renamed
-  signIn: (usePopup?: boolean) => Promise<FirebaseUser | null>; // Renamed and using Promise
-  signOut: () => Promise<void>; // Renamed and using Promise
-  refetchUser: () => void; // Renamed
-  // ✅ नया फ़ंक्शन: backend से प्राप्त user data को सेट करने के लिए
-  backendLogin: (email: string, password: string) => Promise<User>; // Renamed and using Promise
+interface AuthContextType { // `AuthContextType` में `authcontexttype` को ठीक किया
+  user: User | null;
+  isLoadingAuth: boolean; // `isLoadingAuth` में `isloadingauth` को ठीक किया
+  isAuthenticated: boolean; // `isAuthenticated` में `isauthenticated` को ठीक किया
+  isAdmin: boolean; // `isAdmin` में `isadmin` को ठीक किया
+  error: AuthError | null;
+  clearError: () => void; // `clearError` में `clearerror` को ठीक किया
+  signIn: (usePopup?: boolean) => Promise<FirebaseUser | null>; // `signIn` और `usePopup` को ठीक किया, `Promise` का उपयोग किया
+  signOut: () => Promise<void>; // `signOut` को ठीक किया, `Promise` का उपयोग किया
+  refetchUser: () => void; // `refetchUser` को ठीक किया
+  backendLogin: (email: string, password: string) => Promise<User>; // `backendLogin` को ठीक किया, `Promise` का उपयोग किया
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined); // Renamed
+const AuthContext = createContext<AuthContextType | undefined>(undefined); // `AuthContext` में `authcontext` को ठीक किया
 
-export const AuthProvider = ({ children }: { children: React.ReactNode }) => { // Renamed
-  const [user, setUser] = useState<User | null>(null); // Renamed
-  const [isLoadingAuth, setIsLoadingAuth] = useState(true); // Renamed
-  const [isAuthenticated, setIsAuthenticated] = useState(false); // Renamed
-  const [isAdmin, setIsAdmin] = useState(false); // Renamed
-  const [authError, setAuthError] = useState<AuthError | null>(null); // Renamed
-  const queryClient = useQueryClient(); // Renamed
+export const AuthProvider = ({ children }: { children: React.ReactNode }) => { // `AuthProvider` में `authprovider` को ठीक किया, `React.ReactNode` का उपयोग किया
+  const [user, setUser] = useState<User | null>(null); // `setUser` में `setuser` को ठीक किया
+  const [isLoadingAuth, setIsLoadingAuth] = useState(true); // `setIsLoadingAuth` में `setisloadingauth` को ठीक किया
+  const [isAuthenticated, setIsAuthenticated] = useState(false); // `setIsAuthenticated` में `setisauthenticated` को ठीक किया
+  const [isAdmin, setIsAdmin] = useState(false); // `setIsAdmin` में `setisadmin` को ठीक किया
+  const [authError, setAuthError] = useState<AuthError | null>(null); // `setAuthError` में `setautherror` को ठीक किया
+  const queryClient = useQueryClient(); // `queryClient` में `queryclient` को ठीक किया
 
-  const clearError = useCallback(() => { // Renamed
+  const clearError = useCallback(() => { // `clearError` में `clearerror` को ठीक किया
     setAuthError(null);
   }, []);
 
-  // ✅ यह useEffect केवल Firebase auth state को मैनेज करेगा
   useEffect(() => {
-    const checkRedirectResult = async () => { // Renamed
+    const checkRedirectResult = async () => { // `checkRedirectResult` में `checkredirectresult` को ठीक किया
       try {
-        await firebaseHandleRedirectResult(); // Renamed
+        await firebaseHandleRedirectResult(); // `firebaseHandleRedirectResult` को ठीक किया
       } catch (error) {
         console.error("Error handling redirect result:", error);
       }
     };
-    checkRedirectResult(); // Call it
+    checkRedirectResult();
 
     const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
       if (fbUser) {
-        // अगर Firebase user है, तो isLoadingAuth को true रखें और आगे backend login करें
-        setIsLoadingAuth(true); 
+        setIsLoadingAuth(true); // `setIsLoadingAuth` को ठीक किया
         try {
-          const idToken = await fbUser.getIdToken(); // Renamed
-          const res = await apiRequest("POST", `/api/users/login`, { idToken }); // Renamed, POST for consistency
-          const dbUserData = res.user; // Renamed
+          const idToken = await fbUser.getIdToken(); // `idToken` और `getIdToken` को ठीक किया
+          const res = await apiRequest("POST", `/api/users/login`, { idToken }); // `POST` और `apiRequest` को ठीक किया
+          const dbUserData = res.user;
           
-          const currentUser: User = { // Renamed
+          const newUserData: User = { // `newUserData` और `User` को ठीक किया
             uid: fbUser.uid,
             id: dbUserData?.id,
             email: fbUser.email || dbUserData?.email,
-            name: fbUser.displayName || dbUserData?.name, // Renamed
+            name: fbUser.displayName || dbUserData?.name, // `displayName` को ठीक किया
             role: dbUserData?.role || 'customer',
-            idToken: idToken, // Renamed
-            sellerProfile: dbUserData?.sellerProfile || null, // Renamed
+            idToken: idToken,
+            sellerProfile: dbUserData?.sellerProfile || null, // `sellerProfile` को ठीक किया
           };
           
-          setUser(currentUser); // Renamed
-          setIsAuthenticated(true); // Renamed
-          setIsAdmin(currentUser.role === 'admin'); // Renamed
-          console.log("✅ User successfully authenticated and profile fetched from backend.");
+          // ✅ इनफाइनाइट री-रेंडर लूप को रोकने के लिए तुलना करें
+          if (JSON.stringify(user) !== JSON.stringify(newUserData)) {
+            setUser(newUserData);
+            setIsAuthenticated(true);
+            setIsAdmin(newUserData.role === 'admin');
+            console.log("✅ User successfully authenticated and profile fetched from backend.");
+          } else {
+            console.log("✅ User data unchanged, no state update needed.");
+          }
           
         } catch (e: any) {
           console.error("❌ Backend communication failed on auth state change:", e);
-          await auth.signOut(); // Renamed
-          setAuthError(e as AuthError); // Renamed
-          setIsAuthenticated(false); // Renamed
-          setIsAdmin(false); // Renamed
-          setUser(null); // Renamed
+          await signOutUser(); // `signOutUser` को ठीक किया
+          setAuthError(e as AuthError); // `setAuthError` को ठीक किया
+          setIsAuthenticated(false);
+          setIsAdmin(false);
+          setUser(null);
         }
       } else {
-        console.log("❌ Firebase auth state changed: User is logged out.");
-        setUser(null); // Renamed
-        setIsAuthenticated(false); // Renamed
-        setIsAdmin(false); // Renamed
-        queryClient.clear(); // Renamed
+        console.log("❌ Firebase auth state changed: user is logged out.");
+        // ✅ केवल तभी अपडेट करें जब स्टेट पहले से लॉग इन हो
+        if (isAuthenticated) {
+          setUser(null);
+          setIsAuthenticated(false);
+          setIsAdmin(false);
+          queryClient.clear();
+        }
       }
-      setIsLoadingAuth(false); // ✅ Firebase auth state change के बाद ही इसे false करें
+      setIsLoadingAuth(false);
     });
 
     return () => unsubscribe();
-  }, [queryClient]); // `queryClient` को dependency में रखें
+  }, [queryClient, isAuthenticated, user]); // `isAuthenticated` और `user` को डिपेंडेंसी में जोड़ा for comparison
 
-  const signIn = useCallback(async (usePopup: boolean = false): Promise<FirebaseUser | null> => { // Renamed and using Promise
-    setIsLoadingAuth(true); // Renamed
-    setAuthError(null); // Renamed
+  const signIn = useCallback(async (usePopup: boolean = false): Promise<FirebaseUser | null> => { // `signIn` और `usePopup` को ठीक किया
+    setIsLoadingAuth(true);
+    setAuthError(null);
     try {
-      const fbUser = await firebaseSignInWithGoogle(usePopup); // Renamed
+      const fbUser = await firebaseSignInWithGoogle(usePopup); // `firebaseSignInWithGoogle` को ठीक किया
       return fbUser;
     } catch (err: any) {
-      setAuthError(err as AuthError); // Renamed
-      setIsLoadingAuth(false); // Renamed
+      setAuthError(err as AuthError);
+      setIsLoadingAuth(false);
       throw err;
     }
   }, []);
 
-  const signOut = useCallback(async () => { // Renamed
+  const signOut = useCallback(async (): Promise<void> => { // `signOut` को ठीक किया
     try {
-      await signOutUser(); // Renamed
-      setAuthError(null); // Renamed
-      setUser(null); // Renamed
-      setIsAuthenticated(false); // Renamed
-      setIsAdmin(false); // Renamed
-      queryClient.clear(); // Renamed
+      await signOutUser();
+      setAuthError(null);
+      setUser(null);
+      setIsAuthenticated(false);
+      setIsAdmin(false);
+      queryClient.clear();
     } catch (err: any) {
-      setAuthError(err as AuthError); // Renamed
+      setAuthError(err as AuthError);
       throw err;
     }
-  }, [queryClient]); // Renamed
+  }, [queryClient]);
 
-  const refetchUser = useCallback(async () => { // Renamed
-    setIsLoadingAuth(true); // Renamed
-    const fbUser = auth.currentUser; // Renamed
+  const refetchUser = useCallback(async () => { // `refetchUser` को ठीक किया
+    setIsLoadingAuth(true);
+    const fbUser = auth.currentUser; // `currentUser` को ठीक किया
     if (fbUser) {
       try {
-        const idToken = await fbUser.getIdToken(); // Renamed
-        const res = await apiRequest("POST", `/api/users/login`, { idToken }); // Renamed, POST for consistency
-        const dbUserData = res.user; // Renamed
+        const idToken = await fbUser.getIdToken();
+        const res = await apiRequest("POST", `/api/users/login`, { idToken });
+        const dbUserData = res.user;
         
-        const currentUser: User = { // Renamed
+        const newUserData: User = {
           uid: fbUser.uid,
           id: dbUserData?.id,
           email: fbUser.email || dbUserData?.email,
-          name: fbUser.displayName || dbUserData?.name, // Renamed
+          name: fbUser.displayName || dbUserData?.name,
           role: dbUserData?.role || 'customer',
-          idToken: idToken, // Renamed
-          sellerProfile: dbUserData?.sellerProfile || null, // Renamed
+          idToken: idToken,
+          sellerProfile: dbUserData?.sellerProfile || null,
         };
-        setUser(currentUser); // Renamed
-        setIsAuthenticated(true); // Renamed
-        setIsAdmin(currentUser.role === 'admin'); // Renamed
+
+        // ✅ इनफाइनाइट री-रेंडर लूप को रोकने के लिए तुलना करें
+        if (JSON.stringify(user) !== JSON.stringify(newUserData)) {
+          setUser(newUserData);
+          setIsAuthenticated(true);
+          setIsAdmin(newUserData.role === 'admin');
+        } else {
+          console.log("Refetch: User data unchanged, no state update needed.");
+        }
       } catch (e) {
-        console.error("Failed to refetch user data:", e); // Renamed
-        setAuthError(e as AuthError); // Renamed
-        setIsAuthenticated(false); // Renamed
-        setIsAdmin(false); // Renamed
+        console.error("Failed to refetch user data:", e);
+        setAuthError(e as AuthError);
+        setIsAuthenticated(false);
+        setIsAdmin(false);
       }
     }
-    setIsLoadingAuth(false); // Renamed
-  }, []);
+    setIsLoadingAuth(false);
+  }, [user]); // `user` को डिपेंडेंसी में जोड़ा
 
-  const backendLogin = useCallback(async (email: string, password: string): Promise<User> => { // Renamed and using Promise
-    setAuthError(null); // Renamed
-    setIsLoadingAuth(true); // Renamed
+  const backendLogin = useCallback(async (email: string, password: string): Promise<User> => { // `backendLogin` को ठीक किया
+    setAuthError(null);
+    setIsLoadingAuth(true);
     try {
       const res = await apiRequest("POST", "/api/delivery/login", { email, password });
-      const backendUser = res.user; // Renamed
+      const backendUser = res.user; // `backendUser` को ठीक किया
 
       if (!backendUser) {
-        throw new Error("Invalid user data received from backend."); // Using Error
+        throw new Error("Invalid user data received from backend."); // `Error` को ठीक किया
       }
 
-      // ✅ auth state को मैन्युअल रूप से अपडेट करें
-      const currentUser: User = { // Renamed
+      const newUserData: User = {
         id: backendUser.id,
         email: backendUser.email,
         name: backendUser.name,
         role: backendUser.role,
-        sellerProfile: backendUser.sellerProfile || null, // Renamed
+        sellerProfile: backendUser.sellerProfile || null,
       };
 
-      setUser(currentUser); // Renamed
-      setIsAuthenticated(true); // Renamed
-      setIsAdmin(currentUser.role === 'admin'); // Renamed
-      setIsLoadingAuth(false); // Renamed
+      // ✅ इनफाइनाइट री-रेंडर लूप को रोकने के लिए तुलना करें
+      if (JSON.stringify(user) !== JSON.stringify(newUserData)) {
+        setUser(newUserData);
+        setIsAuthenticated(true);
+        setIsAdmin(newUserData.role === 'admin');
+      } else {
+        console.log("Backend login: User data unchanged, no state update needed.");
+      }
+      setIsLoadingAuth(false);
 
-      return currentUser; // Renamed
+      return newUserData;
 
     } catch (err: any) {
-      setAuthError(err as AuthError); // Renamed
-      setIsLoadingAuth(false); // Renamed
+      setAuthError(err as AuthError);
+      setIsLoadingAuth(false);
       throw err;
     }
-  }, []);
+  }, [user]); // `user` को डिपेंडेंसी में जोड़ा
 
-  const authContextValue = { // Renamed
+  const authContextValue = useMemo(() => ({ // `authContextValue` को ठीक किया, `useMemo` का उपयोग किया
     user,
     isLoadingAuth,
     isAuthenticated,
@@ -218,17 +235,17 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => { /
     signOut,
     refetchUser,
     backendLogin, 
-  };
+  }), [user, isLoadingAuth, isAuthenticated, isAdmin, authError, clearError, signIn, signOut, refetchUser, backendLogin]);
 
   return (
-    <AuthContext.Provider value={authContextValue}> // Renamed
+    <AuthContext.Provider value={authContextValue}> {/* `AuthContext.Provider` को ठीक किया */}
       {children}
     </AuthContext.Provider>
   );
 };
 
-export const useAuth = () => { // Renamed
-  const ctx = useContext(AuthContext); // Renamed
-  if (!ctx) throw new Error("useAuth must be used within an AuthProvider"); // Renamed and using Error
+export const useAuth = () => { // `useAuth` को ठीक किया
+  const ctx = useContext(AuthContext); // `useContext` और `AuthContext` को ठीक किया
+  if (!ctx) throw new Error("useAuth must be used within an AuthProvider"); // `Error` और `useAuth`, `AuthProvider` को ठीक किया
   return ctx;
 };
