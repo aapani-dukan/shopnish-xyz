@@ -25,7 +25,7 @@ import AdminLogin from "@/pages/admin-login";
 import OrderConfirmation from "@/pages/order-confirmation";
 import CustomerOrdersPage from "@/pages/customer/orders";
 import Checkout2 from "./pages/checkout2";
-import DeliveryOrdersList from "@/pages/DeliveryOrdersList";
+import DeliveryDashboard from "@/pages/DeliveryDashbkard";
 
 // Protected / Auth-based
 import AuthRedirectGuard from "@/components/auth-redirect-guard";
@@ -79,7 +79,7 @@ function App() {
             path="/delivery-dashboard"
             element={
               <AuthRedirectGuard>
-                <DeliveryOrdersList />
+                <DeliveryDashboard />
               </AuthRedirectGuard>
             }
           />
