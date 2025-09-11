@@ -59,24 +59,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     setAuthError(null);
   }, []);
 
+  // ✅ यह useEffect केवल Firebase auth state को मैनेज करेगा
   useEffect(() => {
-    const checkRedirectResult = async () => {
-      try {
-        await firebaseHandleRedirectResult();
-      } catch (error) {
-        console.error("Error handling redirect result:", error);
-      }
-    };
-    checkRedirectResult();
-    
     const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
       if (fbUser) {
+        // अगर Firebase User है, तो isLoadingAuth को true रखें और आगे backend login करें
+        setIsLoadingAuth(true); 
         try {
-          console.log("✅ Firebase auth state changed. Attempting backend login...");
           const idToken = await fbUser.getIdToken();
-
           const res = await apiRequest("POST", `/api/users/login`, { idToken });
-          const dbUserData = res.user; 
+          const dbUserData = res.user;
           
           const currentUser: User = {
             uid: fbUser.uid,
@@ -92,7 +84,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           setIsAuthenticated(true);
           setIsAdmin(currentUser.role === 'admin'); 
           console.log("✅ User successfully authenticated and profile fetched from backend.");
-          
         } catch (e: any) {
           console.error("❌ Backend communication failed on auth state change:", e);
           await auth.signOut();
@@ -108,11 +99,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         setIsAdmin(false);
         queryClient.clear();
       }
-      setIsLoadingAuth(false);
+      setIsLoadingAuth(false); // ✅ Firebase auth state change के बाद ही इसे false करें
     });
 
     return () => unsubscribe();
-  }, [queryClient]);
+  }, [queryClient]); // `queryClient` को dependency में रखें
 
   const signIn = useCallback(async (usePopup: boolean = false): Promise<FirebaseUser | null> => {
     setIsLoadingAuth(true);
@@ -216,7 +207,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     signIn,
     signOut,
     refetchUser,
-    backendLogin, // ✅ context value में नया फ़ंक्शन शामिल करें
+    backendLogin, 
   };
 
   return (
@@ -224,10 +215,4 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       {children}
     </AuthContext.Provider>
   );
-};
-
-export const useAuth = () => {
-  const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error("useAuth must be used within an AuthProvider");
-  return ctx;
 };
