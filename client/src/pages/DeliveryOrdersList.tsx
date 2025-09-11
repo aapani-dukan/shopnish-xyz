@@ -13,11 +13,10 @@ import {
   Loader2,
 } from "lucide-react";
 import DeliveryOtpDialog from "./DeliveryOtpDialog";
-import { useAuth } from "@/hooks/useAuth";
-
-import { apiRequest } from "@/lib/queryClient";
-import api from "@/lib/api";
-import { useSocket } from "@/hooks/useSocket";
+import { useAuth } from "@/hooks/useAuth"; // सही पथ
+import { apiRequest } from "@/lib/queryClient"; // सही पथ
+import api from "@/lib/api"; // सही पथ
+import { useSocket } from "@/hooks/useSocket"; // सही पथ
 
 // -----------------------------------------------------------------------------
 // ## मॉक UI कंपोनेंट और यूटिलिटी फ़ंक्शंस
@@ -131,6 +130,17 @@ export default function DeliveryOrdersList() {
   const [otp, setOtp] = useState("");
   const [otpDialogOpen, setOtpDialogOpen] = useState(false);
 
+  // Helper to get a valid token
+  const getValidToken = async () => {
+    if (!auth?.currentUser) return null;
+    try {
+      return await auth.currentUser.getIdToken(true);
+    } catch (err) {
+      console.error("टोकन लाने में त्रुटि:", err);
+      return null;
+    }
+  };
+
   // Loader while auth or socket not ready
   if (isLoadingAuth || !user || !socket) {
     return (
@@ -142,15 +152,24 @@ export default function DeliveryOrdersList() {
   }
 
   // Fetch delivery orders
-  const { data: orders } = useQuery({
+  const { data: orders = [], isLoading } = useQuery({
     queryKey: ["deliveryOrders"],
     queryFn: async () => {
-      const res = await fetch(`${API_BASE}/api/delivery/orders`, {
-        headers: { Authorization: `Bearer ${auth?.token}` },
-      });
-      if (!res.ok) throw new Error("Failed to fetch orders");
-      return res.json();
+      try {
+        const res = await apiRequest("GET", "/api/delivery/orders");
+        // सुनिश्चित करें कि res.orders मौजूद है और एक ऐरे है
+        return Array.isArray(res.orders) ? res.orders : [];
+      } catch (err) {
+        console.error("ऑर्डर लाने में त्रुटि:", err);
+        toast({
+          title: "डेटा लाने में त्रुटि",
+          description: "ऑर्डर लाते समय कोई समस्या आई",
+          variant: "destructive",
+        });
+        return [];
+      }
     },
+    enabled: !!user,
   });
 
   // Socket listeners
@@ -174,9 +193,6 @@ export default function DeliveryOrdersList() {
   // Render single order card
   const renderOrderCard = (order: any) => {
     if (!order) return null;
-    
-
-  
 
     const addressData = order?.deliveryAddress ?? null;
     const isAddressObject = typeof addressData === "object" && addressData !== null;
@@ -306,7 +322,7 @@ export default function DeliveryOrdersList() {
                     const query = encodeURIComponent(
                       `${isAddressObject ? addressData.address || "" : ""}, ${isAddressObject ? addressData.city || "" : ""}`
                     );
-                    window.open(`https://www.google.com/maps?q=${query}`, "_blank");
+                    window.open(`https://www.google.com/maps?q=$?q=${query}`, "_blank");
                   }}
                 >
                   <Navigation className="w-4 h-4 mr-2" /> नेविगेट करें (ग्राहक)
@@ -325,7 +341,7 @@ export default function DeliveryOrdersList() {
                     const query = encodeURIComponent(
                       `${isSellerAddressObject ? sellerDetails.address || "" : ""}, ${isSellerAddressObject ? sellerDetails.city || "" : ""}`
                     );
-                    window.open(`https://www.google.com/maps?q=${query}`, "_blank");
+                    window.open(`https://www.google.com/maps?q=$?q=${query}`, "_blank");
                   }}
                 >
                   <Navigation className="w-4 h-4 mr-2" /> नेविगेट करें (पिकअप)
@@ -346,28 +362,6 @@ export default function DeliveryOrdersList() {
       </Card>
     );
   };
-
-  const { data: orders = [], isLoading } = useQuery({
-    queryKey: ["deliveryOrders"],
-    queryFn: async () => {
-      try {
-        const res = await apiRequest("GET", "/api/delivery/orders");
-        return Array.isArray(res.orders) ? res.orders : [];
-      } catch (err) {
-        console.error("ऑर्डर लाने में त्रुटि:", err);
-        toast({
-          title: "डेटा लाने में त्रुटि",
-          description: "ऑर्डर लाते समय कोई समस्या आई",
-          variant: "destructive",
-        });
-        return [];
-      }
-    },
-    enabled: !!user,
-  });
-  
-  
-
 
   const acceptOrderMutation = useMutation({
     mutationFn: async (orderId: number) => {
@@ -391,8 +385,9 @@ export default function DeliveryOrdersList() {
 
   const handleOtpSubmitMutation = useMutation({
     mutationFn: async ({ orderId, otp }: { orderId: number, otp: string }) => {
-      const token = await getValidToken();
+      const token = await getValidToken(); // <--- यहाँ getValidToken का उपयोग किया गया है
       if (!token) throw new Error("अमान्य या पुराना टोकन");
+      
       const response = await fetch(`${API_BASE}/api/delivery/orders/${orderId}/complete-delivery`, {
         method: 'POST',
         headers: {
@@ -436,7 +431,8 @@ export default function DeliveryOrdersList() {
     auth.signOut().then(() => window.location.reload());
   };
 
-  if (isLoadingAuth || isLoading || !user) {
+  // अब यह isLoadingAuth || !user || !socket ब्लॉक के बाद आता है
+  if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
@@ -532,7 +528,7 @@ export default function DeliveryOrdersList() {
           )}
         </div>
 
-        {/* ✅ My Orders */}
+            {/* ✅ My Orders */}
         <div>
           <h2 className="text-2xl font-bold mb-4">मेरे ऑर्डर</h2>
           {orders.filter((o: any) => o.deliveryBoyId).length === 0 ? (
@@ -562,4 +558,4 @@ export default function DeliveryOrdersList() {
     </div>
   );
 }
-  
+          
