@@ -4,26 +4,30 @@ import { BrowserRouter } from "react-router-dom";
 import App from "./App.tsx";
 import "./index.css";
 
-import { AuthProvider } from "@/hooks/useAuth";
-import { SocketProvider } from "@/hooks/useSocket"; // ✅ Import SocketProvider
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "./lib/queryClient";
-import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/toaster";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { AuthProvider } from "@/hooks/useAuth";
+import { SocketProvider } from "@/hooks/useSocket";
+import AuthRedirectGuard from "@/components/auth-redirect-guard";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    <BrowserRouter>
-      <QueryClientProvider client={queryClient}>
-        <TooltipProvider>
-          <AuthProvider>
-            <SocketProvider> {/* ✅ SocketProvider main level पर wrap */}
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <AuthProvider>
+          {/* ✅ AuthRedirectGuard wrapper at top-level */}
+          <AuthRedirectGuard>
+            <SocketProvider>
               <Toaster />
-              <App />
+              <BrowserRouter>
+                <App />
+              </BrowserRouter>
             </SocketProvider>
-          </AuthProvider>
-        </TooltipProvider>
-      </QueryClientProvider>
-    </BrowserRouter>
+          </AuthRedirectGuard>
+        </AuthProvider>
+      </TooltipProvider>
+    </QueryClientProvider>
   </React.StrictMode>
 );
