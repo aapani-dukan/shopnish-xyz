@@ -17,7 +17,7 @@ import DeliveryOrdersList from "./DeliveryOrdersList"; // <-- DeliveryOrdersList
 const useToast = () => {
 return {
 toast: ({ title, description, variant }: any) => {
-console.log(Toast: ${title} - ${description} (Variant: ${variant})');
+console.log('Toast: ${title} - ${description} (Variant: ${variant})');
 },
 };
 };
