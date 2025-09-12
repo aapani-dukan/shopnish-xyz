@@ -4,9 +4,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { api, getValidToken } from "@/lib/api";
-import { useAuth } from "@/contexts/AuthProvider";
+import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
-import { useSocket } from "@/contexts/SocketProvider";
+import { useSocket } from "@/hooks/useSocket";
 
 interface DeliveryOrder {
   id: number;
