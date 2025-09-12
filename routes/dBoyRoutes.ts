@@ -135,7 +135,7 @@ router.get('/orders/available', requireDeliveryBoyAuth, async (req: Authenticate
     const list = await db.query.orders.findMany({
       where: and(
         eq(orders.status, 'ready_for_pickup'),
-        isNull(orders.deliveryBoyId)
+        isNull(orders.delivery_boy_id)
       ),
       with: {
         items: { with: { product: { with: { seller: true } } } },
@@ -170,7 +170,7 @@ router.get('/orders/my', requireDeliveryBoyAuth, async (req: AuthenticatedReques
     }
 
     const list = await db.query.orders.findMany({
-      where: eq(orders.deliveryBoyId, deliveryBoy.id),
+      where: eq(orders.delivery_boy_id, deliveryBoy.id),
       with: {
         items: { with: { product: { with: { seller: true } } } },
         deliveryAddress: true,
@@ -217,7 +217,7 @@ router.patch('/orders/:orderId/status', requireDeliveryBoyAuth, async (req: Auth
       where: eq(orders.id, orderId),
     });
 
-    if (order?.deliveryBoyId !== deliveryBoy.id) {
+    if (order?.delivery_boy_id !== deliveryBoy.id) {
       return res.status(403).json({ message: "Forbidden: You are not assigned to this order." });
     }
 
@@ -270,7 +270,7 @@ router.post('/orders/:orderId/complete-delivery', requireDeliveryBoyAuth, async 
       return res.status(404).json({ message: "Order not found." });
     }
 
-    if (order.deliveryBoyId !== deliveryBoy.id) {
+    if (order.delivery_boy_id !== deliveryBoy.id) {
       return res.status(403).json({ message: "Forbidden: You are not assigned to this order." });
     }
 
@@ -321,13 +321,13 @@ router.post("/accept", requireDeliveryBoyAuth, async (req: AuthenticatedRequest,
 
     const existing = await db.query.orders.findFirst({
       where: eq(orders.id, orderId),
-      columns: { id: true, status: true, deliveryBoyId: true }, // केवल 'status' कॉलम का उपयोग
+      columns: { id: true, status: true, delivery_boy_id: true }, // केवल 'status' कॉलम का उपयोग
     });
 
     if (!existing) return res.status(404).json({ message: "Order not found" });
 
     // जाँचें कि ऑर्डर 'ready_for_pickup' है और किसी को असाइन नहीं किया गया है
-    if (existing.status !== 'ready_for_pickup' || existing.deliveryBoyId !== null) {
+    if (existing.status !== 'ready_for_pickup' || existing.delivery_boy_id !== null) {
       return res.status(409).json({ message: "Order is not available for acceptance." });
     }
 
@@ -336,7 +336,7 @@ router.post("/accept", requireDeliveryBoyAuth, async (req: AuthenticatedRequest,
     const [updated] = await db
       .update(orders)
       .set({
-        deliveryBoyId: deliveryBoy.id,
+        delivery_boy_id: deliveryBoy.id,
         status: "accepted", // अब 'status' कॉलम अपडेट हो रहा है
         deliveryOtp,
         deliveryAcceptedAt: new Date(),
@@ -347,7 +347,7 @@ router.post("/accept", requireDeliveryBoyAuth, async (req: AuthenticatedRequest,
     getIO().emit("order:update", {
       reason: "accepted",
       orderId,
-      deliveryBoyId: deliveryBoy.id,
+      delivery_boy_id: deliveryBoy.id,
     });
 
     return res.json({ message: "Order accepted", order: updated });
