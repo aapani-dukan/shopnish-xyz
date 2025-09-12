@@ -182,13 +182,17 @@ export default function DeliveryDashboard() {
       socket.emit("register-client", { role: "delivery", userId: user.uid });
     }
 
-    socket.on("delivery:orders-changed", onOrdersChanged);
-    socket.on("new-order", onOrdersChanged);
+    if (socket && typeof socket.on === "function") {
+  socket.on("delivery:orders-changed", onOrdersChanged);
+  socket.on("new-order", onOrdersChanged);
+}
 
-    return () => {
-      socket.off("delivery:orders-changed", onOrdersChanged);
-      socket.off("new-order", onOrdersChanged);
-    };
+return () => {
+  if (socket && typeof socket.off === "function") {
+    socket.off("delivery:orders-changed", onOrdersChanged);
+    socket.off("new-order", onOrdersChanged);
+  }
+};
   }, [socket, user, queryClient, isAuthenticated]);
 
   const acceptOrderMutation = useMutation({
