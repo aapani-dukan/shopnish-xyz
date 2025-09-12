@@ -47,7 +47,7 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
         setIsConnected(false);
       }
 
-      const socketUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:5001";
+      const socketUrl = import.meta.env.VITE_API_BASE_URL || " https://shopnish-lzrf.onrender.com";
       const newSocket = io(socketUrl, {
         transports: ["websocket"],
         withCredentials: true,
