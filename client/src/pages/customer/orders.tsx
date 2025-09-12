@@ -67,18 +67,21 @@ export default function CustomerOrdersPage() {
 
   // Socket.IO से ऑर्डर अपडेट्स सुनें
   useEffect(() => {
-    const onOrderStatusUpdated = (updatedOrder: CustomerOrder) => {
-      console.log("📦 Order update received:", updatedOrder);
-      queryClient.invalidateQueries({ queryKey: ["customerOrders"] });
-    };
+  if (!socket || typeof socket.on !== "function") return;
 
-    socket.on("order:status-updated", onOrderStatusUpdated);
+  const onOrderStatusUpdated = (updatedOrder: CustomerOrder) => {
+    console.log("📦 Order update received:", updatedOrder);
+    queryClient.invalidateQueries({ queryKey: ["customerOrders"] });
+  };
 
-    return () => {
+  socket.on("order:status-updated", onOrderStatusUpdated);
+
+  return () => {
+    if (socket && typeof socket.off === "function") {
       socket.off("order:status-updated", onOrderStatusUpdated);
-    };
-  }, [socket, queryClient]);
-
+    }
+  };
+}, [socket, queryClient]);
   // लोडिंग
   if (isLoading) {
     return (
