@@ -1,55 +1,48 @@
 // src/pages/seller-dashboard.tsx
 
-import React, { useEffect, useState } from "react"; // ✅ ठीक किया गया नामकरण
-import Header from "@/components/header"; // ✅ ठीक किया गया नामकरण और इम्पोर्ट पाथ
-import { Card, CardContent } from "@/components/ui/card"; // ✅ ठीक किया गया नामकरण और इम्पोर्ट पाथ
-import { Badge } from "@/components/ui/badge"; // ✅ ठीक किया गया नामकरण और इम्पोर्ट पाथ
-import { Skeleton } from "@/components/ui/skeleton"; // ✅ ठीक किया गया नामकरण और इम्पोर्ट पाथ
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"; // ✅ ठीक किया गया नामकरण और इम्पोर्ट पाथ
-import { Button } from "@/components/ui/button"; // ✅ ठीक किया गया नामकरण और इम्पोर्ट पाथ
-import { useQuery, useQueryClient } from "@tanstack/react-query"; // ✅ ठीक किया गया नामकरण
-import type { Seller, OrderWithItems } from "shared/backend/schema"; // ✅ ठीक किया गया नामकरण
-import { apiRequest } from "@/lib/queryClient"; // ✅ ठीक किया गया नामकरण और इम्पोर्ट पाथ
-import { useToast } from "@/hooks/use-toast"; // ✅ ठीक किया गया नामकरण और इम्पोर्ट पाथ
-import { Link } from "react-router-dom"; // ✅ ठीक किया गया नामकरण
+import React, { useEffect, useState } from "react";
+import Header from "@/components/header";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import type { Seller, OrderWithItems } from "shared/backend/schema";
+import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+import { Link } from "react-router-dom";
 import {
-  Package, // ✅ ठीक किया गया नामकरण
-  ShoppingCart, // ✅ ठीक किया गया नामकरण
-  TrendingUp, // ✅ ठीक किया गया नामकरण
-  Star, // ✅ ठीक किया गया नामकरण
-  Clock, // ✅ ठीक किया गया नामकरण
-  CheckCircle, // ✅ ठीक किया गया नामकरण
-  Settings, // ✅ ठीक किया गया नामकरण
-  XCircle, // ✅ ठीक किया गया नामकरण
+  Package,
+  ShoppingCart,
+  TrendingUp,
+  Star,
+  Clock,
+  CheckCircle,
+  Settings,
+  XCircle,
 } from "lucide-react";
-import { useSocket } from "@/providers/SocketProvider"; // ✅ ठीक किया गया नामकरण और इम्पोर्ट पाथ
-import { useAuth } from "@/hooks/useAuth"; // ✅ ठीक किया गया नामकरण और इम्पोर्ट पाथ
-import ProductManager from "@/components/productManager"; // ✅ ठीक किया गया नामकरण और इम्पोर्ट पाथ
-import OrderManager from "@/components/orderManager"; // ✅ ठीक किया गया नामकरण और इम्पोर्ट पाथ
-import ProfileManager from "@/components/profileManager"; // ✅ ठीक किया गया नामकरण और इम्पोर्ट पाथ
+import { useSocket } from "@/providers/SocketProvider";
+import { useAuth } from "@/hooks/useAuth";
+import ProductManager from "@/components/productManager";
+import OrderManager from "@/components/orderManager";
+import ProfileManager from "@/components/profileManager";
 
-export default function SellerDashboard() { // ✅ ठीक किया गया नामकरण
-  const { toast } = useToast(); // ✅ ठीक किया गया नामकरण
-  const queryClient = useQueryClient(); // ✅ ठीक किया गया नामकरण
-  const [activeTab, setActiveTab] = useState("products"); // ✅ ठीक किया गया नामकरण
+export default function SellerDashboard() {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [activeTab, setActiveTab] = useState("products");
 
-  // 🔌 useSocket से `socket` और `isConnected` को सही तरीके से डी-स्ट्रक्चर करें
-  const { socket, isConnected: socketIsConnected } = useSocket(); // ✅ useSocket से सही डी-स्ट्रक्चरिंग
+  const { socket, isConnected: socketIsConnected } = useSocket();
+  const { user, isAuthenticated } = useAuth();
 
-  const { user, isAuthenticated } = useAuth(); // ✅ ठीक किया गया नामकरण
-
-  // ----------------- socket.io logic -----------------
-  useEffect(() => { // ✅ ठीक किया गया नामकरण
-    // ✅ `socket` अब सीधे सॉकेट इंस्टेंस है, इसलिए इसे null चेक करें
+  useEffect(() => {
     if (!socket || !isAuthenticated || user?.role !== "seller") {
-      console.log("SellerDashboard: Socket not ready or user not authenticated/seller. Skipping subscription.");
       return;
     }
 
-    const handleNewOrderForSeller = (order: OrderWithItems) => { // ✅ ठीक किया गया नामकरण
-      console.log("📦 नया ऑर्डर Seller को मिला:", order);
-
-      queryClient.invalidateQueries({ queryKey: ["/api/sellers/orders"] }); // ✅ ठीक किया गया नामकरण
+    const handleNewOrderForSeller = (order: OrderWithItems) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/sellers/orders"] });
 
       toast({
         title: "🔔 नया ऑर्डर!",
@@ -61,93 +54,86 @@ export default function SellerDashboard() { // ✅ ठीक किया गय
     socket.on("new-order-for-seller", handleNewOrderForSeller);
 
     return () => {
-      // ✅ cleanup function में `handleNewOrderForSeller` को पास करें
-      // ताकि `socket.off` सही लिसनर को हटा सके
-      socket.off("new-order-for-seller", handleNewOrderForSeller); 
+      socket.off("new-order-for-seller", handleNewOrderForSeller);
     };
-  }, [socket, isAuthenticated, user?.role, toast, queryClient]); // ✅ `user?.role` पर निर्भर करें, न कि पूरे `user` ऑब्जेक्ट पर
+  }, [socket, isAuthenticated, user?.role, toast, queryClient]);
 
-  // ----------------- fetch seller profile -----------------
-  const { data: seller, isLoading: sellerLoading, error: sellerError } = useQuery<Seller>({ // ✅ ठीक किया गया नामकरण
-    queryKey: ["/api/sellers/me"], // ✅ ठीक किया गया नामकरण
-    queryFn: () => apiRequest("GET", "/api/sellers/me"), // ✅ ठीक किया गया नामकरण
-    staleTime: 5 * 60 * 1000, // ✅ ठीक किया गया नामकरण
+  const { data: seller, isLoading: sellerLoading, error: sellerError } = useQuery<Seller>({
+    queryKey: ["/api/sellers/me"],
+    queryFn: () => apiRequest("GET", "/api/sellers/me"),
+    staleTime: 5 * 60 * 1000,
   });
 
-  // ----------------- fetch seller orders -----------------
-  const { data: orders, isLoading: ordersLoading, error: ordersError } = useQuery<OrderWithItems[]>({ // ✅ ठीक किया गया नामकरण
-    queryKey: ["/api/sellers/orders"], // ✅ ठीक किया गया नामकरण
-    queryFn: () => apiRequest("GET", "/api/sellers/orders"), // ✅ ठीक किया गया नामकरण
+  const { data: orders, isLoading: ordersLoading, error: ordersError } = useQuery<OrderWithItems[]>({
+    queryKey: ["/api/sellers/orders"],
+    queryFn: () => apiRequest("GET", "/api/sellers/orders"),
     enabled: !!seller?.id,
-    staleTime: 0, // ✅ ठीक किया गया नामकरण
-    refetchInterval: 60 * 1000, // ✅ ठीक किया गया नामकरण
+    staleTime: 0,
+    refetchInterval: 60 * 1000,
   });
 
-  // ----------------- metrics -----------------
-  const totalRevenue = // ✅ ठीक किया गया नामकरण
+  const totalRevenue =
     orders?.reduce(
       (sum, order) =>
         sum +
         order.items.reduce(
-          (itemSum, item) => // ✅ ठीक किया गया नामकरण
+          (itemSum, item) =>
             itemSum +
-            (typeof item.total === "string" ? parseFloat(item.total) : item.total), // ✅ ठीक किया गया `parseFloat`
+            (typeof item.total === "string" ? parseFloat(item.total) : item.total),
           0
         ),
       0
     ) || 0;
 
-  const totalOrders = orders?.length || 0; // ✅ ठीक किया गया नामकरण
-  const totalProducts = 0; // ✅ ठीक किया गया नामकरण (ProductManager से dynamic हो सकता है)
-  const averageRating = parseFloat(seller?.rating?.toString() || "0"); // ✅ ठीक किया गया नामकरण और `parseFloat`
+  const totalOrders = orders?.length || 0;
+  const totalProducts = 0;
+  const averageRating = parseFloat(seller?.rating?.toString() || "0");
 
-  // ----------------- loading -----------------
-  if (sellerLoading) { // ✅ ठीक किया गया नामकरण
+  if (sellerLoading) {
     return (
-      <div className="min-h-screen bg-background"> {/* ✅ ठीक किया गया `className` */}
-        <Header /> {/* ✅ ठीक किया गया नामकरण */}
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8"> {/* ✅ ठीक किया गया `className` */}
-          <div className="animate-pulse space-y-6"> {/* ✅ ठीक किया गया `className` */}
-            <Skeleton className="h-8 w-64 mb-6" /> {/* ✅ ठीक किया गया नामकरण */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6"> 
-              {[...Array(4)].map((_, i) => ( 
-                <Skeleton key={i} className="h-32 rounded-xl" /> 
+      <div className="min-h-screen bg-background">
+        <Header />
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="animate-pulse space-y-6">
+            <Skeleton className="h-8 w-64 mb-6" />
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+              {[...Array(4)].map((_, i) => (
+                <Skeleton key={i} className="h-32 rounded-xl" />
               ))}
             </div>
-            <Skeleton className="h-10 w-full mb-4 rounded-md" /> {/* ✅ ठीक किया गया नामकरण */}
-            <Skeleton className="h-96 w-full rounded-xl" /> {/* ✅ ठीक किया गया नामकरण */}
+            <Skeleton className="h-10 w-full mb-4 rounded-md" />
+            <Skeleton className="h-96 w-full rounded-xl" />
           </div>
         </div>
       </div>
     );
   }
 
-  // ----------------- error -----------------
-  if (sellerError || !seller) { // ✅ ठीक किया गया नामकरण
+  if (sellerError || !seller) {
     return (
-      <div className="min-h-screen bg-background"> {/* ✅ ठीक किया गया `className` */}
-        <Header /> {/* ✅ ठीक किया गया नामकरण */}
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16 text-center"> {/* ✅ ठीक किया गया `className` */}
-          <div className="text-6xl mb-4"> {/* ✅ ठीक किया गया `className` */}
-            {sellerError ? ( // ✅ ठीक किया गया नामकरण
-              <XCircle className="w-20 h-20 text-red-500 mx-auto" /> {/* ✅ ठीक किया गया नामकरण */}
+      <div className="min-h-screen bg-background">
+        <Header />
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16 text-center">
+          <div className="text-6xl mb-4">
+            {sellerError ? (
+              <XCircle className="w-20 h-20 text-red-500 mx-auto" />
             ) : (
               "🏪"
             )}
           </div>
-          <h2 className="text-2xl font-bold mb-4"> {/* ✅ ठीक किया गया `className` */}
-            {sellerError ? "Error loading profile" : "Seller profile not found"} {/* ✅ ठीक किया गया नामकरण */}
+          <h2 className="text-2xl font-bold mb-4">
+            {sellerError ? "Error loading profile" : "Seller profile not found"}
           </h2>
-          <p className="text-muted-foreground mb-6"> {/* ✅ ठीक किया गया `className` */}
+          <p className="text-muted-foreground mb-6">
             {sellerError
               ? "There was an issue fetching your seller profile. Please try again."
               : "It looks like you haven't set up your seller profile yet or it's not approved."}
           </p>
-          <Link to="/seller-apply"> {/* ✅ ठीक किया गया नामकरण */}
-            <Button>{sellerError ? "Retry" : "Apply to be a seller"}</Button> {/* ✅ ठीक किया गया नामकरण */}
+          <Link to="/seller-apply">
+            <Button>{sellerError ? "Retry" : "Apply to be a seller"}</Button>
           </Link>
-          <Link to="/"> {/* ✅ ठीक किया गया नामकरण */}
-            <Button variant="ghost" className="ml-4"> {/* ✅ ठीक किया गया नामकरण */}
+          <Link to="/">
+            <Button variant="ghost" className="ml-4">
               Go back home
             </Button>
           </Link>
@@ -156,106 +142,101 @@ export default function SellerDashboard() { // ✅ ठीक किया गय
     );
   }
 
-  // ----------------- dashboard -----------------
   return (
-    <div className="min-h-screen bg-background"> {/* ✅ ठीक किया गया `className` */}
-      <Header /> {/* ✅ ठीक किया गया नामकरण */}
+    <div className="min-h-screen bg-background">
+      <Header />
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8"> {/* ✅ ठीक किया गया `className` */}
-        {/* header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8"> {/* ✅ ठीक किया गया `className` */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-foreground mb-2">Seller Dashboard</h1> {/* ✅ ठीक किया गया नामकरण */}
-            <p className="text-muted-foreground">Manage your products and orders</p> {/* ✅ ठीक किया गया `className` */}
+            <h1 className="text-3xl font-bold text-foreground mb-2">Seller Dashboard</h1>
+            <p className="text-muted-foreground">Manage your products and orders</p>
           </div>
-          <div className="flex items-center space-x-4 mt-4 sm:mt-0"> {/* ✅ ठीक किया गया `className` */}
-            {seller.approvalStatus === "approved" ? ( // ✅ ठीक किया गया नामकरण
-              <Badge variant="default" className="bg-green-600"> {/* ✅ ठीक किया गया नामकरण */}
-                <CheckCircle className="h-3 w-3 mr-1" /> {/* ✅ ठीक किया गया नामकरण */}
+          <div className="flex items-center space-x-4 mt-4 sm:mt-0">
+            {seller.approvalStatus === "approved" ? (
+              <Badge variant="default" className="bg-green-600">
+                <CheckCircle className="h-3 w-3 mr-1" />
                 Verified Seller
               </Badge>
-            ) : seller.approvalStatus === "pending" ? ( // ✅ ठीक किया गया नामकरण
-              <Badge variant="secondary"> {/* ✅ ठीक किया गया नामकरण */}
-                <Clock className="h-3 w-3 mr-1" /> {/* ✅ ठीक किया गया नामकरण */}
+            ) : seller.approvalStatus === "pending" ? (
+              <Badge variant="secondary">
+                <Clock className="h-3 w-3 mr-1" />
                 Pending Verification
               </Badge>
             ) : (
-              <Badge variant="destructive"> {/* ✅ ठीक किया गया नामकरण */}
-                <XCircle className="h-3 w-3 mr-1" /> {/* ✅ ठीक किया गया नामकरण */}
-                Rejected ({seller.rejectionReason || "No reason specified"}) {/* ✅ ठीक किया गया नामकरण */}
+              <Badge variant="destructive">
+                <XCircle className="h-3 w-3 mr-1" />
+                Rejected ({seller.rejectionReason || "No reason specified"})
               </Badge>
             )}
           </div>
         </div>
 
-        {/* metrics */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8"> {/* ✅ ठीक किया गया `className` */}
-          <Card> {/* ✅ ठीक किया गया नामकरण */}
-            <CardContent className="p-6 flex items-center"> {/* ✅ ठीक किया गया नामकरण */}
-              <TrendingUp className="h-8 w-8 text-primary" /> {/* ✅ ठीक किया गया नामकरण */}
-              <div className="ml-4"> {/* ✅ ठीक किया गया `className` */}
-                <p className="text-sm font-medium text-muted-foreground">Total Revenue</p> {/* ✅ ठीक किया गया नामकरण */}
-                <p className="text-2xl font-bold">₹{totalRevenue.toLocaleString()}</p> {/* ✅ ठीक किया गया नामकरण */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <Card>
+            <CardContent className="p-6 flex items-center">
+              <TrendingUp className="h-8 w-8 text-primary" />
+              <div className="ml-4">
+                <p className="text-sm font-medium text-muted-foreground">Total Revenue</p>
+                <p className="text-2xl font-bold">₹{totalRevenue.toLocaleString()}</p>
               </div>
             </CardContent>
           </Card>
-          <Card> {/* ✅ ठीक किया गया नामकरण */}
-            <CardContent className="p-6 flex items-center"> {/* ✅ ठीक किया गया नामकरण */}
-              <ShoppingCart className="h-8 w-8 text-secondary" /> {/* ✅ ठीक किया गया नामकरण */}
-              <div className="ml-4"> {/* ✅ ठीक किया गया `className` */}
-                <p className="text-sm font-medium text-muted-foreground">Total Orders</p> {/* ✅ ठीक किया गया नामकरण */}
-                <p className="text-2xl font-bold">{totalOrders}</p> {/* ✅ ठीक किया गया नामकरण */}
+          <Card>
+            <CardContent className="p-6 flex items-center">
+              <ShoppingCart className="h-8 w-8 text-secondary" />
+              <div className="ml-4">
+                <p className="text-sm font-medium text-muted-foreground">Total Orders</p>
+                <p className="text-2xl font-bold">{totalOrders}</p>
               </div>
             </CardContent>
           </Card>
-          <Card> {/* ✅ ठीक किया गया नामकरण */}
-            <CardContent className="p-6 flex items-center"> {/* ✅ ठीक किया गया नामकरण */}
-              <Package className="h-8 w-8 text-yellow-600" /> {/* ✅ ठीक किया गया नामकरण */}
-              <div className="ml-4"> {/* ✅ ठीक किया गया `className` */}
-                <p className="text-sm font-medium text-muted-foreground">Products</p> {/* ✅ ठीक किया गया नामकरण */}
-                <p className="text-2xl font-bold">{totalProducts}</p> {/* ✅ ठीक किया गया नामकरण */}
+          <Card>
+            <CardContent className="p-6 flex items-center">
+              <Package className="h-8 w-8 text-yellow-600" />
+              <div className="ml-4">
+                <p className="text-sm font-medium text-muted-foreground">Products</p>
+                <p className="text-2xl font-bold">{totalProducts}</p>
               </div>
             </CardContent>
           </Card>
-          <Card> {/* ✅ ठीक किया गया नामकरण */}
-            <CardContent className="p-6 flex items-center"> {/* ✅ ठीक किया गया नामकरण */}
-              <Star className="h-8 w-8 text-yellow-500" /> {/* ✅ ठीक किया गया नामकरण */}
-              <div className="ml-4"> {/* ✅ ठीक किया गया `className` */}
-                <p className="text-sm font-medium text-muted-foreground">Rating</p> {/* ✅ ठीक किया गया नामकरण */}
-                <p className="text-2xl font-bold">{averageRating.toFixed(1)}</p> {/* ✅ ठीक किया गया नामकरण */}
+          <Card>
+            <CardContent className="p-6 flex items-center">
+              <Star className="h-8 w-8 text-yellow-500" />
+              <div className="ml-4">
+                <p className="text-sm font-medium text-muted-foreground">Rating</p>
+                <p className="text-2xl font-bold">{averageRating.toFixed(1)}</p>
               </div>
             </CardContent>
           </Card>
         </div>
 
-        {/* tabs */}
-        <Tabs defaultValue="products" value={activeTab} onValueChange={setActiveTab} className="space-y-4"> {/* ✅ ठीक किया गया नामकरण */}
-          <TabsList> {/* ✅ ठीक किया गया नामकरण */}
-            <TabsTrigger value="products"> {/* ✅ ठीक किया गया नामकरण */}
-              <Package className="h-4 w-4 mr-2" /> Products {/* ✅ ठीक किया गया नामकरण */}
+        <Tabs defaultValue="products" value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+          <TabsList>
+            <TabsTrigger value="products">
+              <Package className="h-4 w-4 mr-2" /> Products
             </TabsTrigger>
-            <TabsTrigger value="orders"> {/* ✅ ठीक किया गया नामकरण */}
-              <ShoppingCart className="h-4 w-4 mr-2" /> Orders {/* ✅ ठीक किया गया नामकरण */}
+            <TabsTrigger value="orders">
+              <ShoppingCart className="h-4 w-4 mr-2" /> Orders
             </TabsTrigger>
-            <TabsTrigger value="profile"> {/* ✅ ठीक किया गया नामकरण */}
-              <Settings className="h-4 w-4 mr-2" /> Profile {/* ✅ ठीक किया गया नामकरण */}
+            <TabsTrigger value="profile">
+              <Settings className="h-4 w-4 mr-2" /> Profile
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="products"> {/* ✅ ठीक किया गया नामकरण */}
-            <ProductManager seller={seller} /> {/* ✅ ठीक किया गया नामकरण */}
+          <TabsContent value="products">
+            <ProductManager seller={seller} />
           </TabsContent>
 
-          <TabsContent value="orders"> {/* ✅ ठीक किया गया नामकरण */}
-            <OrderManager seller={seller} orders={orders} isLoading={ordersLoading} error={ordersError} /> {/* ✅ ठीक किया गया नामकरण */}
+          <TabsContent value="orders">
+            <OrderManager seller={seller} orders={orders} isLoading={ordersLoading} error={ordersError} />
           </TabsContent>
 
-          <TabsContent value="profile"> {/* ✅ ठीक किया गया नामकरण */}
-            <ProfileManager seller={seller} /> {/* ✅ ठीक किया गया नामकरण */}
+          <TabsContent value="profile">
+            <ProfileManager seller={seller} />
           </TabsContent>
         </Tabs>
       </div>
     </div>
   );
 }
-  
