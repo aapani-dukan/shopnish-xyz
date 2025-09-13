@@ -33,10 +33,7 @@ export default function SellerDashboard() {
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState("products");
 
-  // IMPORTANT: useSocket may return either:
-  // 1) a socket instance directly (old shape), OR
-  // 2) an object { socket, isConnected } (new shape).
-  // We resolve both shapes here and only use the resolvedSocket in this component.
+  // 🔌 Handle both shapes of useSocket
   const socketContext = useSocket() as any;
   const resolvedSocket: any = socketContext?.socket ?? socketContext;
   const socketIsConnected: boolean =
@@ -48,43 +45,32 @@ export default function SellerDashboard() {
 
   // ----------------- SOCKET.IO LOGIC -----------------
   useEffect(() => {
-    // Guard: only attach listeners when we have a usable socket, the user is authenticated
-    // and the user is a seller.
     if (!resolvedSocket || !isAuthenticated || user?.role !== "seller") return;
 
-    // Defensive: ensure the resolvedSocket actually exposes `.on`
     if (typeof resolvedSocket.on !== "function") {
-      console.warn("SellerDashboard: resolvedSocket has no .on method:", resolvedSocket);
+      console.warn("⚠️ resolvedSocket has no .on method:", resolvedSocket);
       return;
     }
 
     const handleNewOrderForSeller = (order: OrderWithItems) => {
-      try {
-        console.log("📦 नया ऑर्डर seller को मिला:", order);
+      console.log("📦 नया ऑर्डर seller को मिला:", order);
 
-        // invalidate seller orders query
-        queryClient.invalidateQueries({ queryKey: ["/api/sellers/orders"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/sellers/orders"] });
 
-        toast({
-          title: "🔔 नया ऑर्डर!",
-          description: `आपको ऑर्डर #${order.id} के लिए नया ऑर्डर मिला।`,
-          duration: 5000,
-        });
-      } catch (err) {
-        console.error("Error handling new-order-for-seller event:", err);
-      }
+      toast({
+        title: "🔔 नया ऑर्डर!",
+        description: `आपको ऑर्डर #${order.id} के लिए नया ऑर्डर मिला।`,
+        duration: 5000,
+      });
     };
 
-    // Attach listener
     resolvedSocket.on("new-order-for-seller", handleNewOrderForSeller);
 
-    // Cleanup (use the same handler reference)
     return () => {
       if (typeof resolvedSocket.off === "function") {
         resolvedSocket.off("new-order-for-seller", handleNewOrderForSeller);
       }
     };
-    // Note: include resolvedSocket, isAuthenticated and user.role in deps
   }, [resolvedSocket, isAuthenticated, user?.role, toast, queryClient]);
 
   // ----------------- FETCH SELLER PROFILE -----------------
@@ -118,7 +104,7 @@ export default function SellerDashboard() {
     ) || 0;
 
   const totalOrders = orders?.length || 0;
-  const totalProducts = 0; // ProductManager से dynamic हो सकता है
+  const totalProducts = 0;
   const averageRating = parseFloat(seller?.rating?.toString() || "0");
 
   // ----------------- LOADING -----------------
