@@ -32,29 +32,60 @@ export default function SellerDashboard() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState("products");
-  const socket = useSocket();
+
+  // IMPORTANT: useSocket may return either:
+  // 1) a socket instance directly (old shape), OR
+  // 2) an object { socket, isConnected } (new shape).
+  // We resolve both shapes here and only use the resolvedSocket in this component.
+  const socketContext = useSocket() as any;
+  const resolvedSocket: any = socketContext?.socket ?? socketContext;
+  const socketIsConnected: boolean =
+    typeof socketContext?.isConnected === "boolean"
+      ? socketContext.isConnected
+      : !!resolvedSocket?.connected;
+
   const { user, isAuthenticated } = useAuth();
 
   // ----------------- SOCKET.IO LOGIC -----------------
   useEffect(() => {
-    if (!socket || !isAuthenticated || user?.role !== "seller") return;
+    // Guard: only attach listeners when we have a usable socket, the user is authenticated
+    // and the user is a seller.
+    if (!resolvedSocket || !isAuthenticated || user?.role !== "seller") return;
 
-    socket.on("new-order-for-seller", (order: OrderWithItems) => {
-      console.log("📦 नया ऑर्डर seller को मिला:", order);
+    // Defensive: ensure the resolvedSocket actually exposes `.on`
+    if (typeof resolvedSocket.on !== "function") {
+      console.warn("SellerDashboard: resolvedSocket has no .on method:", resolvedSocket);
+      return;
+    }
 
-      queryClient.invalidateQueries({ queryKey: ["/api/sellers/orders"] });
+    const handleNewOrderForSeller = (order: OrderWithItems) => {
+      try {
+        console.log("📦 नया ऑर्डर seller को मिला:", order);
 
-      toast({
-        title: "🔔 नया ऑर्डर!",
-        description: `आपको ऑर्डर #${order.id} के लिए नया ऑर्डर मिला।`,
-        duration: 5000,
-      });
-    });
+        // invalidate seller orders query
+        queryClient.invalidateQueries({ queryKey: ["/api/sellers/orders"] });
 
-    return () => {
-      socket.off("new-order-for-seller");
+        toast({
+          title: "🔔 नया ऑर्डर!",
+          description: `आपको ऑर्डर #${order.id} के लिए नया ऑर्डर मिला।`,
+          duration: 5000,
+        });
+      } catch (err) {
+        console.error("Error handling new-order-for-seller event:", err);
+      }
     };
-  }, [socket, isAuthenticated, user, toast, queryClient]);
+
+    // Attach listener
+    resolvedSocket.on("new-order-for-seller", handleNewOrderForSeller);
+
+    // Cleanup (use the same handler reference)
+    return () => {
+      if (typeof resolvedSocket.off === "function") {
+        resolvedSocket.off("new-order-for-seller", handleNewOrderForSeller);
+      }
+    };
+    // Note: include resolvedSocket, isAuthenticated and user.role in deps
+  }, [resolvedSocket, isAuthenticated, user?.role, toast, queryClient]);
 
   // ----------------- FETCH SELLER PROFILE -----------------
   const { data: seller, isLoading: sellerLoading, error: sellerError } = useQuery<Seller>({
@@ -125,9 +156,7 @@ export default function SellerDashboard() {
             )}
           </div>
           <h2 className="text-2xl font-bold mb-4">
-            {sellerError
-              ? "Error Loading Profile"
-              : "Seller Profile Not Found"}
+            {sellerError ? "Error Loading Profile" : "Seller Profile Not Found"}
           </h2>
           <p className="text-muted-foreground mb-6">
             {sellerError
@@ -135,9 +164,7 @@ export default function SellerDashboard() {
               : "It looks like you haven't set up your seller profile yet or it's not approved."}
           </p>
           <Link to="/seller-apply">
-            <Button>
-              {sellerError ? "Retry" : "Apply to be a Seller"}
-            </Button>
+            <Button>{sellerError ? "Retry" : "Apply to be a Seller"}</Button>
           </Link>
           <Link to="/">
             <Button variant="ghost" className="ml-4">
@@ -158,12 +185,8 @@ export default function SellerDashboard() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-foreground mb-2">
-              Seller Dashboard
-            </h1>
-            <p className="text-muted-foreground">
-              Manage your products and orders
-            </p>
+            <h1 className="text-3xl font-bold text-foreground mb-2">Seller Dashboard</h1>
+            <p className="text-muted-foreground">Manage your products and orders</p>
           </div>
           <div className="flex items-center space-x-4 mt-4 sm:mt-0">
             {seller.approvalStatus === "approved" ? (
@@ -191,12 +214,8 @@ export default function SellerDashboard() {
             <CardContent className="p-6 flex items-center">
               <TrendingUp className="h-8 w-8 text-primary" />
               <div className="ml-4">
-                <p className="text-sm font-medium text-muted-foreground">
-                  Total Revenue
-                </p>
-                <p className="text-2xl font-bold">
-                  ₹{totalRevenue.toLocaleString()}
-                </p>
+                <p className="text-sm font-medium text-muted-foreground">Total Revenue</p>
+                <p className="text-2xl font-bold">₹{totalRevenue.toLocaleString()}</p>
               </div>
             </CardContent>
           </Card>
@@ -204,9 +223,7 @@ export default function SellerDashboard() {
             <CardContent className="p-6 flex items-center">
               <ShoppingCart className="h-8 w-8 text-secondary" />
               <div className="ml-4">
-                <p className="text-sm font-medium text-muted-foreground">
-                  Total Orders
-                </p>
+                <p className="text-sm font-medium text-muted-foreground">Total Orders</p>
                 <p className="text-2xl font-bold">{totalOrders}</p>
               </div>
             </CardContent>
@@ -215,9 +232,7 @@ export default function SellerDashboard() {
             <CardContent className="p-6 flex items-center">
               <Package className="h-8 w-8 text-yellow-600" />
               <div className="ml-4">
-                <p className="text-sm font-medium text-muted-foreground">
-                  Products
-                </p>
+                <p className="text-sm font-medium text-muted-foreground">Products</p>
                 <p className="text-2xl font-bold">{totalProducts}</p>
               </div>
             </CardContent>
@@ -226,24 +241,15 @@ export default function SellerDashboard() {
             <CardContent className="p-6 flex items-center">
               <Star className="h-8 w-8 text-yellow-500" />
               <div className="ml-4">
-                <p className="text-sm font-medium text-muted-foreground">
-                  Rating
-                </p>
-                <p className="text-2xl font-bold">
-                  {averageRating.toFixed(1)}
-                </p>
+                <p className="text-sm font-medium text-muted-foreground">Rating</p>
+                <p className="text-2xl font-bold">{averageRating.toFixed(1)}</p>
               </div>
             </CardContent>
           </Card>
         </div>
 
         {/* Tabs */}
-        <Tabs
-          defaultValue="products"
-          value={activeTab}
-          onValueChange={setActiveTab}
-          className="space-y-4"
-        >
+        <Tabs defaultValue="products" value={activeTab} onValueChange={setActiveTab} className="space-y-4">
           <TabsList>
             <TabsTrigger value="products">
               <Package className="h-4 w-4 mr-2" /> Products
@@ -261,12 +267,7 @@ export default function SellerDashboard() {
           </TabsContent>
 
           <TabsContent value="orders">
-            <OrderManager
-              seller={seller}
-              orders={orders}
-              isLoading={ordersLoading}
-              error={ordersError}
-            />
+            <OrderManager seller={seller} orders={orders} isLoading={ordersLoading} error={ordersError} />
           </TabsContent>
 
           <TabsContent value="profile">
@@ -276,4 +277,4 @@ export default function SellerDashboard() {
       </div>
     </div>
   );
-                  }
+}
