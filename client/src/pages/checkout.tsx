@@ -129,81 +129,84 @@ export default function Checkout() {
       });
     },
   });
+const handlePlaceOrder = () => {
+  if (!user || !user.id) {
+    toast({
+      title: "Authentication Error",
+      description: "You must be logged in to place an order.",
+      variant: "destructive",
+    });
+    return;
+  }
 
-  const handlePlaceOrder = () => {
-    if (!user || !user.id) {
-      toast({
-        title: "Authentication Error",
-        description: "You must be logged in to place an order.",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    if (!deliveryAddress.fullName || !deliveryAddress.phone || !deliveryAddress.address || !deliveryAddress.pincode) {
-      toast({
-        title: "Address Required",
-        description: "Please fill in all delivery address fields",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    if (!cartItems || cartItems.length === 0) {
-      toast({
-        title: "No Items to Order",
-        description: "There are no items to place an order.",
-        variant: "destructive",
-      });
-      return;
-    }
+  if (!deliveryAddress.fullName || !deliveryAddress.phone || !deliveryAddress.address || !deliveryAddress.pincode) {
+    toast({
+      title: "Address Required",
+      description: "Please fill in all delivery address fields",
+      variant: "destructive",
+    });
+    return;
+  }
 
-    const orderData = {
-      customerId: user.id,
-      deliveryAddress,
-      paymentMethod,
-      subtotal: subtotal.toFixed(2), 
-      total: total.toFixed(2),       
-      deliveryCharge: deliveryCharge.toFixed(2), 
-      deliveryInstructions,
-      items: cartItems.map(item => ({
-        productId: item.product.id,
-        sellerId: item.product.sellerId,
-        quantity: item.quantity,
-        unitPrice: item.product.price,
-        totalPrice: (parseFloat(item.product.price) * item.quantity).toFixed(2),
-      })),
-      cartOrder: !directBuyProductId,
-    };
+  if (!cartItems || cartItems.length === 0) {
+    toast({
+      title: "No Items to Order",
+      description: "There are no items to place an order.",
+      variant: "destructive",
+    });
+    return;
+  }
 
-    createOrderMutation.mutate(orderData);
+  const itemsToOrder = cartItems.map(item => ({
+    productId: item.product.id,
+    sellerId: item.product.sellerId,
+    quantity: item.quantity,
+    unitPrice: item.product.price,
+    totalPrice: (parseFloat(item.product.price) * item.quantity).toFixed(2),
+  }));
+
+  const orderData = {
+    customerId: user.id,
+    deliveryAddress,
+    paymentMethod,
+    subtotal: subtotal.toFixed(2),
+    total: total.toFixed(2),
+    deliveryCharge: deliveryCharge.toFixed(2),
+    deliveryInstructions,
+    items: itemsToOrder,
+    cartOrder: true, // अब हमेशा cart order
   };
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full"></div>
-      </div>
-    );
-  }
+  createOrderMutation.mutate(orderData);
+};
 
-  if (cartItems.length === 0 && !directBuyProductId) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Card className="w-full max-w-md">
-          <CardContent className="pt-6 text-center">
-            <ShoppingCart className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-            <h3 className="text-lg font-medium mb-2">Your cart is empty</h3>
-            <p className="text-gray-600 mb-4">Add some items to proceed with checkout</p>
-            <Link to="/">
-              <Button>Continue Shopping</Button>
-            </Link>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
+// ------------------- JSX Loading / Empty States -------------------
 
+if (isLoading) {
+  return (
+    <div className="min-h-screen flex items-center justify-center">
+      <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full"></div>
+    </div>
+  );
+}
+
+if (!cartItems || cartItems.length === 0) {
+  return (
+    <div className="min-h-screen flex items-center justify-center">
+      <Card className="w-full max-w-md">
+        <CardContent className="pt-6 text-center">
+          <ShoppingCart className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+          <h3 className="text-lg font-medium mb-2">Your cart is empty</h3>
+          <p className="text-gray-600 mb-4">Add some items to proceed with checkout</p>
+          <Link to="/">
+            <Button>Continue Shopping</Button>
+          </Link>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+  
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-6xl mx-auto px-4">
