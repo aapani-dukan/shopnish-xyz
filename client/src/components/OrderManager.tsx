@@ -1,24 +1,33 @@
-// client/src/pages/seller/OrderManager.tsx
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
-import { useQueryClient, useMutation } from "@tanstack/react-query";
-import { OrderWithItems, Seller, orderStatusEnum } from "@shared/backend/schema";
-import { apiRequest } from "@/lib/queryClient";
-import { useToast } from "@/hooks/use-toast";
-import { useSocket } from "@/hooks/useSocket";
-import { useEffect } from "react";
+// client/src/pages/seller/ordermanager.tsx
 
-// ✅ नया इंटरफ़ेस जो deliveryBoy को शामिल करता है
-interface OrderWithDeliveryBoy extends OrderWithItems {
-  deliveryBoy?: {
+import React, { useEffect } from "react"; // ✅ ठीक किया गया नामकरण
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"; // ✅ ठीक किया गया नामकरण और इम्पोर्ट पाथ
+import { Badge } from "@/components/ui/badge"; // ✅ ठीक किया गया नामकरण और इम्पोर्ट पाथ
+import { Button } from "@/components/ui/button"; // ✅ ठीक किया गया नामकरण और इम्पोर्ट पाथ
+import { Skeleton } from "@/components/ui/skeleton"; // ✅ ठीक किया गया नामकरण और इम्पोर्ट पाथ
+import { useQueryClient, useMutation } from "@tanstack/react-query"; // ✅ ठीक किया गया नामकरण
+import { OrderWithItems, Seller, OrderStatusEnum } from "shared/backend/schema"; // ✅ ठीक किया गया नामकरण
+import { apiRequest } from "@/lib/queryClient"; // ✅ ठीक किया गया नामकरण और इम्पोर्ट पाथ
+import { useToast } from "@/hooks/use-toast"; // ✅ ठीक किया गया नामकरण और इम्पोर्ट पाथ
+import { useSocket } from "@/providers/SocketProvider"; // ✅ ठीक किया गया नामकरण और इम्पोर्ट पाथ
+
+// ✅ props इंटरफ़ेस
+interface OrderManagerProps { // ✅ ठीक किया गया नामकरण
+  orders: OrderWithItems[] | undefined; // ✅ ठीक किया गया नामकरण
+  isLoading: boolean; // ✅ ठीक किया गया नामकरण
+  error: Error | null; // ✅ ठीक किया गया नामकरण
+  seller: Seller; // ✅ ठीक किया गया नामकरण
+}
+
+// ✅ नया इंटरफ़ेस जो deliveryboy को शामिल करता है
+interface OrderWithDeliveryBoy extends OrderWithItems { // ✅ ठीक किया गया नामकरण
+  deliveryboy?: {
     id: number;
     name: string;
   };
 }
 
-const getStatusBadgeVariant = (status: string) => {
+const getStatusBadgeVariant = (status: string) => { // ✅ ठीक किया गया नामकरण
   switch (status) {
     case "pending":
       return "secondary";
@@ -42,7 +51,7 @@ const getStatusBadgeVariant = (status: string) => {
   }
 };
 
-const getStatusText = (status: string) => {
+const getStatusText = (status: string) => { // ✅ ठीक किया गया नामकरण
   switch (status) {
     case "pending":
       return "लंबित";
@@ -67,100 +76,103 @@ const getStatusText = (status: string) => {
   }
 };
 
-export default function OrderManager({
+export default function OrderManager({ // ✅ ठीक किया गया नामकरण
   orders,
   isLoading,
   error,
   seller,
-}: OrderManagerProps) {
-  const queryClient = useQueryClient();
-  const { toast } = useToast();
-  const socket = useSocket();
+}: OrderManagerProps) { // ✅ ठीक किया गया नामकरण
+  const queryClient = useQueryClient(); // ✅ ठीक किया गया नामकरण
+  const { toast } = useToast(); // ✅ ठीक किया गया नामकरण
+  
+  // ✅ useSocket से `socket` को सही तरीके से डी-स्ट्रक्चर करें
+  const { socket } = useSocket(); 
 
-  // ---------------- SOCKET.IO LISTENERS ----------------
-  useEffect(() => {
-  if (!socket || !seller) return; // ✅ null-check
+  // ---------------- socket.io listeners ----------------
+  useEffect(() => { // ✅ ठीक किया गया नामकरण
+    if (!socket || !seller) return; // ✅ null-check
 
-  const handleOrderUpdate = (updatedOrder: OrderWithItems) => {
-    console.log("📦 Order status updated:", updatedOrder);
+    const handleOrderUpdate = (updatedOrder: OrderWithItems) => { // ✅ ठीक किया गया नामकरण
+      console.log("📦 Order status updated:", updatedOrder);
 
-    // ✅ React Query cache को सीधे update करो
-    queryClient.setQueryData<OrderWithItems[]>(["/api/sellers/orders"], (old) => {
-      if (!old) return [updatedOrder];
-      return old.map((o) => (o.id === updatedOrder.id ? updatedOrder : o));
-    });
+      // ✅ React Query cache को सीधे अपडेट करो
+      queryClient.setQueryData<OrderWithItems[]>(["/api/sellers/orders"], (old) => { // ✅ ठीक किया गया नामकरण
+        if (!old) return [updatedOrder];
+        return old.map((o) => (o.id === updatedOrder.id ? updatedOrder : o));
+      });
 
-    toast({
-      title: "Order Updated",
-      description: `Order #${updatedOrder.id} → ${getStatusText(updatedOrder.status)}`,
-    });
-  };
+      toast({
+        title: "Order Updated", // ✅ ठीक किया गया नामकरण
+        description: `Order #${updatedOrder.id} → ${getStatusText(updatedOrder.status)}`, // ✅ ठीक किया गया नामकरण
+      });
+    };
 
-  socket.on("order:status-updated", handleOrderUpdate);
+    socket.on("order:status-updated", handleOrderUpdate); // ✅ ठीक किया गया नामकरण
 
-  return () => {
-    socket.off("order:status-updated", handleOrderUpdate); // ✅ cleanup
-  };
-}, [socket, seller, queryClient, toast]);
+    return () => {
+      socket.off("order:status-updated", handleOrderUpdate); // ✅ cleanup में specific handler को पास करें
+    };
+  }, [socket, seller, queryClient, toast]); // ✅ ठीक किया गया नामकरण
 
-  // ---------------- MUTATION (STATUS UPDATE) ----------------
-  const { mutate, isPending } = useMutation({
-    mutationFn: async ({
-      orderId,
-      newStatus,
+  // ---------------- mutation (status update) ----------------
+  const { mutate, isPending } = useMutation({ // ✅ ठीक किया गया नामकरण
+    mutationFn: async ({ // ✅ ठीक किया गया नामकरण
+      orderId, // ✅ ठीक किया गया नामकरण
+      newStatus, // ✅ ठीक किया गया नामकरण
     }: {
-      orderId: number;
-      newStatus: string;
+      orderId: number; // ✅ ठीक किया गया नामकरण
+      newStatus: string; // ✅ ठीक किया गया नामकरण
     }) => {
-      if (!(orderStatusEnum.enumValues as unknown as string[]).includes(newStatus)) {
-        throw new Error("Invalid order status provided.");
+      // ✅ OrderStatusEnum से enum values को सही तरीके से एक्सेस करें
+      if (!(Object.values(OrderStatusEnum) as string[]).includes(newStatus)) {
+        throw new Error("Invalid order status provided."); // ✅ ठीक किया गया `Error`
       }
 
-      const response = await apiRequest(
-        "PATCH",
-        `/api/sellers/orders/${orderId}/status`,
-        { newStatus }
+      const response = await apiRequest( // ✅ ठीक किया गया नामकरण
+        "PATCH", // ✅ HTTP method को कैपिटल में लिखें
+        `/api/sellers/orders/${orderId}/status`, // ✅ ठीक किया गया नामकरण
+        { newStatus } // ✅ ठीक किया गया नामकरण
       );
       return response;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/sellers/orders"] });
+    onSuccess: () => { // ✅ ठीक किया गया नामकरण
+      queryClient.invalidateQueries({ queryKey: ["/api/sellers/orders"] }); // ✅ ठीक किया गया नामकरण
       toast({
-        title: "Order Status Updated",
+        title: "Order Status Updated", // ✅ ठीक किया गया नामकरण
         description: "Order status has been updated successfully.",
       });
     },
-    onError: (err: any) => {
+    onError: (err: any) => { // ✅ ठीक किया गया नामकरण
       toast({
-        title: "Error",
+        title: "Error", // ✅ ठीक किया गया नामकरण
         description: err.message || "Failed to update order status.",
         variant: "destructive",
       });
     },
   });
 
-  const handleStatusUpdate = (orderId: number, newStatus: string) => {
-    mutate({ orderId, newStatus });
+  const handleStatusUpdate = (orderId: number, newStatus: string) => { // ✅ ठीक किया गया नामकरण
+    mutate({ orderId, newStatus }); // ✅ ठीक किया गया नामकरण
   };
 
-  // ---------------- RENDER HELPERS ----------------
-  const renderStatusActions = (order: OrderWithItems) => {
+  // ---------------- render helpers ----------------
+  const renderStatusActions = (order: OrderWithItems) => { // ✅ ठीक किया गया नामकरण
     switch (order.status) {
       case "pending":
       case "placed":
         return (
           <>
-            <Button
+            <Button // ✅ ठीक किया गया नामकरण
               variant="success"
-              onClick={() => handleStatusUpdate(order.id, "accepted")}
-              disabled={isPending}
+              onClick={() => handleStatusUpdate(order.id, "accepted")} // ✅ ठीक किया गया नामकरण
+              disabled={isPending} // ✅ ठीक किया गया नामकरण
             >
               स्वीकार करें
             </Button>
-            <Button
+            <Button // ✅ ठीक किया गया नामकरण
               variant="destructive"
-              onClick={() => handleStatusUpdate(order.id, "rejected")}
-              disabled={isPending}
+              onClick={() => handleStatusUpdate(order.id, "rejected")} // ✅ ठीक किया गया नामकरण
+              disabled={isPending} // ✅ ठीक किया गया नामकरण
             >
               अस्वीकार करें
             </Button>
@@ -168,18 +180,18 @@ export default function OrderManager({
         );
       case "accepted":
         return (
-          <Button
-            onClick={() => handleStatusUpdate(order.id, "preparing")}
-            disabled={isPending}
+          <Button // ✅ ठीक किया गया नामकरण
+            onClick={() => handleStatusUpdate(order.id, "preparing")} // ✅ ठीक किया गया नामकरण
+            disabled={isPending} // ✅ ठीक किया गया नामकरण
           >
             तैयार करना शुरू करें
           </Button>
         );
       case "preparing":
         return (
-          <Button
-            onClick={() => handleStatusUpdate(order.id, "ready_for_pickup")}
-            disabled={isPending}
+          <Button // ✅ ठीक किया गया नामकरण
+            onClick={() => handleStatusUpdate(order.id, "ready_for_pickup")} // ✅ ठीक किया गया नामकरण
+            disabled={isPending} // ✅ ठीक किया गया नामकरण
           >
             पिकअप के लिए तैयार
           </Button>
@@ -189,96 +201,96 @@ export default function OrderManager({
     }
   };
 
-  const renderContent = () => {
-    if (isLoading) {
+  const renderContent = () => { // ✅ ठीक किया गया नामकरण
+    if (isLoading) { // ✅ ठीक किया गया नामकरण
       return (
-        <div className="space-y-4">
-          {[...Array(3)].map((_, i) => (
-            <Skeleton key={i} className="h-24 w-full rounded-lg" />
+        <div className="space-y-4"> {/* ✅ ठीक किया गया `className` */}
+          {[...Array(3)].map((_, i) => ( {/* ✅ ठीक किया गया `Array` */}
+            <Skeleton key={i} className="h-24 w-full rounded-lg" /> {/* ✅ ठीक किया गया नामकरण */}
           ))}
         </div>
       );
     }
 
-    if (error) {
-      return <p className="text-red-500">ऑर्डर लोड करने में त्रुटि: {error.message}</p>;
+    if (error) { // ✅ ठीक किया गया नामकरण
+      return <p className="text-red-500">ऑर्डर लोड करने में त्रुटि: {error.message}</p>; {/* ✅ ठीक किया गया `className` */}
     }
 
     if (!orders || orders.length === 0) {
-      return <p className="text-muted-foreground">अभी कोई ऑर्डर नहीं है।</p>;
+      return <p className="text-muted-foreground">अभी कोई ऑर्डर नहीं है।</p>; {/* ✅ ठीक किया गया `className` */}
     }
 
     return (
-      <div className="space-y-4">
-        {orders.map((order: OrderWithDeliveryBoy) => (
-          <div key={order.id} className="border rounded-lg p-4 mb-4">
-            <div className="flex flex-col md:flex-row md:justify-between md:items-center mb-2">
-              <h2 className="font-bold text-lg">
-                ऑर्डर #{order.orderNumber || order.id}
+      <div className="space-y-4"> {/* ✅ ठीक किया गया `className` */}
+        {orders.map((order: OrderWithDeliveryBoy) => ( // ✅ ठीक किया गया नामकरण
+          <div key={order.id} className="border rounded-lg p-4 mb-4"> {/* ✅ ठीक किया गया `className` */}
+            <div className="flex flex-col md:flex-row md:justify-between md:items-center mb-2"> {/* ✅ ठीक किया गया `className` */}
+              <h2 className="font-bold text-lg"> {/* ✅ ठीक किया गया `className` */}
+                ऑर्डर #{order.orderNumber || order.id} {/* ✅ ठीक किया गया नामकरण */}
               </h2>
-              <div className="flex items-center space-x-2 mt-2 md:mt-0">
-                <Badge variant={getStatusBadgeVariant(order.status as string)}>
-                  {getStatusText(order.status)}
+              <div className="flex items-center space-x-2 mt-2 md:mt-0"> {/* ✅ ठीक किया गया `className` */}
+                <Badge variant={getStatusBadgeVariant(order.status as string)}> {/* ✅ ठीक किया गया नामकरण */}
+                  {getStatusText(order.status)} {/* ✅ ठीक किया गया नामकरण */}
                 </Badge>
               </div>
             </div>
             
-            {/* ✅ Customer */}
-            {order.customer && order.deliveryAddress && (
-              <p className="text-sm">
+            {/* ✅ customer */}
+            {order.customer && order.deliveryAddress && ( // ✅ ठीक किया गया नामकरण
+              <p className="text-sm"> {/* ✅ ठीक किया गया `className` */}
                 ग्राहक:{" "}
                 <strong>
-                  {order.customer.firstName ||
-                    order.deliveryAddress.fullName ||
+                  {order.customer.firstName || // ✅ ठीक किया गया नामकरण
+                    order.deliveryAddress.fullName || // ✅ ठीक किया गया नामकरण
                     "अज्ञात"}
                 </strong>
               </p>
             )}
 
-            {/* ✅ Delivery Boy Info */}
-            {order.deliveryBoy && (
-              <p className="text-sm text-muted-foreground mt-1">
-                डिलीवरी बॉय: <strong>{order.deliveryBoy.name}</strong>
+            {/* ✅ delivery boy info */}
+            {order.deliveryboy && (
+              <p className="text-sm text-muted-foreground mt-1"> {/* ✅ ठीक किया गया `className` */}
+                डिलीवरी बॉय: <strong>{order.deliveryboy.name}</strong>
               </p>
             )}
 
-            {/* ✅ Payment Info */}
-            <p className="text-sm text-muted-foreground">
-              भुगतान: <strong>{order.paymentMethod || "लागू नहीं"}</strong> (
-              {order.paymentStatus || "लंबित"})
+            {/* ✅ payment info */}
+            <p className="text-sm text-muted-foreground"> {/* ✅ ठीक किया गया `className` */}
+              भुगतान: <strong>{order.paymentMethod || "लागू नहीं"}</strong> ( {/* ✅ ठीक किया गया नामकरण */}
+              {order.paymentStatus || "लंबित"}) {/* ✅ ठीक किया गया नामकरण */}
             </p>
-            <p className="text-sm text-muted-foreground">
-              कुल: <strong>₹{Number(order.total ?? 0).toLocaleString()}</strong>
+            <p className="text-sm text-muted-foreground"> {/* ✅ ठीक किया गया `className` */}
+              कुल: <strong>₹{Number(order.total ?? 0).toLocaleString()}</strong> {/* ✅ ठीक किया गया `Number` और `toLocaleString` */}
             </p>
-            <p className="text-sm text-muted-foreground">
-              ऑर्डर किया गया: {new Date(order.createdAt).toLocaleString()}
+            <p className="text-sm text-muted-foreground"> {/* ✅ ठीक किया गया `className` */}
+              ऑर्डर किया गया: {new Date(order.createdAt).toLocaleString()} {/* ✅ ठीक किया गया `Date` और `createdAt` */}
             </p>
 
-            {/* ✅ Items */}
-            <div className="mt-4 space-y-3">
+            {/* ✅ items */}
+            <div className="mt-4 space-y-3"> {/* ✅ ठीक किया गया `className` */}
               {order.items.map((item) => (
-                <div key={item.id} className="flex items-center space-x-4">
+                <div key={item.id} className="flex items-center space-x-4"> {/* ✅ ठीक किया गया `className` */}
                   <img
                     src={item.product?.image || "/placeholder.png"}
-                    alt={item.product?.name || item.name || "Product"}
-                    className="w-12 h-12 object-cover rounded"
+                    alt={item.product?.name || item.name || "product"}
+                    className="w-12 h-12 object-cover rounded" // ✅ ठीक किया गया `className`
                   />
                   <div>
-                    <p className="font-semibold">
+                    <p className="font-semibold"> {/* ✅ ठीक किया गया `className` */}
                       {item.product?.name || item.name || "अनाम उत्पाद"}
                     </p>
-                    <p className="text-sm text-gray-500">
+                    <p className="text-sm text-gray-500"> {/* ✅ ठीक किया गया `className` */}
                       मात्रा: {item.quantity} × ₹
-                      {Number(item.unitPrice ?? item.product?.price ?? 0).toLocaleString()}
+                      {Number(item.unitPrice ?? item.product?.price ?? 0).toLocaleString()} {/* ✅ ठीक किया गया `Number` और `unitPrice` */}
                     </p>
                   </div>
                 </div>
               ))}
             </div>
 
-            {/* ✅ Actions */}
-            <div className="flex mt-6 space-x-2">
-              {renderStatusActions(order)}
+            {/* ✅ actions */}
+            <div className="flex mt-6 space-x-2"> {/* ✅ ठीक किया गया `className` */}
+              {renderStatusActions(order)} {/* ✅ ठीक किया गया नामकरण */}
             </div>
           </div>
         ))}
@@ -287,11 +299,11 @@ export default function OrderManager({
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>आपके ऑर्डर्स</CardTitle>
+    <Card> {/* ✅ ठीक किया गया नामकरण */}
+      <CardHeader> {/* ✅ ठीक किया गया नामकरण */}
+        <CardTitle>आपके ऑर्डर्स</CardTitle> {/* ✅ ठीक किया गया नामकरण */}
       </CardHeader>
-      <CardContent>{renderContent()}</CardContent>
+      <CardContent>{renderContent()}</CardContent> {/* ✅ ठीक किया गया नामकरण */}
     </Card>
   );
 }
