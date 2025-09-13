@@ -68,7 +68,7 @@ export const placeOrderBuyNow = async (req: AuthenticatedRequest, res: Response)
         deliveryAddressId: newDeliveryAddressId,
         deliveryInstructions,
         deliveryAddress: JSON.stringify(safeAddress),
-        delivery_boy_id: null,
+        deliveryBoyId: null,
       }).returning();
 
       // 3️⃣ Insert order items
@@ -168,7 +168,7 @@ export const placeOrderFromCart = async (req: AuthenticatedRequest, res: Respons
         deliveryAddressId: newDeliveryAddressId,
         deliveryInstructions,
         deliveryAddress: JSON.stringify(safeAddress),
-        delivery_boy_id: null,
+        deliveryBoyId: null,
       }).returning();
       
       // ✅ 3️⃣ The corrected logic to update orderItems
