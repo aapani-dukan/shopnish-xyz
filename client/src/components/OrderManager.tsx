@@ -79,23 +79,29 @@ export default function OrderManager({
 
   // ---------------- SOCKET.IO LISTENERS ----------------
   useEffect(() => {
-    if (!socket || !seller) return;
+  if (!socket || !seller) return; // ✅ null-check
 
-    const onOrderStatusUpdated = (updatedOrder: OrderWithItems) => {
-      console.log("📦 Order status updated:", updatedOrder);
-      queryClient.invalidateQueries({ queryKey: ["/api/sellers/orders"] });
-      toast({
-        title: "Order Updated",
-        description: `Order #${updatedOrder.id} is now ${getStatusText(updatedOrder.status)}`,
-      });
-    };
+  const handleOrderUpdate = (updatedOrder: OrderWithItems) => {
+    console.log("📦 Order status updated:", updatedOrder);
 
-    socket.on("order:status-updated", onOrderStatusUpdated);
+    // ✅ React Query cache को सीधे update करो
+    queryClient.setQueryData<OrderWithItems[]>(["/api/sellers/orders"], (old) => {
+      if (!old) return [updatedOrder];
+      return old.map((o) => (o.id === updatedOrder.id ? updatedOrder : o));
+    });
 
-    return () => {
-      socket.off("order:status-updated", onOrderStatusUpdated);
-    };
-  }, [socket, seller, queryClient, toast]);
+    toast({
+      title: "Order Updated",
+      description: `Order #${updatedOrder.id} → ${getStatusText(updatedOrder.status)}`,
+    });
+  };
+
+  socket.on("order:status-updated", handleOrderUpdate);
+
+  return () => {
+    socket.off("order:status-updated", handleOrderUpdate); // ✅ cleanup
+  };
+}, [socket, seller, queryClient, toast]);
 
   // ---------------- MUTATION (STATUS UPDATE) ----------------
   const { mutate, isPending } = useMutation({
