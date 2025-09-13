@@ -22,7 +22,7 @@ import {
   Settings,
   XCircle,
 } from "lucide-react";
-import { useSocket } from "@/providers/SocketProvider";
+import { useSocket } from "@/hooks/useSocket";
 import { useAuth } from "@/hooks/useAuth";
 import ProductManager from "@/components/productManager";
 import OrderManager from "@/components/orderManager";
