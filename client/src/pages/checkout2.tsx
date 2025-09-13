@@ -93,78 +93,84 @@ export default function Checkout2() {
     },
   });
 
-  const handlePlaceOrder = () => {
-    if (!user || !user.id) {
-      toast({
-        title: "Authentication Error",
-        description: "You must be logged in to place an order.",
-        variant: "destructive",
-      });
-      return;
-    }
+const handlePlaceOrder = () => {
+  if (!user || !user.id) {
+    toast({
+      title: "Authentication Error",
+      description: "You must be logged in to place an order.",
+      variant: "destructive",
+    });
+    return;
+  }
 
-    if (!deliveryAddress.fullName || !deliveryAddress.phone || !deliveryAddress.address || !deliveryAddress.pincode) {
-      toast({
-        title: "Address Required",
-        description: "Please fill in all delivery address fields",
-        variant: "destructive",
-      });
-      return;
-    }
+  if (!deliveryAddress.fullName || !deliveryAddress.phone || !deliveryAddress.address || !deliveryAddress.pincode) {
+    toast({
+      title: "Address Required",
+      description: "Please fill in all delivery address fields",
+      variant: "destructive",
+    });
+    return;
+  }
 
-    if (!productData) {
-      toast({
-        title: "Product Not Found",
-        description: "Could not find the product to place an order.",
-        variant: "destructive",
-      });
-      return;
-    }
+  if (!productData) {
+    toast({
+      title: "Product Not Found",
+      description: "Could not find the product to place an order.",
+      variant: "destructive",
+    });
+    return;
+  }
 
-    const orderData = {
-      customerId: user.id,
-      deliveryAddress,
-      paymentMethod,
-      subtotal: subtotal.toFixed(2),
-      total: total.toFixed(2),
-      deliveryCharge: deliveryCharge.toFixed(2),
-      deliveryInstructions,
-      items: [{
+  const orderData = {
+    customerId: user.id,
+    deliveryAddress,
+    paymentMethod,
+    subtotal: subtotal.toFixed(2),
+    total: total.toFixed(2),
+    deliveryCharge: deliveryCharge.toFixed(2),
+    deliveryInstructions,
+    items: [
+      {
         productId: productData.id,
         sellerId: productData.sellerId,
         quantity: directBuyQuantity,
         unitPrice: productData.price,
         totalPrice: (parseFloat(productData.price) * directBuyQuantity).toFixed(2),
-      }],
-      cartOrder: false,
-    };
-
-    createOrderMutation.mutate(orderData);
+      },
+    ],
+    cartOrder: false, // direct buy हमेशा false
   };
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full"></div>
-      </div>
-    );
-  }
+  createOrderMutation.mutate(orderData);
+};
 
-  if (error || !productData) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Card className="w-full max-w-md">
-          <CardContent className="pt-6 text-center">
-            <h3 className="text-lg font-medium mb-2">Product Not Found</h3>
-            <p className="text-gray-600 mb-4">The product you're looking for doesn't exist or is not available.</p>
-            <Link to="/">
-              <Button>Go to Home Page</Button>
-            </Link>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
+// ------------------- JSX Loading / Error States -------------------
+
+if (isLoading) {
+  return (
+    <div className="min-h-screen flex items-center justify-center">
+      <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full"></div>
+    </div>
+  );
+}
+
+if (error || !productData) {
+  return (
+    <div className="min-h-screen flex items-center justify-center">
+      <Card className="w-full max-w-md">
+        <CardContent className="pt-6 text-center">
+          <h3 className="text-lg font-medium mb-2">Product Not Found</h3>
+          <p className="text-gray-600 mb-4">
+            The product you're looking for doesn't exist or is not available.
+          </p>
+          <Link to="/">
+            <Button>Go to Home Page</Button>
+          </Link>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
