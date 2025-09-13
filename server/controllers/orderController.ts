@@ -235,7 +235,7 @@ export const getUserOrders = async (req: AuthenticatedRequest, res: Response) =>
     const userOrders = await db.query.orders.findMany({
       where: eq(orders.customerId, userId),
       with: {
-        orderItems: true,
+        items: true,
       },
       orderBy: [desc(orders.createdAt)],
     });
