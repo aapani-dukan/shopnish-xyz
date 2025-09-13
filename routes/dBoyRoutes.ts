@@ -127,7 +127,7 @@ router.post('/login', verifyToken, async (req: AuthenticatedRequest, res: Respon
 router.get('/orders/available', requireDeliveryBoyAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const list = await db.query.orders.findMany({
-      where: eq(orders.delivery_status, 'pending'),
+      where: eq(orders.deliveryStatus, 'pending'),
       with: {
         items: { with: { product: { seller: true } } },
         deliveryAddress: true,
@@ -162,8 +162,8 @@ router.get('/orders/my', requireDeliveryBoyAuth, async (req: AuthenticatedReques
 
     const list = await db.query.orders.findMany({  
       where: and(
-        eq(orders.delivery_status, 'accepted'),
-        eq(orders.delivery_boy_id, deliveryBoy.id)
+        eq(orders.deliveryStatus, 'accepted'),
+        eq(orders.deliveryBoyId, deliveryBoy.id)
       ),  
       with: {  
         items: { with: { product: { seller: true } } },  
@@ -201,12 +201,12 @@ router.post("/accept", requireDeliveryBoyAuth, async (req: AuthenticatedRequest,
 
     const existing = await db.query.orders.findFirst({  
       where: eq(orders.id, orderId),  
-      columns: { id: true, delivery_status: true, delivery_boy_id: true },  
+      columns: { id: true, deliveryStatus: true, deliveryBoyId: true },  
     });  
 
     if (!existing) return res.status(404).json({ message: "Order not found" });  
 
-    if (existing.delivery_status !== 'pending') {  
+    if (existing.deliveryStatus !== 'pending') {  
       return res.status(409).json({ message: "Order is not available for acceptance." });  
     }  
 
@@ -215,8 +215,8 @@ router.post("/accept", requireDeliveryBoyAuth, async (req: AuthenticatedRequest,
     const [updated] = await db  
       .update(orders)  
       .set({  
-        delivery_boy_id: deliveryBoy.id,  
-        delivery_status: "accepted",  
+        deliveryBoyId: deliveryBoy.id,  
+        deliveryStatus: "accepted",  
         deliveryOtp,  
         deliveryAcceptedAt: new Date(),  
       })  
@@ -226,7 +226,7 @@ router.post("/accept", requireDeliveryBoyAuth, async (req: AuthenticatedRequest,
     getIO().emit("order:update", {  
       reason: "accepted",  
       orderId,  
-      delivery_boy_id: deliveryBoy.id,  
+      deliveryBoyId: deliveryBoy.id,  
     });  
 
     return res.json({ message: "Order accepted", order: updated });
@@ -265,7 +265,7 @@ router.patch('/orders/:orderId/status', requireDeliveryBoyAuth, async (req: Auth
       where: eq(orders.id, orderId),  
     });  
 
-    if (order?.delivery_boy_id !== deliveryBoy.id) {  
+    if (order?.deliveryBoyId !== deliveryBoy.id) {  
       return res.status(403).json({ message: "Forbidden: You are not assigned to this order." });  
     }  
 
@@ -318,7 +318,7 @@ router.post('/orders/:orderId/complete-delivery', requireDeliveryBoyAuth, async 
       return res.status(404).json({ message: "Order not found." });  
     }  
 
-    if (order.delivery_boy_id !== deliveryBoy.id) {  
+    if (order.deliveryBoyId !== deliveryBoy.id) {  
       return res.status(403).json({ message: "Forbidden: You are not assigned to this order." });  
     }  
 
