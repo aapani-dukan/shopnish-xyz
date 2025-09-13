@@ -1,8 +1,8 @@
-// client/src/pages/Checkout.tsx (पूरा अपडेटेड कोड)
+// client/src/pages/Checkout.tsx
 
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -31,11 +31,6 @@ interface CartItem {
   };
 }
 
-interface ApiResponse {
-  message: string;
-  items: CartItem[];
-}
-
 interface DeliveryAddress {
   fullName: string;
   phone: string;
@@ -49,11 +44,7 @@ export default function Checkout() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { isAuthenticated, user } = useAuth();
-  const [searchParams] = useSearchParams();
-  
-  const directBuyProductId = searchParams.get("productId");
-  const directBuyQuantity = searchParams.get("quantity") ? parseInt(searchParams.get("quantity")!) : 1;
+  const { user, isAuthenticated } = useAuth();
 
   const [currentStep, setCurrentStep] = useState(1);
   const [deliveryAddress, setDeliveryAddress] = useState<DeliveryAddress>({
@@ -67,54 +58,29 @@ export default function Checkout() {
   const [paymentMethod, setPaymentMethod] = useState("cod");
   const [deliveryInstructions, setDeliveryInstructions] = useState("");
 
-  useEffect(() => {
-    if (directBuyProductId) {
-      setCurrentStep(2);
-    }
-  }, [directBuyProductId]);
-
-  // ✅ यह सबसे महत्वपूर्ण बदलाव है।
-  const { data, isLoading } = useQuery<any>({
-    queryKey: ['checkoutItems', directBuyProductId],
-    queryFn: async () => {
-      // यदि directBuyProductId मौजूद है तो सीधे प्रोडक्ट फ़ेच करें
-      if (directBuyProductId) {
-        const product = await apiRequest("GET", `/api/products/${directBuyProductId}`);
-        return { items: [{
-          productId: product.id,
-          quantity: directBuyQuantity,
-          product: {
-            ...product,
-            price: product.price,
-          }
-        }]};
-      } else {
-        // अन्यथा, कार्ट से आइटम फ़ेच करें
-        return await apiRequest("GET", "/api/cart");
-      }
-    },
-    // ✅ 'enabled' प्रॉपर्टी का उपयोग करें। यह सुनिश्चित करता है कि जब तक isAuthenticated सही न हो
-    // और यह पता न चल जाए कि URL में productId है या नहीं, तब तक API कॉल न हो।
-    enabled: isAuthenticated && searchParams.has("productId") === !!directBuyProductId,
+  // ✅ Fetch cart items
+  const { data, isLoading } = useQuery({
+    queryKey: ['cartItems'],
+    queryFn: async () => await apiRequest("GET", "/api/cart"),
+    enabled: isAuthenticated, // केवल authenticated user के लिए fetch
   });
-  
-  const cartItems = data?.items || [];
-  
-  const subtotal = cartItems.reduce((sum, item) =>
-    sum + (parseFloat(item.product.price) * item.quantity), 0
+
+  const cartItems: CartItem[] = data?.items || [];
+
+  const subtotal = cartItems.reduce(
+    (sum, item) => sum + parseFloat(item.product.price) * item.quantity,
+    0
   );
   const deliveryCharge = subtotal >= 500 ? 0 : 25;
   const total = subtotal + deliveryCharge;
 
+  // ✅ Create order mutation
   const createOrderMutation = useMutation({
     mutationFn: async (orderData: any) => {
-      const url = directBuyProductId ? "/api/orders/buy-now" : "/api/orders";
-      return await apiRequest("POST", url, orderData);
+      return await apiRequest("POST", "/api/orders", orderData);
     },
     onSuccess: (data) => {
-      if (!directBuyProductId) {
-        queryClient.invalidateQueries({ queryKey: ["/api/cart"] });
-      }
+      queryClient.invalidateQueries({ queryKey: ['cartItems'] });
       toast({
         title: "Order Placed Successfully!",
         description: `Order #${data.orderNumber} has been confirmed`,
@@ -129,84 +95,85 @@ export default function Checkout() {
       });
     },
   });
-const handlePlaceOrder = () => {
-  if (!user || !user.id) {
-    toast({
-      title: "Authentication Error",
-      description: "You must be logged in to place an order.",
-      variant: "destructive",
-    });
-    return;
-  }
 
-  if (!deliveryAddress.fullName || !deliveryAddress.phone || !deliveryAddress.address || !deliveryAddress.pincode) {
-    toast({
-      title: "Address Required",
-      description: "Please fill in all delivery address fields",
-      variant: "destructive",
-    });
-    return;
+  const handlePlaceOrder = () => {
+    if (!user?.id) {
+      toast({
+        title: "Authentication Error",
+        description: "You must be logged in to place an order.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!deliveryAddress.fullName || !deliveryAddress.phone || !deliveryAddress.address || !deliveryAddress.pincode) {
+      toast({
+        title: "Address Required",
+        description: "Please fill in all delivery address fields",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!cartItems || cartItems.length === 0) {
+      toast({
+        title: "No Items to Order",
+        description: "There are no items to place an order.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const itemsToOrder = cartItems.map(item => ({
+      productId: item.product.id,
+      sellerId: item.product.sellerId,
+      quantity: item.quantity,
+      unitPrice: item.product.price,
+      totalPrice: (parseFloat(item.product.price) * item.quantity).toFixed(2),
+    }));
+
+    const orderData = {
+      customerId: user.id,
+      deliveryAddress,
+      paymentMethod,
+      subtotal: subtotal.toFixed(2),
+      total: total.toFixed(2),
+      deliveryCharge: deliveryCharge.toFixed(2),
+      deliveryInstructions,
+      items: itemsToOrder,
+      cartOrder: true, // हमेशा cart order
+    };
+
+    createOrderMutation.mutate(orderData);
+  };
+
+  // ------------------- JSX Loading / Empty States -------------------
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full"></div>
+      </div>
+    );
   }
 
   if (!cartItems || cartItems.length === 0) {
-    toast({
-      title: "No Items to Order",
-      description: "There are no items to place an order.",
-      variant: "destructive",
-    });
-    return;
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Card className="w-full max-w-md">
+          <CardContent className="pt-6 text-center">
+            <ShoppingCart className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+            <h3 className="text-lg font-medium mb-2">Your cart is empty</h3>
+            <p className="text-gray-600 mb-4">Add some items to proceed with checkout</p>
+            <Link to="/">
+              <Button>Continue Shopping</Button>
+            </Link>
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
 
-  const itemsToOrder = cartItems.map(item => ({
-    productId: item.product.id,
-    sellerId: item.product.sellerId,
-    quantity: item.quantity,
-    unitPrice: item.product.price,
-    totalPrice: (parseFloat(item.product.price) * item.quantity).toFixed(2),
-  }));
-
-  const orderData = {
-    customerId: user.id,
-    deliveryAddress,
-    paymentMethod,
-    subtotal: subtotal.toFixed(2),
-    total: total.toFixed(2),
-    deliveryCharge: deliveryCharge.toFixed(2),
-    deliveryInstructions,
-    items: itemsToOrder,
-    cartOrder: true, // अब हमेशा cart order
-  };
-
-  createOrderMutation.mutate(orderData);
-};
-
-// ------------------- JSX Loading / Empty States -------------------
-
-if (isLoading) {
-  return (
-    <div className="min-h-screen flex items-center justify-center">
-      <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full"></div>
-    </div>
-  );
-}
-
-if (!cartItems || cartItems.length === 0) {
-  return (
-    <div className="min-h-screen flex items-center justify-center">
-      <Card className="w-full max-w-md">
-        <CardContent className="pt-6 text-center">
-          <ShoppingCart className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-          <h3 className="text-lg font-medium mb-2">Your cart is empty</h3>
-          <p className="text-gray-600 mb-4">Add some items to proceed with checkout</p>
-          <Link to="/">
-            <Button>Continue Shopping</Button>
-          </Link>
-        </CardContent>
-      </Card>
-    </div>
-  );
-}
-  
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-6xl mx-auto px-4">
@@ -216,15 +183,9 @@ if (!cartItems || cartItems.length === 0) {
             {[1, 2, 3].map((step) => (
               <div
                 key={step}
-                className={`flex items-center space-x-2 ${
-                  currentStep >= step ? "text-green-600" : "text-gray-400"
-                }`}
+                className={`flex items-center space-x-2 ${currentStep >= step ? "text-green-600" : "text-gray-400"}`}
               >
-                <div
-                  className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                    currentStep > step ? "bg-green-600 text-white" : "bg-gray-200"
-                  }`}
-                >
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center ${currentStep > step ? "bg-green-600 text-white" : "bg-gray-200"}`}>
                   {currentStep > step ? <Check className="w-4 h-4" /> : step}
                 </div>
                 <span className="font-medium">
@@ -249,11 +210,7 @@ if (!cartItems || cartItems.length === 0) {
                   <div className="space-y-4">
                     {cartItems.map((item, index) => (
                       <div key={item.id || index} className="flex items-center space-x-4 py-4 border-b">
-                        <img
-                          src={item.product.image}
-                          alt={item.product.name}
-                          className="w-16 h-16 object-cover rounded-lg"
-                        />
+                        <img src={item.product.image} alt={item.product.name} className="w-16 h-16 object-cover rounded-lg"/>
                         <div className="flex-1">
                           <h3 className="font-medium">{item.product.name}</h3>
                           <p className="text-sm text-gray-600">{item.product.nameHindi}</p>
@@ -266,9 +223,7 @@ if (!cartItems || cartItems.length === 0) {
                       </div>
                     ))}
                     <div className="pt-4">
-                      <Button onClick={() => setCurrentStep(2)} className="w-full">
-                        Proceed to Delivery Address
-                      </Button>
+                      <Button onClick={() => setCurrentStep(2)} className="w-full">Proceed to Delivery Address</Button>
                     </div>
                   </div>
                 </CardContent>
@@ -286,11 +241,10 @@ if (!cartItems || cartItems.length === 0) {
                 <CardContent>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <Label htmlFor="fullName">Full Name</Label>
-                      <Input
+                      <Label htmlFor="fullName">Full Name</Label<Input
                         id="fullName"
                         value={deliveryAddress.fullName}
-                        onChange={(e) => setDeliveryAddress({...deliveryAddress, fullName: e.target.value})}
+                        onChange={(e) => setDeliveryAddress({ ...deliveryAddress, fullName: e.target.value })}
                         placeholder="Enter your full name"
                       />
                     </div>
@@ -299,7 +253,7 @@ if (!cartItems || cartItems.length === 0) {
                       <Input
                         id="phone"
                         value={deliveryAddress.phone}
-                        onChange={(e) => setDeliveryAddress({...deliveryAddress, phone: e.target.value})}
+                        onChange={(e) => setDeliveryAddress({ ...deliveryAddress, phone: e.target.value })}
                         placeholder="Enter phone number"
                       />
                     </div>
@@ -308,7 +262,7 @@ if (!cartItems || cartItems.length === 0) {
                       <Textarea
                         id="address"
                         value={deliveryAddress.address}
-                        onChange={(e) => setDeliveryAddress({...deliveryAddress, address: e.target.value})}
+                        onChange={(e) => setDeliveryAddress({ ...deliveryAddress, address: e.target.value })}
                         placeholder="House/Flat No, Building, Street, Area"
                         rows={3}
                       />
@@ -318,7 +272,7 @@ if (!cartItems || cartItems.length === 0) {
                       <Input
                         id="city"
                         value={deliveryAddress.city}
-                        onChange={(e) => setDeliveryAddress({...deliveryAddress, city: e.target.value})}
+                        onChange={(e) => setDeliveryAddress({ ...deliveryAddress, city: e.target.value })}
                         placeholder="City"
                       />
                     </div>
@@ -327,7 +281,7 @@ if (!cartItems || cartItems.length === 0) {
                       <Input
                         id="pincode"
                         value={deliveryAddress.pincode}
-                        onChange={(e) => setDeliveryAddress({...deliveryAddress, pincode: e.target.value})}
+                        onChange={(e) => setDeliveryAddress({ ...deliveryAddress, pincode: e.target.value })}
                         placeholder="Enter pincode"
                       />
                     </div>
@@ -336,7 +290,7 @@ if (!cartItems || cartItems.length === 0) {
                       <Input
                         id="landmark"
                         value={deliveryAddress.landmark}
-                        onChange={(e) => setDeliveryAddress({...deliveryAddress, landmark: e.target.value})}
+                        onChange={(e) => setDeliveryAddress({ ...deliveryAddress, landmark: e.target.value })}
                         placeholder="Nearby landmark"
                       />
                     </div>
@@ -351,13 +305,10 @@ if (!cartItems || cartItems.length === 0) {
                       />
                     </div>
                   </div>
+
                   <div className="flex space-x-4 mt-6">
-                    <Button variant="outline" onClick={() => setCurrentStep(1)}>
-                      Back to Cart
-                    </Button>
-                    <Button onClick={() => setCurrentStep(3)}>
-                      Proceed to Payment
-                    </Button>
+                    <Button variant="outline" onClick={() => setCurrentStep(1)}>Back to Cart</Button>
+                    <Button onClick={() => setCurrentStep(3)}>Proceed to Payment</Button>
                   </div>
                 </CardContent>
               </Card>
@@ -394,9 +345,7 @@ if (!cartItems || cartItems.length === 0) {
                   </RadioGroup>
 
                   <div className="flex space-x-4 mt-6">
-                    <Button variant="outline" onClick={() => setCurrentStep(2)}>
-                      Back to Address
-                    </Button>
+                    <Button variant="outline" onClick={() => setCurrentStep(2)}>Back to Address</Button>
                     <Button
                       onClick={handlePlaceOrder}
                       disabled={createOrderMutation.isPending}
@@ -446,4 +395,3 @@ if (!cartItems || cartItems.length === 0) {
     </div>
   );
 }
-
