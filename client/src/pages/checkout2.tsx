@@ -1,5 +1,4 @@
 // client/src/pages/Checkout2.tsx
-
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useParams, useSearchParams, Link } from "react-router-dom";
@@ -12,7 +11,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { ShoppingCart, MapPin, CreditCard, Check } from "lucide-react";
-import { useAuth } from "@/hooks/useAuth"; 
+import { useAuth } from "@/hooks/useAuth";
 
 interface SellerInfo {
   id: number;
@@ -28,8 +27,8 @@ interface ProductItem {
   image: string;
   unit: string;
   brand: string;
-  sellerId: number; 
-  seller?: SellerInfo;   // ✅ अब seller की info भी handle होगी
+  sellerId: number;
+  seller?: SellerInfo;
 }
 
 interface DeliveryAddress {
@@ -63,11 +62,11 @@ export default function Checkout2() {
   const [paymentMethod, setPaymentMethod] = useState("cod");
   const [deliveryInstructions, setDeliveryInstructions] = useState("");
 
-  // ✅ Product API call
+  // ✅ Fetch direct buy product
   const { data: productData, isLoading, error } = useQuery<ProductItem>({
     queryKey: ['product', directBuyProductId],
     queryFn: () => apiRequest("GET", `/api/products/${directBuyProductId}`),
-    enabled: !!directBuyProductId,  // login requirement हटा दिया
+    enabled: !!directBuyProductId,
   });
 
   const subtotal = productData ? parseFloat(productData.price) * directBuyQuantity : 0;
@@ -93,84 +92,82 @@ export default function Checkout2() {
     },
   });
 
-const handlePlaceOrder = () => {
-  if (!user || !user.id) {
-    toast({
-      title: "Authentication Error",
-      description: "You must be logged in to place an order.",
-      variant: "destructive",
-    });
-    return;
-  }
+  const handlePlaceOrder = () => {
+    if (!user || !user.id) {
+      toast({
+        title: "Authentication Error",
+        description: "You must be logged in to place an order.",
+        variant: "destructive",
+      });
+      return;
+    }
 
-  if (!deliveryAddress.fullName || !deliveryAddress.phone || !deliveryAddress.address || !deliveryAddress.pincode) {
-    toast({
-      title: "Address Required",
-      description: "Please fill in all delivery address fields",
-      variant: "destructive",
-    });
-    return;
-  }
+    if (!deliveryAddress.fullName || !deliveryAddress.phone || !deliveryAddress.address || !deliveryAddress.pincode) {
+      toast({
+        title: "Address Required",
+        description: "Please fill in all delivery address fields",
+        variant: "destructive",
+      });
+      return;
+    }
 
-  if (!productData) {
-    toast({
-      title: "Product Not Found",
-      description: "Could not find the product to place an order.",
-      variant: "destructive",
-    });
-    return;
-  }
+    if (!productData) {
+      toast({
+        title: "Product Not Found",
+        description: "Could not find the product to place an order.",
+        variant: "destructive",
+      });
+      return;
+    }
 
-  const orderData = {
-    customerId: user.id,
-    deliveryAddress,
-    paymentMethod,
-    subtotal: subtotal.toFixed(2),
-    total: total.toFixed(2),
-    deliveryCharge: deliveryCharge.toFixed(2),
-    deliveryInstructions,
-    items: [
-      {
-        productId: productData.id,
-        sellerId: productData.sellerId,
-        quantity: directBuyQuantity,
-        unitPrice: productData.price,
-        totalPrice: (parseFloat(productData.price) * directBuyQuantity).toFixed(2),
-      },
-    ],
-    cartOrder: false, // direct buy हमेशा false
+    const orderData = {
+      customerId: user.id,
+      deliveryAddress,
+      paymentMethod,
+      subtotal: subtotal.toFixed(2),
+      total: total.toFixed(2),
+      deliveryCharge: deliveryCharge.toFixed(2),
+      deliveryInstructions,
+      items: [
+        {
+          productId: productData.id,
+          sellerId: productData.sellerId,
+          quantity: directBuyQuantity,
+          unitPrice: productData.price,
+          totalPrice: (parseFloat(productData.price) * directBuyQuantity).toFixed(2),
+        },
+      ],
+      cartOrder: false, // direct buy always false
+    };
+
+    createOrderMutation.mutate(orderData);
   };
 
-  createOrderMutation.mutate(orderData);
-};
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full"></div>
+      </div>
+    );
+  }
 
-// ------------------- JSX Loading / Error States -------------------
-
-if (isLoading) {
-  return (
-    <div className="min-h-screen flex items-center justify-center">
-      <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full"></div>
-    </div>
-  );
-}
-
-if (error || !productData) {
-  return (
-    <div className="min-h-screen flex items-center justify-center">
-      <Card className="w-full max-w-md">
-        <CardContent className="pt-6 text-center">
-          <h3 className="text-lg font-medium mb-2">Product Not Found</h3>
-          <p className="text-gray-600 mb-4">
-            The product you're looking for doesn't exist or is not available.
-          </p>
-          <Link to="/">
-            <Button>Go to Home Page</Button>
-          </Link>
-        </CardContent>
-      </Card>
-    </div>
-  );
-}
+  if (error || !productData) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Card className="w-full max-w-md">
+          <CardContent className="pt-6 text-center">
+            <h3 className="text-lg font-medium mb-2">Product Not Found</h3>
+            <p className="text-gray-600 mb-4">
+              The product you're looking for doesn't exist or is not available.
+            </p>
+            <Link to="/">
+              <Button>Go to Home Page</Button>
+            </Link>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
@@ -202,6 +199,7 @@ if (error || !productData) {
         {/* Content */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 space-y-6">
+            {/* Step 1: Review */}
             {currentStep === 1 && (
               <Card>
                 <CardHeader>
@@ -240,6 +238,7 @@ if (error || !productData) {
               </Card>
             )}
 
+            {/* Step 2: Address */}
             {currentStep === 2 && (
               <Card>
                 <CardHeader>
@@ -249,14 +248,13 @@ if (error || !productData) {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  {/* Address Form */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <Label htmlFor="fullName">Full Name</Label>
                       <Input
                         id="fullName"
                         value={deliveryAddress.fullName}
-                        onChange={(e) => setDeliveryAddress({...deliveryAddress, fullName: e.target.value})}
+                        onChange={(e) => setDeliveryAddress({ ...deliveryAddress, fullName: e.target.value })}
                         placeholder="Enter your full name"
                       />
                     </div>
@@ -265,7 +263,7 @@ if (error || !productData) {
                       <Input
                         id="phone"
                         value={deliveryAddress.phone}
-                        onChange={(e) => setDeliveryAddress({...deliveryAddress, phone: e.target.value})}
+                        onChange={(e) => setDeliveryAddress({ ...deliveryAddress, phone: e.target.value })}
                         placeholder="Enter phone number"
                       />
                     </div>
@@ -274,7 +272,7 @@ if (error || !productData) {
                       <Textarea
                         id="address"
                         value={deliveryAddress.address}
-                        onChange={(e) => setDeliveryAddress({...deliveryAddress, address: e.target.value})}
+                        onChange={(e) => setDeliveryAddress({ ...deliveryAddress, address: e.target.value })}
                         placeholder="House/Flat No, Building, Street, Area"
                         rows={3}
                       />
@@ -284,7 +282,7 @@ if (error || !productData) {
                       <Input
                         id="city"
                         value={deliveryAddress.city}
-                        onChange={(e) => setDeliveryAddress({...deliveryAddress, city: e.target.value})}
+                        onChange={(e) => setDeliveryAddress({ ...deliveryAddress, city: e.target.value })}
                         placeholder="City"
                       />
                     </div>
@@ -293,7 +291,7 @@ if (error || !productData) {
                       <Input
                         id="pincode"
                         value={deliveryAddress.pincode}
-                        onChange={(e) => setDeliveryAddress({...deliveryAddress, pincode: e.target.value})}
+                        onChange={(e) => setDeliveryAddress({ ...deliveryAddress, pincode: e.target.value })}
                         placeholder="Enter pincode"
                       />
                     </div>
@@ -302,7 +300,7 @@ if (error || !productData) {
                       <Input
                         id="landmark"
                         value={deliveryAddress.landmark}
-                        onChange={(e) => setDeliveryAddress({...deliveryAddress, landmark: e.target.value})}
+                        onChange={(e) => setDeliveryAddress({ ...deliveryAddress, landmark: e.target.value })}
                         placeholder="Nearby landmark"
                       />
                     </div>
@@ -318,17 +316,14 @@ if (error || !productData) {
                     </div>
                   </div>
                   <div className="flex space-x-4 mt-6">
-                    <Button variant="outline" onClick={() => setCurrentStep(1)}>
-                      Back to Order
-                    </Button>
-                    <Button onClick={() => setCurrentStep(3)}>
-                      Proceed to Payment
-                    </Button>
+                    <Button variant="outline" onClick={() => setCurrentStep(1)}>Back to Order</Button>
+                    <Button onClick={() => setCurrentStep(3)}>Proceed to Payment</Button>
                   </div>
                 </CardContent>
               </Card>
             )}
 
+            {/* Step 3: Payment */}
             {currentStep === 3 && (
               <Card>
                 <CardHeader>
@@ -348,21 +343,10 @@ if (error || !productData) {
                         </div>
                       </Label>
                     </div>
-                    <div className="flex items-center space-x-2 p-4 border rounded-lg opacity-50">
-                      <RadioGroupItem value="online" id="online" disabled />
-                      <Label htmlFor="online" className="flex-1 cursor-pointer">
-                        <div>
-                          <p className="font-medium">Online Payment</p>
-                          <p className="text-sm text-gray-600">Pay now using UPI, Card, or Net Banking (Coming Soon)</p>
-                        </div>
-                      </Label>
-                    </div>
                   </RadioGroup>
 
                   <div className="flex space-x-4 mt-6">
-                    <Button variant="outline" onClick={() => setCurrentStep(2)}>
-                      Back to Address
-                    </Button>
+                    <Button variant="outline" onClick={() => setCurrentStep(2)}>Back to Address</Button>
                     <Button
                       onClick={handlePlaceOrder}
                       disabled={createOrderMutation.isPending}
@@ -376,7 +360,7 @@ if (error || !productData) {
             )}
           </div>
 
-          {/* ✅ Order Summary */}
+          {/* Order Summary */}
           <div>
             <Card className="sticky top-4">
               <CardHeader>
@@ -417,4 +401,4 @@ if (error || !productData) {
       </div>
     </div>
   );
-                        }
+}
