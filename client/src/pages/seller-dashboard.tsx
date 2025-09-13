@@ -1,6 +1,5 @@
 // src/pages/seller-dashboard.tsx
 
-import React, { useEffect, useState } from "react";
 import Header from "@/components/header";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -8,7 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import type { Seller, OrderWithItems } from "shared/backend/schema";
+import type { Seller, OrderWithItems } from "@shared/backend/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "react-router-dom";
@@ -22,26 +21,30 @@ import {
   Settings,
   XCircle,
 } from "lucide-react";
+import { useEffect, useState } from "react";
 import { useSocket } from "@/hooks/useSocket";
 import { useAuth } from "@/hooks/useAuth";
-import ProductManager from "@/components/productManager";
-import OrderManager from "@/components/orderManager";
-import ProfileManager from "@/components/profileManager";
+import ProductManager from "@/components/ProductManager"; // ✅ Case-sensitive fix
+import OrderManager from "@/components/OrderManager";
+import ProfileManager from "@/components/ProfileManager";
 
 export default function SellerDashboard() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState("products");
 
-  const { socket, isConnected: socketIsConnected } = useSocket();
+  // ✅ सही तरीका (destructure object)
+  const { socket, isConnected } = useSocket();
   const { user, isAuthenticated } = useAuth();
 
+  // ----------------- SOCKET.IO LOGIC -----------------
   useEffect(() => {
-    if (!socket || !isAuthenticated || user?.role !== "seller") {
+    if (!socket || !isConnected || !isAuthenticated || user?.role !== "seller")
       return;
-    }
 
-    const handleNewOrderForSeller = (order: OrderWithItems) => {
+    const handleNewOrder = (order: OrderWithItems) => {
+      console.log("📦 नया ऑर्डर seller को मिला:", order);
+
       queryClient.invalidateQueries({ queryKey: ["/api/sellers/orders"] });
 
       toast({
@@ -51,20 +54,30 @@ export default function SellerDashboard() {
       });
     };
 
-    socket.on("new-order-for-seller", handleNewOrderForSeller);
+    socket.on("new-order-for-seller", handleNewOrder);
 
     return () => {
-      socket.off("new-order-for-seller", handleNewOrderForSeller);
+      socket.off("new-order-for-seller", handleNewOrder);
     };
-  }, [socket, isAuthenticated, user?.role, toast, queryClient]);
+  }, [socket, isConnected, isAuthenticated, user, toast, queryClient]);
 
-  const { data: seller, isLoading: sellerLoading, error: sellerError } = useQuery<Seller>({
+  // ----------------- FETCH SELLER PROFILE -----------------
+  const {
+    data: seller,
+    isLoading: sellerLoading,
+    error: sellerError,
+  } = useQuery<Seller>({
     queryKey: ["/api/sellers/me"],
     queryFn: () => apiRequest("GET", "/api/sellers/me"),
     staleTime: 5 * 60 * 1000,
   });
 
-  const { data: orders, isLoading: ordersLoading, error: ordersError } = useQuery<OrderWithItems[]>({
+  // ----------------- FETCH SELLER ORDERS -----------------
+  const {
+    data: orders,
+    isLoading: ordersLoading,
+    error: ordersError,
+  } = useQuery<OrderWithItems[]>({
     queryKey: ["/api/sellers/orders"],
     queryFn: () => apiRequest("GET", "/api/sellers/orders"),
     enabled: !!seller?.id,
@@ -72,6 +85,7 @@ export default function SellerDashboard() {
     refetchInterval: 60 * 1000,
   });
 
+  // ----------------- METRICS -----------------
   const totalRevenue =
     orders?.reduce(
       (sum, order) =>
@@ -79,16 +93,19 @@ export default function SellerDashboard() {
         order.items.reduce(
           (itemSum, item) =>
             itemSum +
-            (typeof item.total === "string" ? parseFloat(item.total) : item.total),
+            (typeof item.total === "string"
+              ? parseFloat(item.total)
+              : item.total),
           0
         ),
       0
     ) || 0;
 
   const totalOrders = orders?.length || 0;
-  const totalProducts = 0;
+  const totalProducts = 0; // ProductManager से dynamic हो सकता है
   const averageRating = parseFloat(seller?.rating?.toString() || "0");
 
+  // ----------------- LOADING -----------------
   if (sellerLoading) {
     return (
       <div className="min-h-screen bg-background">
@@ -109,6 +126,7 @@ export default function SellerDashboard() {
     );
   }
 
+  // ----------------- ERROR -----------------
   if (sellerError || !seller) {
     return (
       <div className="min-h-screen bg-background">
@@ -122,7 +140,7 @@ export default function SellerDashboard() {
             )}
           </div>
           <h2 className="text-2xl font-bold mb-4">
-            {sellerError ? "Error loading profile" : "Seller profile not found"}
+            {sellerError ? "Error Loading Profile" : "Seller Profile Not Found"}
           </h2>
           <p className="text-muted-foreground mb-6">
             {sellerError
@@ -130,11 +148,13 @@ export default function SellerDashboard() {
               : "It looks like you haven't set up your seller profile yet or it's not approved."}
           </p>
           <Link to="/seller-apply">
-            <Button>{sellerError ? "Retry" : "Apply to be a seller"}</Button>
+            <Button>
+              {sellerError ? "Retry" : "Apply to be a Seller"}
+            </Button>
           </Link>
           <Link to="/">
             <Button variant="ghost" className="ml-4">
-              Go back home
+              Go Back Home
             </Button>
           </Link>
         </div>
@@ -142,15 +162,21 @@ export default function SellerDashboard() {
     );
   }
 
+  // ----------------- DASHBOARD -----------------
   return (
     <div className="min-h-screen bg-background">
       <Header />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-foreground mb-2">Seller Dashboard</h1>
-            <p className="text-muted-foreground">Manage your products and orders</p>
+            <h1 className="text-3xl font-bold text-foreground mb-2">
+              Seller Dashboard
+            </h1>
+            <p className="text-muted-foreground">
+              Manage your products and orders
+            </p>
           </div>
           <div className="flex items-center space-x-4 mt-4 sm:mt-0">
             {seller.approvalStatus === "approved" ? (
@@ -172,13 +198,18 @@ export default function SellerDashboard() {
           </div>
         </div>
 
+        {/* Metrics */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <Card>
             <CardContent className="p-6 flex items-center">
               <TrendingUp className="h-8 w-8 text-primary" />
               <div className="ml-4">
-                <p className="text-sm font-medium text-muted-foreground">Total Revenue</p>
-                <p className="text-2xl font-bold">₹{totalRevenue.toLocaleString()}</p>
+                <p className="text-sm font-medium text-muted-foreground">
+                  Total Revenue
+                </p>
+                <p className="text-2xl font-bold">
+                  ₹{totalRevenue.toLocaleString()}
+                </p>
               </div>
             </CardContent>
           </Card>
@@ -186,7 +217,9 @@ export default function SellerDashboard() {
             <CardContent className="p-6 flex items-center">
               <ShoppingCart className="h-8 w-8 text-secondary" />
               <div className="ml-4">
-                <p className="text-sm font-medium text-muted-foreground">Total Orders</p>
+                <p className="text-sm font-medium text-muted-foreground">
+                  Total Orders
+                </p>
                 <p className="text-2xl font-bold">{totalOrders}</p>
               </div>
             </CardContent>
@@ -195,7 +228,9 @@ export default function SellerDashboard() {
             <CardContent className="p-6 flex items-center">
               <Package className="h-8 w-8 text-yellow-600" />
               <div className="ml-4">
-                <p className="text-sm font-medium text-muted-foreground">Products</p>
+                <p className="text-sm font-medium text-muted-foreground">
+                  Products
+                </p>
                 <p className="text-2xl font-bold">{totalProducts}</p>
               </div>
             </CardContent>
@@ -204,14 +239,24 @@ export default function SellerDashboard() {
             <CardContent className="p-6 flex items-center">
               <Star className="h-8 w-8 text-yellow-500" />
               <div className="ml-4">
-                <p className="text-sm font-medium text-muted-foreground">Rating</p>
-                <p className="text-2xl font-bold">{averageRating.toFixed(1)}</p>
+                <p className="text-sm font-medium text-muted-foreground">
+                  Rating
+                </p>
+                <p className="text-2xl font-bold">
+                  {averageRating.toFixed(1)}
+                </p>
               </div>
             </CardContent>
           </Card>
         </div>
 
-        <Tabs defaultValue="products" value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+        {/* Tabs */}
+        <Tabs
+          defaultValue="products"
+          value={activeTab}
+          onValueChange={setActiveTab}
+          className="space-y-4"
+        >
           <TabsList>
             <TabsTrigger value="products">
               <Package className="h-4 w-4 mr-2" /> Products
@@ -229,7 +274,12 @@ export default function SellerDashboard() {
           </TabsContent>
 
           <TabsContent value="orders">
-            <OrderManager seller={seller} orders={orders} isLoading={ordersLoading} error={ordersError} />
+            <OrderManager
+              seller={seller}
+              orders={orders}
+              isLoading={ordersLoading}
+              error={ordersError}
+            />
           </TabsContent>
 
           <TabsContent value="profile">
