@@ -139,6 +139,12 @@ export default function DeliveryDashboard() {
     }
   };
 
+  // small helper: normalize delivery status property (handles deliveryStatus or delivery_status)
+  const getDeliveryStatus = (o: any) => {
+    if (!o) return null;
+    return (o.deliveryStatus ?? o.delivery_status ?? "").toString();
+  };
+
   // Loader while auth or socket not ready
   if (isLoadingAuth || !isAuthenticated || !user || !socket) {
     return (
@@ -149,14 +155,34 @@ export default function DeliveryDashboard() {
     );
   }
 
-  // Fetch delivery orders
+  // Fetch delivery orders — now we fetch BOTH available and my orders, then merge de-duplicated
   const { data: orders = [], isLoading } = useQuery({
     queryKey: ["deliveryOrders"],
     queryFn: async () => {
       try {
-        const res = await apiRequest("GET", "/api/delivery/orders");
-        // सुनिश्चित करें कि res.orders मौजूद है और एक ऐरे है
-        return Array.isArray(res.orders) ? res.orders : [];
+        // fetch available (delivery-status pending) and my orders (assigned to me)
+        const [availableRes, myRes] = await Promise.allSettled([
+          apiRequest("GET", "/api/delivery/orders/available"),
+          apiRequest("GET", "/api/delivery/orders/my"),
+        ]);
+
+        const availableOrders = (availableRes.status === "fulfilled" && Array.isArray((availableRes.value as any).orders))
+          ? (availableRes.value as any).orders
+          : [];
+
+        const myOrders = (myRes.status === "fulfilled" && Array.isArray((myRes.value as any).orders))
+          ? (myRes.value as any).orders
+          : [];
+
+        // merge, de-duplicate by order id
+        const map = new Map<number, any>();
+        for (const o of [...availableOrders, ...myOrders]) {
+          if (o && typeof o.id === "number") {
+            map.set(o.id, o);
+          }
+        }
+        const merged = Array.from(map.values());
+        return merged;
       } catch (err) {
         console.error("ऑर्डर लाने में त्रुटि:", err);
         toast({
@@ -182,17 +208,20 @@ export default function DeliveryDashboard() {
       socket.emit("register-client", { role: "delivery", userId: user.uid });
     }
 
+    // only attach listeners if socket exposes typical socket.io methods
     if (socket && typeof socket.on === "function") {
-  socket.on("delivery:orders-changed", onOrdersChanged);
-  socket.on("new-order", onOrdersChanged);
-}
+      socket.on("delivery:orders-changed", onOrdersChanged);
+      socket.on("new-order", onOrdersChanged);
+      socket.on("order:update", onOrdersChanged);
+    }
 
-return () => {
-  if (socket && typeof socket.off === "function") {
-    socket.off("delivery:orders-changed", onOrdersChanged);
-    socket.off("new-order", onOrdersChanged);
-  }
-};
+    return () => {
+      if (socket && typeof socket.off === "function") {
+        socket.off("delivery:orders-changed", onOrdersChanged);
+        socket.off("new-order", onOrdersChanged);
+        socket.off("order:update", onOrdersChanged);
+      }
+    };
   }, [socket, user, queryClient, isAuthenticated]);
 
   const acceptOrderMutation = useMutation({
@@ -276,6 +305,33 @@ return () => {
     );
   }
 
+  // Helper filters using deliveryStatus (accept both camelCase and snake_case) and fallback to deliveryBoyId
+  const isAvailableForAnyDelivery = (o: any) => {
+    const ds = getDeliveryStatus(o).toLowerCase();
+    // treat 'pending' as available to be picked up by any delivery boy
+    return ds === "pending";
+  };
+
+  const isAssignedToMe = (o: any) => {
+    // If backend sets deliveryBoyId to numeric id, compare to user.id or user.uid accordingly
+    const assignedId = o.deliveryBoyId ?? o.delivery_boy_id ?? null;
+    // try matching on firebase uid too if backend sets that
+    if (!assignedId) return false;
+    // possible shapes:
+    // - assignedId is numeric DB id and user has deliveryBoyId or id
+    // - assignedId might be deliveryBoy firebase uid string
+    const myIds = [user?.id, user?.uid, user?.deliveryBoyId, user?.deliveryBoy?.id, user?.deliveryBoy?.firebaseUid].filter(Boolean);
+    return myIds.some((m: any) => String(m) === String(assignedId));
+  };
+
+  // counts (keeps using `status` field for counts as before)
+  const totalOrdersCount = orders.length;
+  const pendingCount = orders.filter((o: any) =>
+    ["ready_for_pickup", "picked_up", "out_for_delivery", "pending", "accepted"].includes((o.status ?? "").toString())
+  ).length;
+  const deliveredCount = orders.filter((o: any) => (o.status ?? "") === "delivered").length;
+  const outForDeliveryCount = orders.filter((o: any) => (o.status ?? "") === "out_for_delivery").length;
+
   return (
     <div className="min-h-screen bg-gray-50 font-inter text-gray-800">
       <header className="bg-white shadow-sm border-b rounded-b-lg">
@@ -302,7 +358,7 @@ return () => {
           <CardContent className="p-6 flex items-center space-x-3">
             <Package className="w-8 h-8 text-blue-600" />
             <div>
-              <p className="text-2xl font-bold">{orders.length}</p>
+              <p className="text-2xl font-bold">{totalOrdersCount}</p>
               <p className="text-sm text-gray-600">कुल ऑर्डर</p>
             </div>
           </CardContent>
@@ -311,11 +367,7 @@ return () => {
           <CardContent className="p-6 flex items-center space-x-3">
             <Clock className="w-8 h-8 text-yellow-600" />
             <div>
-              <p className="text-2xl font-bold">
-                {orders.filter((o: any) =>
-                  ["ready_for_pickup", "picked_up", "out_for_delivery", "pending", "accepted"].includes(o.status)
-                ).length}
-              </p>
+              <p className="text-2xl font-bold">{pendingCount}</p>
               <p className="text-sm text-gray-600">लंबित</p>
             </div>
           </CardContent>
@@ -324,9 +376,7 @@ return () => {
           <CardContent className="p-6 flex items-center space-x-3">
             <CheckCircle className="w-8 h-8 text-green-600" />
             <div>
-              <p className="text-2xl font-bold">
-                {orders.filter((o: any) => o.status === "delivered").length}
-              </p>
+              <p className="text-2xl font-bold">{deliveredCount}</p>
               <p className="text-sm text-gray-600">पूरे हुए</p>
             </div>
           </CardContent>
@@ -335,9 +385,7 @@ return () => {
           <CardContent className="p-6 flex items-center space-x-3">
             <Navigation className="w-8 h-8 text-purple-600" />
             <div>
-              <p className="text-2xl font-bold">
-                {orders.filter((o: any) => o.status === "out_for_delivery").length}
-              </p>
+              <p className="text-2xl font-bold">{outForDeliveryCount}</p>
               <p className="text-sm text-gray-600">रास्ते में</p>
             </div>
           </CardContent>
@@ -345,8 +393,9 @@ return () => {
       </section>
       <section className="max-w-6xl mx-auto px-4 pb-16 space-y-10">
         <div>
-          <h2 className="text-2xl font-bold mb-4">उपलब्ध ऑर्डर</h2>
-          {orders.filter((o: any) => !o.deliveryBoyId && o.status === "ready_for_pickup").length === 0 ? (
+          <h2 className="text-2xl font-bold mb-4">उपलब्ध ऑर्डर (Pending for delivery)</h2>
+
+          {orders.filter((o: any) => isAvailableForAnyDelivery(o)).length === 0 ? (
             <Card>
               <CardContent className="py-12 text-center">
                 <Package className="mx-auto h-12 w-12 text-gray-400 mb-4" />
@@ -356,7 +405,7 @@ return () => {
             </Card>
           ) : (
             <DeliveryOrdersList
-              orders={orders.filter((o: any) => !o.deliveryBoyId && o.status === "ready_for_pickup")}
+              orders={orders.filter((o: any) => isAvailableForAnyDelivery(o))}
               onAcceptOrder={acceptOrderMutation.mutate}
               onUpdateStatus={handleStatusProgress}
               statusColor={statusColor}
@@ -377,7 +426,7 @@ return () => {
 
         <div>
           <h2 className="text-2xl font-bold mb-4">मेरे ऑर्डर</h2>
-          {orders.filter((o: any) => o.deliveryBoyId).length === 0 ? (
+          {orders.filter((o: any) => isAssignedToMe(o)).length === 0 ? (
             <Card>
               <CardContent className="py-12 text-center">
                 <Package className="mx-auto h-12 w-12 text-gray-400 mb-4" />
@@ -387,7 +436,7 @@ return () => {
             </Card>
           ) : (
             <DeliveryOrdersList
-              orders={orders.filter((o: any) => o.deliveryBoyId)}
+              orders={orders.filter((o: any) => isAssignedToMe(o))}
               onAcceptOrder={acceptOrderMutation.mutate}
               onUpdateStatus={handleStatusProgress}
               statusColor={statusColor}
@@ -415,4 +464,4 @@ return () => {
       />
     </div>
   );
-}
+      }
