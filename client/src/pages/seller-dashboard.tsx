@@ -109,9 +109,9 @@ export default function SellerDashboard() { // ✅ ठीक किया गय
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8"> {/* ✅ ठीक किया गया `className` */}
           <div className="animate-pulse space-y-6"> {/* ✅ ठीक किया गया `className` */}
             <Skeleton className="h-8 w-64 mb-6" /> {/* ✅ ठीक किया गया नामकरण */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6"> {/* ✅ ठीक किया गया `className` */}
-              {[...Array(4)].map((_, i) => ( {/* ✅ ठीक किया गया `Array` */}
-                <Skeleton key={i} className="h-32 rounded-xl" /> {/* ✅ ठीक किया गया नामकरण */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6"> 
+              {[...Array(4)].map((_, i) => ( 
+                <Skeleton key={i} className="h-32 rounded-xl" /> 
               ))}
             </div>
             <Skeleton className="h-10 w-full mb-4 rounded-md" /> {/* ✅ ठीक किया गया नामकरण */}
