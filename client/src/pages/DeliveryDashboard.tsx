@@ -13,14 +13,14 @@ import {
   Loader2,
 } from "lucide-react";
 
-import DeliveryOtpDialog from "./DeliveryOtpDialog"; // सुनिश्चित करें कि DeliveryOtpDialog का पथ सही है
+import DeliveryOtpDialog from "./DeliveryOtpDialog";
 import { useAuth } from "@/hooks/useAuth";
-import { apiRequest } from "@/lib/queryClient"; // ensure correct path
-import api from "@/lib/api"; // ensure correct path
-import { useSocket } from "@/hooks/useSocket"; // ensure correct path
-import DeliveryOrdersList from "./DeliveryOrdersList"; // <-- DeliveryOrdersList कंपोनेंट को इम्पोर्ट करें
+import { apiRequest } from "@/lib/queryClient";
+import api from "@/lib/api";
+import { useSocket } from "@/hooks/useSocket";
+import DeliveryOrdersList from "./DeliveryOrdersList";
 
-// UI Components (Mocks) - आप इन्हें @/components/ui से बदल सकते हैं
+// UI Components (Mocks)
 const useToast = () => {
   return {
     toast: ({ title, description, variant }: any) => {
@@ -118,16 +118,27 @@ const API_BASE = import.meta.env.VITE_API_BASE_URL || "https://shopnish-lzrf.onr
 export default function DeliveryDashboard() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { user, auth, isLoadingAuth, isAuthenticated } = useAuth();
+  const { user, setUser, auth, isLoadingAuth, isAuthenticated } = useAuth();
 
-  // ----- IMPORTANT: useSocket might return either a Socket instance OR an object { socket, isConnected }
-  // handle both shapes so components can call socket.emit safely.
+  // ----- socket
   const rawSocket = useSocket() as any;
-  const socket = rawSocket?.socket ?? rawSocket; // if rawSocket is object, use rawSocket.socket, otherwise rawSocket itself
+  const socket = rawSocket?.socket ?? rawSocket;
 
   const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
   const [otp, setOtp] = useState("");
   const [otpDialogOpen, setOtpDialogOpen] = useState(false);
+
+  // ----- IMPORTANT: store delivery boy user in sessionStorage + react context
+  useEffect(() => {
+    if (!user || !auth?.currentUser) return;
+    try {
+      const deliveryBoyUser = { ...user, deliveryBoyId: user?.id ?? user?.uid };
+      sessionStorage.setItem("deliveryBoyUser", JSON.stringify(deliveryBoyUser));
+      setUser(deliveryBoyUser);
+    } catch (err) {
+      console.error("Delivery boy session store error:", err);
+    }
+  }, [user, setUser]);
 
   const getValidToken = async () => {
     if (!auth?.currentUser) return null;
@@ -139,13 +150,13 @@ export default function DeliveryDashboard() {
     }
   };
 
-  // small helper: normalize delivery status property (handles deliveryStatus or delivery_status)
+  // normalize delivery status
   const getDeliveryStatus = (o: any) => {
     if (!o) return null;
     return (o.deliveryStatus ?? o.delivery_status ?? "").toString();
   };
 
-  // Loader while auth or socket not ready
+  // Loader
   if (isLoadingAuth || !isAuthenticated || !user || !socket) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50">
@@ -155,12 +166,11 @@ export default function DeliveryDashboard() {
     );
   }
 
-  // Fetch delivery orders — now we fetch BOTH available and my orders, then merge de-duplicated
+  // Fetch orders
   const { data: orders = [], isLoading } = useQuery({
     queryKey: ["deliveryOrders"],
     queryFn: async () => {
       try {
-        // fetch available (delivery-status pending) and my orders (assigned to me)
         const [availableRes, myRes] = await Promise.allSettled([
           apiRequest("GET", "/api/delivery/orders/available"),
           apiRequest("GET", "/api/delivery/orders/my"),
@@ -174,7 +184,7 @@ export default function DeliveryDashboard() {
           ? (myRes.value as any).orders
           : [];
 
-        // merge, de-duplicate by order id
+        // merge + dedup
         const map = new Map<number, any>();
         for (const o of [...availableOrders, ...myOrders]) {
           if (o && typeof o.id === "number") {
@@ -182,7 +192,18 @@ export default function DeliveryDashboard() {
           }
         }
         const merged = Array.from(map.values());
-        return merged;
+
+        // mark my orders
+        const myOrderList = merged.filter(o => {
+          const assignedId = o.deliveryBoyId ?? o.delivery_boy_id ?? null;
+          if (!assignedId) return false;
+          return Number(assignedId) === Number(user.id ?? user.deliveryBoyId);
+        });
+
+        return merged.map(o => ({
+          ...o,
+          isMine: myOrderList.some(m => m.id === o.id),
+        }));
       } catch (err) {
         console.error("ऑर्डर लाने में त्रुटि:", err);
         toast({
@@ -196,19 +217,16 @@ export default function DeliveryDashboard() {
     enabled: isAuthenticated && !!user,
   });
 
+  // Socket listeners
   useEffect(() => {
     if (!socket || !user) return;
 
-    const onOrdersChanged = () => {
-      queryClient.invalidateQueries({ queryKey: ["deliveryOrders"] });
-    };
+    const onOrdersChanged = () => queryClient.invalidateQueries({ queryKey: ["deliveryOrders"] });
 
-    // ✅ emit अब सिर्फ तब होगा जब socket और socket.emit दोनों मौजूद हों
     if (socket && typeof socket.emit === "function") {
-      socket.emit("register-client", { role: "delivery", userId: user.uid });
+      socket.emit("register-client", { role: "delivery", userId: user.uid ?? user.id });
     }
 
-    // only attach listeners if socket exposes typical socket.io methods
     if (socket && typeof socket.on === "function") {
       socket.on("delivery:orders-changed", onOrdersChanged);
       socket.on("new-order", onOrdersChanged);
@@ -230,31 +248,25 @@ export default function DeliveryDashboard() {
       return response.data;
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["deliveryOrders"] }),
-    onError: (error) => toast({ title: "त्रुटि", description: "ऑर्डर स्वीकार करने में विफल", variant: "destructive" }),
+    onError: () => toast({ title: "त्रुटि", description: "ऑर्डर स्वीकार करने में विफल", variant: "destructive" }),
   });
 
   const updateStatusMutation = useMutation({
     mutationFn: async ({ orderId, newStatus }: { orderId: number; newStatus: string }) => {
-      const response = await api.patch(`/api/delivery/orders/${orderId}/status`, {
-        newStatus,
-      });
+      const response = await api.patch(`/api/delivery/orders/${orderId}/status`, { newStatus });
       return response.data;
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["deliveryOrders"] }),
-    onError: (error) => toast({ title: "त्रुटि", description: "ऑर्डर स्थिति अपडेट करने में विफल", variant: "destructive" }),
+    onError: () => toast({ title: "त्रुटि", description: "ऑर्डर स्थिति अपडेट करने में विफल", variant: "destructive" }),
   });
 
   const handleOtpSubmitMutation = useMutation({
     mutationFn: async ({ orderId, otp }: { orderId: number; otp: string }) => {
       const token = await getValidToken();
       if (!token) throw new Error("अमान्य या पुराना टोकन");
-
       const response = await fetch(`${API_BASE}/api/delivery/orders/${orderId}/complete-delivery`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ otp }),
       });
       if (!response.ok) throw new Error("डिलीवरी पूरी करने में विफल");
@@ -264,9 +276,7 @@ export default function DeliveryDashboard() {
       queryClient.invalidateQueries({ queryKey: ["deliveryOrders"] });
       toast({ title: "डिलीवरी पूरी हुई", description: "ऑर्डर सफलतापूर्वक डिलीवर हो गया है।", variant: "success" });
     },
-    onError: (error: any) => {
-      toast({ title: "OTP त्रुटि", description: error.message || "OTP जमा करने में विफल।", variant: "destructive" });
-    },
+    onError: (error: any) => toast({ title: "OTP त्रुटि", description: error.message || "OTP जमा करने में विफल।", variant: "destructive" }),
   });
 
   const handleStatusProgress = (order: any) => {
@@ -305,22 +315,18 @@ export default function DeliveryDashboard() {
     );
   }
 
-  // Helper filters using deliveryStatus (accept both camelCase and snake_case) and fallback to deliveryBoyId
   const isAvailableForAnyDelivery = (o: any) => {
     const ds = getDeliveryStatus(o).toLowerCase();
-    // treat 'pending' as available to be picked up by any delivery boy
     return ds === "pending";
   };
 
   const isAssignedToMe = (o: any) => {
-  const assignedId = o.deliveryBoyId ?? o["delivery-boy-id"] ?? null;
-  if (!assignedId) return false;
+    const assignedId = o.deliveryBoyId ?? o["delivery-boy-id"] ?? null;
+    if (!assignedId) return false;
+    const myDeliveryBoyId = user?.deliveryBoyId ?? user?.id;
+    return String(assignedId) === String(myDeliveryBoyId);
+  };
 
-  // frontend user object से deliveryBoyId चाहिए
-  const myDeliveryBoyId = user?.deliveryBoyId ?? user?.id; // user.deliveryBoyId में server login से set होना चाहिए
-  return String(assignedId) === String(myDeliveryBoyId);
-};
-  // counts (keeps using `status` field for counts as before)
   const totalOrdersCount = orders.length;
   const pendingCount = orders.filter((o: any) =>
     ["ready_for_pickup", "picked_up", "out_for_delivery", "pending", "accepted"].includes((o.status ?? "").toString())
