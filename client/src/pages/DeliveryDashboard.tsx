@@ -149,7 +149,10 @@ export default function DeliveryDashboard() {
     }
   };
 
-  const getDeliveryStatus = (o: any) => (o?.deliveryStatus ?? o?.delivery_status ?? "").toString();
+  const getDeliveryStatus = (o: any) => {
+    if (!o) return null;
+    return (o.deliveryStatus ?? o.delivery_status ?? "").toString();
+  };
 
   if (isLoadingAuth || !isAuthenticated || !user || !socket) {
     return (
@@ -182,7 +185,6 @@ export default function DeliveryDashboard() {
             ? (myRes.value as any).orders
             : [];
 
-        // merge and deduplicate
         const map = new Map<number, any>();
         for (const o of [...availableOrders, ...myOrders]) {
           if (o && typeof o.id === "number") {
@@ -264,15 +266,12 @@ export default function DeliveryDashboard() {
   });
 
   const handleStatusProgress = (order: any) => {
-    const cur = order.deliveryStatus?.toLowerCase();
-    if (!cur) return;
-
+    const cur = order.deliveryStatus;
     if (cur === "out_for_delivery") {
       setSelectedOrder(order);
       setOtpDialogOpen(true);
       return;
     }
-
     const next = nextStatus(cur);
     if (next) updateStatusMutation.mutate({ orderId: order.id, newStatus: next });
   };
@@ -299,25 +298,18 @@ export default function DeliveryDashboard() {
     );
   }
 
-  // Filter functions
-  const isAvailableForAnyDelivery = (o: any) =>
-    ["pending", "accepted"].includes((o.deliveryStatus ?? "").toLowerCase());
-
+  const isAvailableForAnyDelivery = (o: any) => (o.deliveryStatus ?? "").toLowerCase() === "pending";
   const isAssignedToMe = (o: any) => o.isMine;
 
-  // Summary counts
   const totalOrdersCount = orders.length;
   const pendingCount = orders.filter((o: any) =>
-    ["pending", "accepted", "ready_for_pickup"].includes((o.deliveryStatus ?? "").toLowerCase())
+    ["ready_for_pickup", "picked_up", "out_for_delivery", "pending", "accepted"].includes((o.status ?? "").toString())
   ).length;
-  const deliveredCount = orders.filter((o: any) => (o.deliveryStatus ?? "") === "delivered").length;
-  const outForDeliveryCount = orders.filter((o: any) =>
-    ["picked_up", "out_for_delivery"].includes((o.deliveryStatus ?? "").toLowerCase())
-  ).length;
+  const deliveredCount = orders.filter((o: any) => (o.status ?? "") === "delivered").length;
+  const outForDeliveryCount = orders.filter((o: any) => (o.status ?? "") === "out_for_delivery").length;
 
   return (
     <div className="min-h-screen bg-gray-50 font-inter text-gray-800">
-      {/* Header */}
       <header className="bg-white shadow-sm border-b rounded-b-lg">
         <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center space-x-3">
@@ -406,7 +398,8 @@ export default function DeliveryDashboard() {
               CardContent={CardContent}
               CardHeader={CardHeader}
               CardTitle={CardTitle}
-              Badge={Badge}/>
+              Badge={Badge}
+            />
           )}
         </div>
 
@@ -437,9 +430,8 @@ export default function DeliveryDashboard() {
               CardHeader={CardHeader}
               CardTitle={CardTitle}
               Badge={Badge}
-            />
-          )}
-        </div>
+              />
+        )}
       </section>
 
       {/* OTP Dialog */}
@@ -462,4 +454,4 @@ export default function DeliveryDashboard() {
       )}
     </div>
   );
-}
+      }
