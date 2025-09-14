@@ -2,7 +2,6 @@
 import React from "react";
 import { Navigation, Phone, MapPin } from "lucide-react";
 
-// PropTypes for the passed UI components
 interface UIComponents {
   Button: React.FC<any>;
   Card: React.FC<any>;
@@ -12,7 +11,7 @@ interface UIComponents {
   Badge: React.FC<any>;
 }
 
-interface DeliveryOrdersListProps extends UIComponents { // UIComponents को एक्सटेंड करें
+interface DeliveryOrdersListProps extends UIComponents {
   orders: any[];
   onAcceptOrder: (orderId: number) => void;
   onUpdateStatus: (order: any) => void;
@@ -34,17 +33,14 @@ const DeliveryOrdersList: React.FC<DeliveryOrdersListProps> = ({
   nextStatusLabel,
   acceptLoading,
   updateLoading,
-  Button, // UI कंपोनेंट्स को props के रूप में प्राप्त करें
+  Button,
   Card,
   CardContent,
   CardHeader,
   CardTitle,
   Badge,
 }) => {
-
-  if (!orders || orders.length === 0) {
-    return null;
-  }
+  if (!orders || orders.length === 0) return null;
 
   const renderOrderCard = (order: any) => {
     if (!order) return null;
@@ -54,6 +50,9 @@ const DeliveryOrdersList: React.FC<DeliveryOrdersListProps> = ({
 
     const sellerDetails = order?.sellerDetails ?? order?.items?.[0]?.product?.seller ?? null;
     const isSellerAddressObject = typeof sellerDetails === "object" && sellerDetails !== null;
+
+    const canAccept = order.deliveryStatus === "pending";
+    const isAssignedToMe = order.deliveryBoyId !== undefined;
 
     return (
       <Card key={order?.id ?? Math.random()}>
@@ -72,7 +71,7 @@ const DeliveryOrdersList: React.FC<DeliveryOrdersListProps> = ({
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* ग्राहक विवरण */}
+            {/* Customer Details */}
             <div className="space-y-4">
               <div>
                 <h4 className="font-medium mb-2">ग्राहक विवरण</h4>
@@ -83,7 +82,6 @@ const DeliveryOrdersList: React.FC<DeliveryOrdersListProps> = ({
                 </div>
               </div>
 
-              {/* डिलीवरी पता */}
               <div>
                 <h4 className="font-medium mb-2">डिलीवरी पता</h4>
                 <div className="flex items-start space-x-2 text-sm text-gray-600">
@@ -104,7 +102,7 @@ const DeliveryOrdersList: React.FC<DeliveryOrdersListProps> = ({
               </div>
             </div>
 
-            {/* विक्रेता विवरण */}
+            {/* Seller Details */}
             <div className="space-y-4">
               <div>
                 <h4 className="font-medium mb-2">विक्रेता विवरण</h4>
@@ -115,7 +113,6 @@ const DeliveryOrdersList: React.FC<DeliveryOrdersListProps> = ({
                 </div>
               </div>
 
-              {/* पिकअप पता */}
               <div>
                 <h4 className="font-medium mb-2">पिकअप पता</h4>
                 <div className="flex items-start space-x-2 text-sm text-gray-600">
@@ -137,7 +134,7 @@ const DeliveryOrdersList: React.FC<DeliveryOrdersListProps> = ({
             </div>
           </div>
 
-          {/* ऑर्डर आइटम्स */}
+          {/* Order Items */}
           <div className="mt-6 pt-4 border-t">
             <h4 className="font-medium mb-2">ऑर्डर आइटम</h4>
             <div className="space-y-2 max-h-32 overflow-y-auto pr-2">
@@ -159,13 +156,10 @@ const DeliveryOrdersList: React.FC<DeliveryOrdersListProps> = ({
             </div>
           </div>
 
+          {/* Actions */}
           <div className="flex flex-wrap gap-3 mt-6 pt-4 border-t">
-            {!order.deliveryBoyId && ["pending", "accepted", "ready_for_pickup"].includes(order.status) ? (
-              <Button
-                size="sm"
-                onClick={() => onAcceptOrder(order.id)}
-                disabled={acceptLoading}
-              >
+            {canAccept ? (
+              <Button size="sm" onClick={() => onAcceptOrder(order.id)} disabled={acceptLoading}>
                 ऑर्डर स्वीकार करें
               </Button>
             ) : (
@@ -177,7 +171,7 @@ const DeliveryOrdersList: React.FC<DeliveryOrdersListProps> = ({
                     const query = encodeURIComponent(
                       `${isAddressObject ? addressData.address || "" : ""}, ${isAddressObject ? addressData.city || "" : ""}`
                     );
-                    window.open(`http://google.com/maps/search/?api=1&query=${query}`, "_blank"); // Google Maps URL ठीक किया
+                    window.open(`http://google.com/maps/search/?api=1&query=${query}`, "_blank");
                   }}
                 >
                   <Navigation className="w-4 h-4 mr-2" /> नेविगेट करें (ग्राहक)
@@ -185,9 +179,16 @@ const DeliveryOrdersList: React.FC<DeliveryOrdersListProps> = ({
                 <Button
                   variant="outline"
                   size="sm"
+                  onClick={() => window.open(`tel:${isAddressObject ? addressData.phone || "" : ""}`)}
+                >
+                  <Phone className="w-4 h-4 mr-2" /> ग्राहक को कॉल
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
                   onClick={() => window.open(`tel:${isSellerAddressObject ? sellerDetails.phone || "" : ""}`)}
                 >
-                  <Phone className="w-4 h-4 mr-2" /> विक्रेता को कॉल करें
+                  <Phone className="w-4 h-4 mr-2" /> विक्रेता को कॉल
                 </Button>
                 <Button
                   variant="outline"
@@ -196,17 +197,13 @@ const DeliveryOrdersList: React.FC<DeliveryOrdersListProps> = ({
                     const query = encodeURIComponent(
                       `${isSellerAddressObject ? sellerDetails.address || "" : ""}, ${isSellerAddressObject ? sellerDetails.city || "" : ""}`
                     );
-                    window.open(`http://google.com/maps/search/?api=1&query=${query}`, "_blank"); // Google Maps URL ठीक किया
+                    window.open(`http://google.com/maps/search/?api=1&query=${query}`, "_blank");
                   }}
                 >
                   <Navigation className="w-4 h-4 mr-2" /> नेविगेट करें (पिकअप)
                 </Button>
                 {nextStatus(order.status) && (
-                  <Button
-                    size="sm"
-                    onClick={() => onUpdateStatus(order)}
-                    disabled={updateLoading}
-                  >
+                  <Button size="sm" onClick={() => onUpdateStatus(order)} disabled={updateLoading}>
                     {nextStatusLabel(order.status)}
                   </Button>
                 )}
@@ -218,11 +215,7 @@ const DeliveryOrdersList: React.FC<DeliveryOrdersListProps> = ({
     );
   };
 
-  return (
-    <div className="space-y-4">
-      {orders.map((order: any) => renderOrderCard(order))}
-    </div>
-  );
+  return <div className="space-y-4">{orders.map((order) => renderOrderCard(order))}</div>;
 };
 
 export default DeliveryOrdersList;
