@@ -2,12 +2,12 @@
 import { Request, Response, NextFunction } from 'express';
 import { authAdmin } from '../lib/firebaseAdmin.ts';
 import { db } from '../db.ts';
-import { users, deliveryBoys } from '../../shared/backend/schema.ts'; // ✅ deliveryBoys import करें
+import { users, deliveryBoys } from '../../shared/backend/schema.ts'; 
 import { eq } from 'drizzle-orm';
 import { AuthenticatedUser } from '../../shared/types/user.ts';
 
 export interface AuthenticatedRequest extends Request {
-  user?: AuthenticatedUser & { deliveryBoyId?: number }; // ✅ optional deliveryBoyId
+  user?: AuthenticatedUser & { deliveryBoyId?: number }; 
 }
 
 export const verifyToken = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
@@ -29,6 +29,8 @@ export const verifyToken = async (req: AuthenticatedRequest, res: Response, next
 
     // DB से user info fetch करें
     const [dbUser] = await db.select().from(users).where(eq(users.firebaseUid, decodedToken.uid));
+    console.log("🔍 [verifyToken] DB User Fetched:", dbUser);
+
     if (!dbUser) {
       console.error("❌ [verifyToken] User not found in database for UID:", decodedToken.uid);
       return res.status(404).json({ message: 'User not found in database' });
@@ -44,18 +46,23 @@ export const verifyToken = async (req: AuthenticatedRequest, res: Response, next
       approvalStatus: dbUser.approvalStatus,
     };
 
+    console.log("✅ [verifyToken] Base User Attached:", req.user);
+
     // ✅ सिर्फ delivery-boy के लिए deliveryBoyId attach करें
     if (dbUser.role === 'delivery-boy') {
       const [dbDeliveryBoy] = await db.select().from(deliveryBoys).where(eq(deliveryBoys.userId, dbUser.id));
+      console.log("🔍 [verifyToken] DeliveryBoy Record:", dbDeliveryBoy);
+
       if (!dbDeliveryBoy) {
         console.error("❌ [verifyToken] Delivery boy record not found for userId:", dbUser.id);
         return res.status(404).json({ message: 'Delivery boy record not found' });
       }
+
       req.user.deliveryBoyId = dbDeliveryBoy.id;
       console.log("✅ [verifyToken] DeliveryBoyId attached:", dbDeliveryBoy.id);
+      console.log("✅ [verifyToken] Final Delivery-Boy User Object:", req.user);
     }
 
-    console.log("✅ [verifyToken] User attached to request:", req.user);
     next();
   } catch (error: any) {
     console.error('❌ [verifyToken] Error verifying token:', error.message);
