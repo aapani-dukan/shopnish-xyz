@@ -321,9 +321,9 @@ export default function DeliveryDashboard() {
 
   const isAvailableForAnyDelivery = (o: any) => (o.deliveryStatus ?? "").toLowerCase() === "pending";
   
-const myDeliveryBoyId = user?.deliveryBoyId;
 
-const isAssignedToMe = (o: any) => o.deliveryBoyId === myDeliveryBoyId;
+const isAssignedToMe = (o: any) =>
+  Number(o.deliveryBoyId) === Number(myDeliveryBoyId);
 
   const totalOrdersCount = orders.length;
   const pendingCount = orders.filter((o: any) =>
