@@ -9,7 +9,7 @@ import { signOutUser } from "@/lib/firebase";
  * Axios स्वचालित रूप से हेडर में Firebase टोकन को इंटरसेप्टर के माध्यम से जोड़ता है।
  */
 export async function apiRequest(
-  method: 'GET' | 'POST' | 'PUT' | 'DELETE',
+  method: "GET" | "POST" | "PUT" | "DELETE",
   path: string,
   data?: unknown | FormData
 ): Promise<any> {
@@ -23,15 +23,25 @@ export async function apiRequest(
     return res.data;
   } catch (error: any) {
     if (error.response) {
-      // 401 Unauthorized एरर को हैंडल करें
+      // ✅ Custom error बनाओ जिसमें status भी preserve हो
+      const customError: any = new Error(
+        error.response.data.message ||
+          error.response.data.error ||
+          "API request failed"
+      );
+      customError.status = error.response.status;
+
       if (error.response.status === 401) {
         console.error("401 Unauthorized: Logging out user.");
         signOutUser(); // या जो भी आपका लॉगआउट फ़ंक्शन है
-        throw new Error("Unauthorized: Please log in again.");
+        throw customError;
       }
-      throw new Error(error.response.data.message || error.response.data.error || 'API request failed');
+
+      throw customError;
     }
-    throw new Error('An unexpected error occurred.');
+    const customError: any = new Error("An unexpected error occurred.");
+    customError.status = 500;
+    throw customError;
   }
 }
 
@@ -41,21 +51,17 @@ export const getQueryFn: <T>(options: {
   on401: UnauthorizedBehavior;
 }) => QueryFunction<T | null> =
   ({ on401: unauthorizedBehavior }) =>
-  async ({ queryKey, signal }) => {
-    const path = queryKey[0] as string; 
-    
+  async ({ queryKey }) => {
+    const path = queryKey[0] as string;
+
     try {
-        const res = await apiRequest(
-          "GET", 
-          path, 
-          undefined,
-        );
-        return res as T;
+      const res = await apiRequest("GET", path);
+      return res as T;
     } catch (error: any) {
-        if (error.status === 401 && unauthorizedBehavior === "returnNull") {
-            return null;
-        }
-        throw error;
+      if (error.status === 401 && unauthorizedBehavior === "returnNull") {
+        return null;
+      }
+      throw error;
     }
   };
 
@@ -66,11 +72,10 @@ export const queryClient = new QueryClient({
       refetchInterval: false,
       refetchOnWindowFocus: false,
       staleTime: 1000 * 60 * 5,
-      retry: (failureCount, error) => {
-        const status = (error as any).status;
-        if (status === 401 && failureCount < 1) {
-            console.log("401 Error detected. Attempting to refresh token...");
-            return true;
+      retry: (failureCount, error: any) => {
+        if (error?.status === 401 && failureCount < 1) {
+          console.log("401 Error detected. Attempting to refresh token...");
+          return true;
         }
         return false;
       },
