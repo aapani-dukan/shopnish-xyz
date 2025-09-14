@@ -320,7 +320,7 @@ export default function DeliveryDashboard() {
   }
 
   const isAvailableForAnyDelivery = (o: any) => (o.deliveryStatus ?? "").toLowerCase() === "pending";
-  const { user } = useAuth(); // user logged-in delivery boy
+  
 const myDeliveryBoyId = user?.deliveryBoyId;
 
 const isAssignedToMe = (o: any) => o.deliveryBoyId === myDeliveryBoyId;
