@@ -12,7 +12,7 @@ export const orderStatusEnum = pgEnum('order_status', [
   'in_cart',
 ]);
 
-export const userRoleEnum = pgEnum("user_role", ["customer", "seller", "admin", "delivery_boy"]);
+export const userRoleEnum = pgEnum("user_role", ["customer", "seller", "admin", "delivery-boy"]);
 export const approvalStatusEnum = pgEnum("approval_status", ["pending", "approved", "rejected"]);
 export const deliveryStatusEnum = pgEnum("delivery_status_enum", ["pending", "accepted", "out for delivery", "delivered"]);
 
