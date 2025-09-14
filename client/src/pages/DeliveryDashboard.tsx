@@ -216,7 +216,7 @@ export default function DeliveryDashboard() {
         return merged.map((o) => ({
           ...o,
           isMine: Number(o.deliveryBoyId === Number(user.deliveryBoyId),
-        )});
+        )}));
       } catch (err) {
         console.error("ऑर्डर लाने में त्रुटि:", err);
         toast({
