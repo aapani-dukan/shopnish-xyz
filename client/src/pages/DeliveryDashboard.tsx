@@ -319,6 +319,9 @@ export default function DeliveryDashboard() {
     );
   }
 
+const myDeliveryBoyId = user?.deliveryBoyId;
+
+console.log("🟢 Assigned Orders:", assignedOrders);
   const isAvailableForAnyDelivery = (o: any) => (o.deliveryStatus ?? "").toLowerCase() === "pending";
   
 
