@@ -8,34 +8,29 @@ import {
   Clock,
   CheckCircle,
   Navigation,
-  Phone,
-  MapPin,
   Loader2,
 } from "lucide-react";
 
 import DeliveryOtpDialog from "./DeliveryOtpDialog";
+import DeliveryOrdersList from "./DeliveryOrdersList";
 import { useAuth } from "@/hooks/useAuth";
+import { useSocket } from "@/hooks/useSocket";
 import { apiRequest } from "@/lib/queryClient";
 import api from "@/lib/api";
-import { useSocket } from "@/hooks/useSocket";
-import DeliveryOrdersList from "./DeliveryOrdersList";
 
 // UI Components (Mocks)
-const useToast = () => {
-  return {
-    toast: ({ title, description, variant }: any) => {
-      console.log(`Toast: ${title} - ${description} (Variant: ${variant})`);
-    },
-  };
-};
+const useToast = () => ({
+  toast: ({ title, description, variant }: any) =>
+    console.log(`Toast: ${title} - ${description} (Variant: ${variant})`),
+});
 
 const Button = ({ children, onClick, variant, size, disabled, ...props }: any) => (
   <button
     onClick={onClick}
     disabled={disabled}
-    className={`p-2 rounded-md ${variant === "outline" ? "border" : "bg-blue-500 text-white"} ${
-      disabled ? "opacity-50 cursor-not-allowed" : ""
-    }`}
+    className={`p-2 rounded-md ${
+      variant === "outline" ? "border" : "bg-blue-500 text-white"
+    } ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}
     {...props}
   >
     {children}
@@ -46,9 +41,11 @@ const Card = ({ children }: any) => <div className="bg-white rounded-lg shadow-m
 const CardContent = ({ children, className = "" }: any) => <div className={`p-4 ${className}`}>{children}</div>;
 const CardHeader = ({ children }: any) => <div className="p-4 border-b">{children}</div>;
 const CardTitle = ({ children }: any) => <h2 className="text-xl font-bold">{children}</h2>;
-const Badge = ({ children, className = "" }: any) => <span className={`px-2 py-1 text-xs rounded-full ${className}`}>{children}</span>;
+const Badge = ({ children, className = "" }: any) => (
+  <span className={`px-2 py-1 text-xs rounded-full ${className}`}>{children}</span>
+);
 
-// Status Helpers
+// Status helpers
 const statusColor = (status: string) => {
   switch (status) {
     case "ready_for_pickup":
@@ -72,6 +69,8 @@ const statusText = (status: string) => {
       return "लंबित";
     case "accepted":
       return "स्वीकृत";
+    case "preparing":
+      return "तैयार हो रहा है";
     case "ready_for_pickup":
       return "पिकअप के लिए तैयार";
     case "picked_up":
@@ -120,7 +119,6 @@ export default function DeliveryDashboard() {
   const queryClient = useQueryClient();
   const { user, setUser, auth, isLoadingAuth, isAuthenticated } = useAuth();
 
-  // ----- socket
   const rawSocket = useSocket() as any;
   const socket = rawSocket?.socket ?? rawSocket;
 
@@ -128,29 +126,18 @@ export default function DeliveryDashboard() {
   const [otp, setOtp] = useState("");
   const [otpDialogOpen, setOtpDialogOpen] = useState(false);
 
-  // ----- IMPORTANT: store delivery boy user in sessionStorage + react context
+  // store delivery boy in session
   useEffect(() => {
-  if (!user || !auth?.currentUser) return;
-
-  try {
-    // Priority: deliveryBoyId → id → uid
-    const deliveryBoyId =
-      user?.deliveryBoyId ??
-      user?.id ??
-      auth.currentUser.uid;
-
-    const deliveryBoyUser = { 
-      ...user, 
-      deliveryBoyId 
-    };
-
-    sessionStorage.setItem("deliveryBoyUser", JSON.stringify(deliveryBoyUser));
-    setUser(deliveryBoyUser);
-
-  } catch (err) {
-    console.error("Delivery boy session store error:", err);
-  }
-}, [user, setUser]);
+    if (!user || !auth?.currentUser) return;
+    try {
+      const deliveryBoyId = user?.deliveryBoyId ?? user?.id ?? auth.currentUser.uid;
+      const deliveryBoyUser = { ...user, deliveryBoyId };
+      sessionStorage.setItem("deliveryBoyUser", JSON.stringify(deliveryBoyUser));
+      setUser(deliveryBoyUser);
+    } catch (err) {
+      console.error("Delivery boy session store error:", err);
+    }
+  }, [user, setUser]);
 
   const getValidToken = async () => {
     if (!auth?.currentUser) return null;
@@ -162,13 +149,11 @@ export default function DeliveryDashboard() {
     }
   };
 
-  // normalize delivery status
   const getDeliveryStatus = (o: any) => {
     if (!o) return null;
     return (o.deliveryStatus ?? o.delivery_status ?? "").toString();
   };
 
-  // Loader
   if (isLoadingAuth || !isAuthenticated || !user || !socket) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50">
@@ -178,76 +163,64 @@ export default function DeliveryDashboard() {
     );
   }
 
-  // Fetch orders
-  // Fetch orders
-const { data: orders = [], isLoading } = useQuery({
-  queryKey: ["deliveryOrders"],
-  queryFn: async () => {
-    try {
-      const [availableRes, myRes] = await Promise.allSettled([
-        apiRequest("GET", "/api/delivery/orders/available"),
-        apiRequest("GET", "/api/delivery/orders/my"),
-      ]);
+  // fetch orders
+  const { data: orders = [], isLoading } = useQuery({
+    queryKey: ["deliveryOrders"],
+    queryFn: async () => {
+      try {
+        const [availableRes, myRes] = await Promise.allSettled([
+          apiRequest("GET", "/api/delivery/orders/available"),
+          apiRequest("GET", "/api/delivery/orders/my"),
+        ]);
 
-      const availableOrders =
-        availableRes.status === "fulfilled" &&
-        Array.isArray((availableRes.value as any).orders)
-          ? (availableRes.value as any).orders
-          : [];
+        const availableOrders =
+          availableRes.status === "fulfilled" &&
+          Array.isArray((availableRes.value as any).orders)
+            ? (availableRes.value as any).orders
+            : [];
 
-      const myOrders =
-        myRes.status === "fulfilled" &&
-        Array.isArray((myRes.value as any).orders)
-          ? (myRes.value as any).orders
-          : [];
+        const myOrders =
+          myRes.status === "fulfilled" &&
+          Array.isArray((myRes.value as any).orders)
+            ? (myRes.value as any).orders
+            : [];
 
-      // merge + dedup
-      const map = new Map<number, any>();
-      for (const o of [...availableOrders, ...myOrders]) {
-        if (o && typeof o.id === "number") {
-          map.set(o.id, o);
+        const map = new Map<number, any>();
+        for (const o of [...availableOrders, ...myOrders]) {
+          if (o && typeof o.id === "number") {
+            map.set(o.id, o);
+          }
         }
+        const merged = Array.from(map.values());
+        return merged.map((o) => ({
+          ...o,
+          isMine: Number(o.deliveryBoyId ?? o.delivery_boy_id) === Number(user.deliveryBoyId),
+        }));
+      } catch (err) {
+        console.error("ऑर्डर लाने में त्रुटि:", err);
+        toast({
+          title: "डेटा लाने में त्रुटि",
+          description: "ऑर्डर लाते समय कोई समस्या आई",
+          variant: "destructive",
+        });
+        return [];
       }
-      const merged = Array.from(map.values());
+    },
+    enabled: isAuthenticated && !!user,
+  });
 
-      // mark my orders (✅ simplified)
-      return merged.map((o) => ({
-        ...o,
-        isMine:
-          Number(o.deliveryBoyId ?? o.delivery_boy_id) ===
-          Number(user.deliveryBoyId),
-      }));
-    } catch (err) {
-      console.error("ऑर्डर लाने में त्रुटि:", err);
-      toast({
-        title: "डेटा लाने में त्रुटि",
-        description: "ऑर्डर लाते समय कोई समस्या आई",
-        variant: "destructive",
-      });
-      return [];
-    }
-  },
-  enabled: isAuthenticated && !!user,
-});
-
-  // Socket listeners
+  // socket listeners
   useEffect(() => {
     if (!socket || !user) return;
-
     const onOrdersChanged = () => queryClient.invalidateQueries({ queryKey: ["deliveryOrders"] });
-
-    if (socket && typeof socket.emit === "function") {
-      socket.emit("register-client", { role: "delivery", userId: user.uid ?? user.id });
-    }
-
-    if (socket && typeof socket.on === "function") {
+    if (socket.emit) socket.emit("register-client", { role: "delivery", userId: user.uid ?? user.id });
+    if (socket.on) {
       socket.on("delivery:orders-changed", onOrdersChanged);
       socket.on("new-order", onOrdersChanged);
       socket.on("order:update", onOrdersChanged);
     }
-
     return () => {
-      if (socket && typeof socket.off === "function") {
+      if (socket.off) {
         socket.off("delivery:orders-changed", onOrdersChanged);
         socket.off("new-order", onOrdersChanged);
         socket.off("order:update", onOrdersChanged);
@@ -293,7 +266,7 @@ const { data: orders = [], isLoading } = useQuery({
   });
 
   const handleStatusProgress = (order: any) => {
-    const cur = order.status;
+    const cur = order.deliveryStatus;
     if (cur === "out_for_delivery") {
       setSelectedOrder(order);
       setOtpDialogOpen(true);
@@ -315,10 +288,7 @@ const { data: orders = [], isLoading } = useQuery({
     setSelectedOrder(null);
   };
 
-  const handleLogout = () => {
-    if (!auth) return;
-    auth.signOut().then(() => window.location.reload());
-  };
+  const handleLogout = () => auth?.signOut().then(() => window.location.reload());
 
   if (isLoading) {
     return (
@@ -328,17 +298,8 @@ const { data: orders = [], isLoading } = useQuery({
     );
   }
 
-  const isAvailableForAnyDelivery = (o: any) => {
-    const ds = getDeliveryStatus(o).toLowerCase();
-    return ds === "pending";
-  };
-
-  const isAssignedToMe = (o: any) => {
-    const assignedId = o.deliveryBoyId ?? o["delivery-boy-id"] ?? null;
-    if (!assignedId) return false;
-    const myDeliveryBoyId = user?.deliveryBoyId ?? user?.id;
-    return String(assignedId) === String(myDeliveryBoyId);
-  };
+  const isAvailableForAnyDelivery = (o: any) => (o.deliveryStatus ?? "").toLowerCase() === "pending";
+  const isAssignedToMe = (o: any) => o.isMine;
 
   const totalOrdersCount = orders.length;
   const pendingCount = orders.filter((o: any) =>
@@ -368,6 +329,8 @@ const { data: orders = [], isLoading } = useQuery({
           </div>
         </div>
       </header>
+
+      {/* Summary Cards */}
       <section className="max-w-6xl mx-auto px-4 py-8 grid grid-cols-1 md:grid-cols-4 gap-6">
         <Card>
           <CardContent className="p-6 flex items-center space-x-3">
@@ -406,11 +369,12 @@ const { data: orders = [], isLoading } = useQuery({
           </CardContent>
         </Card>
       </section>
+
+      {/* Orders List */}
       <section className="max-w-6xl mx-auto px-4 pb-16 space-y-10">
         <div>
           <h2 className="text-2xl font-bold mb-4">उपलब्ध ऑर्डर (Pending for delivery)</h2>
-
-          {orders.filter((o: any) => isAvailableForAnyDelivery(o)).length === 0 ? (
+          {orders.filter(isAvailableForAnyDelivery).length === 0 ? (
             <Card>
               <CardContent className="py-12 text-center">
                 <Package className="mx-auto h-12 w-12 text-gray-400 mb-4" />
@@ -420,7 +384,7 @@ const { data: orders = [], isLoading } = useQuery({
             </Card>
           ) : (
             <DeliveryOrdersList
-              orders={orders.filter((o: any) => isAvailableForAnyDelivery(o))}
+              orders={orders.filter(isAvailableForAnyDelivery)}
               onAcceptOrder={acceptOrderMutation.mutate}
               onUpdateStatus={handleStatusProgress}
               statusColor={statusColor}
@@ -429,19 +393,18 @@ const { data: orders = [], isLoading } = useQuery({
               nextStatusLabel={nextStatusLabel}
               acceptLoading={acceptOrderMutation.isLoading}
               updateLoading={updateStatusMutation.isLoading}
-              Button={Button} // UI कंपोनेंट्स को पास करें
+              Button={Button}
               Card={Card}
               CardContent={CardContent}
               CardHeader={CardHeader}
               CardTitle={CardTitle}
-              Badge={Badge}
-            />
+              Badge={Badge}/>
           )}
         </div>
 
         <div>
           <h2 className="text-2xl font-bold mb-4">मेरे ऑर्डर</h2>
-          {orders.filter((o: any) => isAssignedToMe(o)).length === 0 ? (
+          {orders.filter(isAssignedToMe).length === 0 ? (
             <Card>
               <CardContent className="py-12 text-center">
                 <Package className="mx-auto h-12 w-12 text-gray-400 mb-4" />
@@ -451,7 +414,7 @@ const { data: orders = [], isLoading } = useQuery({
             </Card>
           ) : (
             <DeliveryOrdersList
-              orders={orders.filter((o: any) => isAssignedToMe(o))}
+              orders={orders.filter(isAssignedToMe)}
               onAcceptOrder={acceptOrderMutation.mutate}
               onUpdateStatus={handleStatusProgress}
               statusColor={statusColor}
@@ -460,23 +423,33 @@ const { data: orders = [], isLoading } = useQuery({
               nextStatusLabel={nextStatusLabel}
               acceptLoading={acceptOrderMutation.isLoading}
               updateLoading={updateStatusMutation.isLoading}
-              Button={Button} // UI कंपोनेंट्स को पास करें
+              Button={Button}
               Card={Card}
               CardContent={CardContent}
               CardHeader={CardHeader}
               CardTitle={CardTitle}
-              Badge={Badge}
-            />
-          )}
-        </div>
+              Badge={Badge}/>
+        )}
       </section>
-      <DeliveryOtpDialog
-        isOpen={otpDialogOpen}
-        onOpenChange={setOtpDialogOpen}
-        otp={otp}
-        setOtp={setOtp}
-        onConfirm={handleOtpConfirmation}
-      />
+
+      {/* OTP Dialog */}
+      {otpDialogOpen && selectedOrder && (
+        <DeliveryOtpDialog
+          isOpen={otpDialogOpen}
+          onClose={() => {
+            setOtpDialogOpen(false);
+            setOtp("");
+            setSelectedOrder(null);
+          }}
+          otp={otp}
+          setOtp={setOtp}
+          onSubmit={handleOtpConfirmation}
+          order={selectedOrder}
+          Button={Button}
+          Card={Card}
+          CardContent={CardContent}
+        />
+      )}
     </div>
   );
       }
