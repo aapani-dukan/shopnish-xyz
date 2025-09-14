@@ -1,8 +1,16 @@
 // client/src/hooks/useAuth.tsx
-import { useEffect, useState, createContext, useContext, useCallback, useMemo } from "react";
+
+import {
+  useEffect,
+  useState,
+  createContext,
+  useContext,
+  useCallback,
+  useMemo,
+} from "react";
 import { User as FirebaseUser } from "firebase/auth";
-import { useQueryClient } from '@tanstack/react-query';
-import { 
+import { useQueryClient } from "@tanstack/react-query";
+import {
   auth,
   onAuthStateChanged,
   handleRedirectResult as firebaseHandleRedirectResult,
@@ -63,8 +71,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const fetchBackendUserData = useCallback(async (fbUser: FirebaseUser) => {
     try {
       const idToken = await fbUser.getIdToken(true);
-      const res = await apiRequest("GET", "/api/users/me"); // ✅ सुरक्षित
-      const dbUserData = res.user || res; 
+      const res = await apiRequest("GET", "/api/users/me");
+      const dbUserData = res.user || res;
 
       if (dbUserData) {
         const newUserData: User = {
@@ -80,7 +88,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         setUser(newUserData);
         setIsAuthenticated(true);
         setIsAdmin(newUserData.role === "admin");
-        console.log("✅ Backend user data fetched and state updated.");
+        console.log("✅ Backend user data fetched:", newUserData);
       }
     } catch (e: any) {
       console.error("❌ Failed to fetch backend user data:", e);
@@ -104,11 +112,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     checkRedirectResult();
 
     const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
-      console.log("onAuthStateChanged triggered. fbUser:", fbUser ? fbUser.email : "null");
+      console.log(
+        "onAuthStateChanged triggered. fbUser:",
+        fbUser ? fbUser.email : "null"
+      );
 
       if (fbUser) {
         await fetchBackendUserData(fbUser);
       } else {
+        console.warn("❌ No Firebase user. Clearing state.");
         setUser(null);
         setIsAuthenticated(false);
         setIsAdmin(false);
@@ -120,25 +132,31 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     return () => unsubscribe();
   }, [fetchBackendUserData, queryClient]);
 
-  const signIn = useCallback(async (usePopup: boolean = false): Promise<FirebaseUser | null> => {
-    setIsLoadingAuth(true);
-    setAuthError(null);
-    try {
-      const fbUser = await firebaseSignInWithGoogle(usePopup);
-      if (fbUser) {
-        await fetchBackendUserData(fbUser);
+  // Google sign in
+  const signIn = useCallback(
+    async (usePopup: boolean = false): Promise<FirebaseUser | null> => {
+      setIsLoadingAuth(true);
+      setAuthError(null);
+      try {
+        const fbUser = await firebaseSignInWithGoogle(usePopup);
+        if (fbUser) {
+          await fetchBackendUserData(fbUser);
+        }
+        return fbUser;
+      } catch (err: any) {
+        setAuthError(err as AuthError);
+        setIsLoadingAuth(false);
+        throw err;
       }
-      return fbUser;
-    } catch (err: any) {
-      setAuthError(err as AuthError);
-      setIsLoadingAuth(false);
-      throw err;
-    }
-  }, [fetchBackendUserData]);
+    },
+    [fetchBackendUserData]
+  );
 
+  // Sign out
   const signOut = useCallback(async (): Promise<void> => {
     try {
       await signOutUser();
+      console.log("✅ User signed out.");
       setAuthError(null);
       setUser(null);
       setIsAuthenticated(false);
@@ -150,6 +168,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   }, [queryClient]);
 
+  // Refetch user data
   const refetchUser = useCallback(async () => {
     setIsLoadingAuth(true);
     const fbUser = auth.currentUser;
@@ -161,46 +180,69 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, [fetchBackendUserData]);
 
   // Delivery boy login (email/password)
-  const backendLogin = useCallback(async (email: string, password: string): Promise<User> => {
-    setAuthError(null);
-    setIsLoadingAuth(true);
-    try {
-      const res = await apiRequest("POST", "/api/delivery/login", { email, password });
-      const backendUser = res.user;
-      if (!backendUser) throw new Error("Invalid user data received from backend.");
+  const backendLogin = useCallback(
+    async (email: string, password: string): Promise<User> => {
+      setAuthError(null);
+      setIsLoadingAuth(true);
+      try {
+        const res = await apiRequest("POST", "/api/delivery/login", {
+          email,
+          password,
+        });
+        const backendUser = res.user;
+        if (!backendUser)
+          throw new Error("Invalid user data received from backend.");
 
-      const newUserData: User = {
-        id: backendUser.id,
-        email: backendUser.email,
-        name: backendUser.name,
-        role: backendUser.role,
-        sellerProfile: backendUser.sellerProfile || null,
-      };
+        const newUserData: User = {
+          id: backendUser.id,
+          email: backendUser.email,
+          name: backendUser.name,
+          role: backendUser.role,
+          sellerProfile: backendUser.sellerProfile || null,
+        };
 
-      setUser(newUserData);
-      setIsAuthenticated(true);
-      setIsAdmin(newUserData.role === "admin");
-      setIsLoadingAuth(false);
-      return newUserData;
-    } catch (err: any) {
-      setAuthError(err as AuthError);
-      setIsLoadingAuth(false);
-      throw err;
-    }
-  }, []);
+        setUser(newUserData);
+        setIsAuthenticated(true);
+        setIsAdmin(newUserData.role === "admin");
+        console.log("✅ Delivery backend login success:", newUserData);
+        setIsLoadingAuth(false);
+        return newUserData;
+      } catch (err: any) {
+        console.error("❌ Delivery backend login failed:", err);
+        setAuthError(err as AuthError);
+        setIsLoadingAuth(false);
+        throw err;
+      }
+    },
+    []
+  );
 
-  const authContextValue = useMemo(() => ({
-    user,
-    isLoadingAuth,
-    isAuthenticated,
-    isAdmin,
-    error: authError,
-    clearError,
-    signIn,
-    signOut,
-    refetchUser,
-    backendLogin,
-  }), [user, isLoadingAuth, isAuthenticated, isAdmin, authError, clearError, signIn, signOut, refetchUser, backendLogin]);
+  const authContextValue = useMemo(
+    () => ({
+      user,
+      isLoadingAuth,
+      isAuthenticated,
+      isAdmin,
+      error: authError,
+      clearError,
+      signIn,
+      signOut,
+      refetchUser,
+      backendLogin,
+    }),
+    [
+      user,
+      isLoadingAuth,
+      isAuthenticated,
+      isAdmin,
+      authError,
+      clearError,
+      signIn,
+      signOut,
+      refetchUser,
+      backendLogin,
+    ]
+  );
 
   return (
     <AuthContext.Provider value={authContextValue}>
