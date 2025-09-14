@@ -1,4 +1,4 @@
-// client/src/pages/DeliveryDashboard.tsx
+// client/src/pages/deliverydashboard.tsx
 import React, { useState, useEffect } from "react";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import {
@@ -14,14 +14,14 @@ import {
 import DeliveryOtpDialog from "./DeliveryOtpDialog";
 import DeliveryOrdersList from "./DeliveryOrdersList";
 import { useAuth } from "@/hooks/useAuth";
-import { useSocket } from "@/hooks/useSocket";
+import { useSocket } from "@/providers/SocketProvider";
 import { apiRequest } from "@/lib/queryClient";
 import api from "@/lib/api";
 
-// UI Components (Mocks)
+// ui components (mocks)
 const useToast = () => ({
   toast: ({ title, description, variant }: any) =>
-    console.log(`Toast: ${title} - ${description} (Variant: ${variant})`),
+    console.log(`Toast: ${title} - ${description} (variant: ${variant})`),
 });
 
 const Button = ({ children, onClick, variant, size, disabled, ...props }: any) => (
@@ -45,7 +45,7 @@ const Badge = ({ children, className = "" }: any) => (
   <span className={`px-2 py-1 text-xs rounded-full ${className}`}>{children}</span>
 );
 
-// Status helpers
+// status helpers
 const statusColor = (status: string) => {
   switch (status) {
     case "ready_for_pickup":
@@ -86,7 +86,7 @@ const statusText = (status: string) => {
 
 const nextStatus = (status: string) => {
   switch (status) {
-    case "accepted":
+    // Delivery boy can only proceed from 'ready_for_pickup'
     case "ready_for_pickup":
       return "picked_up";
     case "picked_up":
@@ -100,7 +100,6 @@ const nextStatus = (status: string) => {
 
 const nextStatusLabel = (status: string) => {
   switch (status) {
-    case "accepted":
     case "ready_for_pickup":
       return "पिकअप हो गया";
     case "picked_up":
@@ -136,7 +135,7 @@ export default function DeliveryDashboard() {
     } catch (err) {
       console.error("Delivery boy session store error:", err);
     }
-  }, [user, setUser]);
+  }, [user, setUser, auth?.currentUser]);
 
   const getValidToken = async () => {
     if (!auth?.currentUser) return null;
@@ -172,13 +171,13 @@ export default function DeliveryDashboard() {
         ]);
 
         const availableOrders =
-          availableRes.deliveryStatus === "fulfilled" &&
+          availableRes.status === "fulfilled" &&
           Array.isArray((availableRes.value as any).orders)
             ? (availableRes.value as any).orders
             : [];
 
         const myOrders =
-          myRes.deliveryStatus === "fulfilled" &&
+          myRes.status === "fulfilled" &&
           Array.isArray((myRes.value as any).orders)
             ? (myRes.value as any).orders
             : [];
@@ -301,7 +300,7 @@ export default function DeliveryDashboard() {
 
   const totalOrdersCount = orders.length;
   const pendingCount = orders.filter((o: any) =>
-    [ "pending", "accepted"].includes((o.deliveryStatus ?? "").toString())
+    ["pending", "accepted"].includes((o.deliveryStatus ?? "").toString())
   ).length;
   const deliveredCount = orders.filter((o: any) => (o.status ?? "") === "delivered").length;
   const outForDeliveryCount = orders.filter((o: any) => (o.status ?? "") === "out_for_delivery").length;
@@ -328,7 +327,7 @@ export default function DeliveryDashboard() {
         </div>
       </header>
 
-      {/* Summary Cards */}
+      {/* summary cards */}
       <section className="max-w-6xl mx-auto px-4 py-8 grid grid-cols-1 md:grid-cols-4 gap-6">
         <Card>
           <CardContent className="p-6 flex items-center space-x-3">
@@ -368,10 +367,10 @@ export default function DeliveryDashboard() {
         </Card>
       </section>
 
-      {/* Orders List */}
+      {/* orders list */}
       <section className="max-w-6xl mx-auto px-4 pb-16 space-y-10">
         <div>
-          <h2 className="text-2xl font-bold mb-4">उपलब्ध ऑर्डर (Pending for delivery)</h2>
+          <h2 className="text-2xl font-bold mb-4">उपलब्ध ऑर्डर (pending for delivery)</h2>
           {orders.filter(isAvailableForAnyDelivery).length === 0 ? (
             <Card>
               <CardContent className="py-12 text-center">
@@ -389,8 +388,8 @@ export default function DeliveryDashboard() {
               statusText={statusText}
               nextStatus={nextStatus}
               nextStatusLabel={nextStatusLabel}
-              acceptLoading={acceptOrderMutation.isLoading}
-              updateLoading={updateStatusMutation.isLoading}
+              acceptLoading={acceptOrderMutation.isPending}
+              updateLoading={updateStatusMutation.isPending}
               Button={Button}
               Card={Card}
               CardContent={CardContent}
@@ -420,8 +419,8 @@ export default function DeliveryDashboard() {
               statusText={statusText}
               nextStatus={nextStatus}
               nextStatusLabel={nextStatusLabel}
-              acceptLoading={acceptOrderMutation.isLoading}
-              updateLoading={updateStatusMutation.isLoading}
+              acceptLoading={acceptOrderMutation.isPending}
+              updateLoading={updateStatusMutation.isPending}
               Button={Button}
               Card={Card}
               CardContent={CardContent}
@@ -433,7 +432,7 @@ export default function DeliveryDashboard() {
         </div>
       </section>
 
-      {/* OTP Dialog */}
+      {/* otp dialog */}
       {otpDialogOpen && selectedOrder && (
         <DeliveryOtpDialog
           isOpen={otpDialogOpen}
@@ -453,4 +452,5 @@ export default function DeliveryDashboard() {
       )}
     </div>
   );
-}
+        }
+      
