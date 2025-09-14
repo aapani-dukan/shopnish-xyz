@@ -313,15 +313,13 @@ export default function DeliveryDashboard() {
   };
 
   const isAssignedToMe = (o: any) => {
-  // get deliveryBoyId from order
-  const assignedId = o.deliveryBoyId ?? o.delivery_boy_id ?? null;
+  const assignedId = o.deliveryBoyId ?? o["delivery-boy-id"] ?? null;
   if (!assignedId) return false;
 
-  // compare with frontend user object में store किए गए deliveryBoy.id
-  // यह id backend deliveryBoys table से fetch होती है
-  return assignedId === user?.deliveryBoy?.id;
+  // frontend user object से deliveryBoyId चाहिए
+  const myDeliveryBoyId = user?.deliveryBoyId ?? user?.id; // user.deliveryBoyId में server login से set होना चाहिए
+  return String(assignedId) === String(myDeliveryBoyId);
 };
-
   // counts (keeps using `status` field for counts as before)
   const totalOrdersCount = orders.length;
   const pendingCount = orders.filter((o: any) =>
