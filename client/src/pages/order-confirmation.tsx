@@ -32,8 +32,8 @@ interface Order {
   items: Array<{
     id: number;
     quantity: number;
-    unitPrice: number;       // ✅ number
-    totalPrice: number;      // ✅ number
+    unitPrice: number;
+    totalPrice: number;
     product: {
       id: number;
       name: string;
@@ -44,6 +44,7 @@ interface Order {
     };
   }>;
 }
+
 export default function OrderConfirmation() {
   const { orderId } = useParams<{ orderId: string }>();
   const navigate = useNavigate();
@@ -61,9 +62,9 @@ export default function OrderConfirmation() {
     enabled: !!orderId && isAuthenticated && !isLoadingAuth,
   });
 
-  // ✅ Socket real-time updates
+  // ✅ Socket real-time updates (Safe)
   useEffect(() => {
-    if (!socket || !orderId) return;
+    if (!socket || typeof socket.on !== "function" || !orderId) return;
 
     const handleUpdate = (data: { orderId: number }) => {
       if (data.orderId === Number(orderId)) {
@@ -172,8 +173,7 @@ export default function OrderConfirmation() {
             <div className="flex items-center">
               <MapPin className="h-5 w-5 mr-2 text-gray-500" />
               <span>
-                {deliveryAddress.address}, {deliveryAddress.city} -{" "}
-                {deliveryAddress.pincode}
+                {deliveryAddress.address}, {deliveryAddress.city} - {deliveryAddress.pincode}
               </span>
             </div>
             <div className="flex items-center">
