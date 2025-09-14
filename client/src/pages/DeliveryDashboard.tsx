@@ -126,7 +126,6 @@ export default function DeliveryDashboard() {
   const [otp, setOtp] = useState("");
   const [otpDialogOpen, setOtpDialogOpen] = useState(false);
 
-  // store delivery boy in session
   useEffect(() => {
     if (!user || !auth?.currentUser) return;
     try {
@@ -163,7 +162,6 @@ export default function DeliveryDashboard() {
     );
   }
 
-  // fetch orders
   const { data: orders = [], isLoading } = useQuery({
     queryKey: ["deliveryOrders"],
     queryFn: async () => {
@@ -209,7 +207,6 @@ export default function DeliveryDashboard() {
     enabled: isAuthenticated && !!user,
   });
 
-  // socket listeners
   useEffect(() => {
     if (!socket || !user) return;
     const onOrdersChanged = () => queryClient.invalidateQueries({ queryKey: ["deliveryOrders"] });
@@ -262,11 +259,12 @@ export default function DeliveryDashboard() {
       queryClient.invalidateQueries({ queryKey: ["deliveryOrders"] });
       toast({ title: "डिलीवरी पूरी हुई", description: "ऑर्डर सफलतापूर्वक डिलीवर हो गया है।", variant: "success" });
     },
-    onError: (error: any) => toast({ title: "OTP त्रुटि", description: error.message || "OTP जमा करने में विफल।", variant: "destructive" }),
+    onError: (error: any) =>
+      toast({ title: "OTP त्रुटि", description: error.message || "OTP जमा करने में विफल।", variant: "destructive" }),
   });
 
   const handleStatusProgress = (order: any) => {
-    const cur = order.deliveryStatus;
+    const cur = order.deliveryStatus ?? order.status ?? "";
     if (cur === "out_for_delivery") {
       setSelectedOrder(order);
       setOtpDialogOpen(true);
@@ -298,15 +296,15 @@ export default function DeliveryDashboard() {
     );
   }
 
-  const isAvailableForAnyDelivery = (o: any) => (o.deliveryStatus ?? "").toLowerCase() === "pending";
+  const isAvailableForAnyDelivery = (o: any) => (o.deliveryStatus ?? o.status ?? "").toLowerCase() === "pending";
   const isAssignedToMe = (o: any) => o.isMine;
 
   const totalOrdersCount = orders.length;
   const pendingCount = orders.filter((o: any) =>
-    ["ready_for_pickup", "picked_up", "out_for_delivery", "pending", "accepted"].includes((o.status ?? "").toString())
+    ["ready_for_pickup", "picked_up", "out_for_delivery", "pending", "accepted"].includes((o.status ?? o.deliveryStatus ?? "").toString())
   ).length;
-  const deliveredCount = orders.filter((o: any) => (o.status ?? "") === "delivered").length;
-  const outForDeliveryCount = orders.filter((o: any) => (o.status ?? "") === "out_for_delivery").length;
+  const deliveredCount = orders.filter((o: any) => (o.status ?? o.deliveryStatus ?? "") === "delivered").length;
+  const outForDeliveryCount = orders.filter((o: any) => (o.status ?? o.deliveryStatus ?? "") === "out_for_delivery").length;
 
   return (
     <div className="min-h-screen bg-gray-50 font-inter text-gray-800">
@@ -430,9 +428,9 @@ export default function DeliveryDashboard() {
               CardHeader={CardHeader}
               CardTitle={CardTitle}
               Badge={Badge}
-              />
-        )}
-          </div>
+            />
+          )}
+        </div>
       </section>
 
       {/* OTP Dialog */}
@@ -453,4 +451,6 @@ export default function DeliveryDashboard() {
           CardContent={CardContent}
         />
       )}
-    
+    </div>
+  );
+}
