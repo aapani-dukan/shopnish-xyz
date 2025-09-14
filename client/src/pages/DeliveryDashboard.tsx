@@ -131,20 +131,26 @@ export default function DeliveryDashboard() {
   // ----- IMPORTANT: store delivery boy user in sessionStorage + react context
   useEffect(() => {
   if (!user || !auth?.currentUser) return;
-  try {
-    // अगर user में पहले से deliveryBoyId है तो वही रखो
-    const deliveryBoyId =
-      user.deliveryBoyId ??
-      user.id ?? // fallback अगर पहले से assign नहीं है
-      null;
 
-    const deliveryBoyUser = { ...user, deliveryBoyId };
+  try {
+    // Priority: deliveryBoyId → id → uid
+    const deliveryBoyId =
+      user?.deliveryBoyId ??
+      user?.id ??
+      auth.currentUser.uid;
+
+    const deliveryBoyUser = { 
+      ...user, 
+      deliveryBoyId 
+    };
+
     sessionStorage.setItem("deliveryBoyUser", JSON.stringify(deliveryBoyUser));
     setUser(deliveryBoyUser);
+
   } catch (err) {
     console.error("Delivery boy session store error:", err);
   }
-}, [user?.id, user?.deliveryBoyId, auth?.currentUser]);
+}, [user, setUser]);
 
   const getValidToken = async () => {
     if (!auth?.currentUser) return null;
