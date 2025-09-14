@@ -179,11 +179,15 @@ export default function DeliveryDashboard() {
     queryKey: ["deliveryOrders"],
     queryFn: async () => {
       try {
+              console.log("🔹 QueryFn started, user:", user);
+        
         const [availableRes, myRes] = await Promise.allSettled([
           apiRequest("GET", "/api/delivery/orders/available"),
           apiRequest("GET", "/api/delivery/orders/my"),
         ]);
-
+  console.log("🔹 Available Orders Response:", availableRes);
+      console.log("🔹 My Orders Response:", myRes);
+        
         const availableOrders =
           availableRes.status === "fulfilled" &&
           Array.isArray((availableRes.value as any).orders)
@@ -195,14 +199,20 @@ export default function DeliveryDashboard() {
           Array.isArray((myRes.value as any).orders)
             ? (myRes.value as any).orders
             : [];
-
+ console.log("✅ Parsed availableOrders:", availableOrders);
+      console.log("✅ Parsed myOrders:", myOrders);
+        
         const map = new Map<number, any>();
         for (const o of [...availableOrders, ...myOrders]) {
           if (o && typeof o.id === "number") {
             map.set(o.id, o);
+                } else {
+          console.warn("⚠️ Invalid order object:", o);
+          
           }
         }
         const merged = Array.from(map.values());
+        console.log("🔹 Merged orders:", merged);
         return merged.map((o) => ({
           ...o,
           isMine: Number(o.deliveryBoyId ?? o.delivery_boy_id) === Number(user.deliveryBoyId),
