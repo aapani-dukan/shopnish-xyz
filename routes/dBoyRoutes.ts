@@ -145,34 +145,30 @@ router.get('/orders/available', requireDeliveryBoyAuth, async (req: Authenticate
 });
 
 // ✅ MY Orders (delivery_status = 'accepted')
+
+// ✅ MY Orders (delivery_status = 'accepted')
 router.get('/orders/my', requireDeliveryBoyAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const firebaseUid = req.user?.firebaseUid;
-    if (!firebaseUid) {
-      return res.status(401).json({ message: "Authentication required." });
+    const deliveryBoyId = req.user?.deliveryBoyId;
+
+    if (!deliveryBoyId) {
+      console.error("❌ DeliveryBoyId missing for user:", req.user?.id);
+      return res.status(404).json({ message: "Delivery Boy profile not found." });
     }
 
-    const deliveryBoy = await db.query.deliveryBoys.findFirst({  
-      where: eq(deliveryBoys.firebaseUid, firebaseUid),  
-    });  
-
-    if (!deliveryBoy) {  
-      return res.status(404).json({ message: "Delivery Boy profile not found." });  
-    }  
-
-    const list = await db.query.orders.findMany({  
+    const list = await db.query.orders.findMany({
       where: and(
         eq(orders.deliveryStatus, 'accepted'),
-        eq(orders.deliveryBoyId, deliveryBoy.id)
-      ),  
-      with: {  
-        items: { with: { product: { seller: true } } },  
-        deliveryAddress: true,  
-      },  
-      orderBy: (o, { desc }) => [desc(o.createdAt)],  
-    });  
+        eq(orders.deliveryBoyId, deliveryBoyId)
+      ),
+      with: {
+        items: { with: { product: { seller: true } } },
+        deliveryAddress: true,
+      },
+      orderBy: (o, { desc }) => [desc(o.createdAt)],
+    });
 
-    console.log("✅ My orders fetched:", list.length);  
+    console.log("✅ My orders fetched:", list.length);
     res.status(200).json({ orders: list });
 
   } catch (error: any) {
@@ -180,7 +176,6 @@ router.get('/orders/my', requireDeliveryBoyAuth, async (req: AuthenticatedReques
     res.status(500).json({ message: "Failed to fetch my orders." });
   }
 });
-
 // ✅ Accept Order (delivery_status update)
 router.post("/accept", requireDeliveryBoyAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
