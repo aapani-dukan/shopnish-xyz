@@ -3,7 +3,7 @@ import axios from "axios";
 import { auth } from "./firebase";
 
 const api = axios.create({
-  baseURL: "https://shopnish-lzrf.onrender.com", // ✅ आपकी live backend URL
+  baseURL: "https://shopnish-lzrf.onrender.com", // ✅ live backend URL
   withCredentials: true,
 });
 
@@ -12,14 +12,18 @@ api.interceptors.request.use(
     const user = auth.currentUser;
     if (user) {
       try {
-        // 🔄 हमेशा fresh token लो ताकि "अमान्य या पुराना टोकन" error न आए
         const token = await user.getIdToken(true);
         if (token) {
           config.headers.Authorization = `Bearer ${token}`;
+          console.log("📤 [API.ts] Sending request:", config.url, "with Auth:", config.headers.Authorization);
+        } else {
+          console.warn("⚠️ [API.ts] No token found for user");
         }
       } catch (err) {
-        console.error("❌ Failed to get Firebase token:", err);
+        console.error("❌ [API.ts] Failed to get Firebase token:", err);
       }
+    } else {
+      console.warn("⚠️ [API.ts] No authenticated user found");
     }
     return config;
   },
