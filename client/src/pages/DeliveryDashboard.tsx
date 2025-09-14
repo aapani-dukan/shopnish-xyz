@@ -173,55 +173,56 @@ export default function DeliveryDashboard() {
   }
 
   // Fetch orders
-  const { data: orders = [], isLoading } = useQuery({
-    queryKey: ["deliveryOrders"],
-    queryFn: async () => {
-      try {
-        const [availableRes, myRes] = await Promise.allSettled([
-          apiRequest("GET", "/api/delivery/orders/available"),
-          apiRequest("GET", "/api/delivery/orders/my"),
-        ]);
+  // Fetch orders
+const { data: orders = [], isLoading } = useQuery({
+  queryKey: ["deliveryOrders"],
+  queryFn: async () => {
+    try {
+      const [availableRes, myRes] = await Promise.allSettled([
+        apiRequest("GET", "/api/delivery/orders/available"),
+        apiRequest("GET", "/api/delivery/orders/my"),
+      ]);
 
-        const availableOrders = (availableRes.status === "fulfilled" && Array.isArray((availableRes.value as any).orders))
+      const availableOrders =
+        availableRes.status === "fulfilled" &&
+        Array.isArray((availableRes.value as any).orders)
           ? (availableRes.value as any).orders
           : [];
 
-        const myOrders = (myRes.status === "fulfilled" && Array.isArray((myRes.value as any).orders))
+      const myOrders =
+        myRes.status === "fulfilled" &&
+        Array.isArray((myRes.value as any).orders)
           ? (myRes.value as any).orders
           : [];
 
-        // merge + dedup
-        const map = new Map<number, any>();
-        for (const o of [...availableOrders, ...myOrders]) {
-          if (o && typeof o.id === "number") {
-            map.set(o.id, o);
-          }
+      // merge + dedup
+      const map = new Map<number, any>();
+      for (const o of [...availableOrders, ...myOrders]) {
+        if (o && typeof o.id === "number") {
+          map.set(o.id, o);
         }
-        const merged = Array.from(map.values());
-
-        // mark my orders
-        const myOrderList = merged.filter(o => {
-          const assignedId = o.deliveryBoyId ?? o.delivery_boy_id ?? null;
-          if (!assignedId) return false;
-          return Number(assignedId) === (user.deliveryBoyId);
-        });
-
-        return merged.map(o => ({
-          ...o,
-          isMine: myOrderList.some(m => m.id === o.id),
-        }));
-      } catch (err) {
-        console.error("ऑर्डर लाने में त्रुटि:", err);
-        toast({
-          title: "डेटा लाने में त्रुटि",
-          description: "ऑर्डर लाते समय कोई समस्या आई",
-          variant: "destructive",
-        });
-        return [];
       }
-    },
-    enabled: isAuthenticated && !!user,
-  });
+      const merged = Array.from(map.values());
+
+      // mark my orders (✅ simplified)
+      return merged.map((o) => ({
+        ...o,
+        isMine:
+          Number(o.deliveryBoyId ?? o.delivery_boy_id) ===
+          Number(user.deliveryBoyId),
+      }));
+    } catch (err) {
+      console.error("ऑर्डर लाने में त्रुटि:", err);
+      toast({
+        title: "डेटा लाने में त्रुटि",
+        description: "ऑर्डर लाते समय कोई समस्या आई",
+        variant: "destructive",
+      });
+      return [];
+    }
+  },
+  enabled: isAuthenticated && !!user,
+});
 
   // Socket listeners
   useEffect(() => {
