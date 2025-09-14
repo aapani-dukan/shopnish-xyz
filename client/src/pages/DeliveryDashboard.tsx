@@ -313,16 +313,14 @@ export default function DeliveryDashboard() {
   };
 
   const isAssignedToMe = (o: any) => {
-    // If backend sets deliveryBoyId to numeric id, compare to user.id or user.uid accordingly
-    const assignedId = o.deliveryBoyId ?? o.delivery_boy_id ?? null;
-    // try matching on firebase uid too if backend sets that
-    if (!assignedId) return false;
-    // possible shapes:
-    // - assignedId is numeric DB id and user has deliveryBoyId or id
-    // - assignedId might be deliveryBoy firebase uid string
-    const myIds = [user?.id, user?.uid, user?.deliveryBoyId, user?.deliveryBoy?.id, user?.deliveryBoy?.firebaseUid].filter(Boolean);
-    return myIds.some((m: any) => String(m) === String(assignedId));
-  };
+  // get deliveryBoyId from order
+  const assignedId = o.deliveryBoyId ?? o.delivery_boy_id ?? null;
+  if (!assignedId) return false;
+
+  // compare with frontend user object में store किए गए deliveryBoy.id
+  // यह id backend deliveryBoys table से fetch होती है
+  return assignedId === user?.deliveryBoy?.id;
+};
 
   // counts (keeps using `status` field for counts as before)
   const totalOrdersCount = orders.length;
