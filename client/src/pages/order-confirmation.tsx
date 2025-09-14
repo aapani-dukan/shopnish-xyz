@@ -27,24 +27,23 @@ interface Order {
     phone: string;
   };
   deliveryInstructions?: string;
-  estimatedDeliveryTime: string;
+  estimatedDeliveryTime?: string | null;
   createdAt: string;
   items: Array<{
     id: number;
     quantity: number;
-    unitPrice: string;
-    totalPrice: string;
+    unitPrice: number;       // ✅ number
+    totalPrice: number;      // ✅ number
     product: {
       id: number;
       name: string;
-      nameHindi?: string;
+      nameHindi?: string | null;
       image: string;
       unit: string;
-      brand: string;
+      brand?: string | null;
     };
   }>;
 }
-
 export default function OrderConfirmation() {
   const { orderId } = useParams<{ orderId: string }>();
   const navigate = useNavigate();
