@@ -172,13 +172,13 @@ export default function DeliveryDashboard() {
         ]);
 
         const availableOrders =
-          availableRes.status === "fulfilled" &&
+          availableRes.deliveryStatus === "fulfilled" &&
           Array.isArray((availableRes.value as any).orders)
             ? (availableRes.value as any).orders
             : [];
 
         const myOrders =
-          myRes.status === "fulfilled" &&
+          myRes.deliveryStatus === "fulfilled" &&
           Array.isArray((myRes.value as any).orders)
             ? (myRes.value as any).orders
             : [];
@@ -264,7 +264,7 @@ export default function DeliveryDashboard() {
   });
 
   const handleStatusProgress = (order: any) => {
-    const cur = order.deliveryStatus ?? order.status ?? "";
+    const cur = order.status ?? order.status ?? "";
     if (cur === "out_for_delivery") {
       setSelectedOrder(order);
       setOtpDialogOpen(true);
@@ -296,15 +296,15 @@ export default function DeliveryDashboard() {
     );
   }
 
-  const isAvailableForAnyDelivery = (o: any) => (o.deliveryStatus ?? o.status ?? "").toLowerCase() === "pending";
+  const isAvailableForAnyDelivery = (o: any) => (o.deliveryStatus ?? "").toLowerCase() === "pending";
   const isAssignedToMe = (o: any) => o.isMine;
 
   const totalOrdersCount = orders.length;
   const pendingCount = orders.filter((o: any) =>
-    ["ready_for_pickup", "picked_up", "out_for_delivery", "pending", "accepted"].includes((o.status ?? o.deliveryStatus ?? "").toString())
+    [ "pending", "accepted"].includes((o.deliveryStatus ?? "").toString())
   ).length;
-  const deliveredCount = orders.filter((o: any) => (o.status ?? o.deliveryStatus ?? "") === "delivered").length;
-  const outForDeliveryCount = orders.filter((o: any) => (o.status ?? o.deliveryStatus ?? "") === "out_for_delivery").length;
+  const deliveredCount = orders.filter((o: any) => (o.status ?? "") === "delivered").length;
+  const outForDeliveryCount = orders.filter((o: any) => (o.status ?? "") === "out_for_delivery").length;
 
   return (
     <div className="min-h-screen bg-gray-50 font-inter text-gray-800">
