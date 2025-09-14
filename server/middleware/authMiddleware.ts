@@ -31,7 +31,7 @@ export const requireAdminAuth = [
 export const requireSellerAuth = [
   ...requireAuth, // ✅ पहले सामान्य प्रमाणीकरण चलाएं
   (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
-    if (req.user?.role !== userRoleEnum.enumValues[1]) { // 'seller'
+    if (req.user?.role !== userRoleEnum.enumValues[2]) { // 'seller'
       return res.status(403).json({ message: 'Forbidden: Seller access required.' });
     }
     next();
@@ -46,7 +46,7 @@ export const requireDeliveryBoyAuth = [
 
     if (
       !req.user ||
-      req.user.role !== userRoleEnum.enumValues[2] || // 'delivery-boy'
+      req.user.role !== userRoleEnum.enumValues[4] || // 'delivery-boy'
       req.user.approvalStatus !== 'approved' || // ✅ approved होना चाहिए
       !req.user.deliveryBoyId // ✅ सिर्फ existence check करें
     ) {
