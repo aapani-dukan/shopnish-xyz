@@ -432,6 +432,7 @@ export default function DeliveryDashboard() {
               Badge={Badge}
               />
         )}
+          </div>
       </section>
 
       {/* OTP Dialog */}
@@ -452,5 +453,4 @@ export default function DeliveryDashboard() {
           CardContent={CardContent}
         />
       )}
-    </div>
-  </section>
+    
