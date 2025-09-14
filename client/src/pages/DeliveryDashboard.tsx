@@ -346,7 +346,7 @@ const myDeliveryBoyId = user?.deliveryBoyId;
       </div>
     </section>
   );
-}
+
 console.log("🟢 Assigned Orders:", assignedOrders);
   const isAvailableForAnyDelivery = (o: any) => (o.deliveryStatus ?? "").toLowerCase() === "pending";
   
