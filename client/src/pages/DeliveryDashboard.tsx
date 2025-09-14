@@ -113,9 +113,11 @@ const nextStatusLabel = (status: string) => {
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "https://shopnish-lzrf.onrender.com";
 
+
 export default function DeliveryDashboard() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
   const { user, setUser, auth, isLoadingAuth, isAuthenticated } = useAuth();
 
   const rawSocket = useSocket() as any;
@@ -126,16 +128,28 @@ export default function DeliveryDashboard() {
   const [otpDialogOpen, setOtpDialogOpen] = useState(false);
 
   useEffect(() => {
+    
     if (!user || !auth?.currentUser) return;
+
     try {
-      const deliveryBoyId = user?.deliveryBoyId ?? user?.id ?? auth.currentUser.uid;
+      const deliveryBoyId = user?.deliveryBoyId; 
+
+      if (deliveryBoyId === undefined) {
+          console.warn("DeliveryBoyId is still undefined after auth.currentUser is present. Check backend middleware.");
+          
+      }
+
       const deliveryBoyUser = { ...user, deliveryBoyId };
       sessionStorage.setItem("deliveryBoyUser", JSON.stringify(deliveryBoyUser));
       setUser(deliveryBoyUser);
+
     } catch (err) {
       console.error("Delivery boy session store error:", err);
     }
-  }, [user, setUser, auth?.currentUser]);
+  }, [user, setUser, auth?.currentUser]); 
+
+}
+
 
   const getValidToken = async () => {
     if (!auth?.currentUser) return null;
