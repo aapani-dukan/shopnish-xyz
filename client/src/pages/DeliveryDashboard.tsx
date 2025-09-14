@@ -148,7 +148,7 @@ export default function DeliveryDashboard() {
     }
   }, [user, setUser, auth?.currentUser]); 
 
-}
+
 
 
   const getValidToken = async () => {
