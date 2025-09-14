@@ -241,7 +241,8 @@ export default function Checkout() {
                 <CardContent>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <Label htmlFor="fullName">Full Name</Label<Input
+                      <Label htmlFor="fullName">Full Name</Label>
+                     <Input
                         id="fullName"
                         value={deliveryAddress.fullName}
                         onChange={(e) => setDeliveryAddress({ ...deliveryAddress, fullName: e.target.value })}
