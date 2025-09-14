@@ -320,7 +320,33 @@ export default function DeliveryDashboard() {
   }
 
 const myDeliveryBoyId = user?.deliveryBoyId;
+// Assigned orders array
+  const assignedOrders = orders.filter(isAssignedToMe);
+  const availableOrders = orders.filter(isAvailableForAnyDelivery);
 
+  // Now in JSX
+  return (
+    <section>
+      <div>
+        <h2>उपलब्ध ऑर्डर</h2>
+        {availableOrders.length === 0 ? (
+          <p>कोई उपलब्ध ऑर्डर नहीं</p>
+        ) : (
+          <DeliveryOrdersList orders={availableOrders} />
+        )}
+      </div>
+
+      <div>
+        <h2>मेरे ऑर्डर</h2>
+        {assignedOrders.length === 0 ? (
+          <p>आपको कोई ऑर्डर असाइन नहीं किया गया</p>
+        ) : (
+          <DeliveryOrdersList orders={assignedOrders} />
+        )}
+      </div>
+    </section>
+  );
+}
 console.log("🟢 Assigned Orders:", assignedOrders);
   const isAvailableForAnyDelivery = (o: any) => (o.deliveryStatus ?? "").toLowerCase() === "pending";
   
