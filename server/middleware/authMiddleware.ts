@@ -38,19 +38,26 @@ export const requireSellerAuth = [
   },
 ];
 
-// केवल Delivery Boy भूमिका वाले उपयोगकर्ताओं के लिए
+// केवल Delivery Boy भूमिका वाले उपयोगकर्ताओं के लि
 export const requireDeliveryBoyAuth = [
-  ...requireAuth, // ✅ पहले सामान्य प्रमाणीकरण चलाएं
+  ...requireAuth,
   (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
-    // सुनिश्चित करें कि उपयोगकर्ता delivery-boy है, अप्रूव्ड है, और उसकी deliveryBoyId है
+    console.log("🔍 [requireDeliveryBoyAuth] User in middleware:", req.user);
+
     if (
       !req.user ||
       req.user.role !== userRoleEnum.enumValues[2] || // 'delivery-boy'
-      req.user.approvalStatus !== 'approved' || // ✅ अप्रूवल स्टेटस की जाँच
-      typeof req.user.deliveryBoyId !== 'number' // ✅ सुनिश्चित करें कि आंतरिक इंटीजर ID मौजूद है
+      req.user.approvalStatus !== 'approved' || // ✅ approved होना चाहिए
+      !req.user.deliveryBoyId // ✅ सिर्फ existence check करें
     ) {
-      return res.status(403).json({ message: 'Forbidden: Access denied for unapproved or incomplete delivery boy profile.' });
+      return res.status(403).json({
+        message: 'Forbidden: Access denied for unapproved or incomplete delivery boy profile.'
+      });
     }
+
+    // deliveryBoyId को number में normalize कर लें
+    req.user.deliveryBoyId = Number(req.user.deliveryBoyId);
+
     next();
   },
 ];
