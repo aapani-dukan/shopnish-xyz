@@ -41,22 +41,24 @@ export const requireSellerAuth = [
 // केवल Delivery Boy भूमिका वाले उपयोगकर्ताओं के लि
 export const requireDeliveryBoyAuth = [
   ...requireAuth,
-  (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     console.log("🔍 [requireDeliveryBoyAuth] User in middleware:", req.user);
 
-    if (
-      !req.user ||
-      req.user.role !== userRoleEnum.enumValues[4] || // 'delivery-boy'
-      req.user.approvalStatus !== 'approved' || // ✅ approved होना चाहिए
-      !req.user.deliveryBoyId // ✅ सिर्फ existence check करें
-    ) {
-      return res.status(403).json({
-        message: 'Forbidden: Access denied for unapproved or incomplete delivery boy profile.'
-      });
+    if (!req.user || req.user.role !== userRoleEnum.enumValues[4]) {
+      return res.status(403).json({ message: 'Forbidden: Not a delivery boy.' });
     }
 
-    // deliveryBoyId को number में normalize कर लें
-    req.user.deliveryBoyId = Number(req.user.deliveryBoyId);
+    // Database से deliveryBoyId निकालें
+    const deliveryBoy = await db.query.deliveryBoys.findFirst({
+      where: (t) => t.userId.eq(req.user.id).and(t.status.eq('approved'))
+    });
+
+    if (!deliveryBoy) {
+      return res.status(403).json({ message: 'Forbidden: Delivery boy not approved or not found.' });
+    }
+
+    // ✅ अब req.user में deliveryBoyId add कर दो
+    req.user.deliveryBoyId = deliveryBoy.id;
 
     next();
   },
