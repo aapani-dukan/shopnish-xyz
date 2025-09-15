@@ -43,33 +43,33 @@ const DeliveryOrdersList: React.FC<DeliveryOrdersListProps> = ({
   if (!orders || orders.length === 0) return null;
 
   const renderOrderCard = (order: any) => {
-    if (!order) return null;
+  if (!order) return null;
 
-    const addressData = order?.deliveryAddress ?? null;
-    const isAddressObject = typeof addressData === "object" && addressData !== null;
+  const addressData = order?.deliveryAddress ?? null;
+  const isAddressObject = typeof addressData === "object" && addressData !== null;
 
-    const sellerDetails = order?.sellerDetails ?? order?.items?.[0]?.product?.seller ?? null;
-    const isSellerAddressObject = typeof sellerDetails === "object" && sellerDetails !== null;
+  const sellerDetails = order?.sellerDetails ?? order?.items?.[0]?.product?.seller ?? null;
+  const isSellerAddressObject = typeof sellerDetails === "object" && sellerDetails !== null;
 
-    const canAccept = order.deliveryStatus === "pending";
-    const isAssignedToMe = order.deliveryBoyId !== undefined;
+  const canAccept = order.deliveryStatus === "pending";
+  const isAssignedToMe = order.deliveryBoyId !== undefined;
 
-    return (
-      <Card key={order?.id ?? Math.random()}>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle>ऑर्डर #{order?.orderNumber ?? "N/A"}</CardTitle>
-              <p className="text-sm text-gray-600">
-                {order?.items?.length || 0} आइटम • ₹{order?.total ?? 0}
-              </p>
-            </div>
-            <Badge className={`${statusColor(order?.status)} text-white`}>
-              {statusText(order?.status)}
-            </Badge>
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle>ऑर्डर #{order?.orderNumber ?? "N/A"}</CardTitle>
+            <p className="text-sm text-gray-600">
+              {order?.items?.length || 0} आइटम • ₹{order?.total ?? 0}
+            </p>
           </div>
-        </CardHeader>
-        <CardContent>
+          <Badge className={`${statusColor(order?.status)} text-white`}>
+            {statusText(order?.status)}
+          </Badge>
+        </div>
+      </CardHeader>
+      <CardContent>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Customer Details */}
             <div className="space-y-4">
@@ -215,15 +215,14 @@ const DeliveryOrdersList: React.FC<DeliveryOrdersListProps> = ({
     );
   };
 
-  return (
   <div className="space-y-4">
-    {orders.map((order, i) => (
-      <React.Fragment key={order?.id ?? i}>
-        {renderOrderCard(order)}
-      </React.Fragment>
-    ))}
-  </div>
-);
+  {orders.map((order, i) => (
+    <React.Fragment key={order?.id ?? i}>
+      {renderOrderCard(order)}
+    </React.Fragment>
+  ))}
+</div>
+
 };
 
 export default DeliveryOrdersList;
