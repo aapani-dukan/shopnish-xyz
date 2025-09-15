@@ -3,8 +3,6 @@ import React from "react";
 import { Navigation, Phone, MapPin } from "lucide-react";
 
 // --- TypeScript Type Definitions ---
-// For convenience, all types are defined in this single file.
-
 export interface Address {
   fullName?: string;
   phone?: string;
@@ -47,6 +45,7 @@ export interface Order {
   deliveryBoyId?: number;
 }
 
+// UI components (assuming they are passed as props from the parent)
 export interface UIComponents {
   Button: React.FC<any>;
   Card: React.FC<any>;
@@ -68,10 +67,12 @@ export interface DeliveryOrdersListProps extends UIComponents {
   updateLoading: boolean;
 }
 
-
 // --- Sub-Component: AddressBlock ---
-// A reusable component to display customer or seller address and actions.
-const AddressBlock: React.FC<{ title: string; details: Address | Seller | null; Button: UIComponents['Button'] }> = ({ title, details, Button }) => {
+const AddressBlock: React.FC<{
+  title: string;
+  details: Address | Seller | null;
+  Button: UIComponents["Button"];
+}> = ({ title, details, Button }) => {
   if (!details) return null;
 
   const address = details.address || "पता उपलब्ध नहीं";
@@ -79,9 +80,9 @@ const AddressBlock: React.FC<{ title: string; details: Address | Seller | null; 
   const pincode = details.pincode ? `, ${details.pincode}` : "";
   const fullAddress = `${address}, ${city}${pincode}`;
 
-  // Corrected Google Maps URL
   const handleNavigate = () => {
     const query = encodeURIComponent(fullAddress);
+    // Corrected Google Maps URL
     window.open(`https://www.google.com/maps/search/?api=1&query=${query}`, "_blank");
   };
 
@@ -117,17 +118,14 @@ const AddressBlock: React.FC<{ title: string; details: Address | Seller | null; 
   );
 };
 
-
 // --- Sub-Component: OrderItems ---
-// Displays the list of items in the order.
 const OrderItems: React.FC<{ items: OrderItem[] }> = ({ items }) => (
   <div className="mt-6 pt-4 border-t">
     <h4 className="font-medium mb-2">ऑर्डर आइटम</h4>
     <div className="space-y-2 max-h-32 overflow-y-auto pr-2">
       {items.length > 0 ? (
-        items.map((item, index) => (
-          // Using a stable key (id or index), not Math.random()
-          <div key={item.id ?? index} className="flex items-center space-x-3 text-sm">
+        items.map((item) => (
+          <div key={item.id} className="flex items-center space-x-3 text-sm">
             <img
               src={item.product?.image || "https://placehold.co/32x32/E2E8F0/1A202C?text=No+Img"}
               alt={item.product?.name || "No Name"}
@@ -148,11 +146,8 @@ const OrderItems: React.FC<{ items: OrderItem[] }> = ({ items }) => (
   </div>
 );
 
-
 // --- Sub-Component: OrderCard ---
-// Renders a single order card, composing other sub-components.
-// Wrapped with React.memo for performance optimization.
-const OrderCard: React.FC<Omit<DeliveryOrdersListProps, 'orders' | 'acceptLoading'> & { order: Order; isLoading: boolean }> = React.memo(({ order, onAcceptOrder, onUpdateStatus, statusColor, statusText, nextStatus, nextStatusLabel, isLoading, ...ui }) => {
+const OrderCard: React.FC<Omit<DeliveryOrdersListProps, 'orders' | 'acceptLoading' | 'updateLoading'> & { order: Order; isLoading: boolean }> = React.memo(({ order, onAcceptOrder, onUpdateStatus, statusColor, statusText, nextStatus, nextStatusLabel, isLoading, ...ui }) => {
   if (!order) return null;
 
   const currentStatus = order.deliveryStatus || order.status || "";
@@ -178,7 +173,6 @@ const OrderCard: React.FC<Omit<DeliveryOrdersListProps, 'orders' | 'acceptLoadin
         
         <OrderItems items={order.items ?? []} />
 
-        {/* Main Actions */}
         <div className="mt-6 pt-4 border-t">
           {canAccept ? (
             <ui.Button size="sm" onClick={() => onAcceptOrder(order.id)} disabled={isLoading}>
@@ -195,9 +189,7 @@ const OrderCard: React.FC<Omit<DeliveryOrdersListProps, 'orders' | 'acceptLoadin
   );
 });
 
-
 // --- Main Component: DeliveryOrdersList ---
-// This is the primary component that maps over the orders.
 const DeliveryOrdersList: React.FC<DeliveryOrdersListProps> = ({ orders, ...props }) => {
   return (
     <div className="space-y-6">
