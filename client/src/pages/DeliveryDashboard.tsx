@@ -220,15 +220,24 @@ export default function DeliveryDashboard() {
   });
 
   const handleStatusProgress = (order: any) => {
-    const curStatus = order.status ?? "";
+    console.log("🔍 Checking order:", order.id, "Current status:", order.status);
+    // ✅ FIX: status को छोटे अक्षरों में बदलें और खाली जगह हटा दें
+    const curStatus = (order.status ?? "").toLowerCase().trim();
+    console.log("🔍 Trimmed and lowercased status:", curStatus);
+    // अब यह जाँच किसी भी केस या अतिरिक्त खाली जगह के साथ काम करेगी
     if (curStatus === "out_for_delivery") {
+      console.log("✅ Status is 'out_for_delivery'. Opening OTP dialog.");
       setSelectedOrder(order);
       setOtpDialogOpen(true);
+      
       return;
     }
     const next = nextStatus(curStatus);
-    if (next) updateStatusMutation.mutate({ orderId: order.id, newStatus: next });
-  };
+    if (next) 
+      console.log("➡️ Status is not 'out_for_delivery'. Updating to next status:", next);
+      updateStatusMutation.mutate({ orderId: order.id, newStatus: next });
+};
+
 
   const handleOtpConfirmation = () => {
     if (!selectedOrder || otp.trim().length !== 4) {
