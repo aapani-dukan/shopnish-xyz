@@ -123,9 +123,31 @@ router.post('/login', verifyToken, async (req: AuthenticatedRequest, res: Respon
   }
 });
 
+// ✅ GET Available Orders (deliveryStatus = 'pending' and not rejected)
+router.get('/orders/available', requireDeliveryBoyAuth, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const list = await db.query.orders.findMany({
+      where: and(
+        eq(orders.deliveryStatus, 'pending'),
+        not(eq(orders.status, 'rejected'))
+      ),
+      with: {
+        items: { with: { product: { seller: true } } },
+        deliveryAddress: true,
+      },
+      orderBy: (o, { asc }) => [asc(o.createdAt)],
+    });
 
-// ✅ MY Orders (delivery_status = 'accepted')
+    console.log("✅ Available orders fetched:", list.length);
+    res.status(200).json({ orders: list });
 
+  } catch (error: any) {
+    console.error("❌ Failed to fetch available orders:", error);
+    res.status(500).json({ message: "Failed to fetch available orders." });
+  }
+});
+
+// ✅ GET My Orders (deliveryStatus = 'accepted' and not delivered)
 router.get('/orders/my', requireDeliveryBoyAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const deliveryBoyId = req.user?.deliveryBoyId;
@@ -135,9 +157,11 @@ router.get('/orders/my', requireDeliveryBoyAuth, async (req: AuthenticatedReques
       return res.status(404).json({ message: "Delivery Boy profile not found." });
     }
 
-    // ✅ FIX: Removed the deliveryStatus filter. Fetches all orders assigned to this delivery boy.
     const list = await db.query.orders.findMany({
-      where: eq(orders.deliveryBoyId, deliveryBoyId),
+      where: and(
+        eq(orders.deliveryBoyId, deliveryBoyId),
+        eq(orders.deliveryStatus, 'accepted')
+      ),
       with: {
         items: { with: { product: { seller: true } } },
         deliveryAddress: true,
@@ -179,7 +203,6 @@ router.post("/accept", requireDeliveryBoyAuth, async (req: AuthenticatedRequest,
 
     if (!existing) return res.status(404).json({ message: "Order not found." });
 
-    // ✅ FIX: Removed duplicate check.
     if (existing.deliveryStatus !== 'pending') {
       return res.status(409).json({ message: "Order is not available for acceptance." });
     }
@@ -198,19 +221,23 @@ router.post("/accept", requireDeliveryBoyAuth, async (req: AuthenticatedRequest,
       .where(eq(orders.id, orderId))
       .returning();
 
+    // Security fix: Remove OTP from response
+    const { deliveryOtp: _, ...orderWithoutOtp } = updated;
+
     getIO().emit("order:update", {
       reason: "accepted",
       orderId,
       deliveryBoyId: deliveryBoy.id,
     });
 
-    return res.json({ message: "Order accepted", order: updated });
+    return res.json({ message: "Order accepted", order: orderWithoutOtp });
 
   } catch (err) {
     console.error("POST /delivery/accept error:", err);
     return res.status(500).json({ message: "Failed to accept order" });
   }
 });
+
 
 // ✅ PATCH Update Status
 router.patch('/orders/:orderId/status', requireDeliveryBoyAuth, async (req: AuthenticatedRequest, res: Response) => {
@@ -231,8 +258,7 @@ router.patch('/orders/:orderId/status', requireDeliveryBoyAuth, async (req: Auth
       return res.status(404).json({ message: "Delivery Boy profile not found." });
     }
 
-    // ✅ FIX: Added 'delivered' to the list of valid statuses.
-    const validStatusesForDeliveryBoy = ['picked_up', 'out_for_delivery', 'delivered'];
+    const validStatusesForDeliveryBoy = ['picked_up', 'out_for_delivery'];
     if (!validStatusesForDeliveryBoy.includes(newStatus)) {
       return res.status(400).json({ message: "Invalid status provided." });
     }
@@ -302,11 +328,10 @@ router.post('/orders/:orderId/complete-delivery', requireDeliveryBoyAuth, async 
       return res.status(401).json({ message: "Invalid OTP." });
     }
 
-    // ✅ FIX: The status is already handled by the /status route. This route just sets to 'delivered' and clears OTP.
     const [updatedOrder] = await db.update(orders)
       .set({
         status: 'delivered',
-        deliveryStatus: 'delivered', // You can also update this to reflect completion.
+        deliveryStatus: 'delivered',
         deliveryOtp: null,
       })
       .where(eq(orders.id, orderId))
