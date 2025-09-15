@@ -27,7 +27,6 @@ import { useToast } from "@/hooks/use-toast";
 const statusColor = (status: string) => {
   switch (status) {
     case "ready_for_pickup":
-    case "pending":
     case "accepted":
       return "bg-yellow-500";
     case "picked_up":
@@ -46,17 +45,17 @@ const statusText = (status: string) => {
     case "pending":
       return "लंबित";
     case "accepted":
-      return "स्वीकृत";
+      return "विक्रेता ने स्वीकार किया"; // Seller Accepted
     case "preparing":
-      return "तैयार हो रहा है";
+      return "तैयार हो रहा है"; // Preparing
     case "ready_for_pickup":
-      return "पिकअप के लिए तैयार";
+      return "पिकअप के लिए तैयार"; // Ready for Pickup
     case "picked_up":
-      return "पिकअप हो गया";
+      return "पिकअप हो गया"; // Picked Up
     case "out_for_delivery":
-      return "डिलीवरी के लिए निकला";
+      return "डिलीवरी के लिए निकला"; // Out for Delivery
     case "delivered":
-      return "डिलीवर हो गया";
+      return "डिलीवर हो गया"; // Delivered
     default:
       return status || "अज्ञात";
   }
@@ -219,7 +218,8 @@ export default function DeliveryDashboard() {
   });
 
   const handleStatusProgress = (order: any) => {
-    const curStatus = order.deliveryStatus ?? order.status ?? "";
+    // ✅ FIX: Use 'status' column as per your logic
+    const curStatus = order.status ?? "";
     if (curStatus === "out_for_delivery") {
       setSelectedOrder(order);
       setOtpDialogOpen(true);
@@ -242,16 +242,21 @@ export default function DeliveryDashboard() {
   const myDeliveryBoyId = user?.deliveryBoyId;
   const { assignedOrders, availableOrders, totalOrdersCount, pendingCount, deliveredCount, outForDeliveryCount } =
     useMemo(() => {
-      const assigned = orders.filter((o: any) => Number(o.deliveryBoyId) === Number(myDeliveryBoyId));
+      // ✅ FIX: Filter 'available' orders by 'deliveryStatus' === 'pending'
       const available = orders.filter((o: any) =>
-        ["pending", "accepted"].includes((o.deliveryStatus ?? o.status ?? "").toString())
+        (o.deliveryStatus ?? "").toLowerCase() === "pending"
       );
+      
+      // ✅ FIX: Filter 'assigned' orders by 'deliveryBoyId'
+      const assigned = orders.filter((o: any) =>
+        Number(o.deliveryBoyId) === Number(myDeliveryBoyId)
+      );
+
+      // ✅ FIX: Update counters based on your new logic
       const total = orders.length;
-      const pending = orders.filter((o: any) =>
-        ["pending", "accepted"].includes((o.deliveryStatus ?? o.status ?? "").toString())
-      ).length;
-      const delivered = orders.filter((o: any) => (o.deliveryStatus ?? o.status ?? "") === "delivered").length;
-      const outForDelivery = orders.filter((o: any) => (o.deliveryStatus ?? o.status ?? "") === "out_for_delivery").length;
+      const pending = available.length;
+      const delivered = orders.filter((o: any) => (o.status ?? "").toLowerCase() === "delivered").length;
+      const outForDelivery = orders.filter((o: any) => (o.status ?? "").toLowerCase() === "out_for_delivery").length;
 
       return {
         assignedOrders: assigned,
