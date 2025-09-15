@@ -10,8 +10,8 @@ import {
   DialogTitle,
 } from "@radix-ui/react-dialog";
 import { Label } from "@radix-ui/react-label";
-import { Button } from "./ui/button"; // Assuming a custom Button component using Radix Slot/CVA
-import { Input } from "./ui/input"; // Assuming a custom Input component
+import { Button } from "../components/ui/button"; // Assuming a custom Button component using Radix Slot/CVA
+import { Input } from "../components/ui/input"; // Assuming a custom Input component
 
 // --- TypeScript Type Definitions ---
 export interface Order {
