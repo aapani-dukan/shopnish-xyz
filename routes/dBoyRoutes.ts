@@ -342,7 +342,13 @@ router.post('/orders/:orderId/complete-delivery', requireDeliveryBoyAuth, async 
       order: updatedOrder,
     });
 
-    getIO().emit("order:update", { type: "delivered", data: updatedOrder });
+    
+getIO().emit("order:update", {
+  type: "delivered",
+  orderId: updatedOrder.id,
+  status: updatedOrder.status,
+  deliveryStatus: updatedOrder.deliveryStatus
+});
 
   } catch (error: any) {
     console.error("Failed to complete delivery:", error);
