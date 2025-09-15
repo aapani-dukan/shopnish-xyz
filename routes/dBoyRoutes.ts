@@ -10,7 +10,7 @@ import {
   orderStatusEnum,
   users
 } from '../shared/backend/schema';
-import { eq, or, and, isNull,desc } from 'drizzle-orm';
+import { eq, or, and, isNull,desc,not } from 'drizzle-orm';
 import { AuthenticatedRequest, verifyToken } from '../server/middleware/verifyToken';
 import { requireDeliveryBoyAuth } from '../server/middleware/authMiddleware';
 import { getIO } from '../server/socket';
