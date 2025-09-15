@@ -11,119 +11,91 @@ import {
   Loader2,
 } from "lucide-react";
 
-// Helper components & hooks (assuming these are in separate files)
+// Helper components & hooks
 import DeliveryOtpDialog from "./DeliveryOtpDialog";
 import DeliveryOrdersList from "./DeliveryOrdersList";
 import { useAuth } from "@/hooks/useAuth";
 import { useSocket } from "@/hooks/useSocket";
 import { apiRequest } from "@/lib/queryClient";
 import api from "@/lib/api";
-import { OrderWithItems, orderStatusEnum } from "@shared/backend/schema";
+// Assuming these are from your UI library
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 
-
-// ui components (mocks)
-const useToast = () => ({
-toast: ({ title, description, variant }: any) =>
-console.log(Toast: ${title} - ${description} (variant: ${variant})),
-});
-
-const Button = ({ children, onClick, variant, size, disabled, ...props }: any) => (
-<button
-onClick={onClick}
-disabled={disabled}
-className={p-2 rounded-md ${   variant === "outline" ? "border" : "bg-blue-500 text-white"   } ${disabled ? "opacity-50 cursor-not-allowed" : ""}}
-{...props}
-
-> 
-
-{children}
-
-  </button>  
-);  const Card = ({ children }: any) => <div className="bg-white rounded-lg shadow-md p-4">{children}</div>;
-const CardContent = ({ children, className = "" }: any) => <div className={p-4 ${className}}>{children}</div>;
-const CardHeader = ({ children }: any) => <div className="p-4 border-b">{children}</div>;
-const CardTitle = ({ children }: any) => <h2 className="text-xl font-bold">{children}</h2>;
-const Badge = ({ children, className = "" }: any) => (
-<span className={px-2 py-1 text-xs rounded-full ${className}}>{children}</span>
-);
-const API_BASE = import.meta.env.VITE_API_BASE_URL || "https://shopnish-00ug.onrender.com";
+// --- Utility Functions ---
 
 // status helpers
 const statusColor = (status: string) => {
-switch (status) {
-case "ready_for_pickup":
-case "pending":
-case "accepted":
-return "bg-yellow-500";
-case "picked_up":
-return "bg-blue-500";
-case "out_for_delivery":
-return "bg-purple-500";
-case "delivered":
-return "bg-green-500";
-default:
-return "bg-gray-500";
-}
+  switch (status) {
+    case "ready_for_pickup":
+    case "pending":
+    case "accepted":
+      return "bg-yellow-500";
+    case "picked_up":
+      return "bg-blue-500";
+    case "out_for_delivery":
+      return "bg-purple-500";
+    case "delivered":
+      return "bg-green-500";
+    default:
+      return "bg-gray-500";
+  }
 };
 
 const statusText = (status: string) => {
-switch (status) {
-case "pending":
-return "लंबित";
-case "accepted":
-return "स्वीकृत";
-case "preparing":
-return "तैयार हो रहा है";
-case "ready_for_pickup":
-return "पिकअप के लिए तैयार";
-case "picked_up":
-return "पिकअप हो गया";
-case "out_for_delivery":
-return "डिलीवरी के लिए निकला";
-case "delivered":
-return "डिलीवर हो गया";
-default:
-return status || "अज्ञात";
-}
+  switch (status) {
+    case "pending":
+      return "लंबित";
+    case "accepted":
+      return "स्वीकृत";
+    case "preparing":
+      return "तैयार हो रहा है";
+    case "ready_for_pickup":
+      return "पिकअप के लिए तैयार";
+    case "picked_up":
+      return "पिकअप हो गया";
+    case "out_for_delivery":
+      return "डिलीवरी के लिए निकला";
+    case "delivered":
+      return "डिलीवर हो गया";
+    default:
+      return status || "अज्ञात";
+  }
 };
 
 const nextStatus = (status: string) => {
-switch (status) {
-// Delivery boy can only proceed from 'ready_for_pickup'
-case "ready_for_pickup":
-return "picked_up";
-case "picked_up":
-return "out_for_delivery";
-case "out_for_delivery":
-return "delivered";
-default:
-return null;
-}
+  switch (status) {
+    case "ready_for_pickup":
+      return "picked_up";
+    case "picked_up":
+      return "out_for_delivery";
+    case "out_for_delivery":
+      return "delivered";
+    default:
+      return null;
+  }
 };
 
 const nextStatusLabel = (status: string) => {
-switch (status) {
-case "ready_for_pickup":
-return "पिकअप हो गया";
-case "picked_up":
-return "डिलीवरी के लिए निकला";
-case "out_for_delivery":
-return "डिलीवरी पूरी करें";
-default:
-return "";
-}
+  switch (status) {
+    case "ready_for_pickup":
+      return "पिकअप हो गया";
+    case "picked_up":
+      return "डिलीवरी के लिए निकला";
+    case "out_for_delivery":
+      return "डिलीवरी पूरी करें";
+    default:
+      return "";
+  }
 };
 
 // --- Main Component ---
-
 export default function DeliveryDashboard() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { user, auth, isLoadingAuth, isAuthenticated } = useAuth();
+  const { user, setUser, auth, isLoadingAuth, isAuthenticated } = useAuth();
   const rawSocket = useSocket() as any;
   const socket = rawSocket?.socket ?? rawSocket;
 
@@ -131,12 +103,36 @@ export default function DeliveryDashboard() {
   const [otp, setOtp] = useState("");
   const [otpDialogOpen, setOtpDialogOpen] = useState(false);
 
+  // Store user info in session storage
+  useEffect(() => {
+    if (!user || !auth?.currentUser) return;
+    try {
+      const deliveryBoyId = user?.deliveryBoyId;
+      if (deliveryBoyId !== undefined) {
+        const deliveryBoyUser = { ...user, deliveryBoyId };
+        sessionStorage.setItem("deliveryBoyUser", JSON.stringify(deliveryBoyUser));
+        setUser(deliveryBoyUser);
+      }
+    } catch (err) {
+      console.error("Delivery boy session store error:", err);
+    }
+  }, [user, setUser, auth?.currentUser]);
+
+  const getValidToken = async () => {
+    if (!auth?.currentUser) return null;
+    try {
+      return await auth.currentUser.getIdToken(true);
+    } catch (err) {
+      console.error("टोकन लाने में त्रुटि:", err);
+      return null;
+    }
+  };
+
   // --- Data Fetching (useQuery) ---
   const { data: orders = [], isLoading } = useQuery({
     queryKey: ["deliveryOrders"],
     queryFn: async () => {
       try {
-        // Fetch both available and assigned orders concurrently
         const [availableRes, myRes] = await Promise.allSettled([
           apiRequest("GET", "/api/delivery/orders/available"),
           apiRequest("GET", "/api/delivery/orders/my"),
@@ -151,209 +147,247 @@ export default function DeliveryDashboard() {
           myRes.status === "fulfilled" && Array.isArray((myRes.value as any).orders)
             ? (myRes.value as any).orders
             : [];
-        
-        // De-duplicate orders using a Map to ensure each order ID is unique
-        const orderMap = new Map<number, any>();
-        for (const order of [...availableOrders, ...myOrders]) {
-          if (order && typeof order.id === "number") {
-            orderMap.set(order.id, order);
-          }
-        }
-        return Array.from(orderMap.values());
 
+        const map = new Map();
+        [...availableOrders, ...myOrders].forEach((o) => {
+          if (o && typeof o.id === "number") {
+            map.set(o.id, {
+              ...o,
+              isMine: Number(o.deliveryBoyId) === Number(user?.deliveryBoyId),
+            });
+          }
+        });
+
+        return Array.from(map.values());
       } catch (err) {
-        console.error("Error fetching orders:", err);
+        console.error("ऑर्डर लाने में त्रुटि:", err);
         toast({
-          title: "Data Fetching Error",
-          description: "There was a problem fetching orders.",
+          title: "डेटा लाने में त्रुटि",
+          description: "ऑर्डर लाते समय कोई समस्या आई",
           variant: "destructive",
         });
-        return []; // Return an empty array on error
+        return [];
       }
     },
-    enabled: isAuthenticated && !!user, // Only run the query if the user is authenticated
+    enabled: isAuthenticated && !!user,
   });
 
-  // --- WebSocket Effects ---
+  // --- WebSocket Connection ---
   useEffect(() => {
     if (!socket || !user) return;
-
     const onOrdersChanged = () => queryClient.invalidateQueries({ queryKey: ["deliveryOrders"] });
-    
-    socket.emit("register-client", { role: "delivery", userId: user.uid ?? user.id });
-    socket.on("delivery:orders-changed", onOrdersChanged);
-    socket.on("new-order", onOrdersChanged);
-    socket.on("order:update", onOrdersChanged);
-
+    if (socket.emit) socket.emit("register-client", { role: "delivery", userId: user.uid ?? user.id });
+    if (socket.on) {
+      socket.on("delivery:orders-changed", onOrdersChanged);
+      socket.on("new-order", onOrdersChanged);
+      socket.on("order:update", onOrdersChanged);
+    }
     return () => {
-      socket.off("delivery:orders-changed", onOrdersChanged);
-      socket.off("new-order", onOrdersChanged);
-      socket.off("order:update", onOrdersChanged);
+      if (socket.off) {
+        socket.off("delivery:orders-changed", onOrdersChanged);
+        socket.off("new-order", onOrdersChanged);
+        socket.off("order:update", onOrdersChanged);
+      }
     };
-  }, [socket, user, queryClient]);
+  }, [socket, user, queryClient, isAuthenticated]);
 
-  // --- API Mutations ---
+  // --- Mutations ---
   const acceptOrderMutation = useMutation({
     mutationFn: (orderId: number) => api.post("/api/delivery/accept", { orderId }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["deliveryOrders"] }),
-    onError: () => toast({ title: "Error", description: "Failed to accept order", variant: "destructive" }),
+    onError: () => toast({ title: "त्रुटि", description: "ऑर्डर स्वीकार करने में विफल", variant: "destructive" }),
   });
 
   const updateStatusMutation = useMutation({
-    mutationFn: ({ orderId, newStatus }: { orderId: number; newStatus: string }) => 
+    mutationFn: ({ orderId, newStatus }: { orderId: number; newStatus: string }) =>
       api.patch(`/api/delivery/orders/${orderId}/status`, { newStatus }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["deliveryOrders"] }),
-    onError: () => toast({ title: "Error", description: "Failed to update order status", variant: "destructive" }),
+    onError: () => toast({ title: "त्रुटि", description: "ऑर्डर स्थिति अपडेट करने में विफल", variant: "destructive" }),
   });
 
   const handleOtpSubmitMutation = useMutation({
     mutationFn: async ({ orderId, otp }: { orderId: number; otp: string }) => {
-      const token = await auth?.currentUser?.getIdToken(true);
-      if (!token) throw new Error("Invalid or expired token");
-      
+      const token = await getValidToken();
+      if (!token) throw new Error("अमान्य या पुराना टोकन");
+      const API_BASE = import.meta.env.VITE_API_BASE_URL || "https://shopnish-00ug.onrender.com";
       const response = await fetch(`${API_BASE}/api/delivery/orders/${orderId}/complete-delivery`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ otp }),
       });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Failed to complete delivery");
-      }
+      if (!response.ok) throw new Error("डिलीवरी पूरी करने में विफल");
       return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["deliveryOrders"] });
-      toast({ title: "Delivery Complete", description: "Order has been successfully delivered.", variant: "success" });
+      toast({ title: "डिलीवरी पूरी हुई", description: "ऑर्डर सफलतापूर्वक डिलीवर हो गया है।", variant: "success" });
       setOtpDialogOpen(false);
-      setSelectedOrder(null);
       setOtp("");
+      setSelectedOrder(null);
     },
     onError: (error: any) =>
-      toast({ title: "OTP Error", description: error.message || "Failed to submit OTP.", variant: "destructive" }),
+      toast({ title: "OTP त्रुटि", description: error.message || "OTP जमा करने में विफल।", variant: "destructive" }),
   });
 
-  // --- Event Handlers ---
   const handleStatusProgress = (order: any) => {
-    const currentStatus = order.deliveryStatus ?? order.status ?? "";
-    if (currentStatus === "out_for_delivery") {
+    const curStatus = order.deliveryStatus ?? order.status ?? "";
+    if (curStatus === "out_for_delivery") {
       setSelectedOrder(order);
       setOtpDialogOpen(true);
       return;
     }
-    const next = nextStatus(currentStatus);
-    if (next) {
-      updateStatusMutation.mutate({ orderId: order.id, newStatus: next });
-    }
+    const next = nextStatus(curStatus);
+    if (next) updateStatusMutation.mutate({ orderId: order.id, newStatus: next });
   };
 
   const handleOtpConfirmation = () => {
-    if (!selectedOrder) return;
-    if (otp.trim().length !== 4) {
-      toast({ title: "Invalid OTP", description: "A 4-digit OTP is required.", variant: "destructive" });
+    if (!selectedOrder || otp.trim().length !== 4) {
+      toast({ title: "OTP दर्ज करें", description: "4-अंकों का OTP आवश्यक है।", variant: "destructive" });
       return;
     }
     handleOtpSubmitMutation.mutate({ orderId: selectedOrder.id, otp });
   };
-  
+
   const handleLogout = () => auth?.signOut().then(() => window.location.reload());
 
-  // --- Derived State and Data Filtering ---
-  // FIX: All variable definitions are moved before the return statement.
-  // useMemo is used to prevent re-calculating these on every render unless 'orders' or 'user' changes.
-  const {
-    assignedOrders,
-    availableOrders,
-    totalOrdersCount,
-    pendingCount,
-    deliveredCount,
-    outForDeliveryCount,
-  } = useMemo(() => {
-    const myDeliveryBoyId = user?.deliveryBoyId;
+  // --- Derived State ---
+  const myDeliveryBoyId = user?.deliveryBoyId;
+  const { assignedOrders, availableOrders, totalOrdersCount, pendingCount, deliveredCount, outForDeliveryCount } =
+    useMemo(() => {
+      const assigned = orders.filter((o: any) => Number(o.deliveryBoyId) === Number(myDeliveryBoyId));
+      const available = orders.filter((o: any) =>
+        ["pending", "accepted"].includes((o.deliveryStatus ?? o.status ?? "").toString())
+      );
+      const total = orders.length;
+      const pending = orders.filter((o: any) =>
+        ["pending", "accepted"].includes((o.deliveryStatus ?? o.status ?? "").toString())
+      ).length;
+      const delivered = orders.filter((o: any) => (o.deliveryStatus ?? o.status ?? "") === "delivered").length;
+      const outForDelivery = orders.filter((o: any) => (o.deliveryStatus ?? o.status ?? "") === "out_for_delivery").length;
 
-    const isAssignedToMe = (o: any) => Number(o.deliveryBoyId) === Number(myDeliveryBoyId);
-    const isAvailableForPickup = (o: any) => (o.deliveryStatus ?? "").toLowerCase() === "pending";
+      return {
+        assignedOrders: assigned,
+        availableOrders: available,
+        totalOrdersCount: total,
+        pendingCount: pending,
+        deliveredCount: delivered,
+        outForDeliveryCount: outForDelivery,
+      };
+    }, [orders, myDeliveryBoyId]);
 
-    const assigned = orders.filter(isAssignedToMe);
-    const available = orders.filter(isAvailableForPickup);
-    
-    const pending = orders.filter(o => ["pending", "accepted"].includes(o.deliveryStatus ?? "")).length;
-    const delivered = orders.filter(o => o.deliveryStatus === "delivered").length;
-    const outForDelivery = orders.filter(o => o.deliveryStatus === "out_for_delivery").length;
-
-    return {
-      assignedOrders: assigned,
-      availableOrders: available,
-      totalOrdersCount: orders.length,
-      pendingCount: pending,
-      deliveredCount: delivered,
-      outForDeliveryCount: outForDelivery,
-    };
-  }, [orders, user?.deliveryBoyId]);
-
-
-  // --- Loading and Auth States ---
+  // --- Loading States ---
   if (isLoadingAuth || !isAuthenticated || !user || !socket || isLoading) {
-    const message = (isLoadingAuth || !user) ? "Authenticating..." : isLoading ? "Fetching orders..." : "Connecting to server...";
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50">
         <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
-        <p className="text-gray-500 mt-2">{message}</p>
+        <p className="text-gray-500 mt-2">Connecting to server...</p>
       </div>
     );
   }
 
-  // --- JSX Rendering ---
-  // FIX: There is now only one, clean return statement for the UI.
+  // --- Main Render ---
   return (
     <div className="min-h-screen bg-gray-50 font-inter text-gray-800">
       <header className="bg-white shadow-sm border-b rounded-b-lg">
         <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
-            {/* Header Content */}
+          <div className="flex items-center space-x-3">
+            <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center">
+              <User className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <h1 className="text-xl font-bold">डिलीवरी डैशबोर्ड</h1>
+              <p className="text-sm text-gray-600">फिर से स्वागत है, डिलीवरी बॉय!</p>
+            </div>
+          </div>
+          <div className="flex space-x-2">
+            <Button variant="outline" onClick={handleLogout}>
+              <LogOut className="w-4 h-4 mr-1" />
+              लॉगआउट
+            </Button>
+          </div>
         </div>
       </header>
 
       {/* Summary Cards */}
       <section className="max-w-6xl mx-auto px-4 py-8 grid grid-cols-1 md:grid-cols-4 gap-6">
-        {/* Card for Total Orders */}
-        {/* Card for Pending */}
-        {/* Card for Delivered */}
-        {/* Card for Out for Delivery */}
+        <Card>
+          <CardContent className="p-6 flex items-center space-x-3">
+            <Package className="w-8 h-8 text-blue-600" />
+            <div>
+              <p className="text-2xl font-bold">{totalOrdersCount}</p>
+              <p className="text-sm text-gray-600">कुल ऑर्डर</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-6 flex items-center space-x-3">
+            <Clock className="w-8 h-8 text-yellow-600" />
+            <div>
+              <p className="text-2xl font-bold">{pendingCount}</p>
+              <p className="text-sm text-gray-600">लंबित</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-6 flex items-center space-x-3">
+            <CheckCircle className="w-8 h-8 text-green-600" />
+            <div>
+              <p className="text-2xl font-bold">{deliveredCount}</p>
+              <p className="text-sm text-gray-600">पूरे हुए</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-6 flex items-center space-x-3">
+            <Navigation className="w-8 h-8 text-purple-600" />
+            <div>
+              <p className="text-2xl font-bold">{outForDeliveryCount}</p>
+              <p className="text-sm text-gray-600">रास्ते में</p>
+            </div>
+          </CardContent>
+        </Card>
       </section>
 
-      {/* Orders Lists */}
+      {/* Orders List */}
       <section className="max-w-6xl mx-auto px-4 pb-16 space-y-10">
-        {/* Available Orders Section */}
         <div>
-          <h2 className="text-2xl font-bold mb-4">Available Orders</h2>
+          <h2 className="text-2xl font-bold mb-4">उपलब्ध ऑर्डर</h2>
           {availableOrders.length === 0 ? (
             <Card>
               <CardContent className="py-12 text-center">
-                 <h3 className="text-lg font-medium">No Available Orders</h3>
+                <Package className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+                <h3 className="text-lg font-medium mb-2">कोई उपलब्ध ऑर्डर नहीं</h3>
+                <p className="text-gray-600">नए ऑर्डर के लिए बाद में जाँच करें।</p>
               </CardContent>
             </Card>
           ) : (
             <DeliveryOrdersList
               orders={availableOrders}
-              // ...props
+              onAcceptOrder={acceptOrderMutation.mutate}
+              onUpdateStatus={handleStatusProgress}
+              acceptLoading={acceptOrderMutation.isPending}
+              updateLoading={updateStatusMutation.isPending}
             />
           )}
         </div>
 
-        {/* My Orders Section */}
         <div>
-          <h2 className="text-2xl font-bold mb-4">My Orders</h2>
+          <h2 className="text-2xl font-bold mb-4">मेरे ऑर्डर</h2>
           {assignedOrders.length === 0 ? (
             <Card>
               <CardContent className="py-12 text-center">
-                <h3 className="text-lg font-medium">No Assigned Orders</h3>
+                <Package className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+                <h3 className="text-lg font-medium mb-2">कोई असाइन ऑर्डर नहीं</h3>
+                <p className="text-gray-600">आपको अभी तक कोई ऑर्डर असाइन नहीं किया गया है।</p>
               </CardContent>
             </Card>
           ) : (
             <DeliveryOrdersList
               orders={assignedOrders}
-              // ...props
+              onAcceptOrder={acceptOrderMutation.mutate}
+              onUpdateStatus={handleStatusProgress}
+              acceptLoading={acceptOrderMutation.isPending}
+              updateLoading={updateStatusMutation.isPending}
             />
           )}
         </div>
@@ -368,9 +402,8 @@ export default function DeliveryDashboard() {
           setOtp={setOtp}
           onSubmit={handleOtpConfirmation}
           order={selectedOrder}
-          // ...props
         />
       )}
     </div>
   );
-}
+              }
