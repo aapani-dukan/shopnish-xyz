@@ -2,7 +2,52 @@
 import React from "react";
 import { Navigation, Phone, MapPin } from "lucide-react";
 
-interface UIComponents {
+// --- TypeScript Type Definitions ---
+// For convenience, all types are defined in this single file.
+
+export interface Address {
+  fullName?: string;
+  phone?: string;
+  address?: string;
+  city?: string;
+  pincode?: string;
+  landmark?: string;
+}
+
+export interface Seller {
+  name?: string;
+  phone?: string;
+  address?: string;
+  city?: string;
+  pincode?: string;
+  landmark?: string;
+}
+
+export interface Product {
+  name?: string;
+  image?: string;
+  unit?: string;
+}
+
+export interface OrderItem {
+  id: number;
+  quantity: number;
+  product?: Product;
+}
+
+export interface Order {
+  id: number;
+  orderNumber?: string;
+  total?: string;
+  items?: OrderItem[];
+  deliveryStatus?: string;
+  status?: string; // Fallback for deliveryStatus
+  deliveryAddress?: Address;
+  sellerDetails?: Seller;
+  deliveryBoyId?: number;
+}
+
+export interface UIComponents {
   Button: React.FC<any>;
   Card: React.FC<any>;
   CardContent: React.FC<any>;
@@ -11,10 +56,10 @@ interface UIComponents {
   Badge: React.FC<any>;
 }
 
-interface DeliveryOrdersListProps extends UIComponents {
-  orders: any[];
+export interface DeliveryOrdersListProps extends UIComponents {
+  orders: Order[];
   onAcceptOrder: (orderId: number) => void;
-  onUpdateStatus: (order: any) => void;
+  onUpdateStatus: (order: Order) => void;
   statusColor: (status: string) => string;
   statusText: (status: string) => string;
   nextStatus: (status: string) => string | null;
@@ -23,206 +68,149 @@ interface DeliveryOrdersListProps extends UIComponents {
   updateLoading: boolean;
 }
 
-const DeliveryOrdersList: React.FC<DeliveryOrdersListProps> = ({
-  orders,
-  onAcceptOrder,
-  onUpdateStatus,
-  statusColor,
-  statusText,
-  nextStatus,
-  nextStatusLabel,
-  acceptLoading,
-  updateLoading,
-  Button,
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  Badge,
-}) => {
-  if (!orders || orders.length === 0) return null;
 
-  const renderOrderCard = (order: any) => {
-  if (!order) return null;
+// --- Sub-Component: AddressBlock ---
+// A reusable component to display customer or seller address and actions.
+const AddressBlock: React.FC<{ title: string; details: Address | Seller | null; Button: UIComponents['Button'] }> = ({ title, details, Button }) => {
+  if (!details) return null;
 
-  const addressData = order?.deliveryAddress ?? null;
-  const isAddressObject = typeof addressData === "object" && addressData !== null;
+  const address = details.address || "पता उपलब्ध नहीं";
+  const city = details.city || "";
+  const pincode = details.pincode ? `, ${details.pincode}` : "";
+  const fullAddress = `${address}, ${city}${pincode}`;
 
-  const sellerDetails = order?.sellerDetails ?? order?.items?.[0]?.product?.seller ?? null;
-  const isSellerAddressObject = typeof sellerDetails === "object" && sellerDetails !== null;
-
-  const canAccept = order.deliveryStatus === "pending";
-  const isAssignedToMe = order.deliveryBoyId !== undefined;
-
-  return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <div>
-            <CardTitle>ऑर्डर #{order?.orderNumber ?? "N/A"}</CardTitle>
-            <p className="text-sm text-gray-600">
-              {order?.items?.length || 0} आइटम • ₹{order?.total ?? 0}
-            </p>
-          </div>
-          <Badge className={`${statusColor(order?.status)} text-white`}>
-            {statusText(order?.status)}
-          </Badge>
-        </div>
-      </CardHeader>
-      <CardContent>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Customer Details */}
-            <div className="space-y-4">
-              <div>
-                <h4 className="font-medium mb-2">ग्राहक विवरण</h4>
-                <p className="font-medium">{isAddressObject ? addressData?.fullName ?? "नाम उपलब्ध नहीं" : "नाम उपलब्ध नहीं"}</p>
-                <div className="flex items-center space-x-2 text-sm text-gray-600">
-                  <Phone className="w-4 h-4" />
-                  <span>{isAddressObject ? addressData?.phone ?? "-" : "-"}</span>
-                </div>
-              </div>
-
-              <div>
-                <h4 className="font-medium mb-2">डिलीवरी पता</h4>
-                <div className="flex items-start space-x-2 text-sm text-gray-600">
-                  <MapPin className="w-4 h-4 mt-0.5" />
-                  <div>
-                    <p>{isAddressObject ? addressData?.address ?? "पता उपलब्ध नहीं" : "पता उपलब्ध नहीं"}</p>
-                    {isAddressObject && (
-                      <p>
-                        {addressData?.city ?? ""}{" "}
-                        {addressData?.pincode ? `, ${addressData?.pincode}` : ""}
-                      </p>
-                    )}
-                    {isAddressObject && addressData?.landmark && (
-                      <p className="text-xs">लैंडमार्क: {addressData?.landmark}</p>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Seller Details */}
-            <div className="space-y-4">
-              <div>
-                <h4 className="font-medium mb-2">विक्रेता विवरण</h4>
-                <p className="font-medium">{isSellerAddressObject ? sellerDetails?.name ?? "नाम उपलब्ध नहीं" : "नाम उपलब्ध नहीं"}</p>
-                <div className="flex items-center space-x-2 text-sm text-gray-600">
-                  <Phone className="w-4 h-4" />
-                  <span>{isSellerAddressObject ? sellerDetails?.phone ?? "-" : "-"}</span>
-                </div>
-              </div>
-
-              <div>
-                <h4 className="font-medium mb-2">पिकअप पता</h4>
-                <div className="flex items-start space-x-2 text-sm text-gray-600">
-                  <MapPin className="w-4 h-4 mt-0.5" />
-                  <div>
-                    <p>{isSellerAddressObject ? sellerDetails?.address ?? "पता उपलब्ध नहीं" : "पता उपलब्ध नहीं"}</p>
-                    {isSellerAddressObject && (
-                      <p>
-                        {sellerDetails?.city ?? ""}{" "}
-                        {sellerDetails?.pincode ? `, ${sellerDetails?.pincode}` : ""}
-                      </p>
-                    )}
-                    {isSellerAddressObject && sellerDetails?.landmark && (
-                      <p className="text-xs">लैंडमार्क: {sellerDetails?.landmark}</p>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Order Items */}
-          <div className="mt-6 pt-4 border-t">
-            <h4 className="font-medium mb-2">ऑर्डर आइटम</h4>
-            <div className="space-y-2 max-h-32 overflow-y-auto pr-2">
-              {order?.items?.map((item: any) => (
-                <div key={item?.id ?? Math.random()} className="flex items-center space-x-3 text-sm">
-                  <img
-                    src={item?.product?.image || "https://placehold.co/32x32/E2E8F0/1A202C?text=No+Img"}
-                    alt={item?.product?.name || "No Name"}
-                    className="w-8 h-8 object-cover rounded"
-                  />
-                  <div className="flex-1">
-                    <p className="font-medium">{item?.product?.name || "उत्पाद डेटा उपलब्ध नहीं"}</p>
-                    <p className="text-gray-600">
-                      मात्रा: {item?.quantity ?? 0} {item?.product?.unit ?? ""}
-                    </p>
-                  </div>
-                </div>
-              )) ?? <p className="text-sm text-gray-500">कोई आइटम नहीं</p>}
-            </div>
-          </div>
-
-          {/* Actions */}
-          <div className="flex flex-wrap gap-3 mt-6 pt-4 border-t">
-            {canAccept ? (
-              <Button size="sm" onClick={() => onAcceptOrder(order.id)} disabled={acceptLoading}>
-                ऑर्डर स्वीकार करें
-              </Button>
-            ) : (
-              <>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    const query = encodeURIComponent(
-                      `${isAddressObject ? addressData.address || "" : ""}, ${isAddressObject ? addressData.city || "" : ""}`
-                    );
-                    window.open(`http://google.com/maps/search/?api=1&query=${query}`, "_blank");
-                  }}
-                >
-                  <Navigation className="w-4 h-4 mr-2" /> नेविगेट करें (ग्राहक)
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => window.open(`tel:${isAddressObject ? addressData.phone || "" : ""}`)}
-                >
-                  <Phone className="w-4 h-4 mr-2" /> ग्राहक को कॉल
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => window.open(`tel:${isSellerAddressObject ? sellerDetails.phone || "" : ""}`)}
-                >
-                  <Phone className="w-4 h-4 mr-2" /> विक्रेता को कॉल
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    const query = encodeURIComponent(
-                      `${isSellerAddressObject ? sellerDetails.address || "" : ""}, ${isSellerAddressObject ? sellerDetails.city || "" : ""}`
-                    );
-                    window.open(`http://google.com/maps/search/?api=1&query=${query}`, "_blank");
-                  }}
-                >
-                  <Navigation className="w-4 h-4 mr-2" /> नेविगेट करें (पिकअप)
-                </Button>
-                {nextStatus(order.status) && (
-                  <Button size="sm" onClick={() => onUpdateStatus(order)} disabled={updateLoading}>
-                    {nextStatusLabel(order.status)}
-                  </Button>
-                )}
-              </>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-    );
+  // Corrected Google Maps URL
+  const handleNavigate = () => {
+    const query = encodeURIComponent(fullAddress);
+    window.open(`https://www.google.com/maps/search/?api=1&query=${query}`, "_blank");
   };
 
-  <div className="space-y-4">
-  {orders.map((order, i) => (
-    <React.Fragment key={order?.id ?? i}>
-      {renderOrderCard(order)}
-    </React.Fragment>
-  ))}
-</div>
+  const handleCall = () => {
+    if (details.phone) window.open(`tel:${details.phone}`);
+  };
 
+  return (
+    <div className="space-y-3">
+      <h4 className="font-medium">{title}</h4>
+      <p className="font-medium">{(details as Address).fullName || (details as Seller).name || "नाम उपलब्ध नहीं"}</p>
+      <div className="flex items-center space-x-2 text-sm text-gray-600">
+        <Phone className="w-4 h-4" />
+        <span>{details.phone || "-"}</span>
+      </div>
+      <div className="flex items-start space-x-2 text-sm text-gray-600">
+        <MapPin className="w-4 h-4 mt-0.5 flex-shrink-0" />
+        <div>
+          <p>{address}</p>
+          <p>{city}{pincode}</p>
+          {details.landmark && <p className="text-xs">लैंडमार्क: {details.landmark}</p>}
+        </div>
+      </div>
+      <div className="flex flex-wrap gap-2 pt-2">
+         <Button variant="outline" size="sm" onClick={handleNavigate}>
+           <Navigation className="w-4 h-4 mr-2" /> नेविगेट करें
+         </Button>
+         <Button variant="outline" size="sm" onClick={handleCall} disabled={!details.phone}>
+           <Phone className="w-4 h-4 mr-2" /> कॉल करें
+         </Button>
+      </div>
+    </div>
+  );
 };
 
-export default DeliveryOrdersList;
+
+// --- Sub-Component: OrderItems ---
+// Displays the list of items in the order.
+const OrderItems: React.FC<{ items: OrderItem[] }> = ({ items }) => (
+  <div className="mt-6 pt-4 border-t">
+    <h4 className="font-medium mb-2">ऑर्डर आइटम</h4>
+    <div className="space-y-2 max-h-32 overflow-y-auto pr-2">
+      {items.length > 0 ? (
+        items.map((item, index) => (
+          // Using a stable key (id or index), not Math.random()
+          <div key={item.id ?? index} className="flex items-center space-x-3 text-sm">
+            <img
+              src={item.product?.image || "https://placehold.co/32x32/E2E8F0/1A202C?text=No+Img"}
+              alt={item.product?.name || "No Name"}
+              className="w-8 h-8 object-cover rounded"
+            />
+            <div className="flex-1">
+              <p className="font-medium">{item.product?.name || "उत्पाद डेटा उपलब्ध नहीं"}</p>
+              <p className="text-gray-600">
+                मात्रा: {item.quantity || 0} {item.product?.unit || ""}
+              </p>
+            </div>
+          </div>
+        ))
+      ) : (
+        <p className="text-sm text-gray-500">कोई आइटम नहीं</p>
+      )}
+    </div>
+  </div>
+);
+
+
+// --- Sub-Component: OrderCard ---
+// Renders a single order card, composing other sub-components.
+// Wrapped with React.memo for performance optimization.
+const OrderCard: React.FC<Omit<DeliveryOrdersListProps, 'orders' | 'acceptLoading'> & { order: Order; isLoading: boolean }> = React.memo(({ order, onAcceptOrder, onUpdateStatus, statusColor, statusText, nextStatus, nextStatusLabel, isLoading, ...ui }) => {
+  if (!order) return null;
+
+  const currentStatus = order.deliveryStatus || order.status || "";
+  const canAccept = currentStatus === "pending";
+  const hasNextAction = !!nextStatus(currentStatus);
+
+  return (
+    <ui.Card>
+      <ui.CardHeader>
+        <div className="flex items-center justify-between">
+          <div>
+            <ui.CardTitle>ऑर्डर #{order.orderNumber ?? "N/A"}</ui.CardTitle>
+            <p className="text-sm text-gray-600">{order.items?.length || 0} आइटम • ₹{order.total || 0}</p>
+          </div>
+          <ui.Badge className={`${statusColor(currentStatus)} text-white`}>{statusText(currentStatus)}</ui.Badge>
+        </div>
+      </ui.CardHeader>
+      <ui.CardContent>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <AddressBlock title="ग्राहक विवरण" details={order.deliveryAddress ?? null} Button={ui.Button} />
+          <AddressBlock title="विक्रेता विवरण" details={order.sellerDetails ?? null} Button={ui.Button} />
+        </div>
+        
+        <OrderItems items={order.items ?? []} />
+
+        {/* Main Actions */}
+        <div className="mt-6 pt-4 border-t">
+          {canAccept ? (
+            <ui.Button size="sm" onClick={() => onAcceptOrder(order.id)} disabled={isLoading}>
+              ऑर्डर स्वीकार करें
+            </ui.Button>
+          ) : hasNextAction ? (
+            <ui.Button size="sm" onClick={() => onUpdateStatus(order)} disabled={isLoading}>
+              {nextStatusLabel(currentStatus)}
+            </ui.Button>
+          ) : null}
+        </div>
+      </ui.CardContent>
+    </ui.Card>
+  );
+});
+
+
+// --- Main Component: DeliveryOrdersList ---
+// This is the primary component that maps over the orders.
+const DeliveryOrdersList: React.FC<DeliveryOrdersListProps> = ({ orders, ...props }) => {
+  return (
+    <div className="space-y-6">
+      {orders.map((order) => (
+        <OrderCard
+          key={order.id}
+          order={order}
+          isLoading={props.acceptLoading || props.updateLoading}
+          {...props}
+        />
+      ))}
+    </div>
+  );
+};
+
+export default React.memo(DeliveryOrdersList);
