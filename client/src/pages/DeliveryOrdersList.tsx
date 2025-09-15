@@ -215,7 +215,15 @@ const DeliveryOrdersList: React.FC<DeliveryOrdersListProps> = ({
     );
   };
 
-  return <div className="space-y-4">{orders.map((order) => renderOrderCard(order))}</div>;
+  return (
+  <div className="space-y-4">
+    {orders.map((order, i) => (
+      <React.Fragment key={order?.id ?? i}>
+        {renderOrderCard(order)}
+      </React.Fragment>
+    ))}
+  </div>
+);
 };
 
 export default DeliveryOrdersList;
