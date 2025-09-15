@@ -3,7 +3,7 @@ import axios from "axios";
 import { auth } from "./firebase";
 
 const api = axios.create({
-  baseURL: "https://shopnish-lzrf.onrender.com", // ✅ live backend URL
+  baseURL: "https://shopnish-00ug.onrender.com", // ✅ live backend URL
   withCredentials: true,
 });
 
