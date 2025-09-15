@@ -1,4 +1,4 @@
-// client/src/pages/deliverydashboard.tsx
+// client/src/pages/DeliveryDashboard.tsx
 import React, { useState, useEffect } from "react";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import {
@@ -18,7 +18,7 @@ import { useSocket } from "@/hooks/useSocket";
 import { apiRequest } from "@/lib/queryClient";
 import api from "@/lib/api";
 
-// ui components (mocks)
+// ------------------- UI helper mocks -------------------
 const useToast = () => ({
   toast: ({ title, description, variant }: any) =>
     console.log(`Toast: ${title} - ${description} (variant: ${variant})`),
@@ -45,7 +45,7 @@ const Badge = ({ children, className = "" }: any) => (
   <span className={`px-2 py-1 text-xs rounded-full ${className}`}>{children}</span>
 );
 
-// status helpers
+// ------------------- Status helpers -------------------
 const statusColor = (status: string) => {
   switch (status) {
     case "ready_for_pickup":
@@ -86,7 +86,6 @@ const statusText = (status: string) => {
 
 const nextStatus = (status: string) => {
   switch (status) {
-    // Delivery boy can only proceed from 'ready_for_pickup'
     case "ready_for_pickup":
       return "picked_up";
     case "picked_up":
@@ -111,15 +110,15 @@ const nextStatusLabel = (status: string) => {
   }
 };
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || "https://shopnish-lzrf.onrender.com";
+const API_BASE =
+  import.meta.env.VITE_API_BASE_URL || "https://shopnish-00ug.onrender.com";
 
-
+// ------------------- Main Component -------------------
 export default function DeliveryDashboard() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   const { user, setUser, auth, isLoadingAuth, isAuthenticated } = useAuth();
-
   const rawSocket = useSocket() as any;
   const socket = rawSocket?.socket ?? rawSocket;
 
@@ -127,29 +126,18 @@ export default function DeliveryDashboard() {
   const [otp, setOtp] = useState("");
   const [otpDialogOpen, setOtpDialogOpen] = useState(false);
 
+  // ensure deliveryBoyId is stored
   useEffect(() => {
-    
     if (!user || !auth?.currentUser) return;
-
     try {
-      const deliveryBoyId = user?.deliveryBoyId; 
-
-      if (deliveryBoyId === undefined) {
-          console.warn("DeliveryBoyId is still undefined after auth.currentUser is present. Check backend middleware.");
-          
-      }
-
+      const deliveryBoyId = user?.deliveryBoyId;
       const deliveryBoyUser = { ...user, deliveryBoyId };
       sessionStorage.setItem("deliveryBoyUser", JSON.stringify(deliveryBoyUser));
       setUser(deliveryBoyUser);
-
     } catch (err) {
       console.error("Delivery boy session store error:", err);
     }
-  }, [user, setUser, auth?.currentUser]); 
-
-
-
+  }, [user, setUser, auth?.currentUser]);
 
   const getValidToken = async () => {
     if (!auth?.currentUser) return null;
@@ -161,33 +149,16 @@ export default function DeliveryDashboard() {
     }
   };
 
-  const getDeliveryStatus = (o: any) => {
-    if (!o) return null;
-    return (o.deliveryStatus ?? o.delivery_status ?? "").toString();
-  };
-
-  if (isLoadingAuth || !isAuthenticated || !user || !socket) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
-        <p className="text-gray-500 mt-2">Connecting to server...</p>
-      </div>
-    );
-  }
-
+  // ------------------- Orders query -------------------
   const { data: orders = [], isLoading } = useQuery({
     queryKey: ["deliveryOrders"],
     queryFn: async () => {
       try {
-              console.log("🔹 QueryFn started, user:", user);
-        
         const [availableRes, myRes] = await Promise.allSettled([
           apiRequest("GET", "/api/delivery/orders/available"),
           apiRequest("GET", "/api/delivery/orders/my"),
         ]);
-  console.log("🔹 Available Orders Response:", availableRes);
-      console.log("🔹 My Orders Response:", myRes);
-        
+
         const availableOrders =
           availableRes.status === "fulfilled" &&
           Array.isArray((availableRes.value as any).orders)
@@ -199,26 +170,18 @@ export default function DeliveryDashboard() {
           Array.isArray((myRes.value as any).orders)
             ? (myRes.value as any).orders
             : [];
- console.log("✅ Parsed availableOrders:", availableOrders);
-      console.log("✅ Parsed myOrders:", myOrders);
-        
+
         const map = new Map<number, any>();
         for (const o of [...availableOrders, ...myOrders]) {
           if (o && typeof o.id === "number") {
             map.set(o.id, o);
-                } else {
-          console.warn(" Invalid order object:", o);
-          
           }
         }
-     const merged = Array.from(map.values());
-console.log("🔹 Merged orders:", merged);
-
-return merged.map((o) => ({
-  ...o,
-  isMine: Number(o.deliveryBoyId) === Number(user.deliveryBoyId),
-}));
-        
+        const merged = Array.from(map.values());
+        return merged.map((o) => ({
+          ...o,
+          isMine: Number(o.deliveryBoyId) === Number(user.deliveryBoyId),
+        }));
       } catch (err) {
         console.error("ऑर्डर लाने में त्रुटि:", err);
         toast({
@@ -232,31 +195,32 @@ return merged.map((o) => ({
     enabled: isAuthenticated && !!user,
   });
 
+  // ------------------- Socket listeners -------------------
   useEffect(() => {
     if (!socket || !user) return;
     const onOrdersChanged = () => queryClient.invalidateQueries({ queryKey: ["deliveryOrders"] });
-    if (socket.emit) socket.emit("register-client", { role: "delivery", userId: user.uid ?? user.id });
-    if (socket.on) {
-      socket.on("delivery:orders-changed", onOrdersChanged);
-      socket.on("new-order", onOrdersChanged);
-      socket.on("order:update", onOrdersChanged);
-    }
-    return () => {
-      if (socket.off) {
-        socket.off("delivery:orders-changed", onOrdersChanged);
-        socket.off("new-order", onOrdersChanged);
-        socket.off("order:update", onOrdersChanged);
-      }
-    };
-  }, [socket, user, queryClient, isAuthenticated]);
 
+    socket.emit?.("register-client", { role: "delivery", userId: user.uid ?? user.id });
+    socket.on?.("delivery:orders-changed", onOrdersChanged);
+    socket.on?.("new-order", onOrdersChanged);
+    socket.on?.("order:update", onOrdersChanged);
+
+    return () => {
+      socket.off?.("delivery:orders-changed", onOrdersChanged);
+      socket.off?.("new-order", onOrdersChanged);
+      socket.off?.("order:update", onOrdersChanged);
+    };
+  }, [socket, user, queryClient]);
+
+  // ------------------- Mutations -------------------
   const acceptOrderMutation = useMutation({
     mutationFn: async (orderId: number) => {
       const response = await api.post("/api/delivery/accept", { orderId });
       return response.data;
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["deliveryOrders"] }),
-    onError: () => toast({ title: "त्रुटि", description: "ऑर्डर स्वीकार करने में विफल", variant: "destructive" }),
+    onError: () =>
+      toast({ title: "त्रुटि", description: "ऑर्डर स्वीकार करने में विफल", variant: "destructive" }),
   });
 
   const updateStatusMutation = useMutation({
@@ -265,31 +229,44 @@ return merged.map((o) => ({
       return response.data;
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["deliveryOrders"] }),
-    onError: () => toast({ title: "त्रुटि", description: "ऑर्डर स्थिति अपडेट करने में विफल", variant: "destructive" }),
+    onError: () =>
+      toast({ title: "त्रुटि", description: "ऑर्डर स्थिति अपडेट करने में विफल", variant: "destructive" }),
   });
 
   const handleOtpSubmitMutation = useMutation({
     mutationFn: async ({ orderId, otp }: { orderId: number; otp: string }) => {
       const token = await getValidToken();
       if (!token) throw new Error("अमान्य या पुराना टोकन");
-      const response = await fetch(`${API_BASE}/api/delivery/orders/${orderId}/complete-delivery`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ otp }),
-      });
+      const response = await fetch(
+        `${API_BASE}/api/delivery/orders/${orderId}/complete-delivery`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ otp }),
+        }
+      );
       if (!response.ok) throw new Error("डिलीवरी पूरी करने में विफल");
       return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["deliveryOrders"] });
-      toast({ title: "डिलीवरी पूरी हुई", description: "ऑर्डर सफलतापूर्वक डिलीवर हो गया है।", variant: "success" });
+      toast({
+        title: "डिलीवरी पूरी हुई",
+        description: "ऑर्डर सफलतापूर्वक डिलीवर हो गया है।",
+        variant: "success",
+      });
     },
     onError: (error: any) =>
-      toast({ title: "OTP त्रुटि", description: error.message || "OTP जमा करने में विफल।", variant: "destructive" }),
+      toast({
+        title: "OTP त्रुटि",
+        description: error.message || "OTP जमा करने में विफल।",
+        variant: "destructive",
+      }),
   });
 
+  // ------------------- Helpers -------------------
   const handleStatusProgress = (order: any) => {
-    const cur = order.status ?? order.status ?? "";
+    const cur = order.status ?? "";
     if (cur === "out_for_delivery") {
       setSelectedOrder(order);
       setOtpDialogOpen(true);
@@ -313,6 +290,31 @@ return merged.map((o) => ({
 
   const handleLogout = () => auth?.signOut().then(() => window.location.reload());
 
+  const myDeliveryBoyId = user?.deliveryBoyId;
+  const isAssignedToMe = (o: any) => Number(o.deliveryBoyId) === Number(myDeliveryBoyId);
+  const isAvailableForAnyDelivery = (o: any) =>
+    (o.deliveryStatus ?? "").toLowerCase() === "pending";
+
+  const assignedOrders = orders.filter(isAssignedToMe);
+  const availableOrders = orders.filter(isAvailableForAnyDelivery);
+
+  const totalOrdersCount = orders.length;
+  const pendingCount = orders.filter((o: any) =>
+    ["pending", "accepted"].includes((o.deliveryStatus ?? "").toString())
+  ).length;
+  const deliveredCount = orders.filter((o: any) => (o.status ?? "") === "delivered").length;
+  const outForDeliveryCount = orders.filter((o: any) => (o.status ?? "") === "out_for_delivery").length;
+
+  // ------------------- Loading states -------------------
+  if (isLoadingAuth || !isAuthenticated || !user || !socket) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50">
+        <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+        <p className="text-gray-500 mt-2">Connecting to server...</p>
+      </div>
+    );
+  }
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -321,50 +323,10 @@ return merged.map((o) => ({
     );
   }
 
-const myDeliveryBoyId = user?.deliveryBoyId;
-// Assigned orders array
-  
-
-  // Now in JSX
-  return (
-    <section>
-      <div>
-        <h2>उपलब्ध ऑर्डर</h2>
-        {availableOrders.length === 0 ? (
-          <p>कोई उपलब्ध ऑर्डर नहीं</p>
-        ) : (
-          <DeliveryOrdersList orders={availableOrders} />
-        )}
-      </div>
-
-      <div>
-        <h2>मेरे ऑर्डर</h2>
-        {assignedOrders.length === 0 ? (
-          <p>आपको कोई ऑर्डर असाइन नहीं किया गया</p>
-        ) : (
-          <DeliveryOrdersList orders={assignedOrders} />
-        )}
-      </div>
-    </section>
-  );
-
-console.log("🟢 Assigned Orders:", assignedOrders);
-  const isAvailableForAnyDelivery = (o: any) => (o.deliveryStatus ?? "").toLowerCase() === "pending";
-  
-
-const isAssignedToMe = (o: any) =>
-  Number(o.deliveryBoyId) === Number(myDeliveryBoyId);
-const assignedOrders = orders.filter(isAssignedToMe);
-  const availableOrders = orders.filter(isAvailableForAnyDelivery);
-  const totalOrdersCount = orders.length;
-  const pendingCount = orders.filter((o: any) =>
-    ["pending", "accepted"].includes((o.deliveryStatus ?? "").toString())
-  ).length;
-  const deliveredCount = orders.filter((o: any) => (o.status ?? "") === "delivered").length;
-  const outForDeliveryCount = orders.filter((o: any) => (o.status ?? "") === "out_for_delivery").length;
-
+  // ------------------- JSX -------------------
   return (
     <div className="min-h-screen bg-gray-50 font-inter text-gray-800">
+      {/* Header */}
       <header className="bg-white shadow-sm border-b rounded-b-lg">
         <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center space-x-3">
@@ -385,7 +347,7 @@ const assignedOrders = orders.filter(isAssignedToMe);
         </div>
       </header>
 
-      {/* summary cards */}
+      {/* Summary cards */}
       <section className="max-w-6xl mx-auto px-4 py-8 grid grid-cols-1 md:grid-cols-4 gap-6">
         <Card>
           <CardContent className="p-6 flex items-center space-x-3">
@@ -425,11 +387,12 @@ const assignedOrders = orders.filter(isAssignedToMe);
         </Card>
       </section>
 
-      {/* orders list */}
+      {/* Orders list */}
       <section className="max-w-6xl mx-auto px-4 pb-16 space-y-10">
+        {/* Available orders */}
         <div>
           <h2 className="text-2xl font-bold mb-4">उपलब्ध ऑर्डर (pending for delivery)</h2>
-          {orders.filter(isAvailableForAnyDelivery).length === 0 ? (
+          {availableOrders.length === 0 ? (
             <Card>
               <CardContent className="py-12 text-center">
                 <Package className="mx-auto h-12 w-12 text-gray-400 mb-4" />
@@ -439,7 +402,7 @@ const assignedOrders = orders.filter(isAssignedToMe);
             </Card>
           ) : (
             <DeliveryOrdersList
-              orders={orders.filter(isAvailableForAnyDelivery)}
+              orders={availableOrders}
               onAcceptOrder={acceptOrderMutation.mutate}
               onUpdateStatus={handleStatusProgress}
               statusColor={statusColor}
@@ -458,9 +421,10 @@ const assignedOrders = orders.filter(isAssignedToMe);
           )}
         </div>
 
+        {/* Assigned orders */}
         <div>
           <h2 className="text-2xl font-bold mb-4">मेरे ऑर्डर</h2>
-          {orders.filter(isAssignedToMe).length === 0 ? (
+          {assignedOrders.length === 0 ? (
             <Card>
               <CardContent className="py-12 text-center">
                 <Package className="mx-auto h-12 w-12 text-gray-400 mb-4" />
@@ -470,7 +434,7 @@ const assignedOrders = orders.filter(isAssignedToMe);
             </Card>
           ) : (
             <DeliveryOrdersList
-              orders={orders.filter(isAssignedToMe)}
+              orders={assignedOrders}
               onAcceptOrder={acceptOrderMutation.mutate}
               onUpdateStatus={handleStatusProgress}
               statusColor={statusColor}
@@ -490,25 +454,18 @@ const assignedOrders = orders.filter(isAssignedToMe);
         </div>
       </section>
 
-      {/* otp dialog */}
-      {otpDialogOpen && selectedOrder && (
-        <DeliveryOtpDialog
-          isOpen={otpDialogOpen}
-          onClose={() => {
-            setOtpDialogOpen(false);
-            setOtp("");
-            setSelectedOrder(null);
-          }}
-          otp={otp}
-          setOtp={setOtp}
-          onSubmit={handleOtpConfirmation}
-          order={selectedOrder}
-          Button={Button}
-          Card={Card}
-          CardContent={CardContent}
-        />
-      )}
+      {/* OTP Dialog */}
+      <DeliveryOtpDialog
+        open={otpDialogOpen}
+        onClose={() => {
+          setOtpDialogOpen(false);
+          setOtp("");
+          setSelectedOrder(null);
+        }}
+        otp={otp}
+        setOtp={setOtp}
+        onConfirm={handleOtpConfirmation}
+      />
     </div>
   );
-        }
-      
+}
