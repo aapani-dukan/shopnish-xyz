@@ -321,8 +321,7 @@ export default function DeliveryDashboard() {
 
 const myDeliveryBoyId = user?.deliveryBoyId;
 // Assigned orders array
-  const assignedOrders = orders.filter(isAssignedToMe);
-  const availableOrders = orders.filter(isAvailableForAnyDelivery);
+  
 
   // Now in JSX
   return (
@@ -353,7 +352,8 @@ console.log("🟢 Assigned Orders:", assignedOrders);
 
 const isAssignedToMe = (o: any) =>
   Number(o.deliveryBoyId) === Number(myDeliveryBoyId);
-
+const assignedOrders = orders.filter(isAssignedToMe);
+  const availableOrders = orders.filter(isAvailableForAnyDelivery);
   const totalOrdersCount = orders.length;
   const pendingCount = orders.filter((o: any) =>
     ["pending", "accepted"].includes((o.deliveryStatus ?? "").toString())
