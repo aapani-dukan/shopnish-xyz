@@ -18,35 +18,104 @@ import { useAuth } from "@/hooks/useAuth";
 import { useSocket } from "@/hooks/useSocket";
 import { apiRequest } from "@/lib/queryClient";
 import api from "@/lib/api";
-import {
-  Button,
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  Badge,
-  useToast,
-} from "@/components/ui"; // Assuming UI components are imported
+import { OrderWithItems, orderStatusEnum } from "@shared/backend/schema";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { useToast } from "@/components/ui/use-toast";
 
-// --- Constants and Helpers ---
-// Moved helpers to the top for better organization.
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || "https://shopnish-lzrf.onrender.com";
+// ui components (mocks)
+const useToast = () => ({
+toast: ({ title, description, variant }: any) =>
+console.log(Toast: ${title} - ${description} (variant: ${variant})),
+});
 
+const Button = ({ children, onClick, variant, size, disabled, ...props }: any) => (
+<button
+onClick={onClick}
+disabled={disabled}
+className={p-2 rounded-md ${   variant === "outline" ? "border" : "bg-blue-500 text-white"   } ${disabled ? "opacity-50 cursor-not-allowed" : ""}}
+{...props}
+
+> 
+
+{children}
+
+  </button>  
+);  const Card = ({ children }: any) => <div className="bg-white rounded-lg shadow-md p-4">{children}</div>;
+const CardContent = ({ children, className = "" }: any) => <div className={p-4 ${className}}>{children}</div>;
+const CardHeader = ({ children }: any) => <div className="p-4 border-b">{children}</div>;
+const CardTitle = ({ children }: any) => <h2 className="text-xl font-bold">{children}</h2>;
+const Badge = ({ children, className = "" }: any) => (
+<span className={px-2 py-1 text-xs rounded-full ${className}}>{children}</span>
+);
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "https://shopnish-00ug.onrender.com";
+
+// status helpers
 const statusColor = (status: string) => {
-  // ... (no changes needed)
+switch (status) {
+case "ready_for_pickup":
+case "pending":
+case "accepted":
+return "bg-yellow-500";
+case "picked_up":
+return "bg-blue-500";
+case "out_for_delivery":
+return "bg-purple-500";
+case "delivered":
+return "bg-green-500";
+default:
+return "bg-gray-500";
+}
 };
 
 const statusText = (status: string) => {
-  // ... (no changes needed)
+switch (status) {
+case "pending":
+return "लंबित";
+case "accepted":
+return "स्वीकृत";
+case "preparing":
+return "तैयार हो रहा है";
+case "ready_for_pickup":
+return "पिकअप के लिए तैयार";
+case "picked_up":
+return "पिकअप हो गया";
+case "out_for_delivery":
+return "डिलीवरी के लिए निकला";
+case "delivered":
+return "डिलीवर हो गया";
+default:
+return status || "अज्ञात";
+}
 };
 
 const nextStatus = (status: string) => {
-  // ... (no changes needed)
+switch (status) {
+// Delivery boy can only proceed from 'ready_for_pickup'
+case "ready_for_pickup":
+return "picked_up";
+case "picked_up":
+return "out_for_delivery";
+case "out_for_delivery":
+return "delivered";
+default:
+return null;
+}
 };
 
 const nextStatusLabel = (status: string) => {
-  // ... (no changes needed)
+switch (status) {
+case "ready_for_pickup":
+return "पिकअप हो गया";
+case "picked_up":
+return "डिलीवरी के लिए निकला";
+case "out_for_delivery":
+return "डिलीवरी पूरी करें";
+default:
+return "";
+}
 };
 
 // --- Main Component ---
