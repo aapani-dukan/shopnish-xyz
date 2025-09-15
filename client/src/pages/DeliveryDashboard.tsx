@@ -362,12 +362,12 @@ export default function DeliveryDashboard() {
             </Card>
           ) : (
             <DeliveryOrdersList
-              orders={availableOrders}
-              onAcceptOrder={acceptOrderMutation.mutate}
-              onUpdateStatus={handleStatusProgress}
-              acceptLoading={acceptOrderMutation.isPending}
-              updateLoading={updateStatusMutation.isPending}
-            />
+  orders={availableOrders}
+  onAcceptOrder={(id) => acceptOrderMutation.mutate(id)}
+  onUpdateStatus={(order) => handleStatusProgress(order)}
+  acceptLoading={acceptOrderMutation.isPending}
+  updateLoading={updateStatusMutation.isPending}
+/>
           )}
         </div>
 
@@ -383,12 +383,12 @@ export default function DeliveryDashboard() {
             </Card>
           ) : (
             <DeliveryOrdersList
-              orders={assignedOrders}
-              onAcceptOrder={acceptOrderMutation.mutate}
-              onUpdateStatus={handleStatusProgress}
-              acceptLoading={acceptOrderMutation.isPending}
-              updateLoading={updateStatusMutation.isPending}
-            />
+  orders={assignedOrders}
+  onAcceptOrder={(id) => acceptOrderMutation.mutate(id)}
+  onUpdateStatus={(order) => handleStatusProgress(order)}
+  acceptLoading={acceptOrderMutation.isPending}
+  updateLoading={updateStatusMutation.isPending}
+/>
           )}
         </div>
       </section>
