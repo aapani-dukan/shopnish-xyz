@@ -1,4 +1,5 @@
-// client/src/pages/deliverydashboard.tsx
+// ✅ Updated Front-end File: deliverydashboard.tsx
+
 import React, { useState, useEffect, useMemo } from "react";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import {
@@ -98,6 +99,7 @@ export default function DeliveryDashboard() {
   const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
   const [otp, setOtp] = useState("");
   const [otpDialogOpen, setOtpDialogOpen] = useState(false);
+  const [showCompletedOrders, setShowCompletedOrders] = useState(false);
 
   useEffect(() => {
     if (!user || !auth?.currentUser) return;
@@ -218,7 +220,6 @@ export default function DeliveryDashboard() {
   });
 
   const handleStatusProgress = (order: any) => {
-    // ✅ FIX: Use 'status' column as per your logic
     const curStatus = order.status ?? "";
     if (curStatus === "out_for_delivery") {
       setSelectedOrder(order);
@@ -240,27 +241,32 @@ export default function DeliveryDashboard() {
   const handleLogout = () => auth?.signOut().then(() => window.location.reload());
 
   const myDeliveryBoyId = user?.deliveryBoyId;
-  const { assignedOrders, availableOrders, totalOrdersCount, pendingCount, deliveredCount, outForDeliveryCount } =
+  const { assignedOrders, availableOrders, completedOrders, totalOrdersCount, pendingCount, deliveredCount, outForDeliveryCount } =
     useMemo(() => {
-      // ✅ FIX: Filter 'available' orders by 'deliveryStatus' === 'pending'
+      // ✅ FIX: Filter 'available' orders based on deliveryStatus === 'pending' AND status !== 'rejected'
       const available = orders.filter((o: any) =>
-        (o.deliveryStatus ?? "").toLowerCase() === "pending"
+        (o.deliveryStatus ?? "").toLowerCase() === "pending" && (o.status ?? "").toLowerCase() !== "rejected"
       );
       
-      // ✅ FIX: Filter 'assigned' orders by 'deliveryBoyId'
+      // ✅ FIX: Filter 'assigned' orders based on deliveryStatus === 'accepted'
       const assigned = orders.filter((o: any) =>
-        Number(o.deliveryBoyId) === Number(myDeliveryBoyId)
+        (o.deliveryStatus ?? "").toLowerCase() === "accepted"
       );
 
-      // ✅ FIX: Update counters based on your new logic
+      // ✅ NEW: Filter completed orders for the new section
+      const completed = orders.filter((o: any) =>
+        (o.status ?? "").toLowerCase() === "delivered" && (o.deliveryStatus ?? "").toLowerCase() === "delivered"
+      );
+
       const total = orders.length;
       const pending = available.length;
-      const delivered = orders.filter((o: any) => (o.status ?? "").toLowerCase() === "delivered").length;
+      const delivered = completed.length; // Use the new 'completed' array for this count
       const outForDelivery = orders.filter((o: any) => (o.status ?? "").toLowerCase() === "out_for_delivery").length;
 
       return {
         assignedOrders: assigned,
         availableOrders: available,
+        completedOrders: completed,
         totalOrdersCount: total,
         pendingCount: pending,
         deliveredCount: delivered,
@@ -275,6 +281,7 @@ export default function DeliveryDashboard() {
         <p className="text-gray-500 mt-2">Connecting to server...</p>
       </div>
     );
+  );
   }
 
   // --- Main Render ---
@@ -339,70 +346,115 @@ export default function DeliveryDashboard() {
           </CardContent>
         </Card>
       </section>
+      
+      {/* View Completed Orders Button */}
+      <section className="max-w-6xl mx-auto px-4 pb-4">
+        <Button onClick={() => setShowCompletedOrders(!showCompletedOrders)}>
+          {showCompletedOrders ? "सक्रिय ऑर्डर दिखाएं" : "पूरे हुए ऑर्डर दिखाएं"}
+        </Button>
+      </section>
 
       {/* Orders List */}
       <section className="max-w-6xl mx-auto px-4 pb-16 space-y-10">
-        <div>
-          <h2 className="text-2xl font-bold mb-4">उपलब्ध ऑर्डर</h2>
-          {availableOrders.length === 0 ? (
-            <Card>
-              <CardContent className="py-12 text-center">
-                <Package className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-                <h3 className="text-lg font-medium mb-2">कोई उपलब्ध ऑर्डर नहीं</h3>
-                <p className="text-gray-600">नए ऑर्डर के लिए बाद में जाँच करें।</p>
-              </CardContent>
-            </Card>
-          ) : (
-            <DeliveryOrdersList
-              orders={availableOrders}
-              onAcceptOrder={(id) => acceptOrderMutation.mutate(id)}
-              onUpdateStatus={(order) => handleStatusProgress(order)}
-              acceptLoading={acceptOrderMutation.isPending}
-              updateLoading={updateStatusMutation.isPending}
-              Button={Button}
-              Card={Card}
-              CardContent={CardContent}
-              CardHeader={CardHeader}
-              CardTitle={CardTitle}
-              Badge={Badge}
-              statusColor={statusColor}
-              statusText={statusText}
-              nextStatus={nextStatus}
-              nextStatusLabel={nextStatusLabel}
-            />
-          )}
-        </div>
+        {showCompletedOrders ? (
+          // Completed Orders Section
+          <div>
+            <h2 className="text-2xl font-bold mb-4">पूरे हुए ऑर्डर</h2>
+            {completedOrders.length === 0 ? (
+              <Card>
+                <CardContent className="py-12 text-center">
+                  <Package className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+                  <h3 className="text-lg font-medium mb-2">कोई पूरे हुए ऑर्डर नहीं</h3>
+                  <p className="text-gray-600">अभी तक आपने कोई ऑर्डर डिलीवर नहीं किया है।</p>
+                </CardContent>
+              </Card>
+            ) : (
+              <DeliveryOrdersList
+                orders={completedOrders}
+                onAcceptOrder={(id) => acceptOrderMutation.mutate(id)}
+                onUpdateStatus={(order) => handleStatusProgress(order)}
+                acceptLoading={acceptOrderMutation.isPending}
+                updateLoading={updateStatusMutation.isPending}
+                Button={Button}
+                Card={Card}
+                CardContent={CardContent}
+                CardHeader={CardHeader}
+                CardTitle={CardTitle}
+                Badge={Badge}
+                statusColor={statusColor}
+                statusText={statusText}
+                nextStatus={nextStatus}
+                nextStatusLabel={nextStatusLabel}
+              />
+            )}
+          </div>
+        ) : (
+          <>
+            {/* Available Orders Section */}
+            <div>
+              <h2 className="text-2xl font-bold mb-4">उपलब्ध ऑर्डर</h2>
+              {availableOrders.length === 0 ? (
+                <Card>
+                  <CardContent className="py-12 text-center">
+                    <Package className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+                    <h3 className="text-lg font-medium mb-2">कोई उपलब्ध ऑर्डर नहीं</h3>
+                    <p className="text-gray-600">नए ऑर्डर के लिए बाद में जाँच करें।</p>
+                  </CardContent>
+                </Card>
+              ) : (
+                <DeliveryOrdersList
+                  orders={availableOrders}
+                  onAcceptOrder={(id) => acceptOrderMutation.mutate(id)}
+                  onUpdateStatus={(order) => handleStatusProgress(order)}
+                  acceptLoading={acceptOrderMutation.isPending}
+                  updateLoading={updateStatusMutation.isPending}
+                  Button={Button}
+                  Card={Card}
+                  CardContent={CardContent}
+                  CardHeader={CardHeader}
+                  CardTitle={CardTitle}
+                  Badge={Badge}
+                  statusColor={statusColor}
+                  statusText={statusText}
+                  nextStatus={nextStatus}
+                  nextStatusLabel={nextStatusLabel}
+                />
+              )}
+            </div>
 
-        <div>
-          <h2 className="text-2xl font-bold mb-4">मेरे ऑर्डर</h2>
-          {assignedOrders.length === 0 ? (
-            <Card>
-              <CardContent className="py-12 text-center">
-                <Package className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-                <h3 className="text-lg font-medium mb-2">कोई असाइन ऑर्डर नहीं</h3>
-                <p className="text-gray-600">आपको अभी तक कोई ऑर्डर असाइन नहीं किया गया है।</p>
-              </CardContent>
-            </Card>
-          ) : (
-            <DeliveryOrdersList
-              orders={assignedOrders}
-              onAcceptOrder={(id) => acceptOrderMutation.mutate(id)}
-              onUpdateStatus={(order) => handleStatusProgress(order)}
-              acceptLoading={acceptOrderMutation.isPending}
-              updateLoading={updateStatusMutation.isPending}
-              Button={Button}
-              Card={Card}
-              CardContent={CardContent}
-              CardHeader={CardHeader}
-              CardTitle={CardTitle}
-              Badge={Badge}
-              statusColor={statusColor}
-              statusText={statusText}
-              nextStatus={nextStatus}
-              nextStatusLabel={nextStatusLabel}
-            />
-          )}
-        </div>
+            {/* My Orders Section */}
+            <div>
+              <h2 className="text-2xl font-bold mb-4">मेरे ऑर्डर</h2>
+              {assignedOrders.length === 0 ? (
+                <Card>
+                  <CardContent className="py-12 text-center">
+                    <Package className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+                    <h3 className="text-lg font-medium mb-2">कोई असाइन ऑर्डर नहीं</h3>
+                    <p className="text-gray-600">आपको अभी तक कोई ऑर्डर असाइन नहीं किया गया है।</p>
+                  </CardContent>
+                </Card>
+              ) : (
+                <DeliveryOrdersList
+                  orders={assignedOrders}
+                  onAcceptOrder={(id) => acceptOrderMutation.mutate(id)}
+                  onUpdateStatus={(order) => handleStatusProgress(order)}
+                  acceptLoading={acceptOrderMutation.isPending}
+                  updateLoading={updateStatusMutation.isPending}
+                  Button={Button}
+                  Card={Card}
+                  CardContent={CardContent}
+                  CardHeader={CardHeader}
+                  CardTitle={CardTitle}
+                  Badge={Badge}
+                  statusColor={statusColor}
+                  statusText={statusText}
+                  nextStatus={nextStatus}
+                  nextStatusLabel={nextStatusLabel}
+                />
+              )}
+            </div>
+          </>
+        )}
       </section>
 
       {/* OTP Dialog */}
@@ -422,5 +474,4 @@ export default function DeliveryDashboard() {
       )}
     </div>
   );
-}
-
+      }
