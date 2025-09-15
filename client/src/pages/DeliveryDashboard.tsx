@@ -211,12 +211,14 @@ export default function DeliveryDashboard() {
           
           }
         }
-        const merged = Array.from(map.values());
-        console.log("🔹 Merged orders:", merged);
-        return merged.map((o) => ({
-          ...o,
-          isMine: Number(o.deliveryBoyId === Number(user.deliveryBoyId),
-        )}));
+     const merged = Array.from(map.values());
+console.log("🔹 Merged orders:", merged);
+
+return merged.map((o) => ({
+  ...o,
+  isMine: Number(o.deliveryBoyId) === Number(user.deliveryBoyId),
+}));
+        
       } catch (err) {
         console.error("ऑर्डर लाने में त्रुटि:", err);
         toast({
