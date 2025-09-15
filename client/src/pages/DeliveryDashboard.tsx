@@ -281,7 +281,7 @@ export default function DeliveryDashboard() {
         <p className="text-gray-500 mt-2">Connecting to server...</p>
       </div>
     );
-  );
+  
   }
 
   // --- Main Render ---
