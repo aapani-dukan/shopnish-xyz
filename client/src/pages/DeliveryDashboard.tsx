@@ -18,15 +18,12 @@ import { useAuth } from "@/hooks/useAuth";
 import { useSocket } from "@/hooks/useSocket";
 import { apiRequest } from "@/lib/queryClient";
 import api from "@/lib/api";
-// Assuming these are from your UI library
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 
 // --- Utility Functions ---
-
-// status helpers
 const statusColor = (status: string) => {
   switch (status) {
     case "ready_for_pickup":
@@ -103,7 +100,6 @@ export default function DeliveryDashboard() {
   const [otp, setOtp] = useState("");
   const [otpDialogOpen, setOtpDialogOpen] = useState(false);
 
-  // Store user info in session storage
   useEffect(() => {
     if (!user || !auth?.currentUser) return;
     try {
@@ -128,7 +124,6 @@ export default function DeliveryDashboard() {
     }
   };
 
-  // --- Data Fetching (useQuery) ---
   const { data: orders = [], isLoading } = useQuery({
     queryKey: ["deliveryOrders"],
     queryFn: async () => {
@@ -137,17 +132,14 @@ export default function DeliveryDashboard() {
           apiRequest("GET", "/api/delivery/orders/available"),
           apiRequest("GET", "/api/delivery/orders/my"),
         ]);
-
         const availableOrders =
           availableRes.status === "fulfilled" && Array.isArray((availableRes.value as any).orders)
             ? (availableRes.value as any).orders
             : [];
-
         const myOrders =
           myRes.status === "fulfilled" && Array.isArray((myRes.value as any).orders)
             ? (myRes.value as any).orders
             : [];
-
         const map = new Map();
         [...availableOrders, ...myOrders].forEach((o) => {
           if (o && typeof o.id === "number") {
@@ -157,7 +149,6 @@ export default function DeliveryDashboard() {
             });
           }
         });
-
         return Array.from(map.values());
       } catch (err) {
         console.error("ऑर्डर लाने में त्रुटि:", err);
@@ -172,7 +163,6 @@ export default function DeliveryDashboard() {
     enabled: isAuthenticated && !!user,
   });
 
-  // --- WebSocket Connection ---
   useEffect(() => {
     if (!socket || !user) return;
     const onOrdersChanged = () => queryClient.invalidateQueries({ queryKey: ["deliveryOrders"] });
@@ -191,7 +181,6 @@ export default function DeliveryDashboard() {
     };
   }, [socket, user, queryClient, isAuthenticated]);
 
-  // --- Mutations ---
   const acceptOrderMutation = useMutation({
     mutationFn: (orderId: number) => api.post("/api/delivery/accept", { orderId }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["deliveryOrders"] }),
@@ -250,7 +239,6 @@ export default function DeliveryDashboard() {
 
   const handleLogout = () => auth?.signOut().then(() => window.location.reload());
 
-  // --- Derived State ---
   const myDeliveryBoyId = user?.deliveryBoyId;
   const { assignedOrders, availableOrders, totalOrdersCount, pendingCount, deliveredCount, outForDeliveryCount } =
     useMemo(() => {
@@ -275,7 +263,6 @@ export default function DeliveryDashboard() {
       };
     }, [orders, myDeliveryBoyId]);
 
-  // --- Loading States ---
   if (isLoadingAuth || !isAuthenticated || !user || !socket || isLoading) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50">
@@ -362,12 +349,22 @@ export default function DeliveryDashboard() {
             </Card>
           ) : (
             <DeliveryOrdersList
-  orders={availableOrders}
-  onAcceptOrder={(id) => acceptOrderMutation.mutate(id)}
-  onUpdateStatus={(order) => handleStatusProgress(order)}
-  acceptLoading={acceptOrderMutation.isPending}
-  updateLoading={updateStatusMutation.isPending}
-/>
+              orders={availableOrders}
+              onAcceptOrder={(id) => acceptOrderMutation.mutate(id)}
+              onUpdateStatus={(order) => handleStatusProgress(order)}
+              acceptLoading={acceptOrderMutation.isPending}
+              updateLoading={updateStatusMutation.isPending}
+              Button={Button}
+              Card={Card}
+              CardContent={CardContent}
+              CardHeader={CardHeader}
+              CardTitle={CardTitle}
+              Badge={Badge}
+              statusColor={statusColor}
+              statusText={statusText}
+              nextStatus={nextStatus}
+              nextStatusLabel={nextStatusLabel}
+            />
           )}
         </div>
 
@@ -383,12 +380,22 @@ export default function DeliveryDashboard() {
             </Card>
           ) : (
             <DeliveryOrdersList
-  orders={assignedOrders}
-  onAcceptOrder={(id) => acceptOrderMutation.mutate(id)}
-  onUpdateStatus={(order) => handleStatusProgress(order)}
-  acceptLoading={acceptOrderMutation.isPending}
-  updateLoading={updateStatusMutation.isPending}
-/>
+              orders={assignedOrders}
+              onAcceptOrder={(id) => acceptOrderMutation.mutate(id)}
+              onUpdateStatus={(order) => handleStatusProgress(order)}
+              acceptLoading={acceptOrderMutation.isPending}
+              updateLoading={updateStatusMutation.isPending}
+              Button={Button}
+              Card={Card}
+              CardContent={CardContent}
+              CardHeader={CardHeader}
+              CardTitle={CardTitle}
+              Badge={Badge}
+              statusColor={statusColor}
+              statusText={statusText}
+              nextStatus={nextStatus}
+              nextStatusLabel={nextStatusLabel}
+            />
           )}
         </div>
       </section>
@@ -397,7 +404,11 @@ export default function DeliveryDashboard() {
       {otpDialogOpen && selectedOrder && (
         <DeliveryOtpDialog
           isOpen={otpDialogOpen}
-          onClose={() => setOtpDialogOpen(false)}
+          onClose={() => {
+            setOtpDialogOpen(false);
+            setOtp("");
+            setSelectedOrder(null);
+          }}
           otp={otp}
           setOtp={setOtp}
           onSubmit={handleOtpConfirmation}
@@ -406,4 +417,5 @@ export default function DeliveryDashboard() {
       )}
     </div>
   );
-              }
+}
+
