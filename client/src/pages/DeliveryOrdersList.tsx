@@ -39,7 +39,7 @@ export interface Order {
   total?: string;
   items?: OrderItem[];
   deliveryStatus?: string;
-  status?: string; // Fallback for deliveryStatus
+  status?: string; 
   deliveryAddress?: Address;
   sellerDetails?: Seller;
   deliveryBoyId?: number;
@@ -150,9 +150,13 @@ const OrderItems: React.FC<{ items: OrderItem[] }> = ({ items }) => (
 const OrderCard: React.FC<Omit<DeliveryOrdersListProps, 'orders' | 'acceptLoading' | 'updateLoading'> & { order: Order; isLoading: boolean }> = React.memo(({ order, onAcceptOrder, onUpdateStatus, statusColor, statusText, nextStatus, nextStatusLabel, isLoading, ...ui }) => {
   if (!order) return null;
 
-  const currentStatus = order.deliveryStatus || order.status || "";
-  const canAccept = currentStatus === "pending";
-  const hasNextAction = !!nextStatus(currentStatus);
+  // ✅ FIX: Use 'status' column for display, 'deliveryStatus' for logic
+  const mainStatus = order.status || "";
+  const deliveryStatus = order.deliveryStatus || "";
+  const canAccept = deliveryStatus === "pending";
+  
+  // ✅ FIX: Use nextStatus based on the main 'status'
+  const hasNextAction = !!nextStatus(mainStatus);
 
   return (
     <ui.Card>
@@ -162,7 +166,8 @@ const OrderCard: React.FC<Omit<DeliveryOrdersListProps, 'orders' | 'acceptLoadin
             <ui.CardTitle>ऑर्डर #{order.orderNumber ?? "N/A"}</ui.CardTitle>
             <p className="text-sm text-gray-600">{order.items?.length || 0} आइटम • ₹{order.total || 0}</p>
           </div>
-          <ui.Badge className={`${statusColor(currentStatus)} text-white`}>{statusText(currentStatus)}</ui.Badge>
+          {/* ✅ FIX: Display main 'status' on the badge */}
+          <ui.Badge className={`${statusColor(mainStatus)} text-white`}>{statusText(mainStatus)}</ui.Badge>
         </div>
       </ui.CardHeader>
       <ui.CardContent>
@@ -174,15 +179,19 @@ const OrderCard: React.FC<Omit<DeliveryOrdersListProps, 'orders' | 'acceptLoadin
         <OrderItems items={order.items ?? []} />
 
         <div className="mt-6 pt-4 border-t">
-          {canAccept ? (
+          {canAccept && (
+            // ✅ FIX: Show accept button only for available orders
             <ui.Button size="sm" onClick={() => onAcceptOrder(order.id)} disabled={isLoading}>
               ऑर्डर स्वीकार करें
             </ui.Button>
-          ) : hasNextAction ? (
-            <ui.Button size="sm" onClick={() => onUpdateStatus(order)} disabled={isLoading}>
-              {nextStatusLabel(currentStatus)}
-            </ui.Button>
-          ) : null}
+          )}
+
+          {/* ✅ FIX: Show status update button only for assigned orders */}
+          {!canAccept && hasNextAction && (
+             <ui.Button size="sm" onClick={() => onUpdateStatus(order)} disabled={isLoading}>
+               {nextStatusLabel(mainStatus)}
+             </ui.Button>
+          )}
         </div>
       </ui.CardContent>
     </ui.Card>
@@ -206,3 +215,4 @@ const DeliveryOrdersList: React.FC<DeliveryOrdersListProps> = ({ orders, ...prop
 };
 
 export default React.memo(DeliveryOrdersList);
+
