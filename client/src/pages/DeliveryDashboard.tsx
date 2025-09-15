@@ -96,7 +96,7 @@ export default function DeliveryDashboard() {
   const rawSocket = useSocket() as any;
   const socket = rawSocket?.socket ?? rawSocket;
 
-  const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
+  const [selectedOrder, setSelectedOrder] = useState(null);
   const [otp, setOtp] = useState("");
   const [otpDialogOpen, setOtpDialogOpen] = useState(false);
   const [showCompletedOrders, setShowCompletedOrders] = useState(false);
@@ -205,6 +205,9 @@ export default function DeliveryDashboard() {
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ otp }),
       });
+      if (response.status === 401) {
+        throw new Error("OTP गलत है।"); // ✅ OTP गलत होने पर विशेष त्रुटि
+      }
       if (!response.ok) throw new Error("डिलीवरी पूरी करने में विफल");
       return response.json();
     },
@@ -215,8 +218,11 @@ export default function DeliveryDashboard() {
       setOtp("");
       setSelectedOrder(null);
     },
-    onError: (error: any) =>
-      toast({ title: "OTP त्रुटि", description: error.message || "OTP जमा करने में विफल।", variant: "destructive" }),
+    onError: (error: any) => {
+      // ✅ अब त्रुटि को सीधे डायलॉग में दिखाया जाएगा
+      console.error("❌ Mutation failed with error:", error);
+      toast({ title: "OTP त्रुटि", description: error.message || "OTP जमा करने में विफल।", variant: "destructive" });
+    },
   });
 
   const handleStatusProgress = (order: any) => {
@@ -467,20 +473,16 @@ export default function DeliveryDashboard() {
       </section>
 
       {/* OTP Dialog */}
-      {otpDialogOpen && selectedOrder && (
+       {otpDialogOpen && selectedOrder && (
         <DeliveryOtpDialog
           isOpen={otpDialogOpen}
-          onClose={() => {
-            setOtpDialogOpen(false);
-            setOtp("");
-            setSelectedOrder(null);
-          }}
-          otp={otp}
-          setOtp={setOtp}
-          onSubmit={handleOtpConfirmation}
+          onOpenChange={setOtpDialogOpen}
           order={selectedOrder}
+          onConfirm={handleOtpConfirmation}
+          isSubmitting={handleOtpSubmitMutation.isPending}
+          error={handleOtpSubmitMutation.error?.message || null}
         />
       )}
     </div>
   );
-      }
+      
