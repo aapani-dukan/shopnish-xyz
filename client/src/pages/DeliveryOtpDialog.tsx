@@ -1,15 +1,15 @@
 // client/src/pages/DeliveryOtpDialog.tsx
 import React, { useState } from "react";
 import { Loader2 } from "lucide-react";
-
+// ✅ 1. Radix UI से सीधे आयात (Primitives)
+import { Dialog } from "@radix-ui/react-dialog";
+import { Label } from "@radix-ui/react-label";
 // Radix UI and other components from your dependencies list
 import {
-  Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-} from "@radix-ui/react-dialog";
-import { Label } from "@radix-ui/react-label";
+} from "../components/ui/dialog ;
 import { Button } from "../components/ui/button"; // Assuming a custom Button component using Radix Slot/CVA
 import { Input } from "../components/ui/input"; // Assuming a custom Input component
 
