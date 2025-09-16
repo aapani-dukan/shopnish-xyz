@@ -66,15 +66,54 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const clearError = useCallback(() => {
     setAuthError(null);
   }, []);
-
-  // 🔑 backend से user data fetch करने वाला function
-  const fetchBackendUserData = useCallback(async (fbUser: FirebaseUser) => {
+  
+  // ✅ नया फ़ंक्शन: बैकएंड के साथ उपयोगकर्ता को सिंक करें
+  const syncUserWithBackend = useCallback(async (fbUser: FirebaseUser) => {
+    setIsLoadingAuth(true);
     try {
       const idToken = await fbUser.getIdToken(true);
+      
+      // नए API रूट को कॉल करें
+      const res = await apiRequest("POST", "/api/auth/initial-login", {
+        idToken,
+      });
+
+      const backendUser = res.user;
+
+      if (backendUser) {
+        const newUserData: User = {
+          uid: fbUser.uid,
+          id: backendUser.id,
+          email: fbUser.email || backendUser.email,
+          name: fbUser.displayName || backendUser.name,
+          role: backendUser.role || "customer",
+          idToken,
+          sellerProfile: backendUser.sellerProfile || null,
+        };
+
+        setUser(newUserData);
+        setIsAuthenticated(true);
+        setIsAdmin(newUserData.role === "admin");
+        console.log("✅ Backend user synced:", newUserData);
+      }
+    } catch (e: any) {
+      console.error("❌ Failed to sync backend user data:", e);
+      setUser(null);
+      setIsAuthenticated(false);
+      setIsAdmin(false);
+    } finally {
+      setIsLoadingAuth(false);
+    }
+  }, []);
+
+  // 🔑 मौजूदा फ़ंक्शन: केवल मौजूदा उपयोगकर्ता डेटा प्राप्त करने के लिए
+  const fetchBackendUserData = useCallback(async (fbUser: FirebaseUser) => {
+    try {
       const res = await apiRequest("GET", "/api/users/me");
       const dbUserData = res.user || res;
 
       if (dbUserData) {
+        const idToken = await fbUser.getIdToken(true);
         const newUserData: User = {
           uid: fbUser.uid,
           id: dbUserData.id,
@@ -118,7 +157,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       );
 
       if (fbUser) {
-        await fetchBackendUserData(fbUser);
+        // ✅ यहाँ `syncUserWithBackend` का उपयोग करें
+        await syncUserWithBackend(fbUser);
       } else {
         console.warn("❌ No Firebase user. Clearing state.");
         setUser(null);
@@ -130,7 +170,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     });
 
     return () => unsubscribe();
-  }, [fetchBackendUserData, queryClient]);
+  }, [syncUserWithBackend, queryClient]);
 
   // Google sign in
   const signIn = useCallback(
@@ -140,7 +180,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       try {
         const fbUser = await firebaseSignInWithGoogle(usePopup);
         if (fbUser) {
-          await fetchBackendUserData(fbUser);
+          // ✅ यहाँ भी `syncUserWithBackend` का उपयोग करें
+          await syncUserWithBackend(fbUser);
         }
         return fbUser;
       } catch (err: any) {
@@ -149,7 +190,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         throw err;
       }
     },
-    [fetchBackendUserData]
+    [syncUserWithBackend]
   );
 
   // Sign out
@@ -173,6 +214,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     setIsLoadingAuth(true);
     const fbUser = auth.currentUser;
     if (fbUser) {
+      // ✅ यहाँ `fetchBackendUserData` का उपयोग करें
       await fetchBackendUserData(fbUser);
     } else {
       setIsLoadingAuth(false);
