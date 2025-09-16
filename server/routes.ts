@@ -267,4 +267,5 @@ adminRouter.use("/delivery-boys", admindBoyRouter);
 router.use("/admin", adminRouter);
 
 
-export default router;
+module.exports = router;
+
