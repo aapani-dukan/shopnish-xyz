@@ -67,10 +67,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     setAuthError(null);
   }, []);
 
-  // 🔑 This function is for fetching data from the backend.
-  // We will assume the user is already in the database when this is called.
+  // ✅ यह फ़ंक्शन अब 404 एरर को संभालेगा और फिर नया API कॉल करेगा।
   const fetchBackendUserData = useCallback(async (fbUser: FirebaseUser) => {
     try {
+      // ✅ सबसे पहले मौजूदा उपयोगकर्ता डेटा प्राप्त करने का प्रयास करें
       const res = await apiRequest("GET", "/api/users/me");
       const dbUserData = res.user || res;
 
@@ -85,14 +85,46 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           idToken,
           sellerProfile: dbUserData.sellerProfile || null,
         };
-
         setUser(newUserData);
         setIsAuthenticated(true);
         setIsAdmin(newUserData.role === "admin");
         console.log("✅ Backend user data fetched:", newUserData);
       }
     } catch (e: any) {
-      console.error("❌ Failed to fetch backend user data:", e);
+      if (e.status === 404) {
+        console.warn("User not found on backend. Attempting initial login.");
+        
+        // ✅ अगर 404 एरर मिलती है, तो नए API को कॉल करें
+        try {
+          const idToken = await fbUser.getIdToken(true);
+          const res = await apiRequest("POST", "/api/auth/initial-login", {
+            idToken,
+          });
+
+          const backendUser = res.user;
+          if (backendUser) {
+            const newUserData: User = {
+              uid: fbUser.uid,
+              id: backendUser.id,
+              email: fbUser.email,
+              name: fbUser.displayName,
+              role: backendUser.role,
+              idToken,
+              sellerProfile: backendUser.sellerProfile || null,
+            };
+            setUser(newUserData);
+            setIsAuthenticated(true);
+            setIsAdmin(newUserData.role === "admin");
+            console.log("✅ New user profile created via initial login.");
+          }
+        } catch (initialLoginError: any) {
+          console.error("❌ Initial login failed:", initialLoginError);
+          setAuthError(initialLoginError);
+        }
+      } else {
+        console.error("❌ Failed to fetch backend user data:", e);
+        setAuthError(e);
+      }
       setUser(null);
       setIsAuthenticated(false);
       setIsAdmin(false);
@@ -101,8 +133,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   }, []);
 
-  // ✅ This is the main listener. It should just fetch the user data.
-  // The initial login logic happens in the `signIn` function.
+  // ✅ Firebase + Backend sync
   useEffect(() => {
     const checkRedirectResult = async () => {
       try {
@@ -114,7 +145,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     checkRedirectResult();
 
     const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
-      console.log("onAuthStateChanged triggered. fbUser:", fbUser ? fbUser.email : "null");
+      console.log(
+        "onAuthStateChanged triggered. fbUser:",
+        fbUser ? fbUser.email : "null"
+      );
+
       if (fbUser) {
         await fetchBackendUserData(fbUser);
       } else {
@@ -126,10 +161,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }
       setIsLoadingAuth(false);
     });
+
     return () => unsubscribe();
   }, [fetchBackendUserData, queryClient]);
 
-  // ✅ This is the Google sign-in logic. It handles new and existing users.
+  // Google sign in
   const signIn = useCallback(
     async (usePopup: boolean = false): Promise<FirebaseUser | null> => {
       setIsLoadingAuth(true);
@@ -137,24 +173,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       try {
         const fbUser = await firebaseSignInWithGoogle(usePopup);
         if (fbUser) {
-          // This is the key: we call the initial-login endpoint which
-          // will create the user if they are new. This request should
-          // never fail for a new user if the backend is configured.
-          const idToken = await fbUser.getIdToken(true);
-          const response = await fetch(`${API_BASE}/api/auth/initial-login`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${idToken}`,
-            },
-            body: JSON.stringify({ idToken }),
-          });
-          if (!response.ok) {
-            throw new Error("Backend authentication failed.");
-          }
-          const userData = await response.json();
-          setUser(userData.user);
-          setIsAuthenticated(true);
+          await fetchBackendUserData(fbUser);
         }
         return fbUser;
       } catch (err: any) {
@@ -163,10 +182,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         throw err;
       }
     },
-    []
+    [fetchBackendUserData]
   );
-
-  // ... (Other functions like signOut, refetchUser, backendLogin are unchanged)
+  
+  // ... (बाकी सभी फ़ंक्शन जैसे signOut, refetchUser, backendLogin वही रहेंगे)
   const signOut = useCallback(async (): Promise<void> => {
     try {
       await signOutUser();
@@ -253,15 +272,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       backendLogin,
     ]
   );
+
   return (
     <AuthContext.Provider value={authContextValue}>
       {children}
     </AuthContext.Provider>
   );
 };
+
 export const useAuth = () => {
   const ctx = useContext(AuthContext);
   if (!ctx) throw new Error("useAuth must be used within an AuthProvider");
   return ctx;
 };
-
