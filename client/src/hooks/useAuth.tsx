@@ -66,8 +66,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const clearError = useCallback(() => {
     setAuthError(null);
   }, []);
-  
-  // 🔑 मौजूदा फ़ंक्शन: केवल मौजूदा उपयोगकर्ता डेटा प्राप्त करने के लिए
+
+  // 🔑 This function is for fetching data from the backend.
+  // We will assume the user is already in the database when this is called.
   const fetchBackendUserData = useCallback(async (fbUser: FirebaseUser) => {
     try {
       const res = await apiRequest("GET", "/api/users/me");
@@ -100,7 +101,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   }, []);
 
-  // ✅ Firebase + Backend sync
+  // ✅ This is the main listener. It should just fetch the user data.
+  // The initial login logic happens in the `signIn` function.
   useEffect(() => {
     const checkRedirectResult = async () => {
       try {
@@ -112,13 +114,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     checkRedirectResult();
 
     const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
-      console.log(
-        "onAuthStateChanged triggered. fbUser:",
-        fbUser ? fbUser.email : "null"
-      );
-
+      console.log("onAuthStateChanged triggered. fbUser:", fbUser ? fbUser.email : "null");
       if (fbUser) {
-        // ✅ यहाँ `fetchBackendUserData` का उपयोग करें
         await fetchBackendUserData(fbUser);
       } else {
         console.warn("❌ No Firebase user. Clearing state.");
@@ -129,11 +126,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }
       setIsLoadingAuth(false);
     });
-
     return () => unsubscribe();
   }, [fetchBackendUserData, queryClient]);
 
-  // Google sign in
+  // ✅ This is the Google sign-in logic. It handles new and existing users.
   const signIn = useCallback(
     async (usePopup: boolean = false): Promise<FirebaseUser | null> => {
       setIsLoadingAuth(true);
@@ -141,9 +137,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       try {
         const fbUser = await firebaseSignInWithGoogle(usePopup);
         if (fbUser) {
+          // This is the key: we call the initial-login endpoint which
+          // will create the user if they are new. This request should
+          // never fail for a new user if the backend is configured.
           const idToken = await fbUser.getIdToken(true);
-      
-          // नए API रूट को कॉल करें
           const response = await fetch(`${API_BASE}/api/auth/initial-login`, {
             method: "POST",
             headers: {
@@ -152,16 +149,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             },
             body: JSON.stringify({ idToken }),
           });
-
           if (!response.ok) {
             throw new Error("Backend authentication failed.");
           }
-
           const userData = await response.json();
-          setUser(userData.user); // ✅ उपयोगकर्ता स्टेट को अपडेट करें
+          setUser(userData.user);
           setIsAuthenticated(true);
-
-          return fbUser;
         }
         return fbUser;
       } catch (err: any) {
@@ -173,7 +166,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     []
   );
 
-  // Sign out
+  // ... (Other functions like signOut, refetchUser, backendLogin are unchanged)
   const signOut = useCallback(async (): Promise<void> => {
     try {
       await signOutUser();
@@ -189,19 +182,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   }, [queryClient]);
 
-  // Refetch user data
   const refetchUser = useCallback(async () => {
     setIsLoadingAuth(true);
     const fbUser = auth.currentUser;
     if (fbUser) {
-      // ✅ यहाँ `fetchBackendUserData` का उपयोग करें
       await fetchBackendUserData(fbUser);
     } else {
       setIsLoadingAuth(false);
     }
   }, [fetchBackendUserData]);
 
-  // Delivery boy login (email/password)
   const backendLogin = useCallback(
     async (email: string, password: string): Promise<User> => {
       setAuthError(null);
@@ -214,7 +204,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         const backendUser = res.user;
         if (!backendUser)
           throw new Error("Invalid user data received from backend.");
-
         const newUserData: User = {
           id: backendUser.id,
           email: backendUser.email,
@@ -222,7 +211,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           role: backendUser.role,
           sellerProfile: backendUser.sellerProfile || null,
         };
-
         setUser(newUserData);
         setIsAuthenticated(true);
         setIsAdmin(newUserData.role === "admin");
@@ -265,16 +253,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       backendLogin,
     ]
   );
-
   return (
     <AuthContext.Provider value={authContextValue}>
       {children}
     </AuthContext.Provider>
   );
 };
-
 export const useAuth = () => {
   const ctx = useContext(AuthContext);
   if (!ctx) throw new Error("useAuth must be used within an AuthProvider");
   return ctx;
 };
+
