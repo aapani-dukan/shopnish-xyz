@@ -84,6 +84,7 @@ router.post("/register", async (req: Request, res: Response) => {
 });
 
 // ✅ User Profile
+// ✅ User Profile
 router.get(
   "/users/me",
   requireAuth,
@@ -94,15 +95,24 @@ router.get(
         return res.status(401).json({ error: "Not authenticated." });
       }
 
-      const [user] = await db
+      // ✅ स्टेप 1: डेटाबेस में उपयोगकर्ता को खोजें
+      let [user] = await db
         .select()
         .from(users)
         .where(eq(users.firebaseUid, userUuid));
 
+      // ✅ स्टेप 2: यदि उपयोगकर्ता नहीं मिला, तो एक नई एंट्री बनाएँ
       if (!user) {
-        return res.status(404).json({ error: "User not found." });
+        console.log(`New user detected. Creating profile for Firebase UID: ${userUuid}`);
+        const [newUser] = await db.insert(users).values({
+          firebaseUid: userUuid,
+          role: 'user', // ✅ नए उपयोगकर्ता को डिफ़ॉल्ट 'user' भूमिका दें
+        }).returning();
+        
+        user = newUser; // ✅ नया बनाया गया उपयोगकर्ता लौटाएँ
       }
 
+      // ✅ स्टेप 3: उपयोगकर्ता की भूमिका के आधार पर अतिरिक्त जानकारी जोड़ें
       let sellerInfo;
       if (user.role === "seller") {
         const [record] = await db
@@ -126,6 +136,7 @@ router.get(
     }
   }
 );
+
 
 // ✅ Logout
 router.post("/auth/logout", async (req, res) => {
