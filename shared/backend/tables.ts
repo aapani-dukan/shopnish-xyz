@@ -1,10 +1,12 @@
 import { pgTable, text, serial, integer, decimal, boolean, timestamp, json, pgEnum } from "drizzle-orm/pg-core";
 
-// --- Drizzle ORM Table Definitions & Enums ---
+
 export const orderStatusEnum = pgEnum('order_status', [
   'pending',
   'accepted',
   'preparing',
+  'ready_for_pickup', 
+  'picked_up', 
   'out_for_delivery',
   'delivered',
   'cancelled',
@@ -14,7 +16,16 @@ export const orderStatusEnum = pgEnum('order_status', [
 
 export const userRoleEnum = pgEnum("user_role", ["customer", "seller", "admin", "delivery-boy"]);
 export const approvalStatusEnum = pgEnum("approval_status", ["pending", "approved", "rejected"]);
-export const deliveryStatusEnum = pgEnum("delivery_status_enum", ["pending", "accepted", "out for delivery", "delivered"]);
+
+// ✅ Updated and cleaned up for clarity
+export const deliveryStatusEnum = pgEnum("delivery_status_enum", [
+  "pending", 
+  "accepted", 
+  "out_for_delivery", 
+  "delivered"
+]);
+
+
 
 
 export const users = pgTable("users", {
