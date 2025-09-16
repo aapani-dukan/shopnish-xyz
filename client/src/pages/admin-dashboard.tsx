@@ -31,37 +31,48 @@ interface DeliveryBoy {
 const AdminDashboard: React.FC = () => {
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState("pending-vendors");
-  const rawSocket = useSocket();
-  const socket = (rawSocket as any)?.socket ?? rawSocket;
+  const { socket } = useSocket(); 
 
-  // ✅ Socket.IO real-time updates
-useEffect(() => {
-  // अब, .on() को तभी कॉल किया जाएगा जब 'socket' मौजूद हो और 'on' एक फ़ंक्शन हो।
-  socket?.on("admin:vendor-updated", () => {
-    console.log("Vendor update event received.");
-    queryClient.invalidateQueries({ queryKey: ["adminPendingVendors"] });
-    queryClient.invalidateQueries({ queryKey: ["adminApprovedVendors"] });
-  });
+   // ✅ Socket.IO real-time updates
+  useEffect(() => {
+    // ✅ सॉकेट उपलब्ध न होने पर तुरंत बाहर निकलें
+    if (!socket) {
+      console.log("Waiting for socket connection in AdminDashboard...");
+      return;
+    }
 
-  socket?.on("admin:product-updated", () => {
-    console.log("Product update event received.");
-    queryClient.invalidateQueries({ queryKey: ["adminPendingProducts"] });
-    queryClient.invalidateQueries({ queryKey: ["adminApprovedProducts"] });
-  });
+    console.log("Socket connection established. Listening for admin events.");
 
-  socket?.on("admin:deliveryboy-updated", () => {
-    console.log("Delivery Boy update event received.");
-    queryClient.invalidateQueries({ queryKey: ["adminPendingDeliveryBoys"] });
-    queryClient.invalidateQueries({ queryKey: ["adminApprovedDeliveryBoys"] });
-  });
+    const handleVendorUpdate = () => {
+      console.log("Vendor update event received.");
+      queryClient.invalidateQueries({ queryKey: ["adminPendingVendors"] });
+      queryClient.invalidateQueries({ queryKey: ["adminApprovedVendors"] });
+    };
 
-  return () => {
-    // ✅ क्लीनअप करते समय भी ऑप्शनल चेनिंग का उपयोग करें
-    socket?.off("admin:vendor-updated");
-    socket?.off("admin:product-updated");
-    socket?.off("admin:deliveryboy-updated");
-  };
-}, [socket, queryClient]);
+    const handleProductUpdate = () => {
+      console.log("Product update event received.");
+      queryClient.invalidateQueries({ queryKey: ["adminPendingProducts"] });
+      queryClient.invalidateQueries({ queryKey: ["adminApprovedProducts"] });
+    };
+
+    const handleDeliveryBoyUpdate = () => {
+      console.log("Delivery Boy update event received.");
+      queryClient.invalidateQueries({ queryKey: ["adminPendingDeliveryBoys"] });
+      queryClient.invalidateQueries({ queryKey: ["adminApprovedDeliveryBoys"] });
+    };
+
+    // ✅ .on() को तभी कॉल करें जब सॉकेट तैयार हो
+    socket.on("admin:vendor-updated", handleVendorUpdate);
+    socket.on("admin:product-updated", handleProductUpdate);
+    socket.on("admin:deliveryboy-updated", handleDeliveryBoyUpdate);
+
+    return () => {
+      // ✅ कंपोनेंट अनमाउंट होने पर लिसनर हटा दें
+      socket.off("admin:vendor-updated", handleVendorUpdate);
+      socket.off("admin:product-updated", handleProductUpdate);
+      socket.off("admin:deliveryboy-updated", handleDeliveryBoyUpdate);
+    };
+  }, [socket, queryClient]); // ✅ सुनिश्चित करें कि 'socket' निर्भरताओं (dependencies) में है
   
 
   // Vendors API calls
@@ -266,6 +277,7 @@ useEffect(() => {
   };
 
   return (
+    return (
     <div className="p-4 bg-gray-50 min-h-screen font-inter">
       <h1 className="text-2xl font-bold mb-4">Admin Dashboard</h1>
       <div className="flex space-x-4 mb-6">
