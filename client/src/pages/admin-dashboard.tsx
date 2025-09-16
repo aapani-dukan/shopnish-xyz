@@ -4,7 +4,7 @@ import { toast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Check, X, Loader2 } from "lucide-react";
 import api from "@/lib/api";
-import { useSocket } from "@/hooks/useSocket"; // ✅ socket import
+import { useSocket } from "@/hooks/useSocket";
 
 // Interfaces
 interface Vendor {
@@ -28,31 +28,42 @@ interface DeliveryBoy {
   rejectionReason?: string;
 }
 
- const AdminDashboard: React.FC = () => {
+const AdminDashboard: React.FC = () => {
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState("pending-vendors");
-  const socket = useSocket(); // ✅ socket from context
+  const rawSocket = useSocket();
+  const socket = (rawSocket as any)?.socket ?? rawSocket;
 
-  // ✅ socket.io real-time updates
+  // ✅ Socket.IO real-time updates
   useEffect(() => {
-    if (!socket) return;
+    // ✅ Add a null check to ensure the socket object is available
+    if (!socket) {
+      console.log("Waiting for socket connection in AdminDashboard...");
+      return;
+    }
+
+    console.log("Socket connection established. Listening for admin events.");
 
     socket.on("admin:vendor-updated", () => {
+      console.log("Vendor update event received.");
       queryClient.invalidateQueries({ queryKey: ["adminPendingVendors"] });
       queryClient.invalidateQueries({ queryKey: ["adminApprovedVendors"] });
     });
 
     socket.on("admin:product-updated", () => {
+      console.log("Product update event received.");
       queryClient.invalidateQueries({ queryKey: ["adminPendingProducts"] });
       queryClient.invalidateQueries({ queryKey: ["adminApprovedProducts"] });
     });
 
     socket.on("admin:deliveryboy-updated", () => {
+      console.log("Delivery Boy update event received.");
       queryClient.invalidateQueries({ queryKey: ["adminPendingDeliveryBoys"] });
       queryClient.invalidateQueries({ queryKey: ["adminApprovedDeliveryBoys"] });
     });
 
     return () => {
+      // ✅ Clean up event listeners on unmount
       socket.off("admin:vendor-updated");
       socket.off("admin:product-updated");
       socket.off("admin:deliveryboy-updated");
@@ -260,7 +271,7 @@ interface DeliveryBoy {
     }
   };
 
-   return (
+  return (
     <div className="p-4 bg-gray-50 min-h-screen font-inter">
       <h1 className="text-2xl font-bold mb-4">Admin Dashboard</h1>
       <div className="flex space-x-4 mb-6">
