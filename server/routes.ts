@@ -1,10 +1,7 @@
-import express, { Router, Request, Response } from "express";
+import { Router, Request, Response } from "express";
 import { db } from "./db.ts";
 import {
   users,
-  products,
-  categories,
-  deliveryBoys,
   userRoleEnum,
   approvalStatusEnum,
   sellersPgTable,
@@ -14,11 +11,7 @@ import { requireAuth, requireAdminAuth } from "./middleware/authMiddleware.ts";
 import { authAdmin } from "./lib/firebaseAdmin.ts";
 import { eq } from "drizzle-orm";
 
-// ✅ Socket instance
-import { getIO } from "./socket.ts";
-
 // ✅ Sub-route modules
-import orderRoutes from "../routes/orderRoutes";
 import apiAuthLoginRouter from "./roots/apiAuthLogin.ts";
 import adminApproveProductRoutes from "./roots/admin/approve-product.ts";
 import adminRejectProductRoutes from "./roots/admin/reject-product.ts";
@@ -31,9 +24,10 @@ import cartRouter from "../routes/cartRoutes.ts";
 import dBoyRouter from "../routes/dBoyRoutes.ts";
 import admindBoyRouter from "./roots/admin/admindBoyRoutes.ts";
 import orderConfirmationRouter from "../routes/orderConfirmationRouter";
-
 import userLoginRouter from "../routes/userRoutes.ts";
+import orderRoutes from "../routes/orderRoutes";
 import { verifyToken } from "./middleware/verifyToken";
+import { categories } from "../shared/backend/schema.ts";
 
 const router = Router();
 
@@ -43,9 +37,7 @@ router.get("/", (req: Request, res: Response) => {
 });
 
 router.get("/health", (req: Request, res: Response) => {
-  res
-    .status(200)
-    .json({ status: "ok", timestamp: new Date().toISOString() });
+  res.status(200).json({ status: "ok", timestamp: new Date().toISOString() });
 });
 
 // ✅ Register User
@@ -53,28 +45,23 @@ router.post("/register", async (req: Request, res: Response) => {
   try {
     const userData = req.body;
     if (!userData.firebaseUid || !userData.email) {
-      return res
-        .status(400)
-        .json({ error: "Firebase UID and email are required." });
+      return res.status(400).json({ error: "Firebase UID and email are required." });
     }
 
-    const [newUser] = await db
-      .insert(users)
-      .values({
-        firebaseUid: userData.firebaseUid,
-        email: userData.email,
-        name: userData.name || null,
-        role: userRoleEnum.enumValues[0],
-        approvalStatus: approvalStatusEnum.enumValues[1],
-        password: userData.password || "",
-        firstName: userData.firstName || "",
-        lastName: userData.lastName || "",
-        phone: userData.phone || "",
-        address: userData.address || "",
-        city: userData.city || "",
-        pincode: userData.pincode || "",
-      })
-      .returning();
+    const [newUser] = await db.insert(users).values({
+      firebaseUid: userData.firebaseUid,
+      email: userData.email,
+      name: userData.name || null,
+      role: userRoleEnum.enumValues[0],
+      approvalStatus: approvalStatusEnum.enumValues[1],
+      password: userData.password || "",
+      firstName: userData.firstName || "",
+      lastName: userData.lastName || "",
+      phone: userData.phone || "",
+      address: userData.address || "",
+      city: userData.city || "",
+      pincode: userData.pincode || "",
+    }).returning();
 
     res.status(201).json(newUser);
   } catch (error: any) {
@@ -84,10 +71,9 @@ router.post("/register", async (req: Request, res: Response) => {
 });
 
 // ✅ User Profile
-
 router.get(
   "/users/me",
-  requireAuth, // यह मिडलवेयर सुनिश्चित करता है कि उपयोगकर्ता मौजूद है।
+  requireAuth,
   async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userUuid = req.user?.firebaseUid;
@@ -95,18 +81,15 @@ router.get(
         return res.status(401).json({ error: "Not authenticated." });
       }
 
-      // ✅ केवल उपयोगकर्ता को खोजें, बनाएँ नहीं
       let [user] = await db
         .select()
         .from(users)
         .where(eq(users.firebaseUid, userUuid));
 
       if (!user) {
-        // यह स्थिति आदर्श नहीं है, लेकिन अगर ऐसा होता है तो 404 दें
         return res.status(404).json({ error: "User not found." });
       }
 
-      // ✅ उपयोगकर्ता की भूमिका के आधार पर अतिरिक्त जानकारी जोड़ें
       let sellerInfo;
       if (user.role === "seller") {
         const [record] = await db
@@ -130,8 +113,8 @@ router.get(
     }
   }
 );
-// ✅ Route 2: नए उपयोगकर्ता को लॉगिन और प्रोफ़ाइल बनाने के लिए
 
+// ✅ Initial Login Route: नए उपयोगकर्ताओं के लिए
 router.post("/auth/initial-login", async (req: Request, res: Response) => {
   try {
     const { idToken } = req.body;
@@ -140,17 +123,6 @@ router.post("/auth/initial-login", async (req: Request, res: Response) => {
     }
 
     // Firebase टोकन को सत्यापित करें
-    // यह सही है
-const decodedToken = await authAdmin.verifyIdToken(idToken);
-
-    const userUuid = decodedToken.uid;
-
-    // ✅ डेटाबेस में उपयोगकर्ता को खोजें या बनाएँ
-    router.post("/auth/initial-login", async (req, res) => {
-  try {
-    const { idToken } = req.body;
-    
-    // टोकन को सत्यापित करें
     const decodedToken = await authAdmin.verifyIdToken(idToken);
     
     // डिकोडेड टोकन से आवश्यक डेटा निकालें
@@ -212,9 +184,8 @@ router.post("/auth/logout", async (req, res) => {
   try {
     if (sessionCookie) {
       const decoded = await authAdmin
-        .auth()
         .verifySessionCookie(sessionCookie);
-      await authAdmin.auth().revokeRefreshTokens(decoded.sub);
+      await authAdmin.revokeRefreshTokens(decoded.sub);
     }
     res.status(200).json({ message: "Logged out successfully!" });
   } catch (error: any) {
@@ -260,12 +231,9 @@ adminRouter.use("/products", adminProductsRoutes);
 adminRouter.use("/password", adminPasswordRoutes);
 adminRouter.use("/vendors", adminVendorsRoutes);
 adminRouter.use("/delivery-boys", admindBoyRouter);
-// ❌ /orders राउट को हटा दिया क्योंकि इसकी कोई फ़ाइल नहीं है
-// adminRouter.use("/orders", dBoyRouter);
 
-
+// ✅ AdminRouter को मुख्य राउटर पर मैप करें
 router.use("/admin", adminRouter);
 
 
 module.exports = router;
-
