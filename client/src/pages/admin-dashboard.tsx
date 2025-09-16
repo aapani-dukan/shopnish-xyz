@@ -276,7 +276,7 @@ const AdminDashboard: React.FC = () => {
     }
   };
 
-  return (
+  
     return (
     <div className="p-4 bg-gray-50 min-h-screen font-inter">
       <h1 className="text-2xl font-bold mb-4">Admin Dashboard</h1>
