@@ -67,70 +67,66 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     setAuthError(null);
   }, []);
 
-  // ✅ यह फ़ंक्शन अब 404 एरर को संभालेगा और फिर नया API कॉल करेगा।
-  const fetchBackendUserData = useCallback(async (fbUser: FirebaseUser) => {
-    try {
-      // ✅ सबसे पहले मौजूदा उपयोगकर्ता डेटा प्राप्त करने का प्रयास करें
-      const res = await apiRequest("GET", "/api/users/me");
-      const dbUserData = res.user || res;
+  // ✅ Consolidated logic in one function
+  const fetchAndSyncBackendUser = useCallback(async (fbUser: FirebaseUser) => {
+    setIsLoadingAuth(true);
+    let dbUserData = null;
+    const idToken = await fbUser.getIdToken(true);
 
-      if (dbUserData) {
-        const idToken = await fbUser.getIdToken(true);
-        const newUserData: User = {
-          uid: fbUser.uid,
-          id: dbUserData.id,
-          email: fbUser.email || dbUserData.email,
-          name: fbUser.displayName || dbUserData.name,
-          role: dbUserData.role || "customer",
-          idToken,
-          sellerProfile: dbUserData.sellerProfile || null,
-        };
-        setUser(newUserData);
-        setIsAuthenticated(true);
-        setIsAdmin(newUserData.role === "admin");
-        console.log("✅ Backend user data fetched:", newUserData);
-      }
+    try {
+      // ✅ 1. Attempt to fetch existing user data
+      const res = await apiRequest("GET", "/api/users/me");
+      dbUserData = res.user || res;
+      console.log("✅ Backend user data fetched:", dbUserData);
     } catch (e: any) {
       if (e.status === 404) {
+        // ✅ 2. If 404, attempt to create a new user
         console.warn("User not found on backend. Attempting initial login.");
-        
-        // ✅ अगर 404 एरर मिलती है, तो नए API को कॉल करें
         try {
-          const idToken = await fbUser.getIdToken(true);
           const res = await apiRequest("POST", "/api/auth/initial-login", {
             idToken,
           });
-
-          const backendUser = res.user;
-          if (backendUser) {
-            const newUserData: User = {
-              uid: fbUser.uid,
-              id: backendUser.id,
-              email: fbUser.email,
-              name: fbUser.displayName,
-              role: backendUser.role,
-              idToken,
-              sellerProfile: backendUser.sellerProfile || null,
-            };
-            setUser(newUserData);
-            setIsAuthenticated(true);
-            setIsAdmin(newUserData.role === "admin");
-            console.log("✅ New user profile created via initial login.");
-          }
+          dbUserData = res.user;
+          console.log("✅ New user profile created via initial login.");
         } catch (initialLoginError: any) {
+          // This handles any other errors during initial login (e.g., 401)
           console.error("❌ Initial login failed:", initialLoginError);
           setAuthError(initialLoginError);
+          setUser(null);
+          setIsAuthenticated(false);
+          setIsAdmin(false);
+          setIsLoadingAuth(false);
+          return; // Exit the function
         }
       } else {
+        // Handle any other non-404 errors from the GET request
         console.error("❌ Failed to fetch backend user data:", e);
         setAuthError(e);
+        setUser(null);
+        setIsAuthenticated(false);
+        setIsAdmin(false);
+        setIsLoadingAuth(false);
+        return; // Exit the function
       }
-      setUser(null);
-      setIsAuthenticated(false);
-      setIsAdmin(false);
-    } finally {
-      setIsLoadingAuth(false);
     }
+
+    // ✅ 3. If we have data, set the state
+    if (dbUserData) {
+      const newUserData: User = {
+        uid: fbUser.uid,
+        id: dbUserData.id,
+        email: fbUser.email || dbUserData.email,
+        name: fbUser.displayName || dbUserData.name,
+        role: dbUserData.role || "customer",
+        idToken,
+        sellerProfile: dbUserData.sellerProfile || null,
+      };
+      setUser(newUserData);
+      setIsAuthenticated(true);
+      setIsAdmin(newUserData.role === "admin");
+    }
+
+    setIsLoadingAuth(false);
   }, []);
 
   // ✅ Firebase + Backend sync
@@ -151,19 +147,19 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       );
 
       if (fbUser) {
-        await fetchBackendUserData(fbUser);
+        await fetchAndSyncBackendUser(fbUser);
       } else {
         console.warn("❌ No Firebase user. Clearing state.");
         setUser(null);
         setIsAuthenticated(false);
         setIsAdmin(false);
         queryClient.clear();
+        setIsLoadingAuth(false);
       }
-      setIsLoadingAuth(false);
     });
 
     return () => unsubscribe();
-  }, [fetchBackendUserData, queryClient]);
+  }, [fetchAndSyncBackendUser, queryClient]);
 
   // Google sign in
   const signIn = useCallback(
@@ -173,7 +169,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       try {
         const fbUser = await firebaseSignInWithGoogle(usePopup);
         if (fbUser) {
-          await fetchBackendUserData(fbUser);
+          await fetchAndSyncBackendUser(fbUser);
         }
         return fbUser;
       } catch (err: any) {
@@ -182,7 +178,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         throw err;
       }
     },
-    [fetchBackendUserData]
+    [fetchAndSyncBackendUser]
   );
   
   // ... (बाकी सभी फ़ंक्शन जैसे signOut, refetchUser, backendLogin वही रहेंगे)
@@ -205,11 +201,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     setIsLoadingAuth(true);
     const fbUser = auth.currentUser;
     if (fbUser) {
-      await fetchBackendUserData(fbUser);
+      await fetchAndSyncBackendUser(fbUser);
     } else {
       setIsLoadingAuth(false);
     }
-  }, [fetchBackendUserData]);
+  }, [fetchAndSyncBackendUser]);
 
   const backendLogin = useCallback(
     async (email: string, password: string): Promise<User> => {
