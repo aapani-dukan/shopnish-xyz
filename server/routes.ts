@@ -140,7 +140,9 @@ router.post("/auth/initial-login", async (req: Request, res: Response) => {
     }
 
     // Firebase टोकन को सत्यापित करें
-    const decodedToken = await authAdmin.auth().verifyIdToken(idToken);
+    // यह सही है
+const decodedToken = await authAdmin.verifyIdToken(idToken);
+
     const userUuid = decodedToken.uid;
 
     // ✅ डेटाबेस में उपयोगकर्ता को खोजें या बनाएँ
