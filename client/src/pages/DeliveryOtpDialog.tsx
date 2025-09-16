@@ -9,7 +9,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-} from "../components/ui/dialog ;
+} from "../components/ui/dialog";
 import { Button } from "../components/ui/button"; // Assuming a custom Button component using Radix Slot/CVA
 import { Input } from "../components/ui/input"; // Assuming a custom Input component
 
