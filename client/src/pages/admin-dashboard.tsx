@@ -35,40 +35,34 @@ const AdminDashboard: React.FC = () => {
   const socket = (rawSocket as any)?.socket ?? rawSocket;
 
   // ✅ Socket.IO real-time updates
-  useEffect(() => {
-    // ✅ Add a null check to ensure the socket object is available
-    if (!socket) {
-      console.log("Waiting for socket connection in AdminDashboard...");
-      return;
-    }
+useEffect(() => {
+  // अब, .on() को तभी कॉल किया जाएगा जब 'socket' मौजूद हो और 'on' एक फ़ंक्शन हो।
+  socket?.on("admin:vendor-updated", () => {
+    console.log("Vendor update event received.");
+    queryClient.invalidateQueries({ queryKey: ["adminPendingVendors"] });
+    queryClient.invalidateQueries({ queryKey: ["adminApprovedVendors"] });
+  });
 
-    console.log("Socket connection established. Listening for admin events.");
+  socket?.on("admin:product-updated", () => {
+    console.log("Product update event received.");
+    queryClient.invalidateQueries({ queryKey: ["adminPendingProducts"] });
+    queryClient.invalidateQueries({ queryKey: ["adminApprovedProducts"] });
+  });
 
-    socket.on("admin:vendor-updated", () => {
-      console.log("Vendor update event received.");
-      queryClient.invalidateQueries({ queryKey: ["adminPendingVendors"] });
-      queryClient.invalidateQueries({ queryKey: ["adminApprovedVendors"] });
-    });
+  socket?.on("admin:deliveryboy-updated", () => {
+    console.log("Delivery Boy update event received.");
+    queryClient.invalidateQueries({ queryKey: ["adminPendingDeliveryBoys"] });
+    queryClient.invalidateQueries({ queryKey: ["adminApprovedDeliveryBoys"] });
+  });
 
-    socket.on("admin:product-updated", () => {
-      console.log("Product update event received.");
-      queryClient.invalidateQueries({ queryKey: ["adminPendingProducts"] });
-      queryClient.invalidateQueries({ queryKey: ["adminApprovedProducts"] });
-    });
-
-    socket.on("admin:deliveryboy-updated", () => {
-      console.log("Delivery Boy update event received.");
-      queryClient.invalidateQueries({ queryKey: ["adminPendingDeliveryBoys"] });
-      queryClient.invalidateQueries({ queryKey: ["adminApprovedDeliveryBoys"] });
-    });
-
-    return () => {
-      // ✅ Clean up event listeners on unmount
-      socket.off("admin:vendor-updated");
-      socket.off("admin:product-updated");
-      socket.off("admin:deliveryboy-updated");
-    };
-  }, [socket, queryClient]);
+  return () => {
+    // ✅ क्लीनअप करते समय भी ऑप्शनल चेनिंग का उपयोग करें
+    socket?.off("admin:vendor-updated");
+    socket?.off("admin:product-updated");
+    socket?.off("admin:deliveryboy-updated");
+  };
+}, [socket, queryClient]);
+  
 
   // Vendors API calls
   const { data: pendingVendors } = useQuery<Vendor[]>({
