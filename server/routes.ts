@@ -136,6 +136,43 @@ router.get(
     }
   }
 );
+// server/routes/index.ts (या आपकी मुख्य राउटिंग फ़ाइल)
+
+// ✅ New dedicated route for initial login
+router.post("/auth/initial-login", async (req: Request, res: Response) => {
+  try {
+    const { idToken } = req.body;
+    if (!idToken) {
+      return res.status(400).json({ message: "Firebase ID token is required." });
+    }
+
+    // Firebase टोकन को सत्यापित करें
+    const decodedToken = await authAdmin.auth().verifyIdToken(idToken);
+    const userUuid = decodedToken.uid;
+
+    // ✅ डेटाबेस में उपयोगकर्ता को खोजें या बनाएँ
+    let [user] = await db
+      .select()
+      .from(users)
+      .where(eq(users.firebaseUid, userUuid));
+
+    if (!user) {
+      console.log(`New user detected. Creating profile for Firebase UID: ${userUuid}`);
+      const [newUser] = await db.insert(users).values({
+        firebaseUid: userUuid,
+        role: 'user', 
+      }).returning();
+      
+      user = newUser;
+    }
+
+    res.status(200).json({ user });
+  } catch (error: any) {
+    console.error("Initial login failed:", error);
+    res.status(401).json({ message: "Authentication failed. Please try again." });
+  }
+});
+
 
 
 // ✅ Logout
