@@ -153,10 +153,16 @@ const decodedToken = await authAdmin.verifyIdToken(idToken);
 
     if (!user) {
       console.log(`New user detected. Creating profile for Firebase UID: ${userUuid}`);
-      const [newUser] = await db.insert(users).values({
-        firebaseUid: userUuid,
-        role: 'user', 
-      }).returning();
+    
+const { email, name } = decodedToken;
+
+const [newUser] = await db.insert(users).values({
+  firebaseUid: userUuid,
+  email: email, 
+  name: name,   
+  role: 'customer',
+}).returning();
+
       
       user = newUser;
     }
