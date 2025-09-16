@@ -146,30 +146,59 @@ const decodedToken = await authAdmin.verifyIdToken(idToken);
     const userUuid = decodedToken.uid;
 
     // ✅ डेटाबेस में उपयोगकर्ता को खोजें या बनाएँ
+    router.post("/auth/initial-login", async (req, res) => {
+  try {
+    const { idToken } = req.body;
+    
+    // टोकन को सत्यापित करें
+    const decodedToken = await authAdmin.verifyIdToken(idToken);
+    
+    // डिकोडेड टोकन से आवश्यक डेटा निकालें
+    const userUuid = decodedToken.uid;
+    const email = decodedToken.email;
+    const fullName = decodedToken.name;
+
+    // यदि नाम मौजूद है, तो उसे firstName और lastName में विभाजित करें
+    const [firstName, ...lastNameParts] = fullName ? fullName.split(' ') : ['', ''];
+    const lastName = lastNameParts.join(' ');
+    
+    // डेटाबेस में उपयोगकर्ता की जाँच करें
     let [user] = await db
       .select()
       .from(users)
       .where(eq(users.firebaseUid, userUuid));
 
+    // यदि उपयोगकर्ता नहीं मिलता, तो नया बनाएँ
     if (!user) {
-      console.log(`New user detected. Creating profile for Firebase UID: ${userUuid}`);
-    
-const { email, name } = decodedToken;
-
-const [newUser] = await db.insert(users).values({
-  firebaseUid: userUuid,
-  email: email, 
-  name: name,   
-  role: 'customer',
-}).returning();
-
+      console.log("New user detected. Creating profile for Firebase UID:", userUuid);
       
+      const [newUser] = await db.insert(users).values({
+        firebaseUid: userUuid,
+        email: email,
+        password: 'GOOGLE_AUTH_USER', 
+        firstName: firstName,        
+        lastName: lastName,          
+        phone: '',                   
+        address: '',                 
+        city: '',                    
+        pincode: '',                  
+        role: 'customer',
+        approvalStatus: 'approved'
+      }).returning();
+
       user = newUser;
     }
+    
+    // सफलतापूर्वक बनाए गए/पाए गए उपयोगकर्ता को लौटाएँ
+    res.status(200).json({
+        user: {
+            ...user,
+            idToken: idToken // फ्रंटएंड के लिए टोकन जोड़ें
+        }
+    });
 
-    res.status(200).json({ user });
-  } catch (error: any) {
-    console.error("Initial login failed:", error);
+  } catch (error) {
+    console.error("❌ Initial login failed:", error);
     res.status(401).json({ message: "Authentication failed. Please try again." });
   }
 });
