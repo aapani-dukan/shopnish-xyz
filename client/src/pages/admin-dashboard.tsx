@@ -241,25 +241,32 @@ const AdminDashboard: React.FC = () => {
           </div>
         );
 
-      case "pending-deliveryboys":
-        return (
-          <div>
-            <h2 className="text-lg font-semibold mb-2">Pending Delivery Boys</h2>
-            {pendingDeliveryBoys?.map((dboy) => (
-              <div key={dboy.id} className="flex justify-between items-center bg-white p-2 rounded mb-2 shadow-sm">
-                <span>{dboy.name}</span>
-                <div>
-                  <Button variant="success" size="sm" onClick={() => approveDeliveryBoyMutation.mutate(dboy.id)}>
-                    <Check className="h-4 w-4" />
-                  </Button>
-                  <Button variant="destructive" size="sm" onClick={() => rejectDeliveryBoyMutation.mutate(dboy.id)} className="ml-2">
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            ))}
+      // ✅ सुरक्षित रूप से डेटा रेंडर करें
+case "pending-deliveryboys":
+  return (
+    <div>
+      <h2 className="text-lg font-semibold mb-2">Pending Delivery Boys</h2>
+      {/* यहाँ जाँच करें कि डेटा एक एरे है */}
+      {Array.isArray(pendingDeliveryBoys) && pendingDeliveryBoys.length > 0 ? (
+        pendingDeliveryBoys.map((dboy) => (
+          <div key={dboy.id} className="flex justify-between items-center bg-white p-2 rounded mb-2 shadow-sm">
+            <span>{dboy.name}</span>
+            <div>
+              <Button variant="success" size="sm" onClick={() => approveDeliveryBoyMutation.mutate(dboy.id)}>
+                <Check className="h-4 w-4" />
+              </Button>
+              <Button variant="destructive" size="sm" onClick={() => rejectDeliveryBoyMutation.mutate(dboy.id)} className="ml-2">
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
-        );
+        ))
+      ) : (
+        <p className="text-gray-500">कोई भी पेंडिंग डिलीवरी बॉय नहीं है।</p>
+      )}
+    </div>
+  );
+
 
       case "approved-deliveryboys":
         return (
