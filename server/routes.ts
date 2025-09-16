@@ -84,10 +84,10 @@ router.post("/register", async (req: Request, res: Response) => {
 });
 
 // ✅ User Profile
-// ✅ User Profile
+
 router.get(
   "/users/me",
-  requireAuth,
+  requireAuth, // यह मिडलवेयर सुनिश्चित करता है कि उपयोगकर्ता मौजूद है।
   async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userUuid = req.user?.firebaseUid;
@@ -95,24 +95,18 @@ router.get(
         return res.status(401).json({ error: "Not authenticated." });
       }
 
-      // ✅ स्टेप 1: डेटाबेस में उपयोगकर्ता को खोजें
+      // ✅ केवल उपयोगकर्ता को खोजें, बनाएँ नहीं
       let [user] = await db
         .select()
         .from(users)
         .where(eq(users.firebaseUid, userUuid));
 
-      // ✅ स्टेप 2: यदि उपयोगकर्ता नहीं मिला, तो एक नई एंट्री बनाएँ
       if (!user) {
-        console.log(`New user detected. Creating profile for Firebase UID: ${userUuid}`);
-        const [newUser] = await db.insert(users).values({
-          firebaseUid: userUuid,
-          role: 'user', // ✅ नए उपयोगकर्ता को डिफ़ॉल्ट 'user' भूमिका दें
-        }).returning();
-        
-        user = newUser; // ✅ नया बनाया गया उपयोगकर्ता लौटाएँ
+        // यह स्थिति आदर्श नहीं है, लेकिन अगर ऐसा होता है तो 404 दें
+        return res.status(404).json({ error: "User not found." });
       }
 
-      // ✅ स्टेप 3: उपयोगकर्ता की भूमिका के आधार पर अतिरिक्त जानकारी जोड़ें
+      // ✅ उपयोगकर्ता की भूमिका के आधार पर अतिरिक्त जानकारी जोड़ें
       let sellerInfo;
       if (user.role === "seller") {
         const [record] = await db
@@ -136,9 +130,8 @@ router.get(
     }
   }
 );
-// server/routes/index.ts (या आपकी मुख्य राउटिंग फ़ाइल)
+// ✅ Route 2: नए उपयोगकर्ता को लॉगिन और प्रोफ़ाइल बनाने के लिए
 
-// ✅ New dedicated route for initial login
 router.post("/auth/initial-login", async (req: Request, res: Response) => {
   try {
     const { idToken } = req.body;
@@ -172,7 +165,6 @@ router.post("/auth/initial-login", async (req: Request, res: Response) => {
     res.status(401).json({ message: "Authentication failed. Please try again." });
   }
 });
-
 
 
 // ✅ Logout
