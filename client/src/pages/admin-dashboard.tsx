@@ -268,20 +268,24 @@ case "pending-deliveryboys":
   );
 
 
-      case "approved-deliveryboys":
-        return (
-          <div>
-            <h2 className="text-lg font-semibold mb-2">Approved Delivery Boys</h2>
-            {approvedDeliveryBoys?.map((dboy) => (
-              <div key={dboy.id} className="bg-white p-2 rounded mb-2 shadow-sm">{dboy.name}</div>
-            ))}
+      // ✅ updated approved-deliveryboys case
+case "approved-deliveryboys":
+  return (
+    <div>
+      <h2 className="text-lg font-semibold mb-2">Approved Delivery Boys</h2>
+      {/* यहाँ जाँच करें कि डेटा एक एरे है */}
+      {Array.isArray(approvedDeliveryBoys) && approvedDeliveryBoys.length > 0 ? (
+        approvedDeliveryBoys.map((dboy) => (
+          <div key={dboy.id} className="bg-white p-2 rounded mb-2 shadow-sm">
+            <span>{dboy.name}</span>
           </div>
-        );
+        ))
+      ) : (
+        <p className="text-gray-500">कोई भी अप्रूव्ड डिलीवरी बॉय नहीं है।</p>
+      )}
+    </div>
+  );
 
-      default:
-        return <p>Select a tab</p>;
-    }
-  };
 
   
     return (
