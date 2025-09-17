@@ -11,7 +11,7 @@
   "build": "cd client && vite build && cd .. && esbuild server/index.ts --bundle --platform=node --format=esm --outdir=dist --alias:@shared=./shared --packages=external --external:compression --external:sirv && cp -R server/migrations dist/migrations && cp -R shared dist/shared",
   "start": "NODE_ENV=production node -r tsconfig-paths/register dist/index.js",
   "seed": "tsx server/seed.ts",
-  "db:push": "drizzle-kit push"
+  "db:push": "drizzle-kit push",
   "start:migrate": "npm run db:push && npm run start"
   },
   "keywords": [],
