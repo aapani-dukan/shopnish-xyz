@@ -31,11 +31,10 @@ interface DeliveryBoy {
 const AdminDashboard: React.FC = () => {
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState("pending-vendors");
-  const { socket } = useSocket(); 
+  const { socket } = useSocket();
 
-   // ✅ Socket.IO real-time updates
+  // ✅ Socket.IO real-time updates
   useEffect(() => {
-    // ✅ सॉकेट उपलब्ध न होने पर तुरंत बाहर निकलें
     if (!socket) {
       console.log("Waiting for socket connection in AdminDashboard...");
       return;
@@ -61,19 +60,16 @@ const AdminDashboard: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ["adminApprovedDeliveryBoys"] });
     };
 
-    // ✅ .on() को तभी कॉल करें जब सॉकेट तैयार हो
     socket.on("admin:vendor-updated", handleVendorUpdate);
     socket.on("admin:product-updated", handleProductUpdate);
     socket.on("admin:deliveryboy-updated", handleDeliveryBoyUpdate);
 
     return () => {
-      // ✅ कंपोनेंट अनमाउंट होने पर लिसनर हटा दें
       socket.off("admin:vendor-updated", handleVendorUpdate);
       socket.off("admin:product-updated", handleProductUpdate);
       socket.off("admin:deliveryboy-updated", handleDeliveryBoyUpdate);
     };
-  }, [socket, queryClient]); // ✅ सुनिश्चित करें कि 'socket' निर्भरताओं (dependencies) में है
-  
+  }, [socket, queryClient]);
 
   // Vendors API calls
   const { data: pendingVendors } = useQuery<Vendor[]>({
@@ -241,54 +237,52 @@ const AdminDashboard: React.FC = () => {
           </div>
         );
 
-      // ✅ सुरक्षित रूप से डेटा रेंडर करें
-case "pending-deliveryboys":
-  return (
-    <div>
-      <h2 className="text-lg font-semibold mb-2">Pending Delivery Boys</h2>
-      {/* यहाँ जाँच करें कि डेटा एक एरे है */}
-      {Array.isArray(pendingDeliveryBoys) && pendingDeliveryBoys.length > 0 ? (
-        pendingDeliveryBoys.map((dboy) => (
-          <div key={dboy.id} className="flex justify-between items-center bg-white p-2 rounded mb-2 shadow-sm">
-            <span>{dboy.name}</span>
-            <div>
-              <Button variant="success" size="sm" onClick={() => approveDeliveryBoyMutation.mutate(dboy.id)}>
-                <Check className="h-4 w-4" />
-              </Button>
-              <Button variant="destructive" size="sm" onClick={() => rejectDeliveryBoyMutation.mutate(dboy.id)} className="ml-2">
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
+      case "pending-deliveryboys":
+        return (
+          <div>
+            <h2 className="text-lg font-semibold mb-2">Pending Delivery Boys</h2>
+            {Array.isArray(pendingDeliveryBoys) && pendingDeliveryBoys.length > 0 ? (
+              pendingDeliveryBoys.map((dboy) => (
+                <div key={dboy.id} className="flex justify-between items-center bg-white p-2 rounded mb-2 shadow-sm">
+                  <span>{dboy.name}</span>
+                  <div>
+                    <Button variant="success" size="sm" onClick={() => approveDeliveryBoyMutation.mutate(dboy.id)}>
+                      <Check className="h-4 w-4" />
+                    </Button>
+                    <Button variant="destructive" size="sm" onClick={() => rejectDeliveryBoyMutation.mutate(dboy.id)} className="ml-2">
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <p className="text-gray-500">कोई भी पेंडिंग डिलीवरी बॉय नहीं है।</p>
+            )}
           </div>
-        ))
-      ) : (
-        <p className="text-gray-500">कोई भी पेंडिंग डिलीवरी बॉय नहीं है।</p>
-      )}
-    </div>
-  );
+        );
 
-
-      // ✅ updated approved-deliveryboys case
-case "approved-deliveryboys":
-  return (
-    <div>
-      <h2 className="text-lg font-semibold mb-2">Approved Delivery Boys</h2>
-      {/* यहाँ जाँच करें कि डेटा एक एरे है */}
-      {Array.isArray(approvedDeliveryBoys) && approvedDeliveryBoys.length > 0 ? (
-        approvedDeliveryBoys.map((dboy) => (
-          <div key={dboy.id} className="bg-white p-2 rounded mb-2 shadow-sm">
-            <span>{dboy.name}</span>
+      case "approved-deliveryboys":
+        return (
+          <div>
+            <h2 className="text-lg font-semibold mb-2">Approved Delivery Boys</h2>
+            {Array.isArray(approvedDeliveryBoys) && approvedDeliveryBoys.length > 0 ? (
+              approvedDeliveryBoys.map((dboy) => (
+                <div key={dboy.id} className="bg-white p-2 rounded mb-2 shadow-sm">
+                  <span>{dboy.name}</span>
+                </div>
+              ))
+            ) : (
+              <p className="text-gray-500">कोई भी अप्रूव्ड डिलीवरी बॉय नहीं है।</p>
+            )}
           </div>
-        ))
-      ) : (
-        <p className="text-gray-500">कोई भी अप्रूव्ड डिलीवरी बॉय नहीं है।</p>
-      )}
-    </div>
-  );
+        );
+
+      default:
+        return <p>Select a tab</p>;
     }
+  };
 
-  
-    return (
+  return (
     <div className="p-4 bg-gray-50 min-h-screen font-inter">
       <h1 className="text-2xl font-bold mb-4">Admin Dashboard</h1>
       <div className="flex space-x-4 mb-6">
