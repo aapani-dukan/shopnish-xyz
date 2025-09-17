@@ -285,7 +285,7 @@ case "approved-deliveryboys":
       )}
     </div>
   );
-
+    };
 
   
     return (
