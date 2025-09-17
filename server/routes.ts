@@ -28,7 +28,7 @@ import userLoginRouter from "../routes/userRoutes.ts";
 import orderRoutes from "../routes/orderRoutes";
 import { verifyToken } from "./middleware/verifyToken";
 import { categories } from "../shared/backend/schema.ts";
-
+import adminOrdersRouter from "./adminOrdersRoutes";
 const router = Router();
 
 // ✅ Health Check
@@ -231,7 +231,7 @@ adminRouter.use("/products", adminProductsRoutes);
 adminRouter.use("/password", adminPasswordRoutes);
 adminRouter.use("/vendors", adminVendorsRoutes);
 adminRouter.use("/delivery-boys", admindBoyRouter);
-
+adminRouter.use("/orders", adminOrdersRouter);
 // ✅ AdminRouter को मुख्य राउटर पर मैप करें
 router.use("/admin", adminRouter);
 
