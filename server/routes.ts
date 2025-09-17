@@ -28,7 +28,7 @@ import userLoginRouter from "../routes/userRoutes.ts";
 import orderRoutes from "../routes/orderRoutes";
 import { verifyToken } from "./middleware/verifyToken";
 import { categories } from "../shared/backend/schema.ts";
-import adminOrdersRouter from "./adminOrderRoutes";
+import adminOrdersRouter from "./roots/admin/adminOrderRoutes";
 const router = Router();
 
 // ✅ Health Check
