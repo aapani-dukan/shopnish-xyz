@@ -1,6 +1,6 @@
 // src/routes/adminOrdersRoutes.ts
 import { Router } from "express";
-import db from "../db";
+import db from "../../db";
 import { orders } from "../schema/orders";
 
 const adminOrdersRouter = Router();
