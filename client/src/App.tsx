@@ -26,7 +26,7 @@ import OrderConfirmation from "@/pages/order-confirmation";
 import CustomerOrdersPage from "@/pages/customer/orders";
 import Checkout2 from "./pages/checkout2";
 import DeliveryDashboard from "@/pages/DeliveryDashboard";
-
+import AdminOrderDashboard from "./pages/adminOrderDashboard";
 // Protected / Auth-based
 import AuthRedirectGuard from "@/components/auth-redirect-guard";
 import AdminGuard from "@/components/admin-guard";
@@ -119,7 +119,11 @@ function App() {
           >
             <Route path="dashboard" element={<AdminDashboard />} />
             <Route path="categories" element={<CategoriesManagement />} />
+            <Route path="/admin" element={<PrivateRoute role="admin" />}>
+          <Route index element={<AdminDashboard />} />
+          <Route path="orders" element={<AdminOrderDashboard />} />
           </Route>
+          
 
           {/* 404 */}
           <Route path="*" element={<NotFound />} />
