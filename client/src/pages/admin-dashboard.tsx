@@ -109,7 +109,7 @@ const AdminDashboard: React.FC = () => {
   const { data: pendingDeliveryBoys } = useQuery<DeliveryBoy[]>({
     queryKey: ["adminPendingDeliveryBoys"],
     queryFn: async () => {
-      const res = await api.get("/api/admin/deliveryboys/pending");
+      const res = await api.get("/api/admin/delivery-boys/pending");
       return res.data;
     },
   });
@@ -117,7 +117,7 @@ const AdminDashboard: React.FC = () => {
   const { data: approvedDeliveryBoys } = useQuery<DeliveryBoy[]>({
     queryKey: ["adminApprovedDeliveryBoys"],
     queryFn: async () => {
-      const res = await api.get("/api/admin/deliveryboys/approved");
+      const res = await api.get("/api/admin/delivery-boys/approved");
       return res.data;
     },
   });
