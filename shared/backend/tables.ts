@@ -189,7 +189,7 @@ export const orders = pgTable("orders", {
   // ✅ 'sellerId' कॉलम जोड़ा गया
   sellerId: integer("seller_id")
     .notNull()
-    .references(() => sellers.id, { onDelete: "cascade" }),
+    .references(() => sellersPgTable.id, { onDelete: "cascade" }),
 
   deliveryBoyId: integer("delivery_boy_id")
     .references(() => deliveryBoys.id, { onDelete: "set null" }),
