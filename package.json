@@ -13,7 +13,7 @@
   "seed": "tsx server/seed.ts",
   "db:push": "drizzle-kit push:pg --accept-data-loss",
   "start:migrate": "npm run db:push && npm run start"
-  }
+  },
   "keywords": [],
   "author": "",
   "license": "ISC",
