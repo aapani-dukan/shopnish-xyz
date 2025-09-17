@@ -18,7 +18,7 @@ export default defineConfig({
   ],
 
   dialect: "postgresql",
-  driver: "node-postgres",
+  
 
   dbCredentials: {
     connectionString: process.env.DATABASE_URL,
