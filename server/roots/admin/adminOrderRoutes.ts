@@ -1,7 +1,7 @@
 // src/routes/adminOrdersRoutes.ts
 import { Router } from "express";
 import db from "../../db";
-import { orders } from "../schema/orders";
+import { orders } from "../../../shared/backend/schema";
 
 const adminOrdersRouter = Router();
 
