@@ -12,8 +12,9 @@
   "start": "NODE_ENV=production node -r tsconfig-paths/register dist/index.js",
   "seed": "tsx server/seed.ts",
   "db:push": "drizzle-kit push",
-  "start:migrate": "npm run db:push && npm run start"
-  },
+  "db:push:force": "drizzle-kit push --force",
+  "start:migrate": "npm run db:push:force && npm run start"
+  }
   "keywords": [],
   "author": "",
   "license": "ISC",
