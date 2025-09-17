@@ -117,11 +117,14 @@ function App() {
               </AdminGuard>
             }
           >
+
+     <Route index element={<AdminDashboard />} />
+  
+  <Route path="orders" element={<AdminOrderDashboard />} />
+            
             <Route path="dashboard" element={<AdminDashboard />} />
             <Route path="categories" element={<CategoriesManagement />} />
-            <Route path="/admin" element={<PrivateRoute role="admin" />}>
-          <Route index element={<AdminDashboard />} />
-          <Route path="orders" element={<AdminOrderDashboard />} />
+            
           </Route>
           
 
