@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Check, X, Loader2 } from "lucide-react";
 import api from "@/lib/api";
 import { useSocket } from "@/hooks/useSocket";
-
+import { useNavigate } from "react-router-dom"; 
 // Interfaces
 interface Vendor {
   id: number;
@@ -32,7 +32,7 @@ const AdminDashboard: React.FC = () => {
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState("pending-vendors");
   const { socket } = useSocket();
-
+const navigate = useNavigate(); 
   // ✅ Socket.IO real-time updates
   useEffect(() => {
     if (!socket) {
@@ -292,6 +292,7 @@ const AdminDashboard: React.FC = () => {
         <Button onClick={() => setActiveTab("approved-products")}>Approved Products</Button>
         <Button onClick={() => setActiveTab("pending-deliveryboys")}>Pending Delivery Boys</Button>
         <Button onClick={() => setActiveTab("approved-deliveryboys")}>Approved Delivery Boys</Button>
+          <Button onClick={() => navigate("/admin/orders")}>Orders</Button>
       </div>
       {renderContent()}
     </div>
