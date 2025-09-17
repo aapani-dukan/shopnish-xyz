@@ -186,6 +186,10 @@ export const orders = pgTable("orders", {
   customerId: integer("customer_id")
     .notNull()
     .references(() => users.id, { onDelete: "cascade" }),
+  // ✅ 'sellerId' कॉलम जोड़ा गया
+  sellerId: integer("seller_id")
+    .notNull()
+    .references(() => sellers.id, { onDelete: "cascade" }),
 
   deliveryBoyId: integer("delivery_boy_id")
     .references(() => deliveryBoys.id, { onDelete: "set null" }),
