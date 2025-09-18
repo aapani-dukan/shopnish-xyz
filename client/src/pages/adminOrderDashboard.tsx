@@ -25,9 +25,9 @@ import { Separator } from "@/components/ui/separator";
 // Interfaces
 interface Order {
   id: number;
-  status: "pending" | "approved" | "rejected";
-  seller: { businessName: string };
-  deliveryBoy?: { name: string };
+  status: "pending" | "approved" | "rejected" | "placed"; // API में "placed" भी आ सकता है
+  createdA: { businessName: string }; // seller info
+  deliveryBoy?: { name: string } | null;
   createdAt: string;
 }
 
@@ -68,13 +68,20 @@ const AdminOrderDashboard: React.FC = () => {
     },
   });
 
-  const filteredOrders = allOrders?.filter(order => filter === "all" || order.status === filter);
-  const pendingCount = allOrders?.filter(order => order.status === "pending").length || 0;
-  const approvedCount = allOrders?.filter(order => order.status === "approved").length || 0;
-  const rejectedCount = allOrders?.filter(order => order.status === "rejected").length || 0;
+  const filteredOrders = allOrders?.filter(
+    (order) => filter === "all" || order.status === filter
+  );
+
+  const pendingCount = allOrders?.filter((order) => order.status === "pending").length || 0;
+  const approvedCount = allOrders?.filter((order) => order.status === "approved").length || 0;
+  const rejectedCount = allOrders?.filter((order) => order.status === "rejected").length || 0;
 
   if (isLoading) {
-    return <div className="flex justify-center items-center h-screen"><Loader2 className="h-8 w-8 animate-spin" /></div>;
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
   }
 
   if (isError) {
@@ -131,23 +138,34 @@ const AdminOrderDashboard: React.FC = () => {
         <TableBody>
           {filteredOrders?.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={6} className="text-center">No orders found.</TableCell>
+              <TableCell colSpan={6} className="text-center">
+                No orders found.
+              </TableCell>
             </TableRow>
           ) : (
-            filteredOrders?.map(order => (
+            filteredOrders?.map((order) => (
               <TableRow key={order.id}>
                 <TableCell className="font-medium">{order.id}</TableCell>
-                <TableCell>{order.seller.businessName}</TableCell>
+                <TableCell>{order.createdA.businessName}</TableCell>
                 <TableCell>{order.deliveryBoy?.name || "N/A"}</TableCell>
                 <TableCell>{order.status}</TableCell>
                 <TableCell>{getTimeElapsed(order.createdAt)}</TableCell>
                 <TableCell className="text-right">
                   {order.status === "pending" && (
                     <>
-                      <Button variant="success" size="sm" onClick={() => approveOrderMutation.mutate(order.id)}>
+                      <Button
+                        variant="success"
+                        size="sm"
+                        onClick={() => approveOrderMutation.mutate(order.id)}
+                      >
                         Approve
                       </Button>
-                      <Button variant="destructive" size="sm" className="ml-2" onClick={() => rejectOrderMutation.mutate(order.id)}>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        className="ml-2"
+                        onClick={() => rejectOrderMutation.mutate(order.id)}
+                      >
                         Reject
                       </Button>
                     </>
@@ -163,4 +181,3 @@ const AdminOrderDashboard: React.FC = () => {
 };
 
 export default AdminOrderDashboard;
-    
