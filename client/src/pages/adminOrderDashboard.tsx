@@ -25,8 +25,8 @@ import { Separator } from "@/components/ui/separator";
 // Interfaces
 interface Order {
   id: number;
-  status: "pending" | "approved" | "rejected" | "placed"; // API में "placed" भी आ सकता है
-  createdA: { businessName: string }; // seller info
+  status: "pending" | "approved" | "rejected" | "placed";
+  seller?: { businessName: string } | null;   // ✅ सही किया
   deliveryBoy?: { name: string } | null;
   createdAt: string;
 }
@@ -61,12 +61,16 @@ const AdminOrderDashboard: React.FC = () => {
 
   // Fetch all orders
   const { data: allOrders, isLoading, isError } = useQuery<Order[]>({
-    queryKey: ["adminOrders"],
-    queryFn: async () => {
-      const res = await api.get("/api/admin/orders");
-      return res.data;
-    },
-  });
+  queryKey: ["adminOrders"],
+  queryFn: async () => {
+    const res = await api.get("/api/admin/orders", {
+      headers: { "Cache-Control": "no-store" }, // ✅ cache avoid
+    });
+    return res.data;
+  },
+  staleTime: 1000 * 30, // 30 sec
+  refetchOnWindowFocus: false,
+});
 
   const filteredOrders = allOrders?.filter(
     (order) => filter === "all" || order.status === filter
