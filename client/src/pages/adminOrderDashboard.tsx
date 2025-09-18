@@ -146,8 +146,10 @@ const AdminOrderDashboard: React.FC = () => {
             filteredOrders?.map((order) => (
               <TableRow key={order.id}>
                 <TableCell className="font-medium">{order.id}</TableCell>
-                <TableCell>{order.createdA.businessName}</TableCell>
-                <TableCell>{order.deliveryBoy?.name || "N/A"}</TableCell>
+                <TableCell>{order.seller?.businessName || "N/A"}</TableCell>
+<TableCell>{order.deliveryBoy?.name || "Not Assigned"}</TableCell>
+
+                
                 <TableCell>{order.status}</TableCell>
                 <TableCell>{getTimeElapsed(order.createdAt)}</TableCell>
                 <TableCell className="text-right">
