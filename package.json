@@ -13,8 +13,10 @@
   "seed": "tsx server/seed.ts",
   "db:push": "drizzle-kit push",
   "db:push:force": "drizzle-kit push --force",
-  "start:migrate": "npm run db:push:force && npm run start"
-  },
+  "start:migrate": "npm run db:migrate && npm run start",
+  "db:migrate": "drizzle-kit migrate"
+},
+  
   "keywords": [],
   "author": "",
   "license": "ISC",
