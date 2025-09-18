@@ -328,14 +328,17 @@ export const reviews = pgTable("reviews", {
   customerId: integer("customer_id").references(() => users.id),
   productId: integer("product_id").references(() => products.id),
   orderId: integer("order_id").references(() => orders.id),
-  deliveryBoyId: integer("delivery_boy_id").references(() => deliveryBoys.id),
-  deliveryAddressId: integer("delivery_address_id").references(() => deliveryAddresses.id),
+
+  // Nullable columns
+  deliveryBoyId: integer("delivery_boy_id").references(() => deliveryBoys.id), // nullable
+  deliveryAddressId: integer("delivery_address_id").references(() => deliveryAddresses.id), // nullable
 
   // Review details
   rating: integer("rating").notNull(),
   comment: text("comment"),
 
-  // Timestamps
   createdAt: timestamp("created_at").defaultNow(),
 });
+
+  
 
