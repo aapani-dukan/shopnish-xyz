@@ -1,4 +1,8 @@
-CREATE TYPE "public"."approval_status" AS ENUM('pending', 'approved', 'rejected');--> statement-breakpoint
+DO $$ BEGIN
+    CREATE TYPE "public"."approval_status" AS ENUM('pending', 'approved', 'rejected');
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
 CREATE TYPE "public"."delivery_status_enum" AS ENUM('pending', 'accepted', 'out_for_delivery', 'delivered');--> statement-breakpoint
 CREATE TYPE "public"."order_status" AS ENUM('pending', 'accepted', 'preparing', 'ready_for_pickup', 'picked_up', 'out_for_delivery', 'delivered', 'cancelled', 'rejected', 'in_cart');--> statement-breakpoint
 CREATE TYPE "public"."user_role" AS ENUM('customer', 'seller', 'admin', 'delivery-boy');--> statement-breakpoint
