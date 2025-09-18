@@ -16,6 +16,15 @@ import {
   Store
 } from "lucide-react";
 
+// ✅ नया इंटरफ़ेस जोड़ा गया
+interface DeliveryAddress {
+  fullName: string;
+  address: string;
+  city: string;
+  pincode: string;
+  phone: string;
+}
+
 interface OrderTracking {
   id: number;
   orderId: number;
@@ -46,7 +55,8 @@ interface Order {
   paymentMethod: string;
   paymentStatus: string;
   total: string;
-  deliveryAddress: any;
+  // ✅ deliveryAddress के लिए अब सटीक इंटरफ़ेस का उपयोग किया गया है
+  deliveryAddress: DeliveryAddress; 
   estimatedDeliveryTime: string;
   createdAt: string;
   deliveryBoyId?: number;
@@ -139,6 +149,9 @@ export default function TrackOrder() {
   // Get the store from the first item (assuming single store orders for now)
   const store = order.items?.[0]?.product?.store;
 
+  // ✅ tracking डेटा का उपयोग करके डायनेमिक टाइमलाइन बनाएँ
+  const lastCompletedIndex = tracking.findIndex(t => t.status === order.status);
+
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-4xl mx-auto px-4">
@@ -198,33 +211,22 @@ export default function TrackOrder() {
                 <CardTitle>Order Timeline</CardTitle>
               </CardHeader>
               <CardContent>
+                {/* ✅ यहाँ नया डायनामिक लॉजिक शुरू होता है */}
                 <div className="space-y-6">
-                  {[
-                    { status: 'placed', label: 'Order Placed', time: orderTime },
-                    { status: 'confirmed', label: 'Order Confirmed', time: '5 mins ago' },
-                    { status: 'preparing', label: 'Preparing Order', time: order.status === 'preparing' ? 'Now' : null },
-                    { status: 'ready', label: 'Ready for Pickup', time: null },
-                    { status: 'out_for_delivery', label: 'Out for Delivery', time: null },
-                    { status: 'delivered', label: 'Delivered', time: null }
-                  ].map((step, index) => {
-                    const isCompleted = ['placed', 'confirmed'].includes(step.status) || 
-                                     (order.status === 'preparing' && step.status === 'preparing');
-                    const isCurrent = order.status === step.status;
-                    const isUpcoming = !isCompleted && !isCurrent;
-
+                  {tracking.map((step, index) => {
+                    const isCompleted = index <= lastCompletedIndex;
+                    const isCurrent = step.status === order.status;
                     return (
-                      <div key={step.status} className="flex items-center space-x-4">
+                      <div key={step.id} className="flex items-center space-x-4">
                         <div className="relative">
                           <div className={`w-4 h-4 rounded-full ${
-                            isCompleted ? 'bg-green-500' : 
-                            isCurrent ? getStatusColor(order.status) : 
-                            'bg-gray-300'
+                            isCompleted ? 'bg-green-500' : 'bg-gray-300'
                           }`}>
                             {isCompleted && (
                               <CheckCircle className="w-4 h-4 text-white" />
                             )}
                           </div>
-                          {index < 5 && (
+                          {index < tracking.length - 1 && (
                             <div className={`absolute top-4 left-2 w-0.5 h-6 ${
                               isCompleted ? 'bg-green-500' : 'bg-gray-300'
                             }`} />
@@ -232,18 +234,21 @@ export default function TrackOrder() {
                         </div>
                         <div className="flex-1">
                           <p className={`font-medium ${
-                            isCompleted || isCurrent ? 'text-gray-900' : 'text-gray-500'
+                            isCompleted ? 'text-gray-900' : 'text-gray-500'
                           }`}>
-                            {step.label}
+                            {getStatusText(step.status)}
                           </p>
-                          {step.time && (
-                            <p className="text-sm text-gray-600">{step.time}</p>
+                          {step.timestamp && (
+                            <p className="text-sm text-gray-600">
+                              {new Date(step.timestamp).toLocaleString()}
+                            </p>
                           )}
                         </div>
                       </div>
                     );
                   })}
                 </div>
+                {/* ✅ नया लॉजिक यहाँ समाप्त होता है */}
               </CardContent>
             </Card>
 
