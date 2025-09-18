@@ -1,5 +1,4 @@
 import { useQuery } from "@tanstack/react-query";
-// ✅ wouter के बजाय react-router-dom से useNavigate इंपोर्ट करें
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -13,6 +12,15 @@ import {
   RotateCcw,
   Receipt
 } from "lucide-react";
+
+// ✅ नया इंटरफ़ेस जोड़ा गया
+interface DeliveryAddress {
+  id: number;
+  address: string;
+  city: string;
+  state: string;
+  pinCode: string;
+}
 
 interface OrderItem {
   id: number;
@@ -35,20 +43,25 @@ interface Order {
   paymentMethod: string;
   paymentStatus: string;
   total: string;
-  deliveryAddress: any;
+  // ✅ deliveryAddress के लिए अब सटीक इंटरफ़ेस का उपयोग किया गया है
+  deliveryAddress: DeliveryAddress; 
   createdAt: string;
   estimatedDeliveryTime: string;
+  // ✅ deliveredAt फ़ील्ड जोड़ा गया
+  deliveredAt?: string;
   items: OrderItem[];
 }
 
 export default function OrderHistory() {
-  // ✅ useNavigate हुक का उपयोग करें
   const navigate = useNavigate();
 
-  // Fetch order history for customer (using guest ID for demo)
+  // Fetch order history for customer
+  // ✅ customerId को डायनेमिक बनाने के लिए इसे अपडेट करें
+  const customerId = "someLoggedInUserId"; // ✅ यहाँ logged-in user ID डालें
+
   const { data: orders = [], isLoading } = useQuery<Order[]>({
     queryKey: ["/api/orders"],
-    queryParams: { customerId: 1 } // Guest customer for demo
+    queryParams: { customerId: customerId }
   });
 
   const getStatusIcon = (status: string) => {
@@ -103,11 +116,11 @@ export default function OrderHistory() {
   };
 
   const canRequestReturn = (order: Order) => {
-    // Allow returns within 24 hours of delivery for delivered orders
-    if (order.status !== 'delivered') return false;
-    const deliveryDate = new Date(order.createdAt);
+    // ✅ FIX: deliveredAt के आधार पर रिटर्न की अनुमति दें
+    if (order.status !== 'delivered' || !order.deliveredAt) return false;
+    const deliveredDate = new Date(order.deliveredAt);
     const now = new Date();
-    const hoursDiff = Math.abs(now.getTime() - deliveryDate.getTime()) / 36e5;
+    const hoursDiff = Math.abs(now.getTime() - deliveredDate.getTime()) / 36e5;
     return hoursDiff <= 24;
   };
 
