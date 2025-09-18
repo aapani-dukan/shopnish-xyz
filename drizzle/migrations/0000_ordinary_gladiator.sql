@@ -3,9 +3,37 @@ DO $$ BEGIN
 EXCEPTION
     WHEN duplicate_object THEN null;
 END $$;
-CREATE TYPE "public"."delivery_status_enum" AS ENUM('pending', 'accepted', 'out_for_delivery', 'delivered');--> statement-breakpoint
-CREATE TYPE "public"."order_status" AS ENUM('pending', 'accepted', 'preparing', 'ready_for_pickup', 'picked_up', 'out_for_delivery', 'delivered', 'cancelled', 'rejected', 'in_cart');--> statement-breakpoint
-CREATE TYPE "public"."user_role" AS ENUM('customer', 'seller', 'admin', 'delivery-boy');--> statement-breakpoint
+DO $$
+BEGIN
+    -- delivery_status_enum
+    BEGIN
+        CREATE TYPE "public"."delivery_status_enum" AS ENUM(
+            'pending', 'accepted', 'out_for_delivery', 'delivered'
+        );
+    EXCEPTION
+        WHEN duplicate_object THEN NULL;
+    END;
+
+    -- order_status
+    BEGIN
+        CREATE TYPE "public"."order_status" AS ENUM(
+            'pending', 'accepted', 'preparing', 'ready_for_pickup', 'picked_up',
+            'out_for_delivery', 'delivered', 'cancelled', 'rejected', 'in_cart'
+        );
+    EXCEPTION
+        WHEN duplicate_object THEN NULL;
+    END;
+
+    -- user_role
+    BEGIN
+        CREATE TYPE "public"."user_role" AS ENUM(
+            'customer', 'seller', 'admin', 'delivery-boy'
+        );
+    EXCEPTION
+        WHEN duplicate_object THEN NULL;
+    END;
+
+END $$;
 CREATE TABLE "cart_items" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"user_id" integer,
