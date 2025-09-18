@@ -138,6 +138,7 @@ export const deliveryBoys = pgTable("delivery_boys", {
   userId: integer("user_id").unique().notNull().references(() => users.id),
   email: text("email").unique().notNull(),
   name: text("name"),
+  phone: text("phone"), 
   approvalStatus: approvalStatusEnum("approval_status").notNull().default("pending"),
   vehicleType: text("vehicle_type").notNull(),
   vehicleNumber: text("vehicle_number"),
@@ -149,6 +150,7 @@ export const deliveryBoys = pgTable("delivery_boys", {
   rating: decimal("rating", { precision: 3, scale: 2 }).default("5.0"),
   totalDeliveries: integer("total_deliveries").default(0),
   createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at"),  
 });
 
 export const cartItems = pgTable("cart_items", {
@@ -197,7 +199,7 @@ export const orders = pgTable("orders", {
   deliveryAddressId: integer("delivery_address_id")
     .notNull()
     .references(() => deliveryAddresses.id, { onDelete: "cascade" }),
-
+  
   // Order Details
   status: orderStatusEnum("status").default("pending").notNull(),
   
@@ -220,6 +222,7 @@ export const orders = pgTable("orders", {
 
   // Discounts / Offers
   promoCode: text("promo_code"),
+  discount: decimal("discount", { precision: 5, scale: 2 }),  
 
   // Timestamps
   createdAt: timestamp("created_at").defaultNow(),
@@ -312,6 +315,11 @@ export const serviceBookings = pgTable("service_bookings", {
   customerNotes: text("customer_notes"),
   createdAt: timestamp("created_at").defaultNow(),
 });
+export const playingWithNeon = pgTable("playing_with_neon", {
+  id: serial("id").primaryKey(),
+  value: text("value"),
+});
+
 export const reviews = pgTable("reviews", {
   id: serial("id").primaryKey(),
 
