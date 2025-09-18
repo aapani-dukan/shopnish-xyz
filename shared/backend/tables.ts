@@ -317,6 +317,7 @@ export const serviceBookings = pgTable("service_bookings", {
 });
 export const playingWithNeon = pgTable("playing_with_neon", {
   id: serial("id").primaryKey(),
+  name: text("name").notNull(),   
   value: text("value"),
 });
 
