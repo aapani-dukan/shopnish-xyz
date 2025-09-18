@@ -87,17 +87,20 @@ export const deliveryAddressesRelations = relations(deliveryAddresses, ({ one, m
   orders: many(orders),
 }));
 
-export const ordersRelations = relations(orders, ({ many, one }) => ({
+ export const ordersRelations = relations(orders, ({ many, one }) => ({
   customer: one(users, {
     fields: [orders.customerId],
     references: [users.id],
   }),
+  seller: one(sellersPgTable, {       // ✅ seller relation added
+    fields: [orders.sellerId],
+    references: [sellersPgTable.id],
+  }),
   deliveryBoy: one(deliveryBoys, {
-  fields: [orders.deliveryBoyId],
-  references: [deliveryBoys.id],
-  optional: true, 
-}),
-   
+    fields: [orders.deliveryBoyId],
+    references: [deliveryBoys.id],
+    optional: true, 
+  }),
   deliveryAddress: one(deliveryAddresses, {
     fields: [orders.deliveryAddressId],
     references: [deliveryAddresses.id],
