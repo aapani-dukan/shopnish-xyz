@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Loader2, ChevronDown, ChevronRight } from "lucide-react";
-
+import api from "@/lib/api"
 // ✅ Order Item interface
 interface OrderItem {
   id: number;
@@ -79,7 +79,7 @@ export default function AdminOrderDashboard() {
   const { data: orders, isLoading } = useQuery<Order[]>({
     queryKey: ["admin-orders"],
     queryFn: async () => {
-      const res = await fetch("/api/admin/orders");
+      const res = await api.get("/api/admin/orders");
       if (!res.ok) throw new Error("Failed to fetch orders");
       return res.json();
     },
