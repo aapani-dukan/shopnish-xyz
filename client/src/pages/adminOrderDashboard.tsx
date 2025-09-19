@@ -1,10 +1,13 @@
-import React, { useState, useEffect } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { toast } from "@/hooks/use-toast";
-import { Loader2 } from "lucide-react";
-import api from "@/lib/api";
-import { useSocket } from "@/hooks/useSocket";
-import { Button } from "@/components/ui/button";
+"use client";
+
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -13,177 +16,213 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Separator } from "@/components/ui/separator";
+import { Button } from "@/components/ui/button";
+import { Loader2, ChevronDown, ChevronRight } from "lucide-react";
 
-// Interfaces
-interface Order {
+// ✅ Order Item interface
+interface OrderItem {
   id: number;
-  status: "pending" | "approved" | "rejected" | "placed";
-  seller?: { businessName: string } | null;   // ✅ सही किया
-  deliveryBoy?: { name: string } | null;
-  createdAt: string;
+  productName: string;
+  quantity: number;
+  price: string;
+  subtotal?: string;
 }
 
-// Function to calculate time elapsed
-const getTimeElapsed = (createdAt: string): string => {
-  const now = new Date();
-  const createdDate = new Date(createdAt);
-  const diffInMinutes = Math.floor((now.getTime() - createdDate.getTime()) / (1000 * 60));
+// ✅ Updated Order interface with all fields
+interface Order {
+  id: number;
+  orderNumber: string;
+  status:
+    | "pending"
+    | "approved"
+    | "rejected"
+    | "placed"
+    | "out_for_delivery"
+    | "completed"
+    | "cancelled";
+  deliveryStatus?: string;
+  paymentStatus?: string;
+  paymentMethod?: string;
+  subtotal?: string;
+  total?: string;
+  createdAt: string;
+  updatedAt?: string;
+  deliveryAddress?: any;
+  seller?: { businessName: string; id?: number; email?: string } | null;
+  deliveryBoy?: { id?: number; name: string; phone?: string } | null;
+  items?: OrderItem[];
+}
 
-  if (diffInMinutes < 60) {
-    return `${diffInMinutes} min ago`;
+// ✅ deliveryAddress normalize करने वाला helper
+const getDeliveryAddress = (order: Order) => {
+  if (!order.deliveryAddress) return null;
+  try {
+    return typeof order.deliveryAddress === "string"
+      ? JSON.parse(order.deliveryAddress)
+      : order.deliveryAddress;
+  } catch {
+    return null;
   }
-  const diffInHours = Math.floor(diffInMinutes / 60);
-  return `${diffInHours} hr ago`;
 };
 
-const AdminOrderDashboard: React.FC = () => {
-  const queryClient = useQueryClient();
-  const { socket } = useSocket();
-  const [filter, setFilter] = useState<string>("all");
+export default function AdminOrderDashboard() {
+  const [expandedOrders, setExpandedOrders] = useState<number[]>([]);
 
-  useEffect(() => {
-    if (!socket) return;
-    socket.on("admin:order-updated", () => {
-      queryClient.invalidateQueries({ queryKey: ["adminOrders"] });
-    });
-    return () => {
-      socket.off("admin:order-updated");
-    };
-  }, [socket, queryClient]);
+  const toggleExpand = (orderId: number) => {
+    setExpandedOrders((prev) =>
+      prev.includes(orderId)
+        ? prev.filter((id) => id !== orderId)
+        : [...prev, orderId]
+    );
+  };
 
-  // Fetch all orders
-  const { data: allOrders, isLoading, isError } = useQuery<Order[]>({
-  queryKey: ["adminOrders"],
-  queryFn: async () => {
-    const res = await api.get("/api/admin/orders", {
-      headers: { "Cache-Control": "no-store" }, // ✅ cache avoid
-    });
-    return res.data;
-  },
-  staleTime: 1000 * 30, // 30 sec
-  refetchOnWindowFocus: false,
-});
-
-  const filteredOrders = allOrders?.filter(
-    (order) => filter === "all" || order.status === filter
-  );
-
-  const pendingCount = allOrders?.filter((order) => order.status === "pending").length || 0;
-  const approvedCount = allOrders?.filter((order) => order.status === "approved").length || 0;
-  const rejectedCount = allOrders?.filter((order) => order.status === "rejected").length || 0;
+  const { data: orders, isLoading } = useQuery<Order[]>({
+    queryKey: ["admin-orders"],
+    queryFn: async () => {
+      const res = await fetch("/api/admin/orders");
+      if (!res.ok) throw new Error("Failed to fetch orders");
+      return res.json();
+    },
+  });
 
   if (isLoading) {
     return (
-      <div className="flex justify-center items-center h-screen">
-        <Loader2 className="h-8 w-8 animate-spin" />
+      <div className="flex justify-center items-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-gray-500" />
       </div>
     );
   }
 
-  if (isError) {
-    return <div className="text-center text-red-500">Error fetching orders.</div>;
-  }
-
-  const approveOrderMutation = useMutation({
-    mutationFn: (orderId: number) => api.post(`/api/admin/orders/${orderId}/approve`),
-    onSuccess: () => {
-      toast({ title: "Order Approved" });
-      queryClient.invalidateQueries({ queryKey: ["adminOrders"] });
-    },
-  });
-
-  const rejectOrderMutation = useMutation({
-    mutationFn: (orderId: number) => api.post(`/api/admin/orders/${orderId}/reject`),
-    onSuccess: () => {
-      toast({ title: "Order Rejected" });
-      queryClient.invalidateQueries({ queryKey: ["adminOrders"] });
-    },
-  });
-
   return (
-    <div className="p-4">
-      <h1 className="text-2xl font-bold mb-4">Orders Dashboard</h1>
-      <div className="flex items-center space-x-4 mb-4">
-        <div className="flex items-center space-x-2">
-          <span className="font-semibold">Filter:</span>
-          <Select onValueChange={(value) => setFilter(value)}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="All Orders" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Orders</SelectItem>
-              <SelectItem value="pending">Pending ({pendingCount})</SelectItem>
-              <SelectItem value="approved">Approved ({approvedCount})</SelectItem>
-              <SelectItem value="rejected">Rejected ({rejectedCount})</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-      <Separator className="my-4" />
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Order ID</TableHead>
-            <TableHead>Seller</TableHead>
-            <TableHead>Delivery Boy</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead>Time Elapsed</TableHead>
-            <TableHead className="text-right">Actions</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {filteredOrders?.length === 0 ? (
+    <Card>
+      <CardHeader>
+        <CardTitle>Orders</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <Table>
+          <TableHeader>
             <TableRow>
-              <TableCell colSpan={6} className="text-center">
-                No orders found.
-              </TableCell>
+              <TableHead></TableHead>
+              <TableHead>ID</TableHead>
+              <TableHead>Order No</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Delivery Status</TableHead>
+              <TableHead>Payment</TableHead>
+              <TableHead>Subtotal</TableHead>
+              <TableHead>Total</TableHead>
+              <TableHead>Seller</TableHead>
+              <TableHead>Delivery Boy</TableHead>
+              <TableHead>Address</TableHead>
+              <TableHead>Created At</TableHead>
+              <TableHead>Updated At</TableHead>
             </TableRow>
-          ) : (
-            filteredOrders?.map((order) => (
-              <TableRow key={order.id}>
-                <TableCell className="font-medium">{order.id}</TableCell>
-                <TableCell>{order.seller?.businessName || "N/A"}</TableCell>
-<TableCell>{order.deliveryBoy?.name || "Not Assigned"}</TableCell>
+          </TableHeader>
+          <TableBody>
+            {orders?.map((order) => {
+              const address = getDeliveryAddress(order);
+              const isExpanded = expandedOrders.includes(order.id);
 
-                
-                <TableCell>{order.status}</TableCell>
-                <TableCell>{getTimeElapsed(order.createdAt)}</TableCell>
-                <TableCell className="text-right">
-                  {order.status === "pending" && (
-                    <>
-                      <Button
-                        variant="success"
-                        size="sm"
-                        onClick={() => approveOrderMutation.mutate(order.id)}
-                      >
-                        Approve
-                      </Button>
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        className="ml-2"
-                        onClick={() => rejectOrderMutation.mutate(order.id)}
-                      >
-                        Reject
-                      </Button>
-                    </>
+              return (
+                <>
+                  <TableRow
+                    key={order.id}
+                    className={isExpanded ? "bg-blue-50" : ""}
+                  >
+                    <TableCell>
+                      {order.items && order.items.length > 0 && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => toggleExpand(order.id)}
+                        >
+                          {isExpanded ? (
+                            <ChevronDown className="h-4 w-4" />
+                          ) : (
+                            <ChevronRight className="h-4 w-4" />
+                          )}
+                        </Button>
+                      )}
+                    </TableCell>
+                    <TableCell>{order.id}</TableCell>
+                    <TableCell>{order.orderNumber}</TableCell>
+                    <TableCell>{order.status}</TableCell>
+                    <TableCell>{order.deliveryStatus ?? "N/A"}</TableCell>
+                    <TableCell>
+                      {order.paymentMethod ?? "N/A"} (
+                      {order.paymentStatus ?? "N/A"})
+                    </TableCell>
+                    <TableCell>{order.subtotal ?? "0"}</TableCell>
+                    <TableCell>{order.total ?? "0"}</TableCell>
+                    <TableCell>
+                      {order.seller?.businessName ?? "N/A"}
+                      {order.seller?.email ? ` (${order.seller.email})` : ""}
+                    </TableCell>
+                    <TableCell>
+                      {order.deliveryBoy?.name ?? "N/A"}
+                      {order.deliveryBoy?.phone
+                        ? ` (${order.deliveryBoy.phone})`
+                        : ""}
+                    </TableCell>
+                    <TableCell>
+                      {address
+                        ? `${address.name ?? ""}, ${address.address ?? ""}, ${
+                            address.city ?? ""
+                          }, ${address.state ?? ""} - ${address.zip ?? ""}`
+                        : "N/A"}
+                    </TableCell>
+                    <TableCell>
+                      {new Date(order.createdAt).toLocaleString()}
+                    </TableCell>
+                    <TableCell>
+                      {order.updatedAt
+                        ? new Date(order.updatedAt).toLocaleString()
+                        : "N/A"}
+                    </TableCell>
+                  </TableRow>
+
+                  {/* ✅ Expand/Collapse Nested Table */}
+                  {isExpanded && order.items && order.items.length > 0 && (
+                    <TableRow className="bg-blue-100">
+                      <TableCell colSpan={13}>
+                        <div className="p-2">
+                          <strong>Order Items:</strong>
+                          <Table className="mt-2">
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead>ID</TableHead>
+                                <TableHead>Product</TableHead>
+                                <TableHead>Quantity</TableHead>
+                                <TableHead>Price</TableHead>
+                                <TableHead>Subtotal</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {order.items.map((item) => (
+                                <TableRow key={item.id}>
+                                  <TableCell>{item.id}</TableCell>
+                                  <TableCell>{item.productName}</TableCell>
+                                  <TableCell>{item.quantity}</TableCell>
+                                  <TableCell>{item.price}</TableCell>
+                                  <TableCell>
+                                    {item.subtotal ??
+                                      String(
+                                        Number(item.price) * item.quantity
+                                      )}
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </div>
+                      </TableCell>
+                    </TableRow>
                   )}
-                </TableCell>
-              </TableRow>
-            ))
-          )}
-        </TableBody>
-      </Table>
-    </div>
+                </>
+              );
+            })}
+          </TableBody>
+        </Table>
+      </CardContent>
+    </Card>
   );
-};
-
-export default AdminOrderDashboard;
+}
