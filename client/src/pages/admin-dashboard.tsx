@@ -32,7 +32,7 @@ const AdminDashboard: React.FC = () => {
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState("pending-vendors");
   const { socket } = useSocket();
-const navigate = useNavigate(); 
+  const navigate = useNavigate(); 
   // ✅ Socket.IO real-time updates
   useEffect(() => {
     if (!socket) {
@@ -185,11 +185,11 @@ const navigate = useNavigate();
               <div key={vendor.id} className="flex justify-between items-center bg-white p-2 rounded mb-2 shadow-sm">
                 <span>{vendor.businessName}</span>
                 <div>
-                  <Button variant="success" size="sm" onClick={() => approveVendorMutation.mutate(vendor.id)}>
+                  <Button variant="success" size="sm" onClick={() => approveVendorMutation.mutate(vendor.id)} disabled={approveVendorMutation.isPending}>
                     {approveVendorMutation.isPending ? <Loader2 className="animate-spin h-4 w-4" /> : <Check className="h-4 w-4" />}
                   </Button>
-                  <Button variant="destructive" size="sm" onClick={() => rejectVendorMutation.mutate(vendor.id)} className="ml-2">
-                    <X className="h-4 w-4" />
+                  <Button variant="destructive" size="sm" onClick={() => rejectVendorMutation.mutate(vendor.id)} disabled={rejectVendorMutation.isPending} className="ml-2">
+                    {rejectVendorMutation.isPending ? <Loader2 className="animate-spin h-4 w-4" /> : <X className="h-4 w-4" />}
                   </Button>
                 </div>
               </div>
@@ -215,11 +215,11 @@ const navigate = useNavigate();
               <div key={product.id} className="flex justify-between items-center bg-white p-2 rounded mb-2 shadow-sm">
                 <span>{product.name}</span>
                 <div>
-                  <Button variant="success" size="sm" onClick={() => approveProductMutation.mutate(product.id)}>
-                    <Check className="h-4 w-4" />
+                  <Button variant="success" size="sm" onClick={() => approveProductMutation.mutate(product.id)} disabled={approveProductMutation.isPending}>
+                    {approveProductMutation.isPending ? <Loader2 className="animate-spin h-4 w-4" /> : <Check className="h-4 w-4" />}
                   </Button>
-                  <Button variant="destructive" size="sm" onClick={() => rejectProductMutation.mutate(product.id)} className="ml-2">
-                    <X className="h-4 w-4" />
+                  <Button variant="destructive" size="sm" onClick={() => rejectProductMutation.mutate(product.id)} disabled={rejectProductMutation.isPending} className="ml-2">
+                    {rejectProductMutation.isPending ? <Loader2 className="animate-spin h-4 w-4" /> : <X className="h-4 w-4" />}
                   </Button>
                 </div>
               </div>
@@ -246,11 +246,11 @@ const navigate = useNavigate();
                 <div key={dboy.id} className="flex justify-between items-center bg-white p-2 rounded mb-2 shadow-sm">
                   <span>{dboy.name}</span>
                   <div>
-                    <Button variant="success" size="sm" onClick={() => approveDeliveryBoyMutation.mutate(dboy.id)}>
-                      <Check className="h-4 w-4" />
+                    <Button variant="success" size="sm" onClick={() => approveDeliveryBoyMutation.mutate(dboy.id)} disabled={approveDeliveryBoyMutation.isPending}>
+                      {approveDeliveryBoyMutation.isPending ? <Loader2 className="animate-spin h-4 w-4" /> : <Check className="h-4 w-4" />}
                     </Button>
-                    <Button variant="destructive" size="sm" onClick={() => rejectDeliveryBoyMutation.mutate(dboy.id)} className="ml-2">
-                      <X className="h-4 w-4" />
+                    <Button variant="destructive" size="sm" onClick={() => rejectDeliveryBoyMutation.mutate(dboy.id)} disabled={rejectDeliveryBoyMutation.isPending} className="ml-2">
+                      {rejectDeliveryBoyMutation.isPending ? <Loader2 className="animate-spin h-4 w-4" /> : <X className="h-4 w-4" />}
                     </Button>
                   </div>
                 </div>
