@@ -8,6 +8,18 @@ const adminOrdersRouter = Router();
 adminOrdersRouter.get("/", async (req, res) => {
   try {
     const allOrders = await db.query.orders.findMany({
+      columns: {
+        id: true,
+        orderNumber: true,
+        status: true,
+        paymentStatus: true,
+        paymentMethod: true,
+        subtotal: true,
+        total: true,
+        deliveryAddress: true,
+        createdAt: true,
+        updatedAt: true,
+      },
       with: {
         seller: {
           columns: {
@@ -20,11 +32,13 @@ adminOrdersRouter.get("/", async (req, res) => {
           },
         },
       },
+      orderBy: (orders, { desc }) => [desc(orders.createdAt)], // ✅ latest orders first
     });
+
     res.status(200).json(allOrders);
   } catch (error: any) {
-    console.error("Failed to fetch all orders for admin:", error);
-    res.status(500).json({ error: "Internal server error." });
+    console.error("❌ Failed to fetch all orders for admin:", error.message);
+    res.status(500).json({ error: "Internal server error while fetching orders." });
   }
 });
 
