@@ -8,7 +8,7 @@ import "dotenv/config";
 const connectionString = process.env.DATABASE_URL;
 
 if (!connectionString) {
-  throw new Error("❌ DATABASE_URL must be set in your .env file");
+  throw new Error("❌ DATABASE_URL is missing. Please set it in your environment (either .env file or Codespaces/Render secrets).");
 }
 
 // ✅ PostgreSQL Pool with SSL support for cloud environments like Render
