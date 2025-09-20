@@ -106,43 +106,32 @@ const normalizeDeliveryAddress = (raw: any): Address | null => {
 };
 
 const normalizeSeller = (order: Order): Seller | null => {
-  // ✅ सबसे पहले सीधे order.seller को चेक करें, जो बैकएंड से आ रहा है
-  const s = order.seller;
+  // सबसे पहले सीधे `order.seller` ऑब्जेक्ट को देखें
+  let s = order.seller;
 
-  // अगर सीधे seller का डेटा मिला तो उसे ही इस्तेमाल करें
+  // यदि `seller` सीधे `order` में उपलब्ध नहीं है, तो फॉलबैक लॉजिक का उपयोग करें
+  // यह तब उपयोगी होता है जब बैकएंड डेटा में विक्रेता का विवरण अलग जगह पर हो
+  if (!s && order.items && order.items.length > 0) {
+    s = order.items[0]?.product?.seller;
+  }
+
+  // अगर विक्रेता का डेटा मिल गया तो उसे नॉर्मलाइज़ करें
   if (s) {
     return {
-      id: s.id ?? undefined,
-      name: s.businessName ?? undefined, // 'name' के बजाय 'businessName' का उपयोग करें
-      businessName: s.businessName ?? undefined,
-      email: s.email ?? null,
-      // अगर आप और फ़ील्ड जोड़ना चाहते हैं, तो उन्हें यहाँ जोड़ें
+      id: s.id ?? s.sellerId ?? undefined,
+      name: s.name ?? s.businessName ?? (typeof s.fullName === "string" ? s.fullName : undefined),
+      businessName: s.businessName ?? s.name,
+      phone: s.phone ?? s.contactNumber ?? s.phoneNumber ?? undefined,
+      email: s.email ?? s.user?.email ?? null,
+      address: s.address ?? s.addressLine1 ?? undefined,
+      city: s.city ?? s.state ?? undefined,
+      pincode: s.pincode ?? s.postalCode ?? undefined,
+      landmark: s.landmark ?? undefined,
     };
   }
 
-  // अगर seller डेटा नहीं मिला, तो fallback logic का उपयोग करें
-  // यह तब काम आता है जब seller डेटा सीधे order में न हो
-  if (order.items && order.items.length > 0) {
-    const productSeller = order.items[0]?.product?.seller;
-    if (productSeller) {
-      return {
-        id: productSeller.id,
-        businessName: productSeller.businessName,
-        email: productSeller.email,
-            // ✅ अन्य संभावित फ़ील्ड जिन्हें आप यहाँ जोड़ सकते हैं
-      phone: s.phone ?? s.phoneNumber ?? undefined, // फ़ोन नंबर
-      address: s.address ?? s.addressLine1 ?? undefined, // पता
-      city: s.city ?? undefined, // शहर
-      pincode: s.pincode ?? s.postalCode ?? undefined, // पिनकोड
-      landmark: s.landmark ?? undefined, // लैंडमार्क
-      };
-    }
-  }
-
-  // अगर कहीं भी नहीं मिला, तो null वापस करें
   return null;
 };
-
 
 
 // --- AddressBlock ---
