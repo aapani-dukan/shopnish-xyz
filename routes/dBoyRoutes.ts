@@ -132,7 +132,14 @@ router.get('/orders/available', requireDeliveryBoyAuth, async (req: Authenticate
         not(eq(orders.status, 'rejected'))
       ),
       with: {
-        items: { with: { product: { seller: true } } },
+        items: { with: { product: true } }, // product details
+        seller: { // ✅ add seller details here
+          columns: {
+            id: true,
+            businessName: true,
+            email: true,
+          },
+        },
         deliveryAddress: true,
       },
       orderBy: (o, { asc }) => [asc(o.createdAt)],
@@ -163,7 +170,14 @@ router.get('/orders/my', requireDeliveryBoyAuth, async (req: AuthenticatedReques
         eq(orders.deliveryStatus, 'accepted')
       ),
       with: {
-        items: { with: { product: { seller: true } } },
+        items: { with: { product: true } }, // product details
+        seller: { // ✅ add seller details here
+          columns: {
+            id: true,
+            businessName: true,
+            email: true,
+          },
+        },
         deliveryAddress: true,
       },
       orderBy: (o, { desc }) => [desc(o.createdAt)],
