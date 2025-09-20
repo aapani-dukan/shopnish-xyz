@@ -106,27 +106,44 @@ const normalizeDeliveryAddress = (raw: any): Address | null => {
 };
 
 const normalizeSeller = (order: Order): Seller | null => {
-  let s = order.sellerDetails ?? order.seller;
-  if (!s && order.items && order.items.length > 0) {
-    s = order.items[0]?.product?.seller;
+  // ✅ सबसे पहले सीधे order.seller को चेक करें
+  const s = order.seller ?? order.sellerDetails;
+  
+  // अगर सीधे seller का डेटा मिला तो उसे ही इस्तेमाल करें
+  if (s) {
+    return {
+      id: s.id ?? s.sellerId ?? undefined,
+      name: s.name ?? s.businessName ?? (typeof s.fullName === "string" ? s.fullName : undefined),
+      businessName: s.businessName ?? s.name,
+      phone: s.phone ?? s.contactNumber ?? s.phoneNumber ?? undefined,
+      email: s.email ?? s.user?.email ?? null,
+      address: s.address ?? s.addressLine1 ?? undefined,
+      city: s.city ?? s.state ?? undefined,
+      pincode: s.pincode ?? s.postalCode ?? undefined,
+      landmark: s.landmark ?? undefined,
+    };
   }
-  if (!s) return null;
 
-  return {
-    id: s.id ?? s.sellerId ?? undefined,
-    name:
-      s.name ??
-      s.businessName ??
-      (typeof s.fullName === "string" ? s.fullName : undefined),
-    businessName: s.businessName ?? s.name,
-    phone: s.phone ?? s.contactNumber ?? s.phoneNumber ?? undefined,
-    email: s.email ?? s.user?.email ?? null,
-    address: s.address ?? s.addressLine1 ?? undefined,
-    city: s.city ?? s.state ?? undefined,
-    pincode: s.pincode ?? s.postalCode ?? undefined,
-    landmark: s.landmark ?? undefined,
-  };
+  // अगर seller डेटा नहीं मिला, तो order.items से निकालने की कोशिश करें
+  if (order.items && order.items.length > 0) {
+    const productSeller = order.items[0]?.product?.seller;
+    if (productSeller) {
+      return {
+        id: productSeller.id,
+        businessName: productSeller.businessName,
+        email: productSeller.email,
+        phone: productSeller.phone,
+        address: productSeller.address,
+        city: productSeller.city,
+        pincode: productSeller.pincode,
+        landmark: productSeller.landmark,
+      };
+    }
+  }
+  
+  return null; // अगर कहीं भी नहीं मिला
 };
+
 
 // --- AddressBlock ---
 const AddressBlock: React.FC<{
