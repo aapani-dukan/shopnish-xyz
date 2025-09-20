@@ -18,7 +18,8 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Loader2, ChevronDown, ChevronRight } from "lucide-react";
-import api from "@/lib/api"
+import api from "@/lib/api";
+
 // ✅ Order Item interface
 interface OrderItem {
   id: number;
@@ -47,23 +48,17 @@ interface Order {
   total?: string;
   createdAt: string;
   updatedAt?: string;
-  deliveryAddress?: any;
+  deliveryAddress?: {
+    fullName?: string;
+    address?: string;
+    city?: string;
+    state?: string;
+    pincode?: string;
+  } | null;
   seller?: { businessName: string; id?: number; email?: string } | null;
   deliveryBoy?: { id?: number; name: string; phone?: string } | null;
   items?: OrderItem[];
 }
-
-// ✅ deliveryAddress normalize करने वाला helper
-const getDeliveryAddress = (order: Order) => {
-  if (!order.deliveryAddress) return null;
-  try {
-    return typeof order.deliveryAddress === "string"
-      ? JSON.parse(order.deliveryAddress)
-      : order.deliveryAddress;
-  } catch {
-    return null;
-  }
-};
 
 export default function AdminOrderDashboard() {
   const [expandedOrders, setExpandedOrders] = useState<number[]>([]);
@@ -79,9 +74,8 @@ export default function AdminOrderDashboard() {
   const { data: orders, isLoading } = useQuery<Order[]>({
     queryKey: ["admin-orders"],
     queryFn: async () => {
-      const res = await api.get("/api/admin/orders");
-      if (!res.ok) throw new Error("Failed to fetch orders");
-      return res.json();
+      const { data } = await api.get<Order[]>("/api/admin/orders");
+      return data;
     },
   });
 
@@ -119,7 +113,6 @@ export default function AdminOrderDashboard() {
           </TableHeader>
           <TableBody>
             {orders?.map((order) => {
-              const address = getDeliveryAddress(order);
               const isExpanded = expandedOrders.includes(order.id);
 
               return (
@@ -164,10 +157,12 @@ export default function AdminOrderDashboard() {
                         : ""}
                     </TableCell>
                     <TableCell>
-                      {address
-                        ? `${address.name ?? ""}, ${address.address ?? ""}, ${
-                            address.city ?? ""
-                          }, ${address.state ?? ""} - ${address.zip ?? ""}`
+                      {order.deliveryAddress
+                        ? `${order.deliveryAddress.fullName ?? ""}, ${
+                            order.deliveryAddress.address ?? ""
+                          }, ${order.deliveryAddress.city ?? ""}, ${
+                            order.deliveryAddress.state ?? ""
+                          } - ${order.deliveryAddress.pincode ?? ""}`
                         : "N/A"}
                     </TableCell>
                     <TableCell>
@@ -225,4 +220,4 @@ export default function AdminOrderDashboard() {
       </CardContent>
     </Card>
   );
-}
+      }
