@@ -125,6 +125,7 @@ router.post('/login', verifyToken, async (req: AuthenticatedRequest, res: Respon
 
 // ✅ GET Available Orders (deliveryStatus = 'pending' and not rejected)
 // ✅ GET Available Orders (deliveryStatus = 'pending' and not rejected)
+// ✅ FIX: Modified GET Available Orders query
 router.get('/orders/available', requireDeliveryBoyAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const list = await db.query.orders.findMany({
@@ -133,15 +134,15 @@ router.get('/orders/available', requireDeliveryBoyAuth, async (req: Authenticate
         not(eq(orders.status, 'rejected'))
       ),
       with: {
-        items: { with: { product: true } },
-        // ✅ यहाँ seller के विवरण को जोड़ा गया है
-        seller: {
-          columns: {
-            id: true,
-            businessName: true,
-            email: true,
-          },
+        items: {
+          with: {
+            // ✅ Product details with the seller inside
+            product: {
+              with: { seller: true }
+            }
+          }
         },
+        seller: true, // ✅ Add this to get seller directly from order
         deliveryAddress: true,
       },
       orderBy: (o, { asc }) => [asc(o.createdAt)],
@@ -156,30 +157,28 @@ router.get('/orders/available', requireDeliveryBoyAuth, async (req: Authenticate
 });
 
 // ✅ GET My Orders (deliveryStatus = 'accepted' and not delivered)
+// ✅ FIX: Modified GET My Orders query
 router.get('/orders/my', requireDeliveryBoyAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const deliveryBoyId = req.user?.deliveryBoyId;
-
     if (!deliveryBoyId) {
-      console.error("❌ DeliveryBoyId missing for user:", req.user?.id);
       return res.status(404).json({ message: "Delivery Boy profile not found." });
     }
-
     const list = await db.query.orders.findMany({
       where: and(
         eq(orders.deliveryBoyId, deliveryBoyId),
         eq(orders.deliveryStatus, 'accepted')
       ),
       with: {
-        items: { with: { product: true } },
-        // ✅ यहाँ seller के विवरण को जोड़ा गया है
-        seller: {
-          columns: {
-            id: true,
-            businessName: true,
-            email: true,
-          },
+        items: {
+          with: {
+            // ✅ Product details with the seller inside
+            product: {
+              with: { seller: true }
+            }
+          }
         },
+        seller: true, // ✅ Add this to get seller directly from order
         deliveryAddress: true,
       },
       orderBy: (o, { desc }) => [desc(o.createdAt)],
