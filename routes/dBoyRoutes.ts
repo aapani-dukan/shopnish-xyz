@@ -124,8 +124,6 @@ router.post('/login', verifyToken, async (req: AuthenticatedRequest, res: Respon
 });
 
 // ✅ GET Available Orders (deliveryStatus = 'pending' and not rejected)
-// ✅ GET Available Orders (deliveryStatus = 'pending' and not rejected)
-// ✅ FIX: Modified GET Available Orders query
 router.get('/orders/available', requireDeliveryBoyAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const list = await db.query.orders.findMany({
@@ -136,13 +134,12 @@ router.get('/orders/available', requireDeliveryBoyAuth, async (req: Authenticate
       with: {
         items: {
           with: {
-            // ✅ Product details with the seller inside
             product: {
               with: { seller: true }
             }
           }
         },
-        seller: true, // ✅ Add this to get seller directly from order
+        seller: true,
         deliveryAddress: true,
       },
       orderBy: (o, { asc }) => [asc(o.createdAt)],
@@ -157,7 +154,6 @@ router.get('/orders/available', requireDeliveryBoyAuth, async (req: Authenticate
 });
 
 // ✅ GET My Orders (deliveryStatus = 'accepted' and not delivered)
-// ✅ FIX: Modified GET My Orders query
 router.get('/orders/my', requireDeliveryBoyAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const deliveryBoyId = req.user?.deliveryBoyId;
@@ -172,13 +168,12 @@ router.get('/orders/my', requireDeliveryBoyAuth, async (req: AuthenticatedReques
       with: {
         items: {
           with: {
-            // ✅ Product details with the seller inside
             product: {
               with: { seller: true }
             }
           }
         },
-        seller: true, // ✅ Add this to get seller directly from order
+        seller: true,
         deliveryAddress: true,
       },
       orderBy: (o, { desc }) => [desc(o.createdAt)],
@@ -223,19 +218,17 @@ router.post("/accept", requireDeliveryBoyAuth, async (req: AuthenticatedRequest,
 
     const deliveryOtp = Math.floor(1000 + Math.random() * 9000).toString();
 
-    // ✅ FIX: Now updates both deliveryBoyId and deliveryStatus.
     const [updated] = await db
       .update(orders)
       .set({
         deliveryBoyId: deliveryBoy.id,
-        deliveryStatus: "accepted", // Retains 'accepted' as per your logic
+        deliveryStatus: "accepted",
         deliveryOtp,
         deliveryAcceptedAt: new Date(),
       })
       .where(eq(orders.id, orderId))
       .returning();
 
-    // Security fix: Remove OTP from response
     const { deliveryOtp: _, ...orderWithoutOtp } = updated;
 
     getIO().emit("order:update", {
@@ -251,7 +244,6 @@ router.post("/accept", requireDeliveryBoyAuth, async (req: AuthenticatedRequest,
     return res.status(500).json({ message: "Failed to accept order" });
   }
 });
-
 
 // ✅ PATCH Update Status
 router.patch('/orders/:orderId/status', requireDeliveryBoyAuth, async (req: AuthenticatedRequest, res: Response) => {
