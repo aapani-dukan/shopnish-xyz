@@ -1,4 +1,3 @@
-// client/src/pages/DeliveryOrdersList.tsx
 import React from "react";
 import { Navigation, Phone, MapPin } from "lucide-react";
 
@@ -6,25 +5,35 @@ import { Navigation, Phone, MapPin } from "lucide-react";
 export interface Address {
   fullName?: string;
   phone?: string;
+  phoneNumber?: string; // sometimes backend uses phoneNumber
   address?: string;
+  addressLine1?: string; // other shape
   city?: string;
+  state?: string;
   pincode?: string;
+  postalCode?: string;
   landmark?: string;
 }
 
 export interface Seller {
+  id?: number;
   name?: string;
+  businessName?: string;
   phone?: string;
+  email?: string | null;
   address?: string;
   city?: string;
   pincode?: string;
   landmark?: string;
 }
 
+// product shape
 export interface Product {
+  id?: number;
   name?: string;
   image?: string;
   unit?: string;
+  seller?: any;
 }
 
 export interface OrderItem {
@@ -39,9 +48,10 @@ export interface Order {
   total?: string;
   items?: OrderItem[];
   deliveryStatus?: string;
-  status?: string; 
-  deliveryAddress?: Address;
-  sellerDetails?: Seller;
+  status?: string;
+  deliveryAddress?: any;
+  seller?: any; // backend may use `seller`
+  sellerDetails?: any; // or `sellerDetails`
   deliveryBoyId?: number;
 }
 
@@ -67,52 +77,140 @@ export interface DeliveryOrdersListProps extends UIComponents {
   updateLoading: boolean;
 }
 
+// --- Normalizers ---
+const normalizeDeliveryAddress = (raw: any): Address | null => {
+  if (!raw) return null;
+
+  // If it's already in the expected shape
+  if (raw.fullName || raw.phone || raw.address) {
+    return {
+      fullName: raw.fullName,
+      phone: raw.phone || raw.phoneNumber,
+      address: raw.address || raw.addressLine1,
+      city: raw.city,
+      pincode: raw.pincode || raw.postalCode,
+      landmark: raw.landmark,
+      phoneNumber: raw.phoneNumber,
+      addressLine1: raw.addressLine1,
+      state: raw.state,
+    };
+  }
+
+  // If it's string or JSON string
+  if (typeof raw === "string") {
+    try {
+      const parsed = JSON.parse(raw);
+      return normalizeDeliveryAddress(parsed);
+    } catch {
+      return null;
+    }
+  }
+
+  return null;
+};
+
+const normalizeSeller = (order: Order): Seller | null => {
+  // priority: order.sellerDetails -> order.seller -> item.product.seller
+  let s = order.sellerDetails ?? order.seller;
+  if (!s && order.items && order.items.length > 0) {
+    s = order.items[0]?.product?.seller;
+  }
+  if (!s) return null;
+
+  // s may be from different shapes; unify:
+  return {
+    id: s.id ?? s.sellerId ?? undefined,
+    name:
+      s.name ??
+      s.businessName ??
+      (typeof s.fullName === "string" ? s.fullName : undefined),
+    businessName: s.businessName ?? s.name,
+    phone: s.phone ?? s.contactNumber ?? s.phoneNumber ?? undefined,
+    email: s.email ?? null,
+    address: s.address ?? s.addressLine1 ?? undefined,
+    city: s.city ?? s.state ?? undefined,
+    pincode: s.pincode ?? s.postalCode ?? undefined,
+    landmark: s.landmark ?? undefined,
+  };
+};
+
 // --- Sub-Component: AddressBlock ---
 const AddressBlock: React.FC<{
   title: string;
   details: Address | Seller | null;
   Button: UIComponents["Button"];
 }> = ({ title, details, Button }) => {
-  if (!details) return null;
+  if (!details) return (
+    <div className="space-y-3">
+      <h4 className="font-medium">{title}</h4>
+      <p className="text-sm text-gray-500">जानकारी उपलब्ध नहीं</p>
+    </div>
+  );
 
-  const address = details.address || "पता उपलब्ध नहीं";
-  const city = details.city || "";
-  const pincode = details.pincode ? `, ${details.pincode}` : "";
-  const fullAddress = `${address}, ${city}${pincode}`;
+  // Accept multiple key names
+  const displayName =
+    // @ts-ignore
+    (details as any).businessName ||
+    (details as any).name ||
+    (details as any).fullName ||
+    "नाम उपलब्ध नहीं";
+
+  const phone =
+    // @ts-ignore
+    details.phone ?? (details as any).phoneNumber ?? "-";
+
+  const addressLine =
+    // @ts-ignore
+    details.address ??
+    (details as any).addressLine1 ??
+    "पता उपलब्ध नहीं";
+
+  const city =
+    // @ts-ignore
+    details.city ?? (details as any).state ?? "";
+
+  const pincode =
+    // @ts-ignore
+    details.pincode ?? (details as any).postalCode ?? "";
+
+  const email = (details as Seller).email ?? null;
 
   const handleNavigate = () => {
-    const query = encodeURIComponent(fullAddress);
-    // Corrected Google Maps URL
+    const query = encodeURIComponent(`${addressLine} ${city} ${pincode}`);
     window.open(`https://www.google.com/maps/search/?api=1&query=${query}`, "_blank");
   };
 
   const handleCall = () => {
-    if (details.phone) window.open(`tel:${details.phone}`);
+    if (phone && phone !== "-") window.open(`tel:${phone}`);
   };
 
   return (
     <div className="space-y-3">
       <h4 className="font-medium">{title}</h4>
-      <p className="font-medium">{(details as Address).fullName || (details as Seller).name || "नाम उपलब्ध नहीं"}</p>
+      <p className="font-medium">{displayName}</p>
+
+      {email && <div className="text-sm text-gray-600">✉️ {email}</div>}
+
       <div className="flex items-center space-x-2 text-sm text-gray-600">
         <Phone className="w-4 h-4" />
-        <span>{details.phone || "-"}</span>
+        <span>{phone}</span>
       </div>
+
       <div className="flex items-start space-x-2 text-sm text-gray-600">
         <MapPin className="w-4 h-4 mt-0.5 flex-shrink-0" />
         <div>
-          <p>{address}</p>
-          <p>{city}{pincode}</p>
-          {details.landmark && <p className="text-xs">लैंडमार्क: {details.landmark}</p>}
+          <p>{addressLine}</p>
+          <p>{city} {pincode ? `- ${pincode}` : ""}</p>
         </div>
       </div>
+
       <div className="flex flex-wrap gap-2 pt-2">
-         <Button variant="outline" size="sm" onClick={handleNavigate}>
-           <Navigation className="w-4 h-4 mr-2" /> नेविगेट करें
-         </Button>
-         <Button variant="outline" size="sm" onClick={handleCall} disabled={!details.phone}>
-           <Phone className="w-4 h-4 mr-2" /> कॉल करें
-         </Button>
+        <Button variant="outline" size="sm" onClick={handleNavigate}>
+          <Navigation className="w-4 h-4 mr-2" /> नेविगेट करें
+        </Button>
+        <Button variant="outline" size="sm" onClick={handleCall} disabled={!phone || phone === "-"}>
+          <Phone className="w-4 h-4 mr-2" /> कॉल करें
+        </Button>
       </div>
     </div>
   );
@@ -150,12 +248,13 @@ const OrderItems: React.FC<{ items: OrderItem[] }> = ({ items }) => (
 const OrderCard: React.FC<Omit<DeliveryOrdersListProps, 'orders' | 'acceptLoading' | 'updateLoading'> & { order: Order; isLoading: boolean }> = React.memo(({ order, onAcceptOrder, onUpdateStatus, statusColor, statusText, nextStatus, nextStatusLabel, isLoading, ...ui }) => {
   if (!order) return null;
 
-  // ✅ FIX: Use 'status' column for display, 'deliveryStatus' for logic
   const mainStatus = order.status || "";
   const deliveryStatus = order.deliveryStatus || "";
   const canAccept = deliveryStatus === "pending";
-  
-  // ✅ FIX: Use nextStatus based on the main 'status'
+
+  const normalizedAddress = normalizeDeliveryAddress(order.deliveryAddress);
+  const normalizedSeller = normalizeSeller(order);
+
   const hasNextAction = !!nextStatus(mainStatus);
 
   return (
@@ -164,33 +263,30 @@ const OrderCard: React.FC<Omit<DeliveryOrdersListProps, 'orders' | 'acceptLoadin
         <div className="flex items-center justify-between">
           <div>
             <ui.CardTitle>ऑर्डर #{order.orderNumber ?? "N/A"}</ui.CardTitle>
-            <p className="text-sm text-gray-600">{order.items?.length || 0} आइटम • ₹{order.total || 0}</p>
+            <p className="text-sm text-gray-600">{order.items?.length || 0} आइटम • ₹{order.total ?? 0}</p>
           </div>
-          {/* ✅ FIX: Display main 'status' on the badge */}
           <ui.Badge className={`${statusColor(mainStatus)} text-white`}>{statusText(mainStatus)}</ui.Badge>
         </div>
       </ui.CardHeader>
       <ui.CardContent>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <AddressBlock title="ग्राहक विवरण" details={order.deliveryAddress ?? null} Button={ui.Button} />
-          <AddressBlock title="विक्रेता विवरण" details={order.sellerDetails ?? null} Button={ui.Button} />
+          <AddressBlock title="ग्राहक विवरण" details={normalizedAddress} Button={ui.Button} />
+          <AddressBlock title="विक्रेता विवरण" details={normalizedSeller} Button={ui.Button} />
         </div>
-        
+
         <OrderItems items={order.items ?? []} />
 
         <div className="mt-6 pt-4 border-t">
           {canAccept && (
-            // ✅ FIX: Show accept button only for available orders
             <ui.Button size="sm" onClick={() => onAcceptOrder(order.id)} disabled={isLoading}>
               ऑर्डर स्वीकार करें
             </ui.Button>
           )}
 
-          {/* ✅ FIX: Show status update button only for assigned orders */}
           {!canAccept && hasNextAction && (
-             <ui.Button size="sm" onClick={() => onUpdateStatus(order)} disabled={isLoading}>
-               {nextStatusLabel(mainStatus)}
-             </ui.Button>
+            <ui.Button size="sm" onClick={() => onUpdateStatus(order)} disabled={isLoading}>
+              {nextStatusLabel(mainStatus)}
+            </ui.Button>
           )}
         </div>
       </ui.CardContent>
@@ -202,6 +298,7 @@ const OrderCard: React.FC<Omit<DeliveryOrdersListProps, 'orders' | 'acceptLoadin
 const DeliveryOrdersList: React.FC<DeliveryOrdersListProps> = ({ orders, ...props }) => {
   return (
     <div className="space-y-6">
+      {orders.length === 0 && <div className="text-sm text-gray-500">कोई ऑर्डर उपलब्ध नहीं</div>}
       {orders.map((order) => (
         <OrderCard
           key={order.id}
@@ -215,4 +312,3 @@ const DeliveryOrdersList: React.FC<DeliveryOrdersListProps> = ({ orders, ...prop
 };
 
 export default React.memo(DeliveryOrdersList);
-
