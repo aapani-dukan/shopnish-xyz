@@ -110,14 +110,12 @@ const normalizeDeliveryAddress = (raw: any): Address | null => {
 };
 
 const normalizeSeller = (order: Order): Seller | null => {
-  // priority: order.sellerDetails -> order.seller -> item.product.seller
   let s = order.sellerDetails ?? order.seller;
   if (!s && order.items && order.items.length > 0) {
     s = order.items[0]?.product?.seller;
   }
   if (!s) return null;
 
-  // s may be from different shapes; unify:
   return {
     id: s.id ?? s.sellerId ?? undefined,
     name:
@@ -126,7 +124,7 @@ const normalizeSeller = (order: Order): Seller | null => {
       (typeof s.fullName === "string" ? s.fullName : undefined),
     businessName: s.businessName ?? s.name,
     phone: s.phone ?? s.contactNumber ?? s.phoneNumber ?? undefined,
-    email: s.email ?? null,
+    email: s.email ?? s.user?.email ?? null, // ✅ fallback to user.email
     address: s.address ?? s.addressLine1 ?? undefined,
     city: s.city ?? s.state ?? undefined,
     pincode: s.pincode ?? s.postalCode ?? undefined,
@@ -243,6 +241,8 @@ const OrderItems: React.FC<{ items: OrderItem[] }> = ({ items }) => (
     </div>
   </div>
 );
+
+// --- Sub-Component: OrderCard ---
 
 // --- Sub-Component: OrderCard ---
 const OrderCard: React.FC<Omit<DeliveryOrdersListProps, 'orders' | 'acceptLoading' | 'updateLoading'> & { order: Order; isLoading: boolean }> = React.memo(({ order, onAcceptOrder, onUpdateStatus, statusColor, statusText, nextStatus, nextStatusLabel, isLoading, ...ui }) => {
