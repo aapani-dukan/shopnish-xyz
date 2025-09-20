@@ -124,6 +124,7 @@ router.post('/login', verifyToken, async (req: AuthenticatedRequest, res: Respon
 });
 
 // ✅ GET Available Orders (deliveryStatus = 'pending' and not rejected)
+// ✅ GET Available Orders (deliveryStatus = 'pending' and not rejected)
 router.get('/orders/available', requireDeliveryBoyAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const list = await db.query.orders.findMany({
@@ -132,8 +133,9 @@ router.get('/orders/available', requireDeliveryBoyAuth, async (req: Authenticate
         not(eq(orders.status, 'rejected'))
       ),
       with: {
-        items: { with: { product: true } }, // product details
-        seller: { // ✅ add seller details here
+        items: { with: { product: true } },
+        // ✅ यहाँ seller के विवरण को जोड़ा गया है
+        seller: {
           columns: {
             id: true,
             businessName: true,
@@ -147,7 +149,6 @@ router.get('/orders/available', requireDeliveryBoyAuth, async (req: Authenticate
 
     console.log("✅ Available orders fetched:", list.length);
     res.status(200).json({ orders: list });
-
   } catch (error: any) {
     console.error("❌ Failed to fetch available orders:", error);
     res.status(500).json({ message: "Failed to fetch available orders." });
@@ -170,8 +171,9 @@ router.get('/orders/my', requireDeliveryBoyAuth, async (req: AuthenticatedReques
         eq(orders.deliveryStatus, 'accepted')
       ),
       with: {
-        items: { with: { product: true } }, // product details
-        seller: { // ✅ add seller details here
+        items: { with: { product: true } },
+        // ✅ यहाँ seller के विवरण को जोड़ा गया है
+        seller: {
           columns: {
             id: true,
             businessName: true,
@@ -185,7 +187,6 @@ router.get('/orders/my', requireDeliveryBoyAuth, async (req: AuthenticatedReques
 
     console.log("✅ My orders fetched:", list.length);
     res.status(200).json({ orders: list });
-
   } catch (error: any) {
     console.error("❌ Failed to fetch my orders:", error);
     res.status(500).json({ message: "Failed to fetch my orders." });
