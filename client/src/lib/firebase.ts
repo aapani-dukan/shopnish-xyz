@@ -40,9 +40,12 @@ user: User | null;
 error: AuthError | null;
 }
 
-export const signInWithGoogle = async (usePopup: boolean = false): Promise<User | null> => {
+export const signInWithGoogle = async (usePopup: boolean = false): 
+  Promise<User | null> => {
 try {
-console.log(Attempting Google sign-in using ${usePopup ? 'popup' : 'redirect'} flow...);
+console.log('Attempting Google sign-in
+  using${usePopup ? 
+  "popup": "redirect"} flow...');
 
 if (usePopup) {  
   console.log('Starting popup authentication...');  
