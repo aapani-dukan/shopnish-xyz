@@ -15,9 +15,9 @@ import {
 // ✅ Firebase config with auto key selection
 const firebaseConfig = {
   apiKey:
-    import.meta.env.VITE_BUILD_TARGET === "app"
+    VITE_FIREBASE_API_KEY_APP = "AIzaSyAq2GbFOiMEedmLjp4ZxhwZ4I6OF2vp_DE"
       ? "AIzaSyAq2GbFOiMEedmLjp4ZxhwZ4I6OF2vp_DE"
-      : import.meta.env.VITE_FIREBASE_API_KEY,
+      : VITE_FIREBASE_API_KEY_WEB = "AIzaSyChdYrxfxkfj6m04WT0nOBl5xCP62udcPU"
   authDomain: "aapani-dukan.firebaseapp.com",
   projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
   storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
