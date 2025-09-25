@@ -365,7 +365,7 @@ sellerRouter.patch("/orders/:orderId/status", requireSellerAuth, async (req: Aut
       return res.status(404).json({ error: "Order not found." });
     }
 
-    const [fullUpdatedOrder] = await db.query.orders.findMany({
+    const fullUpdatedOrder = await db.query.orders.findMany({
         where: eq(orders.id, parsedOrderId),
         with: {
             customer: true, // Socket events के लिए customerId चाहिए
@@ -379,6 +379,7 @@ sellerRouter.patch("/orders/:orderId/status", requireSellerAuth, async (req: Aut
         }
     });
 
+    const fullUpdatedOrder = fullUpdatedOrderArray[0];
     if (!fullUpdatedOrder) {
         return res.status(404).json({ error: "Order not found after update." });
     }
@@ -408,10 +409,10 @@ sellerRouter.patch("/orders/:orderId/status", requireSellerAuth, async (req: Aut
     return res.status(500).json({ error: "Failed to update order status." });
   }
 });
-// routes/sellers/sellerRoutes.ts में जोड़ें
+
 
 // ✅ PUT Update Seller Profile (updates all fields)
-router.put('/me', requireSellerAuth, async (req: AuthenticatedRequest, res: Response) => {
+sellerRouter.put('/me', requireSellerAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const sellerId = req.user?.sellerId; // verifyToken से sellerId प्राप्त करें
     const updateData = req.body;
