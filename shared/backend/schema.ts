@@ -59,34 +59,32 @@ export type OrderWithItems = {
   items: OrderItemWithProduct[];
 };
 export type OrderWithDeliveryBoy = OrderWithItems & {
-  // OrderWithItems में customer/items/etc. पहले से है।
-  // यहाँ deliveryBoy, deliveryAddress, और deliveryStatus जोड़ें।
-
+  // 1. डिलीवरी बॉय की जानकारी (deliveryBoyId के साथ joined)
   deliveryBoy?: {
     id: number;
     name: string | null;
     phone: string | null;
   } | null;
 
-  // यह सुनिश्चित करें कि आपके सभी राउटर्स में deliveryAddress उपलब्ध हो
+  // 2. डिलीवरी एड्रेस की पूरी जानकारी (deliveryAddressId के साथ joined)
   deliveryAddress?: {
     id: number;
+    userId: number | null;
     fullName: string;
     phoneNumber: string | null;
     addressLine1: string;
+    addressLine2: string | null;
     city: string;
+    state: string;
     postalCode: string;
-    // ... अन्य आवश्यक फ़ील्ड
-  };
-  
-  // स्टेटस फ़ील्ड्स
+    isDefault: boolean | null;
+    createdAt: string | null;
+  } | null;
+
+  // 3. डिलीवरी स्टेटस और सेलर ID (ऑर्डर टेबल से)
   deliveryStatus: typeof deliveryStatusEnum.enumValues[number];
-  
-  // (वैकल्पिक रूप से) sellerId सीधे ऑर्डर पर मौजूद है
   sellerId: number; 
 };
-
-// नोट: DeliveryAddress का टाइप (DeliveryAddress) अगर पहले से export है, तो आप उसका भी उपयोग कर सकते हैं।
 
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
