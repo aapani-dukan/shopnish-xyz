@@ -135,11 +135,22 @@ router.get('/orders/available', requireDeliveryBoyAuth, async (req: Authenticate
         items: {
           with: {
             product: {
-              with: { seller: true }
-            }
+              with: {
+                seller: {
+                   columns: {
+                id: true,
+                businessName: true,
+                businessAddress: true,
+                businessPhone: true, // ✅ फ़ोन नंबर
+                city: true,
+                pincode: true,
+              }
+            } 
           }
-        },
-        seller: true,
+        }
+      }
+    }, 
+        
         deliveryAddress: true,
       },
       orderBy: (o, { asc }) => [asc(o.createdAt)],
@@ -165,17 +176,31 @@ router.get('/orders/my', requireDeliveryBoyAuth, async (req: AuthenticatedReques
         eq(orders.deliveryBoyId, deliveryBoyId),
         eq(orders.deliveryStatus, 'accepted')
       ),
-      with: {
-        items: {
-          with: {
-            product: {
-              with: { seller: true }
+  
+
+with: {
+  items: {
+    with: {
+      product: {
+        with: {
+          seller: { 
+            columns: {
+              id: true,
+              businessName: true,
+              businessAddress: true,
+              businessPhone: true,
+              city: true,
+              pincode: true,
             }
           }
-        },
-        seller: true,
-        deliveryAddress: true,
-      },
+        }
+      }
+    }
+  },
+  
+  deliveryAddress: true,
+},
+      
       orderBy: (o, { desc }) => [desc(o.createdAt)],
     });
 
