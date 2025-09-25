@@ -87,7 +87,7 @@ export default function OrderManager({
   };
 
   // Event Listeners
-  socket.on("order:status-updated", handleOrderUpdate);
+  socket.on("order-updated-for-seller", handleOrderUpdate);
   socket.on("new-order-for-seller", handleNewOrderForSeller);
 
   return () => {
