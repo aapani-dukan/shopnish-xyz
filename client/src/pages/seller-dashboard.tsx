@@ -54,10 +54,24 @@ export default function SellerDashboard() {
       });
     };
 
-    socket.on("new-order-for-seller", handleNewOrder);
+    const handleOrderUpdate = (order: OrderWithItems) => {
+    console.log("🚚 ऑर्डर अपडेट seller को मिला:", order);
+    invalidateOrderQueries(); // तुरंत नया डेटा फेच करें
 
+    if (order.deliveryBoy && order.status !== 'Pending') {
+      toast({
+        title: "✅ डिलीवरी असाइन!",
+        description: `ऑर्डर #${order.id} डिलीवरी बॉय ${order.deliveryBoy.name} को असाइन किया गया।`,
+        duration: 8000,
+      });
+    }
+  };
+    
+    socket.on("new-order-for-seller", handleNewOrder);
+     socket.on("order-updated-for-seller", handleOrderUpdate); 
     return () => {
       socket.off("new-order-for-seller", handleNewOrder);
+      socket.off("order-updated-for-seller", handleOrderUpdate);
     };
   }, [socket, isConnected, isAuthenticated, user, toast, queryClient]);
 
