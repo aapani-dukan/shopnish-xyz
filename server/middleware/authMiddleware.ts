@@ -57,6 +57,7 @@ export const requireDeliveryBoyAuth = [
       return res.status(403).json({ message: "Forbidden: Not a delivery boy." });
     }
 
+    req.user.sellerId = sellerProfile.id;
     // DB से deliveryBoy record fetch करें
     const deliveryBoy = await db.query.deliveryBoys.findFirst({
       where: and(
