@@ -105,30 +105,44 @@ const normalizeDeliveryAddress = (raw: any): Address | null => {
   return null;
 };
 
+
 const normalizeSeller = (order: Order): Seller | null => {
-  // सबसे पहले सीधे `order.seller` ऑब्जेक्ट को देखें
-  let s = order.seller;
+  let rawSellerData = null;
 
-  // यदि `seller` सीधे `order` में उपलब्ध नहीं है, तो फॉलबैक लॉजिक का उपयोग करें
-  // यह तब उपयोगी होता है जब बैकएंड डेटा में विक्रेता का विवरण अलग जगह पर हो
-  if (!s && order.items && order.items.length > 0) {
-    s = order.items[0]?.product?.seller;
+  // 1. Drizzle से आने वाले नेस्टेड पाथ को खोजें: items[0].product.seller
+  if (order.items && order.items.length > 0) {
+    rawSellerData = order.items[0]?.product?.seller;
+  }
+  
+  // 2. पुराने/सीधे पाथ को फॉलबैक के तौर पर रखें (यदि बैकएंड भविष्य में बदलता है)
+  if (!rawSellerData && order.seller) {
+    rawSellerData = order.seller;
+  }
+  
+  // 3. यदि कोई विक्रेता डेटा नहीं मिला, तो बाहर निकलें।
+  if (!rawSellerData) {
+    return null;
   }
 
-  // अगर विक्रेता का डेटा मिल गया तो उसे नॉर्मलाइज़ करें
-  if (s) {
-    return {
-      id: s.id ?? s.sellerId ?? undefined,
-      name: s.name ?? s.businessName ?? (typeof s.fullName === "string" ? s.fullName : undefined),
-      businessName: s.businessName ?? s.name,
-      phone: s.phone ?? s.contactNumber ?? s.phoneNumber ?? undefined,
-      email: s.email ?? s.user?.email ?? null,
-      address: s.address ?? s.addressLine1 ?? undefined,
-      city: s.city ?? s.state ?? undefined,
-      pincode: s.pincode ?? s.postalCode ?? undefined,
-      landmark: s.landmark ?? undefined,
-    };
-  }
+  // 4. ✅ विक्रेता के डेटा को सही नामों के साथ नॉर्मलाइज़ करें
+  return {
+    id: rawSellerData.id ?? undefined,
+    // businessName को name और businessName दोनों से लें
+    name: rawSellerData.name ?? rawSellerData.businessName, 
+    businessName: rawSellerData.businessName ?? rawSellerData.name,
+    
+    // ✅ BACKEND FIELD NAMES (businessPhone, businessAddress) को map करें
+    phone: rawSellerData.businessPhone ?? rawSellerData.phone ?? rawSellerData.phoneNumber,
+    email: rawSellerData.email ?? null,
+    
+    // ✅ address को businessAddress से map करें
+    address: rawSellerData.businessAddress ?? rawSellerData.address ?? rawSellerData.addressLine1,
+    city: rawSellerData.city,
+    pincode: rawSellerData.pincode ?? rawSellerData.postalCode,
+    landmark: rawSellerData.landmark,
+  };
+};
+
 
   return null;
 };
