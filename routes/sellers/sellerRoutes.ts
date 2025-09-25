@@ -10,6 +10,8 @@ import {
   orders,
   orderItems,
   orderStatusEnum,
+  insertSellerSchema,
+  updateSellerSchema
 } from '../../shared/backend/schema';
 import { requireSellerAuth } from '../../server/middleware/authMiddleware';
 import { AuthenticatedRequest, verifyToken } from '../../server/middleware/verifyToken';
