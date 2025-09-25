@@ -384,7 +384,7 @@ sellerRouter.patch("/orders/:orderId/status", requireSellerAuth, async (req: Aut
     }
 
     // ऑर्डर का सेलर ID ज्ञात करें
-    const sellerId = orderItemsForSeller[0].sellerId; 
+    
     const customerId = fullUpdatedOrder.customerId;
 
     // ✅ Socket event emit - Targeted Messaging
