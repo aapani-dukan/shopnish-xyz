@@ -1,7 +1,7 @@
 // server/middleware/authMiddleware.ts
 import { Response, NextFunction } from "express";
 import { verifyToken, AuthenticatedRequest } from "./verifyToken";
-import { userRoleEnum, deliveryBoys } from "../../shared/backend/schema";
+import { userRoleEnum, deliveryBoys, sellersPgTable, approvalStatusEnum } from "../../shared/backend/schema";
 import { db } from "../db";
 import { eq, and } from "drizzle-orm";
 
@@ -35,18 +35,42 @@ export const requireAdminAuth = [
 // केवल Seller के लिए
 export const requireSellerAuth = [
   ...requireAuth,
-  (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  async (req: AuthenticatedRequest, res: Response, next: NextFunction) => { // ✅ async जोड़ें
     if (req.user.role !== userRoleEnum.enumValues[1]) {
       // ✅ seller
       return res.status(403).json({
         message: "Forbidden: Seller access required.",
       });
     }
+
+    const userId = req.user.id;
+    
+    // 1. Postgres User ID का उपयोग करके Seller ID और Approval Status खोजें।
+    const sellerProfile = await db.query.sellersPgTable.findFirst({
+        where: eq(sellersPgTable.userId, userId),
+    });
+
+    // 2. Seller मौजूद है और स्वीकृत है इसकी जाँच करें
+    // मान लें कि 'approved' आपके approvalStatusEnum का दूसरा (index 1) या कोई अन्य मान है।
+    const approvedStatus = approvalStatusEnum.enumValues[1]; // उदाहरण के लिए 'approved'
+    
+    if (!sellerProfile || sellerProfile.approvalStatus !== approvedStatus) {
+         return res.status(403).json({ 
+             message: "Seller authentication failed. Profile not found or not approved." 
+         });
+    }
+    
+    // 3. ✅ sellerId को req.user में जोड़ें
+    req.user.sellerId = sellerProfile.id; 
+    
     next();
   },
 ];
 
+
 // केवल Delivery Boy के लिए
+
+// ✅ केवल Delivery Boy के लिए (सुधारित)
 export const requireDeliveryBoyAuth = [
   ...requireAuth,
   async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
@@ -57,7 +81,9 @@ export const requireDeliveryBoyAuth = [
       return res.status(403).json({ message: "Forbidden: Not a delivery boy." });
     }
 
-    req.user.sellerId = sellerProfile.id;
+    // ❌ यह लाइन गलत थी: req.user.sellerId = sellerProfile.id;
+    // इसे हटा दें, यह Delivery Boy middleware में नहीं होना चाहिए
+
     // DB से deliveryBoy record fetch करें
     const deliveryBoy = await db.query.deliveryBoys.findFirst({
       where: and(
