@@ -14,6 +14,7 @@ interface OrderWithDeliveryBoy extends OrderWithItems {
   deliveryBoy?: {
     id: number;
     name: string;
+     phone: string; 
   };
 }
 
@@ -183,8 +184,12 @@ export default function OrderManager({
             )}
 
             {order.deliveryBoy && (
-              <p className="text-sm text-muted-foreground mt-1">डिलीवरी बॉय: <strong>{order.deliveryBoy.name}</strong></p>
-            )}
+  <div className="mt-2 p-3 border-l-4 border-blue-500 bg-blue-50/50 rounded">
+      <p className="text-sm font-semibold text-blue-700">🚚 डिलीवरी बॉय असाइन</p>
+      <p className="text-sm">नाम: <strong>{order.deliveryBoy.name}</strong></p>
+      <p className="text-sm">फ़ोन: <strong>{order.deliveryBoy.phone}</strong></p>
+  </div>
+)}
 
             <p className="text-sm text-muted-foreground">भुगतान: <strong>{order.paymentMethod || "लागू नहीं"}</strong> ({order.paymentStatus || "लंबित"})</p>
             <p className="text-sm text-muted-foreground">कुल: <strong>₹{Number(order.total ?? 0).toLocaleString()}</strong></p>
