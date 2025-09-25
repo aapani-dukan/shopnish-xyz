@@ -24,6 +24,24 @@ export const insertSellerSchema = createInsertSchema(sellersPgTable, {
   updatedAt: true,
 });
 
+
+
+// यह स्कीमा PATCH/PUT ऑपरेशन के लिए है
+export const updateSellerSchema = insertSellerSchema.partial().extend({
+    
+    description: z.string().nullable().optional(),
+    gstNumber: z.string().nullable().optional(),
+    bankAccountNumber: z.string().nullable().optional(),
+    ifscCode: z.string().nullable().optional(),
+    // deliveryRadius यदि डेटाबेस में nullable है
+    deliveryRadius: z.number().int().min(1).nullable().optional(), 
+}).omit({ 
+    
+    userId: true,
+    applicationDate: true,
+    approvalStatus: true,
+});
+
 export const insertStoreSchema = createInsertSchema(stores).omit({
   id: true,
   createdAt: true,
