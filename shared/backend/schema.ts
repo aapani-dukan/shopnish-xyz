@@ -14,7 +14,7 @@ import {
 } from './relations';
 
 import {
-  insertUserSchema, insertSellerSchema, insertStoreSchema, insertCategorySchema,
+  insertUserSchema, insertSellerSchema, updateSellerSchema, insertStoreSchema, insertCategorySchema,
   insertProductSchema, insertDeliveryAreaSchema, insertDeliveryBoySchema, insertCartItemSchema,
   insertDeliveryAddressSchema, insertOrderSchema, insertOrderItemSchema, insertOrderTrackingSchema,
   insertPromoCodeSchema, insertServiceCategorySchema, insertServiceSchema, insertServiceProviderSchema,
@@ -155,7 +155,7 @@ export {
   servicesRelations, serviceProvidersRelations, serviceBookingsRelations, reviewsRelations,
 
   // Schemas
-  insertUserSchema, insertSellerSchema, insertStoreSchema, insertCategorySchema,
+  insertUserSchema, insertSellerSchema, updateSellerSchema, insertStoreSchema, insertCategorySchema,
   insertProductSchema, insertDeliveryAreaSchema, insertDeliveryBoySchema, insertCartItemSchema,
   insertDeliveryAddressSchema, insertOrderSchema, insertOrderItemSchema, insertOrderTrackingSchema,
   insertPromoCodeSchema, insertServiceCategorySchema, insertServiceSchema, insertServiceProviderSchema,
