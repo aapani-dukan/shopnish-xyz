@@ -423,7 +423,8 @@ sellerRouter.put('/me', requireSellerAuth, async (req: AuthenticatedRequest, res
 
     // Zod Validation: क्लाइंट से प्राप्त डेटा को वैलिडेट करें।
     // हम केवल उन फ़ील्ड्स को चुनेंगे जिन्हें क्लाइंट भेज रहा है।
-    const validUpdateData = insertSellerSchema.partial().safeParse(updateData);
+   // updateSellerSchema का उपयोग करें
+const validUpdateData = updateSellerSchema.safeParse(updateData); 
 
     if (!validUpdateData.success) {
       console.error("❌ Seller update validation error:", validUpdateData.error);
