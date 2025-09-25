@@ -229,14 +229,42 @@ router.post("/accept", requireDeliveryBoyAuth, async (req: AuthenticatedRequest,
       .where(eq(orders.id, orderId))
       .returning();
 
-    const { deliveryOtp: _, ...orderWithoutOtp } = updated;
-
-    getIO().emit("order:update", {
-      reason: "accepted",
-      orderId,
-      deliveryBoyId: deliveryBoy.id,
+    const [fullUpdatedOrder] = await db.query.orders.findFirst({
+        where: eq(orders.id, orderId),
+        with: {
+            customer: true, 
+            deliveryBoy: {
+                columns: { id: true, name: true, phone: true }
+            },
+            // sellerId यहाँ से नहीं मिल सकता, इसलिए हमें items टेबल से sellerId पता करना होगा
+            items: { columns: { sellerId: true } } 
+        }
     });
 
+    if (!fullUpdatedOrder) {
+        return res.status(404).json({ message: "Order not found after update." });
+    }
+    
+    // ✅ IDs निकालें
+    const io = getIO();
+    const customerId = fullUpdatedOrder.customerId;
+    const sellerId = fullUpdatedOrder.items?.[0]?.sellerId; // मान लें कि एक ही सेलर का ऑर्डर है
+
+    // I. ब्रॉडकास्ट रूम से ऑर्डर हटाएँ (सभी डिलीवरी बॉय की लिस्ट अपडेट करें)
+    io.to('unassigned-orders').emit("order:removed-from-unassigned", fullUpdatedOrder.id);
+    
+    // II. केवल एक्सेप्ट करने वाले डिलीवरी बॉय को भेजें (उसके 'my orders' में दिखाने के लिए)
+    io.to(`deliveryboy:${deliveryBoy.id}`).emit("order:accepted", fullUpdatedOrder);
+
+    // III. सेलर और एडमिन को भेजें
+    if (sellerId) {
+      io.to(`seller:${sellerId}`).emit("order-updated-for-seller", fullUpdatedOrder);
+    }
+    io.to('admin').emit("order-updated-for-admin", fullUpdatedOrder);
+
+    // IV. कस्टमर को भेजें
+    io.to(`user:${customerId}`).emit("order-status-update", fullUpdatedOrder);
+    
     return res.json({ message: "Order accepted", order: orderWithoutOtp });
 
   } catch (err) {
@@ -286,12 +314,44 @@ router.patch('/orders/:orderId/status', requireDeliveryBoyAuth, async (req: Auth
       return res.status(404).json({ message: "Order not found." });
     }
 
-    res.status(200).json({
-      message: "Order status updated successfully.",
-      order: updatedOrder,
+    const [fullUpdatedOrder] = await db.query.orders.findFirst({
+        where: eq(orders.id, orderId),
+        with: {
+            customer: true, 
+            deliveryBoy: {
+                columns: { id: true, name: true, phone: true }
+            },
+            items: { columns: { sellerId: true } }
+        }
     });
 
-    getIO().emit("order:update", { type: "status-change", data: updatedOrder });
+    if (!fullUpdatedOrder) {
+        return res.status(404).json({ message: "Order not found after update." });
+    }
+
+    const io = getIO();
+    const customerId = fullUpdatedOrder.customerId;
+    const sellerId = fullUpdatedOrder.items?.[0]?.sellerId; 
+    
+    // I. केवल असाइंड डिलीवरी बॉय को भेजें
+    io.to(`deliveryboy:${deliveryBoy.id}`).emit("order:status-update-to-db", fullUpdatedOrder);
+
+    // II. सेलर और एडमिन को भेजें
+    if (sellerId) {
+      io.to(`seller:${sellerId}`).emit("order-updated-for-seller", fullUpdatedOrder);
+    }
+    io.to('admin').emit("order-updated-for-admin", fullUpdatedOrder);
+
+    // III. कस्टमर को भेजें
+    io.to(`user:${customerId}`).emit("order-status-update", fullUpdatedOrder);
+
+    res.status(200).json({
+      message: "Order status updated successfully.",
+      order: fullUpdatedOrder, // return में भी full order भेजें
+    });
+
+    // ❌ यह पुरानी line हटा दें
+    // getIO().emit("order:update", { type: "status-change", data: updatedOrder });
 
   } catch (error: any) {
     console.error("Failed to update order status:", error);
@@ -340,21 +400,41 @@ router.post('/orders/:orderId/complete-delivery', requireDeliveryBoyAuth, async 
         deliveryStatus: 'delivered',
         deliveryOtp: null,
       })
-      .where(eq(orders.id, orderId))
-      .returning();
+      const [fullUpdatedOrder] = await db.query.orders.findFirst({
+        where: eq(orders.id, updatedOrder.id),
+        with: {
+            customer: true, 
+            deliveryBoy: {
+                columns: { id: true, name: true, phone: true }
+            },
+            items: { columns: { sellerId: true } }
+        }
+    });
+    
+    if (!fullUpdatedOrder) { /* handle error */ }
 
-    res.status(200).json({
+    const io = getIO();
+    const customerId = fullUpdatedOrder.customerId;
+    const sellerId = fullUpdatedOrder.items?.[0]?.sellerId; 
+
+    // I. असाइंड डिलीवरी बॉय को अंतिम अपडेट भेजें
+    io.to(`deliveryboy:${deliveryBoy.id}`).emit("order:delivered", fullUpdatedOrder);
+
+    // II. सेलर और एडमिन को भेजें
+    if (sellerId) {
+      io.to(`seller:${sellerId}`).emit("order-updated-for-seller", fullUpdatedOrder);
+    }
+    io.to('admin').emit("order-updated-for-admin", fullUpdatedOrder);
+
+    // III. कस्टमर को भेजें
+    io.to(`user:${customerId}`).emit("order-status-update", fullUpdatedOrder);
+
+    
+
+    return res.status(200).json({
       message: "Delivery completed successfully.",
       order: updatedOrder,
     });
-
-    
-getIO().emit("order:update", {
-  type: "delivered",
-  orderId: updatedOrder.id,
-  status: updatedOrder.status,
-  deliveryStatus: updatedOrder.deliveryStatus
-});
 
   } catch (error: any) {
     console.error("Failed to complete delivery:", error);
