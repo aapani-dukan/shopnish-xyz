@@ -403,16 +403,16 @@ router.post('/orders/:orderId/complete-delivery', requireDeliveryBoyAuth, async 
       })
       .where(eq(orders.id, orderId)) // किस ऑर्डर को अपडेट करना है
   .returning(); 
-      const [fullUpdatedOrder] = await db.query.orders.findFirst({
-        where: eq(orders.id, updatedOrder.id),
-        with: {
-            customer: true, 
-            deliveryBoy: {
-                columns: { id: true, name: true, phone: true }
-            },
-            items: { columns: { sellerId: true } }
-        }
-    });
+      const fullUpdatedOrder = await db.query.orders.findFirst({
+    where: eq(orders.id, updatedOrder.id),
+    with: {
+        customer: true, 
+        deliveryBoy: {
+            columns: { id: true, name: true, phone: true }
+        },
+        items: { columns: { sellerId: true } }
+    }
+});
     
     if (!fullUpdatedOrder) { /* handle error */ }
 
