@@ -365,10 +365,44 @@ sellerRouter.patch("/orders/:orderId/status", requireSellerAuth, async (req: Aut
       return res.status(404).json({ error: "Order not found." });
     }
 
-    // ✅ Socket event emit
-    getIO().emit("order:status-updated", { orderId: parsedOrderId, newStatus });
+    const [fullUpdatedOrder] = await db.query.orders.findMany({
+        where: eq(orders.id, parsedOrderId),
+        with: {
+            customer: true, // Socket events के लिए customerId चाहिए
+            deliveryBoy: {
+                columns: {
+                    id: true,
+                    name: true,
+                    phone: true, // हमें फ़ोन नंबर चाहिए
+                }
+            },
+        }
+    });
 
-    return res.status(200).json({ message: "Order status updated successfully.", order: updatedOrder });
+    if (!fullUpdatedOrder) {
+        return res.status(404).json({ error: "Order not found after update." });
+    }
+
+    // ऑर्डर का सेलर ID ज्ञात करें
+    const sellerId = orderItemsForSeller[0].sellerId; 
+    const customerId = fullUpdatedOrder.customerId;
+
+    // ✅ Socket event emit - Targeted Messaging
+    const io = getIO();
+
+    // 1. सेलर को भेजें: ऑर्डर की पूरी जानकारी
+    io.to(`seller-${sellerId}`).emit("order-updated-for-seller", fullUpdatedOrder);
+
+    // 2. एडमिन को भेजें: ऑर्डर की पूरी जानकारी
+    io.to('admin').emit("order-updated-for-admin", fullUpdatedOrder);
+
+    // 3. कस्टमर को भेजें: केवल स्टेटस अपडेट
+    io.to(`user-${customerId}`).emit("order-status-update", fullUpdatedOrder);
+
+
+    return res.status(200).json({ message: "Order status updated successfully.", order: fullUpdatedOrder });
+
+    
   } catch (error: any) {
     console.error("❌ Error updating order status:", error);
     return res.status(500).json({ error: "Failed to update order status." });
