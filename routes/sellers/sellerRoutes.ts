@@ -365,7 +365,7 @@ sellerRouter.patch("/orders/:orderId/status", requireSellerAuth, async (req: Aut
       return res.status(404).json({ error: "Order not found." });
     }
 
-    const fullUpdatedOrder = await db.query.orders.findMany({
+    const orderArray = await db.query.orders.findMany({
         where: eq(orders.id, parsedOrderId),
         with: {
             customer: true, // Socket events के लिए customerId चाहिए
@@ -379,7 +379,7 @@ sellerRouter.patch("/orders/:orderId/status", requireSellerAuth, async (req: Aut
         }
     });
 
-    const fullUpdatedOrder = fullUpdatedOrderArray[0];
+    const fullUpdatedOrder = OrderArray[0];
     if (!fullUpdatedOrder) {
         return res.status(404).json({ error: "Order not found after update." });
     }
