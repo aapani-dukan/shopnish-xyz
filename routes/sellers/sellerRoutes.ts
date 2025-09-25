@@ -158,6 +158,13 @@ sellerRouter.get("/orders", requireSellerAuth, async (req: AuthenticatedRequest,
       ),
       with: {
         customer: true,
+        deliveryBoy: {
+          columns: {
+            id: true, // ID हमेशा भेजनी चाहिए
+            name: true, // हमें नाम चाहिए
+            phone: true, // हमें फ़ोन नंबर चाहिए
+          }
+        },
         items: {
           where: eq(orderItems.sellerId, sellerId),
           with: {
