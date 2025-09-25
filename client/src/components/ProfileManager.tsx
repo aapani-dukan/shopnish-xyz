@@ -6,13 +6,13 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { insertSellerSchema } from "@shared/backend/schema";
+import { updateSellerSchema } from "@shared/backend/schema";
 import type { Seller } from "@shared/backend/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
 
-const sellerFormSchema = insertSellerSchema.omit({ userId: true });
+const sellerFormSchema = updateSellerSchema.omit({ userId: true });
 
 interface ProfileManagerProps {
   seller: Seller;
@@ -22,8 +22,11 @@ export default function ProfileManager({ seller }: ProfileManagerProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   
+  // ProfileManager.tsx (useForm hook के अंदर)
+
   const sellerForm = useForm<z.infer<typeof sellerFormSchema>>({
     resolver: zodResolver(sellerFormSchema),
+    mode:"onChange",
     values: seller ? {
       businessName: seller.businessName || "",
       description: seller.description || "",
@@ -32,6 +35,12 @@ export default function ProfileManager({ seller }: ProfileManagerProps) {
       gstNumber: seller.gstNumber || "",
       bankAccountNumber: seller.bankAccountNumber || "",
       ifscCode: seller.ifscCode || "",
+      
+      // ✅ ये फ़ील्ड्स Zod स्कीमा में आवश्यक हो सकते हैं, इन्हें जोड़ें
+      city: seller.city || "", 
+      pincode: seller.pincode || "",
+      // यदि businessType भी है तो उसे भी जोड़ें
+      businessType: seller.businessType || "", 
     } : {
       businessName: "",
       description: "",
@@ -40,8 +49,12 @@ export default function ProfileManager({ seller }: ProfileManagerProps) {
       gstNumber: "",
       bankAccountNumber: "",
       ifscCode: "",
+      city: "",
+      pincode: "",
+      businessType: "",
     },
   });
+  
 
   const sellerMutation = useMutation({
     mutationFn: async (data: z.infer<typeof sellerFormSchema>) => {
