@@ -228,6 +228,7 @@ router.post("/accept", requireDeliveryBoyAuth, async (req: AuthenticatedRequest,
       })
       .where(eq(orders.id, orderId))
       .returning();
+    const { deliveryOtp: _, ...orderWithoutOtp } = updated; 
 
     const [fullUpdatedOrder] = await db.query.orders.findFirst({
         where: eq(orders.id, orderId),
@@ -400,6 +401,8 @@ router.post('/orders/:orderId/complete-delivery', requireDeliveryBoyAuth, async 
         deliveryStatus: 'delivered',
         deliveryOtp: null,
       })
+      .where(eq(orders.id, orderId)) // किस ऑर्डर को अपडेट करना है
+  .returning(); 
       const [fullUpdatedOrder] = await db.query.orders.findFirst({
         where: eq(orders.id, updatedOrder.id),
         with: {
