@@ -408,6 +408,54 @@ sellerRouter.patch("/orders/:orderId/status", requireSellerAuth, async (req: Aut
     return res.status(500).json({ error: "Failed to update order status." });
   }
 });
+// routes/sellers/sellerRoutes.ts में जोड़ें
+
+// ✅ PUT Update Seller Profile (updates all fields)
+router.put('/me', requireSellerAuth, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const sellerId = req.user?.sellerId; // verifyToken से sellerId प्राप्त करें
+    const updateData = req.body;
+
+    if (!sellerId) {
+      return res.status(403).json({ message: "Seller authentication failed." });
+    }
+
+    // Zod Validation: क्लाइंट से प्राप्त डेटा को वैलिडेट करें।
+    // हम केवल उन फ़ील्ड्स को चुनेंगे जिन्हें क्लाइंट भेज रहा है।
+    const validUpdateData = insertSellerSchema.partial().safeParse(updateData);
+
+    if (!validUpdateData.success) {
+      console.error("❌ Seller update validation error:", validUpdateData.error);
+      return res.status(400).json({ 
+        message: "Invalid data provided for seller profile update.", 
+        errors: validUpdateData.error.flatten().fieldErrors 
+      });
+    }
+
+    // Drizzle Update Query
+    const [updatedSeller] = await db
+      .update(sellersPgTable)
+      .set({
+        ...validUpdateData.data,
+        updatedAt: new Date(),
+      })
+      .where(eq(sellersPgTable.id, sellerId))
+      .returning();
+
+    if (!updatedSeller) {
+      return res.status(404).json({ message: "Seller profile not found or no changes made." });
+    }
+
+    // Admin को सूचित करें
+    getIO().emit("admin:update", { type: "seller-profile-update", data: updatedSeller });
+
+    return res.status(200).json(updatedSeller);
+  } catch (error: any) {
+    console.error("❌ PUT /sellers/me error:", error);
+    res.status(500).json({ message: "Failed to update seller profile.", error: error.message });
+  }
+});
+
 
 export default sellerRouter;
       
