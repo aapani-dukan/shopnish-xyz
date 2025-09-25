@@ -230,7 +230,7 @@ router.post("/accept", requireDeliveryBoyAuth, async (req: AuthenticatedRequest,
       .returning();
     const { deliveryOtp: _, ...orderWithoutOtp } = updated; 
 
-    const [fullUpdatedOrder] = await db.query.orders.findFirst({
+    const fullUpdatedOrder = await db.query.orders.findFirst({
         where: eq(orders.id, orderId),
         with: {
             customer: true, 
@@ -315,7 +315,7 @@ router.patch('/orders/:orderId/status', requireDeliveryBoyAuth, async (req: Auth
       return res.status(404).json({ message: "Order not found." });
     }
 
-    const [fullUpdatedOrder] = await db.query.orders.findFirst({
+    const fullUpdatedOrder = await db.query.orders.findFirst({
         where: eq(orders.id, orderId),
         with: {
             customer: true, 
