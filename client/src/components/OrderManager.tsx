@@ -91,7 +91,7 @@ export default function OrderManager({
   socket.on("new-order-for-seller", handleNewOrderForSeller);
 
   return () => {
-    socket.off("order:status-updated", handleOrderUpdate);
+    socket.off("order-updated-for-seller", handleOrderUpdate);
     socket.off("new-order-for-seller", handleNewOrderForSeller);
   };
 }, [socket, seller, queryClient, toast]);
