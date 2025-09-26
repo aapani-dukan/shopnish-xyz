@@ -112,7 +112,7 @@ function App() {
             element={
               <AuthRedirectGuard>
             <TrackOrder />
-               <AuthRedirectGuard> 
+              </AuthRedirectGuard> 
                 } 
         />
 
