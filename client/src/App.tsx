@@ -107,6 +107,14 @@ function App() {
               </AuthRedirectGuard>
             }
           />
+              <Route 
+            path="/track-order/:orderId" 
+            element={
+              <AuthRedirectGuard>
+            <TrackOrder />
+               <AuthRedirectGuard> 
+                } 
+        />
 
           {/* Admin */}
           <Route
