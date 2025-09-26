@@ -9,7 +9,12 @@ import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useSocket } from "@/hooks/useSocket";
 import { useEffect } from "react";
-
+interface OrderManagerProps {
+  orders: OrderWithDeliveryBoy[];
+  isLoading: boolean;
+  error: Error | null;
+  seller: Seller | null; // या Seller | undefined, जैसा उपयुक्त हो
+}
 interface OrderWithDeliveryBoy extends OrderWithItems {
   deliveryBoy?: {
     id: number;
