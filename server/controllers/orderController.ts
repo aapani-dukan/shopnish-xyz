@@ -247,4 +247,65 @@ export const getUserOrders = async (req: AuthenticatedRequest, res: Response) =>
     res.status(500).json({ message: "Failed to fetch orders." });
   }
 };
-  
+
+// ----------------------------------------------------
+// ⭐ NEW: Order Tracking Details Function ⭐
+// ----------------------------------------------------
+
+/**
+ * Fetches the initial tracking details for a specific order.
+ * This is the API endpoint the frontend hits on the TrackOrder page.
+ * @param req The authenticated request object.
+ * @param res The response object.
+ */
+export const getOrderTrackingDetails = async (req: AuthenticatedRequest, res: Response) => {
+  console.log("📡 [API] Received request to get order tracking details.");
+  try {
+    const customerId = req.user?.id;
+    const orderId = Number(req.params.orderId);
+
+    if (!customerId) {
+      return res.status(401).json({ message: "Unauthorized: User not logged in." });
+    }
+
+    if (isNaN(orderId)) {
+      return res.status(400).json({ message: "Invalid order ID provided." });
+    }
+
+    // 1. Fetch the order details, ensuring it belongs to the authenticated user.
+    const [order] = await db.select()
+      .from(orders)
+      .where(and(
+        eq(orders.id, orderId),
+        eq(orders.customerId, customerId)
+      ))
+      .limit(1);
+
+    if (!order) {
+      return res.status(404).json({ message: "Order not found or access denied." });
+    }
+    
+    // 2. Return the initial static tracking data (live location comes via Socket.IO)
+    const deliveryAddress = JSON.parse(order.deliveryAddress || '{}');
+
+    res.status(200).json({
+      orderId: order.id,
+      orderNumber: order.orderNumber,
+      status: order.status,
+      deliveryAddress: {
+        lat: deliveryAddress.lat || 0, // यदि आपके पते में lat/lng नहीं है, तो आपको इसे जोड़ना होगा
+        lng: deliveryAddress.lng || 0,
+        address: deliveryAddress.address || '',
+        city: deliveryAddress.city || '',
+        pincode: deliveryAddress.pincode || '',
+      },
+      deliveryBoyId: order.deliveryBoyId,
+      // यह Socket.IO कनेक्शन के लिए client को orderId देता है
+    });
+
+  } catch (error) {
+    console.error("❌ Error fetching order tracking details:", error);
+    res.status(500).json({ message: "Failed to fetch tracking details." });
+  }
+};
+      
