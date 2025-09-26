@@ -123,7 +123,7 @@ export default function TrackOrder() {
     if (!socket || !orderId || isLoading) return;
     
   
-    socket.emit("register-client", { role: "user", userId: /* user.uid or user.id */ }); 
+    socket.emit("register-client", { role: "user", userId: }); 
     
     // इवेंट लिसनर
     socket.on('order:delivery_location', (data: Location & { orderId: number }) => {
