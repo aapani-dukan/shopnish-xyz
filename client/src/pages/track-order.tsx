@@ -4,6 +4,9 @@ import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import React, { useState, useEffect, useMemo } from "react"; 
+import { useQuery } from "@tanstack/react-query";
+import { useSocket } from "@/hooks/useSocket";
 import { 
   Package, 
   Truck, 
@@ -15,6 +18,12 @@ import {
   User,
   Store
 } from "lucide-react";
+
+interface Location {
+  lat: number;
+  lng: number;
+  timestamp: string;
+}
 
 // ✅ नया इंटरफ़ेस जोड़ा गया
 interface DeliveryAddress {
@@ -68,14 +77,18 @@ interface Order {
     };
   }>;
 }
-
 export default function TrackOrder() {
   const { orderId } = useParams();
+  const rawSocket = useSocket() as any;
+  const socket = rawSocket?.socket ?? rawSocket; // ✅ Socket hook से Socket instance लें
+
+  const [deliveryBoyLocation, setDeliveryBoyLocation] = useState<Location | null>(null);
 
   const { data: order, isLoading } = useQuery<Order>({
     queryKey: [`/api/orders/${orderId}`],
     enabled: !!orderId,
   });
+  
 
   const { data: tracking = [] } = useQuery<OrderTracking[]>({
     queryKey: [`/api/orders/${orderId}/tracking`],
@@ -103,6 +116,39 @@ export default function TrackOrder() {
       </div>
     );
   }
+  // TrackOrder.tsx (मुख्य कंपोनेंट के अंदर)
+
+  // ... (useQuery hooks के नीचे) ...
+  
+  // ✅ Socket.IO से रियल-टाइम लोकेशन प्राप्त करें
+  useEffect(() => {
+    if (!socket || !orderId || isLoading) return;
+    
+    // सुनिश्चित करें कि कस्टमर अपने रूम में रजिस्टर है (यह आमतौर पर AuthContext में होता है, 
+    // लेकिन हम यहाँ सुरक्षा के लिए चेक करेंगे)
+    // socket.emit("register-client", { role: "user", userId: /* user.uid or user.id */ }); 
+    
+    // इवेंट लिसनर
+    socket.on('order:delivery_location', (data: Location & { orderId: number }) => {
+        // सुनिश्चित करें कि यह अपडेट सही ऑर्डर के लिए है
+        if (data.orderId === Number(orderId)) {
+            setDeliveryBoyLocation({ 
+                lat: data.lat, 
+                lng: data.lng, 
+                timestamp: data.timestamp 
+            });
+            console.log("🛵 New location received:", data.lat, data.lng);
+        }
+    });
+
+    return () => {
+      // सफाई: कंपोनेंट अनमाउंट होने पर लिसनर हटा दें
+      socket.off('order:delivery_location');
+    };
+  }, [socket, orderId, isLoading]);
+
+  // ... (बाकी फ़ंक्शन और रिटर्न लॉजिक) ...
+  
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -166,6 +212,32 @@ export default function TrackOrder() {
           
           {/* Main Tracking */}
           <div className="lg:col-span-2 space-y-6">
+                  {(order.status === 'picked_up' || order.status === 'out_for_delivery') && order.deliveryBoyId && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center space-x-2">
+                    <MapPin className="w-5 h-5 text-purple-600" />
+                    <span>Real-Time Tracking</span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-0">
+             
+                  <div className="w-full h-80 bg-gray-200 flex items-center justify-center text-gray-500">
+                    {deliveryBoyLocation ? (
+                      <div>
+                          {/* यहाँ आपका Google Maps Component आएगा */}
+                          <p>Map Loading...</p>
+                          <p className="text-sm mt-2">Delivery Partner Location: {deliveryBoyLocation.lat.toFixed(4)}, {deliveryBoyLocation.lng.toFixed(4)}</p>
+                          <p className="text-sm">Last Update: {new Date(deliveryBoyLocation.timestamp).toLocaleTimeString()}</p>
+                          
+                      </div>
+                    ) : (
+                      <p>Waiting for Delivery Partner's location...</p>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
             
             {/* Current Status */}
             <Card>
