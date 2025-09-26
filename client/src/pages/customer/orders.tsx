@@ -187,17 +187,4 @@ export default function CustomerOrdersPage() {
     </div>
   );
 }
-              <div className="mt-4">
-                <Button asChild>
-                  <Link to={`/order-confirmation/${order.id}`}>
-                    विवरण देखें
-                  </Link>
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-    </div>
-  );
-}
+              
