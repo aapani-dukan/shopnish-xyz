@@ -5,8 +5,10 @@ import { Routes, Route } from "react-router-dom";
 import Header from "./components/header";
 import CartModal from "./components/cart-modal";
 import AdminLayout from "@/components/AdminLayout";
-
+import { SocketProvider } from "@/hooks/useSocket";
+import { AuthProvider } from "@/hooks/useAuth";
 // Pages
+
 import HomePage from "@/pages/home";
 import ProductDetail from "@/pages/product-detail";
 import Cart from "@/pages/cart";
@@ -36,7 +38,7 @@ function App() {
   const [isCartModalOpen, setIsCartModalOpen] = useState(false);
 
   return (
-    <>
+      <SocketProvider>  
       <Header onCartClick={() => setIsCartModalOpen(true)} />
       <main className="min-h-screen">
         <Routes>
