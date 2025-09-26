@@ -124,10 +124,11 @@ export default function Home() {
     const price = parseFloat(product.price);
     return priceFilter.some(range => {
       switch (range) {
-        case 'under-25': return price < 25;
-        case '25-50': return price >= 25 && price < 50;
-        case '50-100': return price >= 50 && price < 100;
-        case 'over-100': return price >= 100;
+        case 'under-250': return price < 250;
+        case '250-500': return price >= 250 && price < 500;
+        case '500-1000': return price >= 500 && price < 1000;
+        case '1000-5000': return price >= 1000 && price < 5000;
+        case 'over-5000': return price >= 5000;
         default: return true;
       }
     });
@@ -249,7 +250,7 @@ export default function Home() {
                         { id: '250-500', label: '₹250 - ₹500' },
                         { id: '500-1000', label: '₹500 - ₹1000' },
                         { id: '1000-5000', label: '₹1000 - ₹5000' },
-                        { id: 'over-5000', lebel: '₹ over 5000' },
+                        { id: 'over-5000', label: '₹ over 5000' },
                       ].map((range) => (
                         <div key={range.id} className="flex items-center space-x-2">
                           <Checkbox
