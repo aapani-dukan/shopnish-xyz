@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import React, { useState, useEffect, useMemo } from "react"; 
 import { useQuery } from "@tanstack/react-query";
 import { useSocket } from "@/hooks/useSocket";
+import GoogleMapTracker from "@/components/GoogleMapTracker";
 import { 
   Package, 
   Truck, 
@@ -147,7 +148,7 @@ export default function TrackOrder() {
     };
   }, [socket, orderId, isLoading]);
 
-  // ... (बाकी फ़ंक्शन और रिटर्न लॉजिक) ...
+  
   
 
   const getStatusColor = (status: string) => {
@@ -226,6 +227,20 @@ export default function TrackOrder() {
                     {deliveryBoyLocation ? (
                       <div>
                           {/* यहाँ आपका Google Maps Component आएगा */}
+                        <GoogleMapTracker
+                        deliveryBoyLocation={deliveryBoyLocation}
+                        customerAddress={order.deliveryAddress}
+                      />
+                    ) : (
+                      // Fallback content 
+                      <div className="w-full h-full bg-gray-200 flex items-center justify-center text-gray-500">
+                        Waiting for Delivery Partner's location...
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
                           <p>Map Loading...</p>
                           <p className="text-sm mt-2">Delivery Partner Location: {deliveryBoyLocation.lat.toFixed(4)}, {deliveryBoyLocation.lng.toFixed(4)}</p>
                           <p className="text-sm">Last Update: {new Date(deliveryBoyLocation.timestamp).toLocaleTimeString()}</p>
