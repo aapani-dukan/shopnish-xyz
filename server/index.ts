@@ -50,8 +50,6 @@ async function runMigrations() {
       console.error("❌ Migration Error:", error);
     }
   } 
-  // ❌ Removed the 'finally' block that closed the pool.
-  // The pool should stay open for the server's lifetime.
 }
 
 // --- Start Server ---
@@ -82,18 +80,24 @@ async function runMigrations() {
     next();
   });
 
-  // Register all routes
+  // ⭐ 1. Register all API routes (SHOULD BE FIRST)
   app.use("/api", apiRouter);
 
-  // Serve static files (production only)
+  // ⭐ 2. Serve static files and handle client-side routing (production only)
   if (isProd) {
-    app.use(express.static(path.resolve(__dirname, "..", "dist", "public")));
+    // Vite output is at /dist/public, relative to the server's running path (/dist)
+    const clientDistPath = path.resolve(__dirname, "public"); 
 
+    // Static Assets serve करें (JS, CSS, images)
+    app.use(express.static(clientDistPath));
+
+    // React Router फ़ॉलबैक: किसी भी non-API/non-static अनुरोध के लिए index.html भेजें।
     app.get("*", (req, res) => {
-      res.sendFile(path.resolve(__dirname, "..", "dist", "public", "index.html"));
+        // index.html public फ़ोल्डर में है
+        res.sendFile(path.join(clientDistPath, "index.html"));
     });
   } else {
-    // Dev mode redirect
+    // Dev mode redirect (Vite Dev Server की ओर)
     app.get("", (req, res) => {
       if (!req.path.startsWith("/api")) {
         res.send(`
@@ -120,9 +124,6 @@ async function runMigrations() {
     const message = err.message || "Internal Server Error";
     console.error("❌ Server Error:", err);
     res.status(status).json({ message });
-
-    // ❌ This line has been removed to prevent server crashes in production
-    // if (process.env.NODE_ENV !== "production") throw err;
   });
 
   const port = process.env.PORT || 5001;
