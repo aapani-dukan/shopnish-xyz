@@ -144,7 +144,7 @@ function App() {
         </Routes>
       </main>
       <CartModal isOpen={isCartModalOpen} onClose={() => setIsCartModalOpen(false)} />
-    </>
+    </SocketProvider>
   );
 }
 
