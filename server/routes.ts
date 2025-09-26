@@ -114,6 +114,47 @@ router.get(
   }
 );
 
+router.get(
+  "/:orderId/tracking", // यह URL /api/orders/170/tracking को मैच करेगा
+  requireAuth, // सुनिश्चित करें कि ग्राहक लॉग इन है
+  async (req: AuthenticatedRequest, res: Response) => {
+    const { orderId } = req.params;
+    const customerId = req.user?.firebaseUid;
+
+    if (!customerId) {
+      return res.status(401).json({ error: "Authentication required." });
+    }
+
+    try {
+      // 1. डेटाबेस से ऑर्डर और डिलीवरी पता प्राप्त करें
+      //    (सुरक्षा के लिए, सुनिश्चित करें कि यह ऑर्डर वास्तव में इसी ग्राहक का है)
+      const [order] = await db
+        .select()
+        .from(orders)
+        .where(eq(orders.id, Number(orderId)))
+        .limit(1);
+
+      if (!order || order.customerId !== customerId) {
+        return res.status(404).json({ error: "Order not found or access denied." });
+      }
+
+      // 2. ट्रैकिंग डेटा वापस भेजें
+      res.status(200).json({
+        orderId: order.id,
+        status: order.status,
+        deliveryAddress: order.deliveryAddress, // ग्राहक का पता
+        // Note: लाइव लोकेशन इस endpoint से नहीं आती है, वह Socket.IO से आती है।
+        // यह endpoint केवल प्रारंभिक डेटा (पता, स्थिति) प्रदान करता है।
+      });
+      
+    } catch (error) {
+      console.error("Tracking details fetch failed:", error);
+      res.status(500).json({ error: "Failed to fetch tracking details." });
+    }
+  }
+);
+
+
 // ✅ Initial Login Route: नए उपयोगकर्ताओं के लिए
 router.post("/auth/initial-login", async (req: Request, res: Response) => {
   try {
