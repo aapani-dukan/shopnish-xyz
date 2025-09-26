@@ -117,9 +117,6 @@ export default function TrackOrder() {
       </div>
     );
   }
-  // TrackOrder.tsx (मुख्य कंपोनेंट के अंदर)
-
-  // ... (useQuery hooks के नीचे) ...
   
   // ✅ Socket.IO से रियल-टाइम लोकेशन प्राप्त करें
   useEffect(() => {
@@ -212,47 +209,50 @@ export default function TrackOrder() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           
           {/* Main Tracking */}
-          <div className="lg:col-span-2 space-y-6">
-                  {(order.status === 'picked_up' || order.status === 'out_for_delivery') && order.deliveryBoyId && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center space-x-2">
+          // TrackOrder.tsx (JSX/return statement के अंदर)
+
+{/* Main Tracking */}
+<div className="lg:col-span-2 space-y-6">
+    {(order.status === 'picked_up' || order.status === 'out_for_delivery') && order.deliveryBoyId && (
+        <Card>
+            <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
                     <MapPin className="w-5 h-5 text-purple-600" />
                     <span>Real-Time Tracking</span>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="p-0">
-             
-                  <div className="w-full h-80 bg-gray-200 flex items-center justify-center text-gray-500">
+                </CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+                <div className="w-full h-80">
                     {deliveryBoyLocation ? (
-                      <div>
-                          {/* यहाँ आपका Google Maps Component आएगा */}
+                        // ✅ केवल GoogleMapTracker को रेंडर करें
                         <GoogleMapTracker
-                        deliveryBoyLocation={deliveryBoyLocation}
-                        customerAddress={order.deliveryAddress}
-                      />
+                            deliveryBoyLocation={deliveryBoyLocation}
+                            customerAddress={order.deliveryAddress}
+                        />
                     ) : (
-                      // Fallback content 
-                      <div className="w-full h-full bg-gray-200 flex items-center justify-center text-gray-500">
-                        Waiting for Delivery Partner's location...
-                      </div>
+                        // Fallback content 
+                        <div className="w-full h-full bg-gray-200 flex items-center justify-center text-gray-500">
+                            <p>Waiting for Delivery Partner's location...</p>
+                        </div>
                     )}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-                          <p>Map Loading...</p>
-                          <p className="text-sm mt-2">Delivery Partner Location: {deliveryBoyLocation.lat.toFixed(4)}, {deliveryBoyLocation.lng.toFixed(4)}</p>
-                          <p className="text-sm">Last Update: {new Date(deliveryBoyLocation.timestamp).toLocaleTimeString()}</p>
-                          
-                      </div>
-                    ) : (
-                      <p>Waiting for Delivery Partner's location...</p>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
+                </div>
+
+                {/* ✅ लोकेशन डिटेल्स मैप के नीचे, CardContent के अंदर दिखाएं */}
+                {deliveryBoyLocation && (
+                    <div className="p-4 border-t">
+                        <p className="text-sm font-medium">Delivery Partner Location Updated:</p>
+                        <p className="text-xs text-gray-600">
+                            Lat: {deliveryBoyLocation.lat.toFixed(4)}, Lng: {deliveryBoyLocation.lng.toFixed(4)}
+                        </p>
+                        <p className="text-xs text-gray-600">
+                            Last Update: {new Date(deliveryBoyLocation.timestamp).toLocaleTimeString()}
+                        </p>
+                    </div>
+                )}
+            </CardContent>
+        </Card>
+    )}
+    
             
             {/* Current Status */}
             <Card>
