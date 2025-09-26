@@ -1,7 +1,7 @@
 // ordersRouter.ts
 import { Router } from "express";
 import { requireAuth } from "../server/middleware/authMiddleware";
-import { placeOrderFromCart, placeOrderBuyNow, getUserOrders } from "../server/controllers/orderController";
+import { placeOrderFromCart, placeOrderBuyNow, getUserOrders, getOrderTrackingDetails } from "../server/controllers/orderController";
 
 const ordersRouter = Router();
 
@@ -15,5 +15,5 @@ ordersRouter.post("/buy-now", requireAuth, placeOrderBuyNow);
 
 // ✅ Logged-in user के orders fetch करने के लिए
 ordersRouter.get("/", requireAuth, getUserOrders);
-
+ordersRouter.get("/:orderId/tracking", requireAuth, getOrderTrackingDetails);
 export default ordersRouter;
