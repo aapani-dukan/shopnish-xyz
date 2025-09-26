@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import React, { useState, useEffect, useMemo } from "react"; 
-import { useQuery } from "@tanstack/react-query";
+
 import { useSocket } from "@/hooks/useSocket";
 import GoogleMapTracker from "@/components/GoogleMapTracker";
 import { 
@@ -122,9 +122,8 @@ export default function TrackOrder() {
   useEffect(() => {
     if (!socket || !orderId || isLoading) return;
     
-    // सुनिश्चित करें कि कस्टमर अपने रूम में रजिस्टर है (यह आमतौर पर AuthContext में होता है, 
-    // लेकिन हम यहाँ सुरक्षा के लिए चेक करेंगे)
-    // socket.emit("register-client", { role: "user", userId: /* user.uid or user.id */ }); 
+  
+    socket.emit("register-client", { role: "user", userId: /* user.uid or user.id */ }); 
     
     // इवेंट लिसनर
     socket.on('order:delivery_location', (data: Location & { orderId: number }) => {
