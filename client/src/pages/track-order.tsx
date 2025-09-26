@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import React, { useState, useEffect, useMemo } from "react"; 
-
+import { useAuth } from "@/hooks/useAuth"; 
 import { useSocket } from "@/hooks/useSocket";
 import GoogleMapTracker from "@/components/GoogleMapTracker";
 import { 
@@ -78,13 +78,17 @@ interface Order {
     };
   }>;
 }
+
 export default function TrackOrder() {
   const { orderId } = useParams();
-  const rawSocket = useSocket() as any;
-  const socket = rawSocket?.socket ?? rawSocket; // ✅ Socket hook से Socket instance लें
-
+  
+  // ✅ फिक्स 1: useSocket से सीधे 'socket' को destructure करें
+  const { socket } = useSocket(); 
+  
+  // ✅ फिक्स 2: user को useAuth से निकालें
+  const { user } = useAuth(); 
+  
   const [deliveryBoyLocation, setDeliveryBoyLocation] = useState<Location | null>(null);
-
   const { data: order, isLoading } = useQuery<Order>({
     queryKey: [`/api/orders/${orderId}`],
     enabled: !!orderId,
@@ -125,8 +129,9 @@ export default function TrackOrder() {
   
     socket.emit("register-client", { role: "user", userId: user.id }); 
     
-    // इवेंट लिसनर
+      // इवेंट लिसनर
     socket.on('order:delivery_location', (data: Location & { orderId: number }) => {
+    
         // सुनिश्चित करें कि यह अपडेट सही ऑर्डर के लिए है
         if (data.orderId === Number(orderId)) {
             setDeliveryBoyLocation({ 
@@ -142,9 +147,8 @@ export default function TrackOrder() {
       // सफाई: कंपोनेंट अनमाउंट होने पर लिसनर हटा दें
       socket.off('order:delivery_location');
     };
-  }, [socket, orderId, isLoading]);
-
-  
+    // dependencies में 'user' को जोड़ें
+  }, [socket, orderId, isLoading, user]); 
   
 
   const getStatusColor = (status: string) => {
