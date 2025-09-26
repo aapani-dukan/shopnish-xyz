@@ -36,7 +36,7 @@ userLoginRouter.post("/login", async (req: Request, res: Response) => {
                 firebaseUid: firebaseUid,
                 email: email,
                 name: name,
-                role: userRoleEnum.enumValues[0],
+                role:"customer",
                 password: '',
                 firstName: firstName,
                 lastName: lastName,
@@ -46,21 +46,32 @@ userLoginRouter.post("/login", async (req: Request, res: Response) => {
             
             console.log("✅ नया उपयोगकर्ता डेटाबेस में जोड़ा गया।");
 
-            const customToken = await authAdmin.createCustomToken(newUser.firebaseUid);
-            const expiresIn = 60 * 60 * 24 * 5 * 1000;
+            
 
-            res.cookie('__session', customToken, {
-                maxAge: expiresIn,
-                httpOnly: true,
-                secure: process.env.NODE_ENV === 'production',
-                sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-            });
+const expiresIn = 60 * 60 * 24 * 5; // 5 दिन (सेकंड में)
+const userToUse = user || newUser; // वह उपयोगकर्ता जिसका UID उपयोग करना है
 
-            return res.status(200).json({
-                message: "नया उपयोगकर्ता लॉगिन सफल",
-                customToken,
-                user: newUser
-            });
+// 1. Session Cookie बनाएँ
+const sessionCookie = await authAdmin.createSessionCookie(idToken, { expiresIn: expiresIn * 1000 });
+//                                                                ^ idToken का उपयोग करें, Custom Token का नहीं
+
+// 2. पुराने Custom Token के बजाय Session Cookie को __session में सेट करें
+res.cookie('__session', sessionCookie, {  
+    maxAge: expiresIn * 1000, // milliseconds
+    httpOnly: true,  
+    secure: process.env.NODE_ENV === 'production',  
+    // SameSite: None केवल तभी आवश्यक है जब API और Client अलग-अलग डोमेन पर हों,
+    // अन्यथा 'strict' या 'lax' सुरक्षित है।
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',  
+});  
+
+// 3. क्लाइंट को केवल उपयोगकर्ता डेटा वापस करें
+return res.status(200).json({  
+    message: "उपयोगकर्ता लॉगिन सफल",  
+    // ✅ customToken को हटा दें, इसकी अब ज़रूरत नहीं है।
+    user: userToUse 
+});  
+
 
         } else {
             const customToken = await authAdmin.createCustomToken(user.firebaseUid);
