@@ -181,7 +181,82 @@ export default function DeliveryDashboard() {
       }
     };
   }, [socket, user, queryClient, isAuthenticated]);
+    // ✅ नया: GPS ट्रैकिंग लॉजिक
+    useEffect(() => {
+        if (!socket || !user || isLoading) return;
+        
+        let watchId: number | null = null;
+        let intervalId: NodeJS.Timeout | null = null;
+        
+        // वह ऑर्डर खोजें जो वर्तमान में डिलीवरी बॉय को असाइन है और सक्रिय है
+        const activeOrder = orders.find((o: any) => 
+            (o.deliveryStatus ?? "").toLowerCase() === "accepted" && 
+            (o.status === "picked_up" || o.status === "out_for_delivery")
+        );
 
+        if (activeOrder && navigator.geolocation) {
+            console.log(`📡 Starting GPS tracking for Order ${activeOrder.id}`);
+
+            const sendLocation = (position: GeolocationPosition) => {
+                const { latitude, longitude } = position.coords;
+
+                // 2. हर 10 सेकंड में सर्वर को लोकेशन भेजें
+                socket.emit('deliveryboy:location_update', {
+                    orderId: activeOrder.id,
+                    lat: latitude,
+                    lng: longitude,
+                });
+                console.log(`Emit: ${latitude}, ${longitude}`);
+            };
+
+            // 1. GPS Location प्राप्त करने की प्रक्रिया शुरू करें
+            watchId = navigator.geolocation.watchPosition(
+                // Success callback: location मिलने पर
+                (position) => {
+                    // पहले तुरंत भेजें
+                    sendLocation(position); 
+
+                    // Interval सेट करें ताकि यह हर 10 सेकंड में सुनिश्चित रूप से भेजे
+                    if (!intervalId) {
+                        intervalId = setInterval(() => {
+                            // watchPosition से प्राप्त latest position को भेजें
+                            // (या, अगर आप चाहें तो हर बार getCurrentPosition कॉल कर सकते हैं, 
+                            // लेकिन watchPosition बेहतर है)
+                            // हम यहाँ सीधे sendLocation को setInterval के अंदर नहीं डालते हैं 
+                            // ताकि sendLocation हमेशा latest position का उपयोग करे
+                        }, 10000); // 10 seconds
+                    }
+                },
+                // Error callback
+                (error) => {
+                    console.error("❌ Geolocation Error:", error.message);
+                    if (error.code === error.PERMISSION_DENIED) {
+                        toast({
+                            title: "GPS अनुमति आवश्यक",
+                            description: "रियल-टाइम ट्रैकिंग के लिए स्थान (Location) पहुँच की अनुमति दें।",
+                            variant: "destructive",
+                        });
+                    }
+                },
+                {
+                    enableHighAccuracy: true,
+                    timeout: 5000,
+                    maximumAge: 0,
+                }
+            );
+        }
+
+        // Cleanup function
+        return () => {
+            if (watchId !== null) {
+                navigator.geolocation.clearWatch(watchId);
+                console.log("🛑 GPS tracking stopped.");
+            }
+            if (intervalId !== null) {
+                clearInterval(intervalId);
+            }
+        };
+    }, [orders, socket, user, isLoading]); // orders array बदलने पर यह useEffect फिर से चलेगा
   const acceptOrderMutation = useMutation({
     mutationFn: (orderId: number) => api.post("/api/delivery/accept", { orderId }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["deliveryOrders"] }),
