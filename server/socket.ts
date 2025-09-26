@@ -1,8 +1,10 @@
-import { Server } from "socket.io";
+import { Server, Socket } from "socket.io";
 import type { Server as HTTPServer } from "http";
-
+import { db } from "./db"; 
 let io: Server | null = null;
-
+import { orders } from "../shared/backend/schema";
+import { eq } from "drizzle-orm";
+let io: Server | null = null;
 export function initSocket(server: HTTPServer) {
   io = new Server(server, {
     cors: {
@@ -33,6 +35,37 @@ export function initSocket(server: HTTPServer) {
       console.log("📦 Order update:", data);
       io?.emit("order:update", data);
     });
+socket.on('deliveryboy:location_update', async (data: { orderId: number, lat: number, lng: number }) => {
+        const serverIo = getIO();
+        
+        // सुरक्षा और डेटा जाँच
+        if (!data.orderId || !data.lat || !data.lng) return;
+        
+        console.log(`🏍️ Location Update for Order ${data.orderId}: (${data.lat}, ${data.lng})`);
+
+        try {
+            // 1. डेटाबेस से customerId खोजें
+            const order = await db.query.orders.findFirst({
+                where: eq(orders.id, data.orderId),
+                columns: { customerId: true }
+            });
+
+            if (order?.customerId) {
+                // 2. कस्टमर के रूम में रियल-टाइम लोकेशन इवेंट भेजें
+                // event: 'order:delivery_location'
+                serverIo.to(`user:${order.customerId}`).emit('order:delivery_location', {
+                    orderId: data.orderId,
+                    lat: data.lat,
+                    lng: data.lng,
+                    timestamp: new Date().toISOString(),
+                });
+                console.log(`✅ Location broadcasted to user:${order.customerId}`);
+            }
+        } catch (error) {
+            console.error("❌ Error processing location update:", error);
+        }
+    });
+
 
     socket.on("disconnect", () => {
       console.log("❌ Client disconnected:", socket.id);
@@ -42,7 +75,7 @@ export function initSocket(server: HTTPServer) {
   console.log("✅ Socket.IO initialized via initSocket");
   return io;
 }
-
+    
 export function setIO(serverIO: Server) {
   io = serverIO;
   console.log("✅ Global Socket.IO instance set via setIO");
