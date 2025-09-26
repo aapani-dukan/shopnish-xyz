@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { db } from '../server/db.ts';
-import { users, userRoleEnum, sellerProfiles } from '../shared/backend/schema.ts'; // ✅ sellerProfiles को आयात करें
+import { users, userRoleEnum, sellersPgTable } from '../shared/backend/schema.ts'; // ✅ sellerProfiles को आयात करें
 import { eq } from 'drizzle-orm';
 import { authAdmin } from '../server/lib/firebaseAdmin.ts';
 
