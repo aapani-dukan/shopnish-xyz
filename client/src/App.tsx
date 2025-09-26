@@ -112,9 +112,9 @@ function App() {
             path="/track-order/:orderId" 
             element={
               <AuthRedirectGuard>
-            <TrackOrder />
+            <TrackOrder/>
               </AuthRedirectGuard> 
-                } 
+          } 
         />
 
           {/* Admin */}
