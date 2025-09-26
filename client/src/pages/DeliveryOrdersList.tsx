@@ -144,10 +144,6 @@ const normalizeSeller = (order: Order): Seller | null => {
 };
 
 
-  return null;
-};
-
-
 // --- AddressBlock ---
 const AddressBlock: React.FC<{
   title: string;
