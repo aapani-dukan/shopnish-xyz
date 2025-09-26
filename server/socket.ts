@@ -1,10 +1,16 @@
 import { Server, Socket } from "socket.io";
 import type { Server as HTTPServer } from "http";
 import { db } from "./db"; 
-let io: Server | null = null;
 import { orders } from "../shared/backend/schema";
 import { eq } from "drizzle-orm";
 let io: Server | null = null;
+export function getIO(): Server {
+  if (!io) {
+    throw new Error("❌ Socket.IO not initialized. Call initSocket or setIO first.");
+  }
+  return io;
+}
+
 export function initSocket(server: HTTPServer) {
   io = new Server(server, {
     cors: {
@@ -81,9 +87,3 @@ export function setIO(serverIO: Server) {
   console.log("✅ Global Socket.IO instance set via setIO");
 }
 
-export function getIO(): Server {
-  if (!io) {
-    throw new Error("❌ Socket.IO not initialized. Call initSocket or setIO first.");
-  }
-  return io;
-}
