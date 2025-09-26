@@ -162,6 +162,31 @@ export default function CustomerOrdersPage() {
                   </p>
                 </div>
               </div>
+                 <div className="mt-4 flex space-x-3"> 
+                {/* 1. विवरण देखें (Details) बटन */}
+                <Button asChild variant="outline"> 
+                  <Link to={`/order-confirmation/${order.id}`}>
+                    विवरण देखें
+                  </Link>
+                </Button>
+
+                {/* 2. LIVE TRACK बटन (केवल विशिष्ट स्टेटस के लिए) */}
+                {(order.status === 'picked_up' || order.status === 'out_for_delivery') && (
+                    <Button asChild variant="default" className="bg-purple-600 hover:bg-purple-700">
+                        {/* ✅ ट्रैक-ऑर्डर पेज की ओर पॉइंट करें */}
+                        <Link to={`/track-order/${order.id}`}> 
+                            Live Track
+                        </Link>
+                    </Button>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    </div>
+  );
+}
               <div className="mt-4">
                 <Button asChild>
                   <Link to={`/order-confirmation/${order.id}`}>
