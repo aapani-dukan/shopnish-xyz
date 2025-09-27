@@ -65,18 +65,19 @@ const GoogleMapTracker: React.FC<GoogleMapTrackerProps> = ({
   // Custom Marker Icons
   
 
-// ✅ फिक्स: आइकन परिभाषाओं को सरल बनाएं
 const bikeIcon = useMemo(() => ({
-    url: 'http://maps.google.com/mapfiles/ms/icons/cycling.png', // या आपकी custom URL
-    scaledSize: { width: 32, height: 32 }, // MarkerF को सरल ऑब्जेक्ट चाहिए
-    anchor: { x: 16, y: 16 }
+    url: 'http://maps.google.com/mapfiles/ms/icons/cycling.png',
+    // ✅ फिक्स: सरल ऑब्जेक्ट को TypeScript के लिए 'google.maps.Size' के रूप में टाइपकास्ट करें।
+    scaledSize: { width: 32, height: 32 } as google.maps.Size, 
+    anchor: { x: 16, y: 16 } as google.maps.Point // Anchor के लिए भी typecast करें
 }), []);
 
 
 const homeIcon = useMemo(() => ({
-    url: 'http://maps.google.com/mapfiles/ms/icons/home.png', // या आपकी custom URL
-    scaledSize: { width: 32, height: 32 },
-    anchor: { x: 16, y: 32 }
+    url: 'http://maps.google.com/mapfiles/ms/icons/home.png',
+    // ✅ फिक्स: सरल ऑब्जेक्ट को 'google.maps.Size' के रूप में टाइपकास्ट करें।
+    scaledSize: { width: 32, height: 32 } as google.maps.Size,
+    anchor: { x: 16, y: 32 } as google.maps.Point // Anchor के लिए भी typecast करें
 }), []);
 
 
