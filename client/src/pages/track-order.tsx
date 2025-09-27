@@ -100,37 +100,31 @@ export default function TrackOrder() {
     enabled: !!orderId,
   });
 
+// ✅ Socket.IO से रियल-टाइम लोकेशन प्राप्त करें
+useEffect(() => {
+  if (!socket || !orderId || isLoading || !user) return;
 
-    // ✅ Socket.IO से रियल-टाइम लोकेशन प्राप्त करें
-  /*
-  useEffect(() => {
-    if (!socket || !orderId || isLoading) return;
-    
-  
-    socket.emit("register-client", { role: "user", userId: user.id }); 
-    
-      // इवेंट लिसनर
-       socket.on('order:delivery_location', (data: Location & { orderId: number }) => {
-    
-        // सुनिश्चित करें कि यह अपडेट सही ऑर्डर के लिए है
-        if (data.orderId === Number(orderId)) {
-            setDeliveryBoyLocation({ 
-                lat: data.lat, 
-                lng: data.lng, 
-                timestamp: data.timestamp 
-            });
-            console.log("🛵 New location received:", data.lat, data.lng);
-        }
-    });
+  // register client
+  socket.emit("register-client", { role: "user", userId: user.uid });
 
-     return () => { 
-      // सफाई: कंपोनेंट अनमाउंट होने पर लिसनर हटा दें
-      socket.off('order:delivery_location');
-    };
-    // dependencies में 'user' को जोड़ें
-  }, [socket, orderId, isLoading, user]); 
-  
-*/
+  // इवेंट लिसनर
+  socket.on("order:delivery_location", (data: Location & { orderId: number }) => {
+    if (data.orderId === Number(orderId)) {
+      setDeliveryBoyLocation({
+        lat: data.lat,
+        lng: data.lng,
+        timestamp: data.timestamp,
+      });
+      console.log("🛵 New location received:", data.lat, data.lng);
+    }
+  });
+
+  // cleanup
+  return () => {
+    socket.off("order:delivery_location");
+  };
+}, [socket, orderId, isLoading, user]);
+    
     if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
