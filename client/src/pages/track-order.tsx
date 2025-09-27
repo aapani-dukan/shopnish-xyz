@@ -114,7 +114,13 @@ export default function TrackOrder() {
       }
     };
 
-    socket.emit("register-client", { role: "user", userId: user.uid });
+    // ✅ फिक्स: user.id को प्राथमिकता दें, यह backendLogin और fetchAndSyncBackendUser दोनों में सेट है।
+const userIdToUse = user.id || user.uid; // सबसे सुरक्षित तरीका
+
+if (!socket || !numericOrderId || isLoading || !userIdToUse) return;
+
+socket.emit("register-client", { role: "user", userId: userIdToUse }); 
+    
     socket.on("order:delivery_location", handleLocationUpdate);
 
     return () => {
