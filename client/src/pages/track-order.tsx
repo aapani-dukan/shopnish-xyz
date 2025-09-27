@@ -200,11 +200,11 @@ export default function TrackOrder() {
   const lastCompletedIndex = tracking.findIndex(t => t.status === order.status);
 
   return ( "welcome" ); }
-    {/*  <div className="min-h-screen bg-gray-50 py-8">
+      <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-4xl mx-auto px-4">
         
         {/* Header */}
-{/*    <div className="mb-8 text-center">
+    <div className="mb-8 text-center">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Track Your Order</h1>
           <p className="text-lg text-gray-600">Order #{order.orderNumber}</p>
         </div>
@@ -212,10 +212,10 @@ export default function TrackOrder() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           
           {/* Main Tracking */}
-{/*     // TrackOrder.tsx (JSX/return statement के अंदर)
+     // TrackOrder.tsx (JSX/return statement के अंदर)
 
 {/* Main Tracking */}
-{/* <div className="lg:col-span-2 space-y-6">
+ <div className="lg:col-span-2 space-y-6">
     {(order.status === 'picked_up' || order.status === 'out_for_delivery') && order.deliveryBoyId && (
         <Card>
             <CardHeader>
