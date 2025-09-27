@@ -130,7 +130,7 @@ export default function TrackOrder() {
     socket.emit("register-client", { role: "user", userId: user.id }); 
     
       // इवेंट लिसनर
-    {/*   socket.on('order:delivery_location', (data: Location & { orderId: number }) => {
+       socket.on('order:delivery_location', (data: Location & { orderId: number }) => {
     
         // सुनिश्चित करें कि यह अपडेट सही ऑर्डर के लिए है
         if (data.orderId === Number(orderId)) {
@@ -148,7 +148,7 @@ export default function TrackOrder() {
       socket.off('order:delivery_location');
     };
     // dependencies में 'user' को जोड़ें
-  }, [socket, orderId, isLoading, user]); 
+  } [socket, orderId, isLoading, user]); 
   
 
   const getStatusColor = (status: string) => {
