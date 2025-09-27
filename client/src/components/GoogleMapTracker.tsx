@@ -63,17 +63,22 @@ const GoogleMapTracker: React.FC<GoogleMapTrackerProps> = ({
 
 
   // Custom Marker Icons
-  const bikeIcon: google.maps.Icon = {
-    url: 'https://maps.google.com/mapfiles/kml/shapes/motorcycling.png', // Google's Bike Icon
-    scaledSize: new google.maps.Size(32, 32),
-    anchor: new google.maps.Point(16, 16)
-  };
+  
 
-  const homeIcon: google.maps.Icon = {
-    url: 'https://maps.google.com/mapfiles/kml/paddle/red-stars.png', // Home Pin
-    scaledSize: new google.maps.Size(32, 32),
-    anchor: new google.maps.Point(16, 32)
-  };
+// ✅ फिक्स: आइकन परिभाषाओं को सरल बनाएं
+const bikeIcon = useMemo(() => ({
+    url: 'http://maps.google.com/mapfiles/ms/icons/cycling.png', // या आपकी custom URL
+    scaledSize: { width: 32, height: 32 }, // MarkerF को सरल ऑब्जेक्ट चाहिए
+    anchor: { x: 16, y: 16 }
+}), []);
+
+
+const homeIcon = useMemo(() => ({
+    url: 'http://maps.google.com/mapfiles/ms/icons/home.png', // या आपकी custom URL
+    scaledSize: { width: 32, height: 32 },
+    anchor: { x: 16, y: 32 }
+}), []);
+
 
   if (!GOOGLE_MAPS_API_KEY) {
       return <div>Google Maps API Key missing. Please check .env file.</div>;
