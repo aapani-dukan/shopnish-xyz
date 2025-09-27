@@ -100,28 +100,7 @@ export default function TrackOrder() {
     enabled: !!orderId,
   });
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full"></div>
-      </div>
-    );
-  }
 
-  if (!order) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Card className="w-full max-w-md">
-          <CardContent className="pt-6 text-center">
-            <Package className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-            <h3 className="text-lg font-medium mb-2">Order not found</h3>
-            <p className="text-gray-600">Unable to track this order</p>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-  
     // ✅ Socket.IO से रियल-टाइम लोकेशन प्राप्त करें
   /*
   useEffect(() => {
@@ -152,6 +131,28 @@ export default function TrackOrder() {
   }, [socket, orderId, isLoading, user]); 
   
 */
+    if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full"></div>
+      </div>
+    );
+  }
+
+  if (!order) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Card className="w-full max-w-md">
+          <CardContent className="pt-6 text-center">
+            <Package className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+            <h3 className="text-lg font-medium mb-2">Order not found</h3>
+            <p className="text-gray-600">Unable to track this order</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+  
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'placed':
