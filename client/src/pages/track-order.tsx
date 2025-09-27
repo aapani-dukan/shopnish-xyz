@@ -142,15 +142,15 @@ export default function TrackOrder() {
             console.log("🛵 New location received:", data.lat, data.lng);
         }
     });
-*/}
+
      return () => { 
       // सफाई: कंपोनेंट अनमाउंट होने पर लिसनर हटा दें
       socket.off('order:delivery_location');
     };
     // dependencies में 'user' को जोड़ें
-  } [socket, orderId, isLoading, user]); 
+  }, [socket, orderId, isLoading, user]); 
   
-
+*/}
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'placed':
