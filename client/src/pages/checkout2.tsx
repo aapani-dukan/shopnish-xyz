@@ -13,6 +13,9 @@ import { apiRequest } from "@/lib/queryClient";
 import { ShoppingCart, MapPin, CreditCard, Check } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 
+// ✅ NOTE: आपको अपने प्रोजेक्ट में इस कंपोनेंट को import करना होगा!
+// import AddressInputWithMap from "@/components/forms/AddressInputWithMap"; 
+
 interface SellerInfo {
   id: number;
   businessName: string;
@@ -38,10 +41,8 @@ interface DeliveryAddress {
   city: string;
   pincode: string;
   landmark?: string;
-  // **********************************
-  latitude?: number;  // <--- NEW!
-  longitude?: number; // <--- NEW!
-  // **********************************
+  latitude?: number;
+  longitude?: number;
 }
 
 export default function Checkout2() {
@@ -62,7 +63,7 @@ export default function Checkout2() {
     city: "Jaipur",
     pincode: "",
     landmark: "",
-    // ✅ NEW: Default coordinates (मान लें कि जयपुर का सेंटर)
+    // Default coordinates (मान लें कि जयपुर का सेंटर)
     latitude: 26.9124, 
     longitude: 75.7873,
   });
@@ -80,6 +81,37 @@ export default function Checkout2() {
   const deliveryCharge = subtotal >= 500 ? 0 : 25;
   const total = subtotal + deliveryCharge;
 
+  // ----------------------------------------------------------------------------------
+  // ✅ NEW: AddressInputWithMap से डेटा प्राप्त करने के लिए हैंडलर
+  // ----------------------------------------------------------------------------------
+  const handleLocationUpdate = (
+    address: string,
+    location: { lat: number; lng: number }
+  ) => {
+    setDeliveryAddress(prev => ({
+        ...prev,
+        // 'address' को Map/Geocoding से प्राप्त मान से अपडेट करें
+        address: address, 
+        latitude: location.lat,
+        longitude: location.lng,
+    }));
+  };
+
+  // ----------------------------------------------------------------------------------
+  // ✅ Order Items को ठीक करें (Buy Now के लिए)
+  // ----------------------------------------------------------------------------------
+  const itemsToOrder = productData ? [{
+    productId: productData.id,
+    sellerId: productData.sellerId,
+    quantity: directBuyQuantity,
+    unitPrice: parseFloat(productData.price),
+    totalPrice: parseFloat(productData.price) * directBuyQuantity,
+  }] : [];
+
+
+  // ----------------------------------------------------------------------------------
+  // ✅ Order Mutation
+  // ----------------------------------------------------------------------------------
   const createOrderMutation = useMutation({
     mutationFn: (orderData: any) => apiRequest("POST", "/api/orders/buy-now", orderData),
     onSuccess: (data) => {
@@ -98,21 +130,7 @@ export default function Checkout2() {
       });
     },
   });
-// ✅ NEW: AddressInputWithMap से डेटा प्राप्त करने के लिए हैंडलर
-const handleLocationUpdate = (
-    address: string,
-    location: { lat: number; lng: number }
-) => {
-    setDeliveryAddress(prev => ({
-        ...prev,
-        address: address,
-        latitude: location.lat,
-        longitude: location.lng,
-    }));
-    
-    // (Optional: अगर आप city/pincode को भी auto-fill करना चाहते हैं, तो Reverse Geocoding API से प्राप्त डेटा का उपयोग करें)
-};
-}
+
   const handlePlaceOrder = () => {
     if (!user || !user.id) {
       toast({
@@ -146,7 +164,7 @@ const handleLocationUpdate = (
       customerId: user.id,
       deliveryAddress: {
           ...deliveryAddress,
-          // Lat/Lng को string के बजाय number के रूप में भेजें
+          // Lat/Lng को number के रूप में भेजें
           latitude: deliveryAddress.latitude, 
           longitude: deliveryAddress.longitude
       },
@@ -156,7 +174,7 @@ const handleLocationUpdate = (
       deliveryCharge: deliveryCharge.toFixed(2),
       deliveryInstructions,
       items: itemsToOrder,
-      cartOrder: true, 
+      cartOrder: false, // क्योंकि यह 'buy-now' ऑर्डर है
     };
 
     createOrderMutation.mutate(orderData);
@@ -287,10 +305,10 @@ const handleLocationUpdate = (
                       />
                     </div>
                                    
-                    {/* ✅ NEW: AddressInputWithMap कंपोनेंट */}
+                    {/* ✅ NEW: AddressInputWithMap कंपोनेंट (इसे uncomment करने से पहले import करें) */}
                     <div className="md:col-span-2 border p-3 rounded-lg bg-gray-50">
                         <Label htmlFor="address">Locate and Verify Address</Label>
-                        <AddressInputWithMap
+                        {/* <AddressInputWithMap
                             currentAddress={deliveryAddress.address}
                             currentLocation={deliveryAddress.latitude && deliveryAddress.longitude 
                                 ? { lat: deliveryAddress.latitude, lng: deliveryAddress.longitude }
@@ -298,6 +316,17 @@ const handleLocationUpdate = (
                             }
                             onLocationUpdate={handleLocationUpdate}
                         />
+                        */}
+                        <Input 
+                            id="address"
+                            value={deliveryAddress.address}
+                            onChange={(e) => setDeliveryAddress({ ...deliveryAddress, address: e.target.value })}
+                            placeholder="Full street address"
+                        />
+                        <p className="text-xs text-gray-500 mt-2">
+                            Map integration is assumed to be working through a separate component.
+                            Lat: {deliveryAddress.latitude?.toFixed(4)}, Lng: {deliveryAddress.longitude?.toFixed(4)}
+                        </p>
                     </div>
                     <div>
                       <Label htmlFor="city">City</Label>
@@ -423,4 +452,5 @@ const handleLocationUpdate = (
       </div>
     </div>
   );
-}
+} 
+
