@@ -101,32 +101,25 @@ export default function TrackOrder() {
   const tracking: OrderTracking[] = Array.isArray(trackingData) ? trackingData : [];
 
   useEffect(() => {
-    if (!socket || !numericOrderId || isLoading || !user) return;
+  if (!socket || !numericOrderId || isLoading || !user) return;
 
-    const handleLocationUpdate = (data: Location & { orderId: number }) => {
-      if (data.orderId === numericOrderId) {
-        setDeliveryBoyLocation({
-          lat: data.lat,
-          lng: data.lng,
-          timestamp: data.timestamp,
-        });
-        console.log("🛵 New location received:", data.lat, data.lng);
-      }
-    };
+  const userIdToUse = user.id || user.uid;
+  if (!userIdToUse) return;
 
-    // ✅ फिक्स: user.id को प्राथमिकता दें, यह backendLogin और fetchAndSyncBackendUser दोनों में सेट है।
-const userIdToUse = user.id || user.uid; // सबसे सुरक्षित तरीका
+  socket.emit("register-client", { role: "user", userId: userIdToUse });
 
-if (!socket || !numericOrderId || isLoading || !userIdToUse) return;
+  const handleLocationUpdate = (data: Location & { orderId: number }) => {
+    if (data.orderId === numericOrderId) {
+      setDeliveryBoyLocation({ lat: data.lat, lng: data.lng, timestamp: data.timestamp });
+    }
+  };
 
-socket.emit("register-client", { role: "user", userId: userIdToUse }); 
-    
-    socket.on("order:delivery_location", handleLocationUpdate);
+  socket.on("order:delivery_location", handleLocationUpdate);
 
-    return () => {
-      socket.off("order:delivery_location", handleLocationUpdate);
-    };
-  }, [socket, numericOrderId, isLoading, user]);
+  return () => {
+    socket.off("order:delivery_location", handleLocationUpdate);
+  };
+}, [socket, numericOrderId, isLoading, user]);
 
   if (isLoading) {
     return (
