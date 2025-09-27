@@ -305,10 +305,10 @@ export default function Checkout2() {
                       />
                     </div>
                                    
-                    {/* ✅ NEW: AddressInputWithMap कंपोनेंट (इसे uncomment करने से पहले import करें) */}
+                    {£ \*   ✅ NEW: AddressInputWithMap कंपोनेंट (इसे uncomment करने से पहले import करें) */}
                     <div className="md:col-span-2 border p-3 rounded-lg bg-gray-50">
                         <Label htmlFor="address">Locate and Verify Address</Label>
-                        {/* <AddressInputWithMap
+                         <AddressInputWithMap
                             currentAddress={deliveryAddress.address}
                             currentLocation={deliveryAddress.latitude && deliveryAddress.longitude 
                                 ? { lat: deliveryAddress.latitude, lng: deliveryAddress.longitude }
@@ -316,7 +316,7 @@ export default function Checkout2() {
                             }
                             onLocationUpdate={handleLocationUpdate}
                         />
-                        */}
+                        
                         <Input 
                             id="address"
                             value={deliveryAddress.address}
