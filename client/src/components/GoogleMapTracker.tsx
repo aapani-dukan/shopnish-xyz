@@ -1,40 +1,40 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import {
   GoogleMap,
-  // ✅ इसे वापस MarkerF में बदलें
-  MarkerF, 
+  MarkerF,
   DirectionsService,
   DirectionsRenderer,
   useJsApiLoader,
 } from '@react-google-maps/api';
 
-// ... (Interfaces, containerStyle) ...
+interface Location {
+  lat: number;
+  lng: number;
+  timestamp: string;
+}
 
-// ✅ 'marker' लाइब्रेरी को रखें
+interface DeliveryAddress {
+  address: string;
+  city: string;
+  pincode: string;
+}
+
+interface GoogleMapTrackerProps {
+  deliveryBoyLocation: Location;
+  customerAddress: DeliveryAddress;
+}
+
+const containerStyle = { width: '100%', height: '320px' };
+
 const libraries: (
   | 'places'
   | 'geometry'
   | 'drawing'
   | 'localContext'
   | 'visualization'
-  | 'marker' 
-)[] = ['places', 'geometry', 'marker']; 
+)[] = ['places', 'geometry'];
 
 const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
-
-// 🛑 Icons को कंपोनेंट के बाहर सरल objects के रूप में परिभाषित करें (ReferenceError से बचने के लिए)
-const BIKE_ICON = {
-    url: 'http://maps.google.com/mapfiles/ms/icons/cycling.png', 
-    scaledSize: { width: 32, height: 32 } as google.maps.Size, 
-    anchor: { x: 16, y: 16 } as google.maps.Point
-} as google.maps.Icon; 
-
-const HOME_ICON = {
-    url: 'http://maps.google.com/mapfiles/ms/icons/home.png', 
-    scaledSize: { width: 32, height: 32 } as google.maps.Size,
-    anchor: { x: 16, y: 32 } as google.maps.Point
-} as google.maps.Icon; 
-
 
 const GoogleMapTracker: React.FC<GoogleMapTrackerProps> = ({
   deliveryBoyLocation,
@@ -66,17 +66,7 @@ const GoogleMapTracker: React.FC<GoogleMapTrackerProps> = ({
     },
     []
   );
-  
-  // ✅ mapOptions में Map ID रखें
-  const mapOptions = useMemo(
-    () => ({
-      zoom: 15,
-      center: mapCenter,
-      mapId: 'DEMO_MAP_ID', // Map ID को Advanced/Legacy Markers दोनों के लिए रखें
-    }),
-    [mapCenter]
-  );
-  
+
   if (loadError) {
     return <div>Google Maps failed to load: {String(loadError)}</div>;
   }
@@ -84,43 +74,46 @@ const GoogleMapTracker: React.FC<GoogleMapTrackerProps> = ({
   if (!isLoaded) {
     return <div>Loading Google Maps…</div>;
   }
-  
-  // 🛑 यहाँ से पुरानी icon परिभाषाएं हटा दी गईं थी।
+
+  // ✅ Safe icon definitions (only after Google Maps is loaded)
+  const bikeIcon: google.maps.Icon = {
+    url: 'http://maps.google.com/mapfiles/ms/icons/cycling.png',
+    scaledSize: new google.maps.Size(32, 32),
+  };
+
+  const homeIcon: google.maps.Icon = {
+    url: 'http://maps.google.com/mapfiles/ms/icons/home.png',
+    scaledSize: new google.maps.Size(32, 32),
+  };
 
   return (
     <GoogleMap
       mapContainerStyle={containerStyle}
-      options={mapOptions} 
+      center={mapCenter}
+      zoom={15}
     >
-      {/* Directions Service को सिर्फ तभी चलाएं जब data उपलब्ध हो */}
-      {mapCenter && destination && (
-          <DirectionsService
-            options={{
-              origin: mapCenter,
-              destination,
-              travelMode: google.maps.TravelMode.DRIVING,
-            }}
-            callback={directionsCallback}
-          />
-      )}
-      
+      <DirectionsService
+        options={{
+          origin: deliveryBoyLocation,
+          destination,
+          travelMode: google.maps.TravelMode.DRIVING,
+        }}
+        callback={directionsCallback}
+      />
       {directionsResponse && (
         <DirectionsRenderer
           options={{ directions: directionsResponse, suppressMarkers: true }}
         />
       )}
-      
-      {/* ✅ MarkerF का उपयोग करें और कंपोनेंट के बाहर परिभाषित स्थिर आइकन का उपयोग करें */}
       <MarkerF
         position={deliveryBoyLocation}
-        icon={BIKE_ICON} // स्थिर आइकन का उपयोग
+        icon={bikeIcon}
         title="Delivery Partner"
       />
-      
       {directionsResponse?.routes?.[0]?.legs?.[0]?.end_location && (
         <MarkerF
           position={directionsResponse.routes[0].legs[0].end_location}
-          icon={HOME_ICON} // स्थिर आइकन का उपयोग
+          icon={homeIcon}
           title="Customer Location"
         />
       )}
