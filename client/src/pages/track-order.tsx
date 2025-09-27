@@ -199,7 +199,7 @@ export default function TrackOrder() {
   // ✅ tracking डेटा का उपयोग करके डायनेमिक टाइमलाइन बनाएँ
   const lastCompletedIndex = tracking.findIndex(t => t.status === order.status);
 
-  return ( "welcome" ); }
+  return ( 
       <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-4xl mx-auto px-4">
         
@@ -296,13 +296,13 @@ export default function TrackOrder() {
             </Card>
 
             {/* Progress Timeline */}
-{/*      <Card>
+      <Card>
               <CardHeader>
                 <CardTitle>Order Timeline</CardTitle>
               </CardHeader>
               <CardContent>
                 {/* ✅ यहाँ नया डायनामिक लॉजिक शुरू होता है */}
-{/*       <div className="space-y-6">
+       <div className="space-y-6">
                   {tracking.map((step, index) => {
                     const isCompleted = index <= lastCompletedIndex;
                     const isCurrent = step.status === order.status;
@@ -339,11 +339,11 @@ export default function TrackOrder() {
                   })}
                 </div>
                 {/* ✅ नया लॉजिक यहाँ समाप्त होता है */}
-{/*         </CardContent>
+        </CardContent>
             </Card>
 
             {/* Delivery Details */}
-{/*        {order.deliveryBoy && (
+        {order.deliveryBoy && (
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center space-x-2">
