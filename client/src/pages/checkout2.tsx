@@ -38,6 +38,10 @@ interface DeliveryAddress {
   city: string;
   pincode: string;
   landmark?: string;
+  // **********************************
+  latitude?: number;  // <--- NEW!
+  longitude?: number; // <--- NEW!
+  // **********************************
 }
 
 export default function Checkout2() {
@@ -57,7 +61,10 @@ export default function Checkout2() {
     address: "",
     city: "Jaipur",
     pincode: "",
-    landmark: ""
+    landmark: "",
+    // ✅ NEW: Default coordinates (मान लें कि जयपुर का सेंटर)
+    latitude: 26.9124, 
+    longitude: 75.7873,
   });
   const [paymentMethod, setPaymentMethod] = useState("cod");
   const [deliveryInstructions, setDeliveryInstructions] = useState("");
@@ -91,7 +98,21 @@ export default function Checkout2() {
       });
     },
   });
-
+// ✅ NEW: AddressInputWithMap से डेटा प्राप्त करने के लिए हैंडलर
+const handleLocationUpdate = (
+    address: string,
+    location: { lat: number; lng: number }
+) => {
+    setDeliveryAddress(prev => ({
+        ...prev,
+        address: address,
+        latitude: location.lat,
+        longitude: location.lng,
+    }));
+    
+    // (Optional: अगर आप city/pincode को भी auto-fill करना चाहते हैं, तो Reverse Geocoding API से प्राप्त डेटा का उपयोग करें)
+};
+}
   const handlePlaceOrder = () => {
     if (!user || !user.id) {
       toast({
@@ -102,10 +123,10 @@ export default function Checkout2() {
       return;
     }
 
-    if (!deliveryAddress.fullName || !deliveryAddress.phone || !deliveryAddress.address || !deliveryAddress.pincode) {
+       if (!deliveryAddress.fullName || !deliveryAddress.phone || !deliveryAddress.address || !deliveryAddress.pincode || !deliveryAddress.latitude || !deliveryAddress.longitude) {
       toast({
         title: "Address Required",
-        description: "Please fill in all delivery address fields",
+        description: "Please fill in all delivery address fields and select a location on the map.",
         variant: "destructive",
       });
       return;
@@ -120,24 +141,22 @@ export default function Checkout2() {
       return;
     }
 
+      // ✅ ORDER DATA UPDATE: नए Lat/Lng को orderData में शामिल करें
     const orderData = {
       customerId: user.id,
-      deliveryAddress,
+      deliveryAddress: {
+          ...deliveryAddress,
+          // Lat/Lng को string के बजाय number के रूप में भेजें
+          latitude: deliveryAddress.latitude, 
+          longitude: deliveryAddress.longitude
+      },
       paymentMethod,
       subtotal: subtotal.toFixed(2),
       total: total.toFixed(2),
       deliveryCharge: deliveryCharge.toFixed(2),
       deliveryInstructions,
-      items: [
-        {
-          productId: productData.id,
-          sellerId: productData.sellerId,
-          quantity: directBuyQuantity,
-          unitPrice: productData.price,
-          totalPrice: (parseFloat(productData.price) * directBuyQuantity).toFixed(2),
-        },
-      ],
-      cartOrder: false, // direct buy always false
+      items: itemsToOrder,
+      cartOrder: true, 
     };
 
     createOrderMutation.mutate(orderData);
@@ -267,15 +286,18 @@ export default function Checkout2() {
                         placeholder="Enter phone number"
                       />
                     </div>
-                    <div className="md:col-span-2">
-                      <Label htmlFor="address">Complete Address</Label>
-                      <Textarea
-                        id="address"
-                        value={deliveryAddress.address}
-                        onChange={(e) => setDeliveryAddress({ ...deliveryAddress, address: e.target.value })}
-                        placeholder="House/Flat No, Building, Street, Area"
-                        rows={3}
-                      />
+                                   
+                    {/* ✅ NEW: AddressInputWithMap कंपोनेंट */}
+                    <div className="md:col-span-2 border p-3 rounded-lg bg-gray-50">
+                        <Label htmlFor="address">Locate and Verify Address</Label>
+                        <AddressInputWithMap
+                            currentAddress={deliveryAddress.address}
+                            currentLocation={deliveryAddress.latitude && deliveryAddress.longitude 
+                                ? { lat: deliveryAddress.latitude, lng: deliveryAddress.longitude }
+                                : null
+                            }
+                            onLocationUpdate={handleLocationUpdate}
+                        />
                     </div>
                     <div>
                       <Label htmlFor="city">City</Label>
