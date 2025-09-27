@@ -305,7 +305,7 @@ export default function Checkout2() {
                       />
                     </div>
                                    
-                    {£ \*   ✅ NEW: AddressInputWithMap कंपोनेंट (इसे uncomment करने से पहले import करें) */}
+                    { \*   ✅ NEW: AddressInputWithMap कंपोनेंट (इसे uncomment करने से पहले import करें) */}
                     <div className="md:col-span-2 border p-3 rounded-lg bg-gray-50">
                         <Label htmlFor="address">Locate and Verify Address</Label>
                          <AddressInputWithMap
@@ -317,16 +317,7 @@ export default function Checkout2() {
                             onLocationUpdate={handleLocationUpdate}
                         />
                         
-                        <Input 
-                            id="address"
-                            value={deliveryAddress.address}
-                            onChange={(e) => setDeliveryAddress({ ...deliveryAddress, address: e.target.value })}
-                            placeholder="Full street address"
-                        />
-                        <p className="text-xs text-gray-500 mt-2">
-                            Map integration is assumed to be working through a separate component.
-                            Lat: {deliveryAddress.latitude?.toFixed(4)}, Lng: {deliveryAddress.longitude?.toFixed(4)}
-                        </p>
+      
                     </div>
                     <div>
                       <Label htmlFor="city">City</Label>
