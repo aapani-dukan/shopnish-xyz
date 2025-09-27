@@ -26,14 +26,14 @@ interface GoogleMapTrackerProps {
 }
 
 const containerStyle = { width: '100%', height: '320px' };
-
 const libraries: (
   | 'places'
   | 'geometry'
   | 'drawing'
   | 'localContext'
   | 'visualization'
-)[] = ['places', 'geometry'];
+  | 'marker' // Advanced Marker या MapId के लिए इसे रखें
+)[] = ['places', 'geometry', 'marker'];
 
 const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
 
@@ -76,25 +76,44 @@ const GoogleMapTracker: React.FC<GoogleMapTrackerProps> = ({
     return <div>Loading Google Maps…</div>;
   }
 
-  // ✅ Safe icon definitions (only after Google Maps is loaded)
-  const bikeIcon: google.maps.Icon = {
-     url: 'http://maps.google.com/mapfiles/kml/shapes/motorcycling.png', 
-    scaledSize: new google.maps.Size(32, 32),
-    anchor: new google.maps.Point(16, 16),
+    if (!isLoaded) {
+    return <div>Loading Google Maps…</div>;
+  }
+  
+  // ✅ आइकन परिभाषाओं को useMemo में मूव करें
+  const { bikeIcon, homeIcon } = useMemo(() => {
+    // TypeScript के लिए window.google.maps को एक्सेस करने का सुरक्षित तरीका
+    const maps = (window as any).google.maps; 
 
-  };
+    const bikeIcon: google.maps.Icon = {
+        url: 'http://maps.google.com/mapfiles/kml/shapes/motorcycling.png', 
+        scaledSize: new maps.Size(32, 32), // new maps.Size का उपयोग करें
+        anchor: new maps.Point(16, 16),
+    }; 
 
-  const homeIcon: google.maps.Icon = {
-        url: 'http://maps.google.com/mapfiles/kml/shapes/homegarden.png',
-    scaledSize: new google.maps.Size(32, 32),
-    anchor: new google.maps.Point(16, 32),
-  };
+    const homeIcon: google.maps.Icon = {
+        url: 'http://maps.google.com/mapfiles/kml/shapes/homegarden.png', 
+        scaledSize: new maps.Size(32, 32),
+        anchor: new maps.Point(16, 32),
+    };
+    return { bikeIcon, homeIcon };
+  }, [isLoaded]); // isLoaded पर निर्भरता जरूरी है
+
+  // ✅ Map Options में Map ID जोड़ें (यदि आप advanced marker library का उपयोग कर रहे हैं)
+  const mapOptions = useMemo(
+    () => ({
+      zoom: 15,
+      center: mapCenter,
+      mapId: 'DEMO_MAP_ID', // आपको अपनी ID यहाँ डालनी होगी
+    }),
+    [mapCenter]
+  );
+
 
   return (
     <GoogleMap
       mapContainerStyle={containerStyle}
-      center={mapCenter}
-      zoom={15}
+      options={mapOptions} // mapOptions का उपयोग करें
     >
       <DirectionsService
         options={{
@@ -109,6 +128,7 @@ const GoogleMapTracker: React.FC<GoogleMapTrackerProps> = ({
           options={{ directions: directionsResponse, suppressMarkers: true }}
         />
       )}
+         {/* मार्कर का उपयोग */}
       <MarkerF
         position={deliveryBoyLocation}
         icon={bikeIcon}
