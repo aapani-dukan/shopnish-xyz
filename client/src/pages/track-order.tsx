@@ -199,7 +199,7 @@ export default function TrackOrder() {
   // ✅ tracking डेटा का उपयोग करके डायनेमिक टाइमलाइन बनाएँ
   const lastCompletedIndex = tracking.findIndex(t => t.status === order.status);
 
-  return ( "welcome"
+  return ( "welcome" ); }
     {/*  <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-4xl mx-auto px-4">
         
