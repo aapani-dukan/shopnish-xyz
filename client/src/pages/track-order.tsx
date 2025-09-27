@@ -95,20 +95,18 @@ export default function TrackOrder() {
   });
   
 
-  const { data: tracking = [] } = useQuery<OrderTracking[]>({
-    queryKey: [`/api/orders/${orderId}/tracking`],
-    enabled: !!orderId,
-  });
+  const { data: trackingData } = useQuery<OrderTracking[]>({
+  queryKey: [`/api/orders/${orderId}/tracking`],
+  enabled: !!orderId,
+});
+
+const tracking = Array.isArray(trackingData) ? trackingData : [];
 
 // ✅ Socket.IO से रियल-टाइम लोकेशन प्राप्त करें
 useEffect(() => {
   if (!socket || !orderId || isLoading || !user) return;
 
-  // register client
-  socket.emit("register-client", { role: "user", userId: user.uid });
-
-  // इवेंट लिसनर
-  socket.on("order:delivery_location", (data: Location & { orderId: number }) => {
+  const handleLocationUpdate = (data: Location & { orderId: number }) => {
     if (data.orderId === Number(orderId)) {
       setDeliveryBoyLocation({
         lat: data.lat,
@@ -117,11 +115,13 @@ useEffect(() => {
       });
       console.log("🛵 New location received:", data.lat, data.lng);
     }
-  });
+  };
 
-  // cleanup
+  socket.emit("register-client", { role: "user", userId: user.uid });
+  socket.on("order:delivery_location", handleLocationUpdate);
+
   return () => {
-    socket.off("order:delivery_location");
+    socket.off("order:delivery_location", handleLocationUpdate);
   };
 }, [socket, orderId, isLoading, user]);
     
@@ -193,7 +193,9 @@ useEffect(() => {
   const store = order.items?.[0]?.product?.store;
 
   // ✅ tracking डेटा का उपयोग करके डायनेमिक टाइमलाइन बनाएँ
-  const lastCompletedIndex = tracking.findIndex(t => t.status === order.status);
+  const lastCompletedIndex = tracking.length
+  ? tracking.findIndex(t => t.status === order.status)
+  : -1;
 
   return ( 
       <div className="min-h-screen bg-gray-50 py-8">
