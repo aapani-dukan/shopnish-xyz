@@ -173,10 +173,14 @@ export const deliveryAddresses = pgTable('delivery_addresses', {
   city: text('city').notNull(),
   state: text('state').notNull(),
   postalCode: text('postal_code').notNull(),
+  
+  // ✅ NEW: Latitude and Longitude for accurate mapping
+  latitude: decimal('latitude').$type<number>().notNull().default('0.0'),
+  longitude: decimal('longitude').$type<number>().notNull().default('0.0'),
+  
   isDefault: boolean('is_default').default(false),
   createdAt: timestamp('created_at').defaultNow(),
 });
-
 
 export const orders = pgTable("orders", {
   id: serial("id").primaryKey(),
@@ -188,7 +192,6 @@ export const orders = pgTable("orders", {
   customerId: integer("customer_id")
     .notNull()
     .references(() => users.id, { onDelete: "cascade" }),
-  // ✅ 'sellerId' कॉलम जोड़ा गया
   sellerId: integer("seller_id")
     .notNull()
     .references(() => sellersPgTable.id, { onDelete: "cascade" }),
@@ -202,8 +205,6 @@ export const orders = pgTable("orders", {
   
   // Order Details
   status: orderStatusEnum("status").default("pending").notNull(),
-  
-  // ✅ FIX: delivery_status कॉलम जोड़ा गया
   deliveryStatus: deliveryStatusEnum("delivery_status").default("pending").notNull(),
 
   subtotal: decimal("subtotal", { precision: 10, scale: 2 }).notNull(),
@@ -214,6 +215,10 @@ export const orders = pgTable("orders", {
 
   // Delivery Address (string version)
   deliveryAddress: text("delivery_address").notNull(),
+
+  // ✅ NEW: Redundant Lat/Lng for quick order retrieval and tracking
+  deliveryLat: decimal("delivery_lat").$type<number>().default('0.0'),
+  deliveryLng: decimal("delivery_lng").$type<number>().default('0.0'),
 
   // Delivery Info
   deliveryInstructions: text("delivery_instructions"),
