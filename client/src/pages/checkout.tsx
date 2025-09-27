@@ -1,8 +1,7 @@
-// client/src/pages/Checkout.tsx
-
-import { useState, useEffect } from "react";
+// client/src/pages/Checkout2.tsx
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -12,23 +11,27 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { ShoppingCart, MapPin, CreditCard, Check } from "lucide-react";
-import { Link } from "react-router-dom";
-import { useAuth } from "@/hooks/useAuth"; 
+import { useAuth } from "@/hooks/useAuth";
 
-interface CartItem {
+// ✅ NOTE: आपको अपने प्रोजेक्ट में इस कंपोनेंट को import करना होगा!
+// import AddressInputWithMap from "@/components/forms/AddressInputWithMap"; 
+
+interface SellerInfo {
   id: number;
-  productId: number;
-  quantity: number;
-  product: {
-    id: number;
-    name: string;
-    nameHindi: string;
-    price: string;
-    image: string;
-    unit: string;
-    brand: string;
-    sellerId: number;   
-  };
+  businessName: string;
+  city: string;
+}
+
+interface ProductItem {
+  id: number;
+  name: string;
+  nameHindi: string;
+  price: string;
+  image: string;
+  unit: string;
+  brand: string;
+  sellerId: number;
+  seller?: SellerInfo;
 }
 
 interface DeliveryAddress {
@@ -38,67 +41,80 @@ interface DeliveryAddress {
   city: string;
   pincode: string;
   landmark?: string;
+  latitude?: number;
+  longitude?: number;
 }
-interface DeliveryAddress {
-  fullName: string;
-  phone: string;
-  address: string;
-  city: string;
-  pincode: string;
-  landmark?: string;
-  // **********************************
-  latitude?: number;  // <--- NEW!
-  longitude?: number; // <--- NEW!
-  // **********************************
-}
-export default function Checkout() {
+
+export default function Checkout2() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { user, isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
+
+  const { id: directBuyProductId } = useParams<{ id: string }>();
+  const [searchParams] = useSearchParams();
+  const directBuyQuantity = searchParams.get("quantity") ? parseInt(searchParams.get("quantity")!) : 1;
 
   const [currentStep, setCurrentStep] = useState(1);
-  
-
-const [deliveryAddress, setDeliveryAddress] = useState<DeliveryAddress>({
-  fullName: "",
-  phone: "",
-  address: "",
-  city: "Bundi", 
-  pincode: "",
-  landmark: "",
-  
-  latitude: 25.4326, 
-  longitude: 75.6450,
-});
-
-
+  const [deliveryAddress, setDeliveryAddress] = useState<DeliveryAddress>({
+    fullName: "",
+    phone: "",
+    address: "",
+    city: "Jaipur",
+    pincode: "",
+    landmark: "",
+    // Default coordinates (मान लें कि जयपुर का सेंटर)
+    latitude: 26.9124, 
+    longitude: 75.7873,
+  });
   const [paymentMethod, setPaymentMethod] = useState("cod");
   const [deliveryInstructions, setDeliveryInstructions] = useState("");
 
-  // ✅ Fetch cart items
-  const { data, isLoading } = useQuery({
-    queryKey: ['cartItems'],
-    queryFn: async () => await apiRequest("GET", "/api/cart"),
-    enabled: isAuthenticated, // केवल authenticated user के लिए fetch
+  // ✅ Fetch direct buy product
+  const { data: productData, isLoading, error } = useQuery<ProductItem>({
+    queryKey: ['product', directBuyProductId],
+    queryFn: () => apiRequest("GET", `/api/products/${directBuyProductId}`),
+    enabled: !!directBuyProductId,
   });
 
-  const cartItems: CartItem[] = data?.items || [];
-
-  const subtotal = cartItems.reduce(
-    (sum, item) => sum + parseFloat(item.product.price) * item.quantity,
-    0
-  );
+  const subtotal = productData ? parseFloat(productData.price) * directBuyQuantity : 0;
   const deliveryCharge = subtotal >= 500 ? 0 : 25;
   const total = subtotal + deliveryCharge;
 
-  // ✅ Create order mutation
+  // ----------------------------------------------------------------------------------
+  // ✅ NEW: AddressInputWithMap से डेटा प्राप्त करने के लिए हैंडलर
+  // ----------------------------------------------------------------------------------
+  const handleLocationUpdate = (
+    address: string,
+    location: { lat: number; lng: number }
+  ) => {
+    setDeliveryAddress(prev => ({
+        ...prev,
+        // 'address' को Map/Geocoding से प्राप्त मान से अपडेट करें
+        address: address, 
+        latitude: location.lat,
+        longitude: location.lng,
+    }));
+  };
+
+  // ----------------------------------------------------------------------------------
+  // ✅ Order Items को ठीक करें (Buy Now के लिए)
+  // ----------------------------------------------------------------------------------
+  const itemsToOrder = productData ? [{
+    productId: productData.id,
+    sellerId: productData.sellerId,
+    quantity: directBuyQuantity,
+    unitPrice: parseFloat(productData.price),
+    totalPrice: parseFloat(productData.price) * directBuyQuantity,
+  }] : [];
+
+
+  // ----------------------------------------------------------------------------------
+  // ✅ Order Mutation
+  // ----------------------------------------------------------------------------------
   const createOrderMutation = useMutation({
-    mutationFn: async (orderData: any) => {
-      return await apiRequest("POST", "/api/orders", orderData);
-    },
+    mutationFn: (orderData: any) => apiRequest("POST", "/api/orders/buy-now", orderData),
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['cartItems'] });
       toast({
         title: "Order Placed Successfully!",
         description: `Order #${data.orderNumber} has been confirmed`,
@@ -106,6 +122,7 @@ const [deliveryAddress, setDeliveryAddress] = useState<DeliveryAddress>({
       navigate(`/order-confirmation/${data.orderId}`);
     },
     onError: (error) => {
+      console.error("❌ Order placement failed:", error);
       toast({
         title: "Order Failed",
         description: "Failed to place order. Please try again.",
@@ -114,24 +131,8 @@ const [deliveryAddress, setDeliveryAddress] = useState<DeliveryAddress>({
     },
   });
 
-  // ✅ NEW: AddressInputWithMap से डेटा प्राप्त करने के लिए हैंडलर
-const handleLocationUpdate = (
-    address: string,
-    location: { lat: number; lng: number }
-) => {
-    setDeliveryAddress(prev => ({
-        ...prev,
-        address: address,
-        latitude: location.lat,
-        longitude: location.lng,
-    }));
-    
-    // (Optional: अगर आप city/pincode को भी auto-fill करना चाहते हैं, तो Reverse Geocoding API से प्राप्त डेटा का उपयोग करें)
-};
-
-
   const handlePlaceOrder = () => {
-    if (!user?.id) {
+    if (!user || !user.id) {
       toast({
         title: "Authentication Error",
         description: "You must be logged in to place an order.",
@@ -140,37 +141,30 @@ const handleLocationUpdate = (
       return;
     }
 
-     if (!deliveryAddress.fullName || !deliveryAddress.phone || !deliveryAddress.address || !deliveryAddress.pincode || !deliveryAddress.latitude || !deliveryAddress.longitude) {
+       if (!deliveryAddress.fullName || !deliveryAddress.phone || !deliveryAddress.address || !deliveryAddress.pincode || !deliveryAddress.latitude || !deliveryAddress.longitude) {
       toast({
         title: "Address Required",
         description: "Please fill in all delivery address fields and select a location on the map.",
         variant: "destructive",
       });
       return;
-     }
+    }
 
-    if (!cartItems || cartItems.length === 0) {
+    if (!productData) {
       toast({
-        title: "No Items to Order",
-        description: "There are no items to place an order.",
+        title: "Product Not Found",
+        description: "Could not find the product to place an order.",
         variant: "destructive",
       });
       return;
     }
 
-    const itemsToOrder = cartItems.map(item => ({
-      productId: item.product.id,
-      sellerId: item.product.sellerId,
-      quantity: item.quantity,
-      unitPrice: item.product.price,
-      totalPrice: (parseFloat(item.product.price) * item.quantity).toFixed(2),
-    }));
-
+      // ✅ ORDER DATA UPDATE: नए Lat/Lng को orderData में शामिल करें
     const orderData = {
       customerId: user.id,
       deliveryAddress: {
           ...deliveryAddress,
-          // Lat/Lng को string के बजाय number के रूप में भेजें
+          // Lat/Lng को number के रूप में भेजें
           latitude: deliveryAddress.latitude, 
           longitude: deliveryAddress.longitude
       },
@@ -180,13 +174,11 @@ const handleLocationUpdate = (
       deliveryCharge: deliveryCharge.toFixed(2),
       deliveryInstructions,
       items: itemsToOrder,
-      cartOrder: true, 
+      cartOrder: false, // क्योंकि यह 'buy-now' ऑर्डर है
     };
 
     createOrderMutation.mutate(orderData);
   };
-
-  // ------------------- JSX Loading / Empty States -------------------
 
   if (isLoading) {
     return (
@@ -196,16 +188,17 @@ const handleLocationUpdate = (
     );
   }
 
-  if (!cartItems || cartItems.length === 0) {
+  if (error || !productData) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Card className="w-full max-w-md">
           <CardContent className="pt-6 text-center">
-            <ShoppingCart className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-            <h3 className="text-lg font-medium mb-2">Your cart is empty</h3>
-            <p className="text-gray-600 mb-4">Add some items to proceed with checkout</p>
+            <h3 className="text-lg font-medium mb-2">Product Not Found</h3>
+            <p className="text-gray-600 mb-4">
+              The product you're looking for doesn't exist or is not available.
+            </p>
             <Link to="/">
-              <Button>Continue Shopping</Button>
+              <Button>Go to Home Page</Button>
             </Link>
           </CardContent>
         </Card>
@@ -216,6 +209,7 @@ const handleLocationUpdate = (
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-6xl mx-auto px-4">
+        {/* Steps */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Checkout</h1>
           <div className="flex space-x-4">
@@ -224,19 +218,25 @@ const handleLocationUpdate = (
                 key={step}
                 className={`flex items-center space-x-2 ${currentStep >= step ? "text-green-600" : "text-gray-400"}`}
               >
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center ${currentStep > step ? "bg-green-600 text-white" : "bg-gray-200"}`}>
+                <div
+                  className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                    currentStep > step ? "bg-green-600 text-white" : "bg-gray-200"
+                  }`}
+                >
                   {currentStep > step ? <Check className="w-4 h-4" /> : step}
                 </div>
                 <span className="font-medium">
-                  {step === 1 ? "Cart Review" : step === 2 ? "Delivery Address" : "Payment"}
+                  {step === 1 ? "Order Review" : step === 2 ? "Delivery Address" : "Payment"}
                 </span>
               </div>
             ))}
           </div>
         </div>
 
+        {/* Content */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 space-y-6">
+            {/* Step 1: Review */}
             {currentStep === 1 && (
               <Card>
                 <CardHeader>
@@ -247,28 +247,35 @@ const handleLocationUpdate = (
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    {cartItems.map((item, index) => (
-                      <div key={item.id || index} className="flex items-center space-x-4 py-4 border-b">
-                        <img src={item.product.image} alt={item.product.name} className="w-16 h-16 object-cover rounded-lg"/>
-                        <div className="flex-1">
-                          <h3 className="font-medium">{item.product.name}</h3>
-                          <p className="text-sm text-gray-600">{item.product.nameHindi}</p>
-                          <p className="text-sm text-gray-500">{item.product.brand} • {item.product.unit}</p>
-                        </div>
-                        <div className="text-right">
-                          <p className="font-medium">₹{item.product.price} × {item.quantity}</p>
-                          <p className="text-sm text-gray-600">₹{(parseFloat(item.product.price) * item.quantity).toFixed(2)}</p>
-                        </div>
+                    <div className="flex items-center space-x-4 py-4 border-b">
+                      <img
+                        src={productData.image}
+                        alt={productData.name}
+                        className="w-16 h-16 object-cover rounded-lg"
+                      />
+                      <div className="flex-1">
+                        <h3 className="font-medium">{productData.name}</h3>
+                        <p className="text-sm text-gray-600">{productData.nameHindi}</p>
+                        <p className="text-sm text-gray-500">{productData.brand} • {productData.unit}</p>
                       </div>
-                    ))}
+                      <div className="text-right">
+                        <p className="font-medium">₹{productData.price} × {directBuyQuantity}</p>
+                        <p className="text-sm text-gray-600">
+                          ₹{(parseFloat(productData.price) * directBuyQuantity).toFixed(2)}
+                        </p>
+                      </div>
+                    </div>
                     <div className="pt-4">
-                      <Button onClick={() => setCurrentStep(2)} className="w-full">Proceed to Delivery Address</Button>
+                      <Button onClick={() => setCurrentStep(2)} className="w-full">
+                        Proceed to Delivery Address
+                      </Button>
                     </div>
                   </div>
                 </CardContent>
               </Card>
             )}
 
+            {/* Step 2: Address */}
             {currentStep === 2 && (
               <Card>
                 <CardHeader>
@@ -281,7 +288,7 @@ const handleLocationUpdate = (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <Label htmlFor="fullName">Full Name</Label>
-                     <Input
+                      <Input
                         id="fullName"
                         value={deliveryAddress.fullName}
                         onChange={(e) => setDeliveryAddress({ ...deliveryAddress, fullName: e.target.value })}
@@ -297,11 +304,11 @@ const handleLocationUpdate = (
                         placeholder="Enter phone number"
                       />
                     </div>
-                        
-                    {/* ✅ NEW: AddressInputWithMap कंपोनेंट */}
+                                   
+                    {/* ✅ NEW: AddressInputWithMap कंपोनेंट (इसे uncomment करने से पहले import करें) */}
                     <div className="md:col-span-2 border p-3 rounded-lg bg-gray-50">
                         <Label htmlFor="address">Locate and Verify Address</Label>
-                        <AddressInputWithMap
+                        {/* <AddressInputWithMap
                             currentAddress={deliveryAddress.address}
                             currentLocation={deliveryAddress.latitude && deliveryAddress.longitude 
                                 ? { lat: deliveryAddress.latitude, lng: deliveryAddress.longitude }
@@ -309,6 +316,17 @@ const handleLocationUpdate = (
                             }
                             onLocationUpdate={handleLocationUpdate}
                         />
+                        */}
+                        <Input 
+                            id="address"
+                            value={deliveryAddress.address}
+                            onChange={(e) => setDeliveryAddress({ ...deliveryAddress, address: e.target.value })}
+                            placeholder="Full street address"
+                        />
+                        <p className="text-xs text-gray-500 mt-2">
+                            Map integration is assumed to be working through a separate component.
+                            Lat: {deliveryAddress.latitude?.toFixed(4)}, Lng: {deliveryAddress.longitude?.toFixed(4)}
+                        </p>
                     </div>
                     <div>
                       <Label htmlFor="city">City</Label>
@@ -348,15 +366,15 @@ const handleLocationUpdate = (
                       />
                     </div>
                   </div>
-
                   <div className="flex space-x-4 mt-6">
-                    <Button variant="outline" onClick={() => setCurrentStep(1)}>Back to Cart</Button>
+                    <Button variant="outline" onClick={() => setCurrentStep(1)}>Back to Order</Button>
                     <Button onClick={() => setCurrentStep(3)}>Proceed to Payment</Button>
                   </div>
                 </CardContent>
               </Card>
             )}
 
+            {/* Step 3: Payment */}
             {currentStep === 3 && (
               <Card>
                 <CardHeader>
@@ -373,15 +391,6 @@ const handleLocationUpdate = (
                         <div>
                           <p className="font-medium">Cash on Delivery (COD)</p>
                           <p className="text-sm text-gray-600">Pay when your order arrives</p>
-                        </div>
-                      </Label>
-                    </div>
-                    <div className="flex items-center space-x-2 p-4 border rounded-lg opacity-50">
-                      <RadioGroupItem value="online" id="online" disabled />
-                      <Label htmlFor="online" className="flex-1 cursor-pointer">
-                        <div>
-                          <p className="font-medium">Online Payment</p>
-                          <p className="text-sm text-gray-600">Pay now using UPI, Card, or Net Banking (Coming Soon)</p>
                         </div>
                       </Label>
                     </div>
@@ -402,6 +411,7 @@ const handleLocationUpdate = (
             )}
           </div>
 
+          {/* Order Summary */}
           <div>
             <Card className="sticky top-4">
               <CardHeader>
@@ -410,7 +420,7 @@ const handleLocationUpdate = (
               <CardContent>
                 <div className="space-y-3">
                   <div className="flex justify-between">
-                    <span>Subtotal ({cartItems.length} items)</span>
+                    <span>Subtotal ({directBuyQuantity} item{directBuyQuantity > 1 ? "s" : ""})</span>
                     <span>₹{subtotal.toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between">
@@ -427,7 +437,12 @@ const handleLocationUpdate = (
                   </div>
                   <div className="text-sm text-gray-600">
                     <p>Estimated delivery: Within 1 hour</p>
-                    <p>From: Kumar General Store, Jaipur</p>
+                    <p>
+                      From:{" "}
+                      {productData.seller?.businessName
+                        ? `${productData.seller.businessName}, ${productData.seller.city}`
+                        : "Our Partner Store"}
+                    </p>
                   </div>
                 </div>
               </CardContent>
@@ -437,4 +452,6 @@ const handleLocationUpdate = (
       </div>
     </div>
   );
-}
+} 
+
+              
