@@ -130,7 +130,7 @@ export default function TrackOrder() {
     socket.emit("register-client", { role: "user", userId: user.id }); 
     
       // इवेंट लिसनर
-    socket.on('order:delivery_location', (data: Location & { orderId: number }) => {
+    {/*   socket.on('order:delivery_location', (data: Location & { orderId: number }) => {
     
         // सुनिश्चित करें कि यह अपडेट सही ऑर्डर के लिए है
         if (data.orderId === Number(orderId)) {
@@ -142,7 +142,7 @@ export default function TrackOrder() {
             console.log("🛵 New location received:", data.lat, data.lng);
         }
     });
-
+*/}
     return () => {
       // सफाई: कंपोनेंट अनमाउंट होने पर लिसनर हटा दें
       socket.off('order:delivery_location');
