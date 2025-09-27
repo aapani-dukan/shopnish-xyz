@@ -122,7 +122,7 @@ export default function TrackOrder() {
     );
   }
   
-  // ✅ Socket.IO से रियल-टाइम लोकेशन प्राप्त करें
+  {/*  // ✅ Socket.IO से रियल-टाइम लोकेशन प्राप्त करें
   useEffect(() => {
     if (!socket || !orderId || isLoading) return;
     
@@ -143,8 +143,8 @@ export default function TrackOrder() {
         }
     });
 */}
-    return () => {
-      // सफाई: कंपोनेंट अनमाउंट होने पर लिसनर हटा दें
+     return () => { ok };
+  {/*     // सफाई: कंपोनेंट अनमाउंट होने पर लिसनर हटा दें
       socket.off('order:delivery_location');
     };
     // dependencies में 'user' को जोड़ें
