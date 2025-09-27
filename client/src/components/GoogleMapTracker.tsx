@@ -1,10 +1,12 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import {
   GoogleMap,
-  MarkerF,
+  // 🛑 MarkerF को AdvancedMarkerF से बदलें
+  AdvancedMarkerF,
   DirectionsService,
   DirectionsRenderer,
   useJsApiLoader,
+  // 💡 PinElementF को भी import कर सकते हैं यदि आप default pins को customize करना चाहते हैं
 } from '@react-google-maps/api';
 
 interface Location {
@@ -26,13 +28,15 @@ interface GoogleMapTrackerProps {
 
 const containerStyle = { width: '100%', height: '320px' };
 
+// ✅ 1. 'marker' लाइब्रेरी जोड़ी गई
 const libraries: (
   | 'places'
   | 'geometry'
   | 'drawing'
   | 'localContext'
   | 'visualization'
-)[] = ['places', 'geometry'];
+  | 'marker' // <-- NEW!
+)[] = ['places', 'geometry', 'marker']; // 'marker' library is necessary for Advanced Markers
 
 const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
 
@@ -66,7 +70,19 @@ const GoogleMapTracker: React.FC<GoogleMapTrackerProps> = ({
     },
     []
   );
-
+  
+  // ✅ 2. mapOptions में Map ID जोड़ी गई (Advanced Markers के लिए आवश्यक)
+  const mapOptions = useMemo(
+    () => ({
+      zoom: 15,
+      center: mapCenter,
+      // Advanced Markers के लिए mapId आवश्यक है।
+      // आपको अपने Google Cloud Console से एक Map ID प्राप्त करनी होगी।
+      mapId: 'DEMO_MAP_ID', // Testing के लिए 'DEMO_MAP_ID' का उपयोग करें, Production के लिए अपनी ID डालें
+    }),
+    [mapCenter]
+  );
+  
   if (loadError) {
     return <div>Google Maps failed to load: {String(loadError)}</div>;
   }
@@ -74,46 +90,49 @@ const GoogleMapTracker: React.FC<GoogleMapTrackerProps> = ({
   if (!isLoaded) {
     return <div>Loading Google Maps…</div>;
   }
-
-  // ✅ Safe icon definitions (only after Google Maps is loaded)
-  const bikeIcon: google.maps.Icon = {
-    url: 'http://maps.google.com/mapfiles/ms/icons/cycling.png',
-    scaledSize: new google.maps.Size(32, 32),
-  };
-
-  const homeIcon: google.maps.Icon = {
-    url: 'http://maps.google.com/mapfiles/ms/icons/home.png',
-    scaledSize: new google.maps.Size(32, 32),
-  };
+  
+  // 🛑 पुराने google.maps.Size का उपयोग अब Advanced Markers के लिए आवश्यक नहीं है, 
+  // और यह MarkerF के लिए ReferenceError का कारण बन सकता था।
+  // Advanced Markers के लिए हम MarkerF/AdvancedMarkerF कंपोनेंट में सीधे
+  // custom content या PinElementF का उपयोग कर सकते हैं।
+  // चूंकि AdvancedMarkerF को default में एक advanced pin मिल जाता है, हम 'icon' prop को हटा सकते हैं।
 
   return (
     <GoogleMap
       mapContainerStyle={containerStyle}
-      center={mapCenter}
-      zoom={15}
+      options={mapOptions} // Updated to use mapOptions
     >
-      <DirectionsService
-        options={{
-          origin: deliveryBoyLocation,
-          destination,
-          travelMode: google.maps.TravelMode.DRIVING,
-        }}
-        callback={directionsCallback}
-      />
+      {/* Directions Service को सिर्फ तब चलाएं जब data उपलब्ध हो */}
+      {mapCenter && destination && (
+          <DirectionsService
+            options={{
+              origin: mapCenter,
+              destination,
+              travelMode: google.maps.TravelMode.DRIVING,
+            }}
+            callback={directionsCallback}
+          />
+      )}
+      
       {directionsResponse && (
         <DirectionsRenderer
           options={{ directions: directionsResponse, suppressMarkers: true }}
         />
       )}
-      <MarkerF
+      
+      {/* 🛑 MarkerF को AdvancedMarkerF से बदलें */}
+      <AdvancedMarkerF
         position={deliveryBoyLocation}
-        icon={bikeIcon}
+        // icon prop हटा दिया गया है, क्योंकि Advanced Marker को icon नहीं, बल्कि content prop की आवश्यकता होती है।
+        // Default Advanced Marker Pin का उपयोग होगा।
         title="Delivery Partner"
       />
+      
       {directionsResponse?.routes?.[0]?.legs?.[0]?.end_location && (
-        <MarkerF
+        // 🛑 MarkerF को AdvancedMarkerF से बदलें
+        <AdvancedMarkerF
           position={directionsResponse.routes[0].legs[0].end_location}
-          icon={homeIcon}
+          // Default Advanced Marker Pin का उपयोग होगा।
           title="Customer Location"
         />
       )}
