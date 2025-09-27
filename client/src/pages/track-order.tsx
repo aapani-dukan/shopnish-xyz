@@ -204,18 +204,18 @@ export default function TrackOrder() {
       <div className="max-w-4xl mx-auto px-4">
         
         {/* Header */}
-        <div className="mb-8 text-center">
+{/*    <div className="mb-8 text-center">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Track Your Order</h1>
           <p className="text-lg text-gray-600">Order #{order.orderNumber}</p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">;
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           
           {/* Main Tracking */}
-          // TrackOrder.tsx (JSX/return statement के अंदर)
+{/*     // TrackOrder.tsx (JSX/return statement के अंदर)
 
 {/* Main Tracking */}
-<div className="lg:col-span-2 space-y-6">
+{/* <div className="lg:col-span-2 space-y-6">
     {(order.status === 'picked_up' || order.status === 'out_for_delivery') && order.deliveryBoyId && (
         <Card>
             <CardHeader>
@@ -241,7 +241,7 @@ export default function TrackOrder() {
                 </div>
 
                 {/* ✅ लोकेशन डिटेल्स मैप के नीचे, CardContent के अंदर दिखाएं */}
-                {deliveryBoyLocation && (
+{/*  {deliveryBoyLocation && (
                     <div className="p-4 border-t">
                         <p className="text-sm font-medium">Delivery Partner Location Updated:</p>
                         <p className="text-xs text-gray-600">
@@ -258,7 +258,7 @@ export default function TrackOrder() {
     
             
             {/* Current Status */}
-            <Card>
+{/*        <Card>
               <CardHeader>
                 <CardTitle className="flex items-center justify-between">
                   <span>Current Status</span>
@@ -296,13 +296,13 @@ export default function TrackOrder() {
             </Card>
 
             {/* Progress Timeline */}
-            <Card>
+{/*      <Card>
               <CardHeader>
                 <CardTitle>Order Timeline</CardTitle>
               </CardHeader>
               <CardContent>
                 {/* ✅ यहाँ नया डायनामिक लॉजिक शुरू होता है */}
-                <div className="space-y-6">
+{/*       <div className="space-y-6">
                   {tracking.map((step, index) => {
                     const isCompleted = index <= lastCompletedIndex;
                     const isCurrent = step.status === order.status;
@@ -339,11 +339,11 @@ export default function TrackOrder() {
                   })}
                 </div>
                 {/* ✅ नया लॉजिक यहाँ समाप्त होता है */}
-              </CardContent>
+{/*         </CardContent>
             </Card>
 
             {/* Delivery Details */}
-            {order.deliveryBoy && (
+{/*        {order.deliveryBoy && (
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center space-x-2">
@@ -371,10 +371,10 @@ export default function TrackOrder() {
           </div>
 
           {/* Sidebar */}
-          <div className="space-y-6">
+{/*      <div className="space-y-6">
             
             {/* Order Summary */}
-            <Card>
+{/*        <Card>
               <CardHeader>
                 <CardTitle>Order Summary</CardTitle>
               </CardHeader>
@@ -402,7 +402,7 @@ export default function TrackOrder() {
             </Card>
 
             {/* Store Info */}
-            {store && (
+{/*          {store && (
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center space-x-2">
@@ -427,7 +427,7 @@ export default function TrackOrder() {
             )}
 
             {/* Delivery Address */}
-              <Card>
+{/*          <Card>
               <CardHeader>
                 <CardTitle className="flex items-center space-x-2">
                   <MapPin className="w-5 h-5" />
@@ -450,7 +450,7 @@ export default function TrackOrder() {
             </Card> 
 
             {/* Help & Support */}
-                <Card>
+{/*             <Card>
               <CardHeader>
                 <CardTitle>Need Help?</CardTitle>
               </CardHeader>
@@ -471,6 +471,6 @@ export default function TrackOrder() {
           </div>
         </div>
       </div>
-    </div> */}
+    </div> 
   );
-}
+} */}
