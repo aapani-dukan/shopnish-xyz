@@ -1,9 +1,14 @@
 // src/components/GoogleMapTracker.tsx
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { GoogleMap, MarkerF, DirectionsService, DirectionsRenderer, LoadScript } from '@react-google-maps/api';
+import React, { useState, useMemo, useCallback } from "react";
+import {
+  GoogleMap,
+  MarkerF,
+  DirectionsService,
+  DirectionsRenderer,
+  LoadScript,
+} from "@react-google-maps/api";
 
-// आपके TrackOrder.tsx से Interfaces
 interface Location {
   lat: number;
   lng: number;
@@ -22,118 +27,117 @@ interface GoogleMapTrackerProps {
 }
 
 const containerStyle = {
-  width: '100%',
-  height: '320px'
+  width: "100%",
+  height: "320px",
 };
 
-const libraries: ("places" | "geometry" | "drawing" | "localContext" | "visualization")[] = ['geometry'];
+const libraries: (
+  | "places"
+  | "geometry"
+  | "drawing"
+  | "localContext"
+  | "visualization"
+)[] = ["places", "geometry"];
 
-
-// ✅ 1. ICON DEFINITIONS को कंपोनेंट के बाहर ले जाएँ
-const BIKE_ICON = {
-    url: 'http://maps.google.com/mapfiles/ms/icons/cycling.png', 
-    scaledSize: { width: 32, height: 32 }, 
-    anchor: { x: 16, y: 16 }
+// ✅ Custom Icons
+const BIKE_ICON: google.maps.Icon = {
+  url: "http://maps.google.com/mapfiles/ms/icons/cycling.png",
+  scaledSize: new google.maps.Size(32, 32),
+  anchor: new google.maps.Point(16, 16),
 };
 
-const HOME_ICON = {
-    url: 'http://maps.google.com/mapfiles/ms/icons/home.png', 
-    scaledSize: { width: 32, height: 32 },
-    anchor: { x: 16, y: 32 }
+const HOME_ICON: google.maps.Icon = {
+  url: "http://maps.google.com/mapfiles/ms/icons/home.png",
+  scaledSize: new google.maps.Size(32, 32),
+  anchor: new google.maps.Point(16, 32),
 };
-
 
 const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
 
-const GoogleMapTracker: React.FC<GoogleMapTrackerProps> = ({ 
-  deliveryBoyLocation, 
-  customerAddress 
+const GoogleMapTracker: React.FC<GoogleMapTrackerProps> = ({
+  deliveryBoyLocation,
+  customerAddress,
 }) => {
-  const [directionsResponse, setDirectionsResponse] = useState<google.maps.DirectionsResult | null>(null);
-  const [mapCenter, setMapCenter] = useState<google.maps.LatLngLiteral>(deliveryBoyLocation);
+  const [directionsResponse, setDirectionsResponse] =
+    useState<google.maps.DirectionsResult | null>(null);
 
-  // गंतव्य पता स्ट्रिंग
-  const destination = useMemo(() => 
-    `${customerAddress.address}, ${customerAddress.city}, ${customerAddress.pincode}`, 
+  // डिलीवरी बॉय की लोकेशन को ही हमेशा सेंटर रखें
+  const mapCenter = useMemo(() => deliveryBoyLocation, [deliveryBoyLocation]);
+
+  // Destination को Address string से तैयार करें
+  const destination = useMemo(
+    () =>
+      `${customerAddress.address}, ${customerAddress.city}, ${customerAddress.pincode}`,
     [customerAddress]
   );
-  
-  // Directions API से रूट प्राप्त करने का Callback
-  const directionsCallback = useCallback((response: google.maps.DirectionsResult | null) => {
-    if (response !== null && response.status === 'OK') {
+
+  // Directions API Callback
+  const directionsCallback = useCallback(
+    (response: google.maps.DirectionsResult | null) => {
+      if (response && response.status === "OK") {
         setDirectionsResponse(response);
-        // ETA और दूरी को डिस्प्ले करने के लिए आप यहाँ से डेटा निकाल सकते हैं
         const route = response.routes[0].legs[0];
-        console.log(`ETA: ${route.duration?.text}, Distance: ${route.distance?.text}`);
-    } else if (response !== null) {
-        console.error('Directions request failed due to ' + response.status);
-    }
-  }, []);
-
-  // मैप को डिलीवरी बॉय के स्थान पर केंद्रित रखें
-  useEffect(() => {
-    setMapCenter(deliveryBoyLocation);
-  }, [deliveryBoyLocation]);
-
-
-  // Custom Marker Icons
-  
-
+        console.log(
+          `ETA: ${route.duration?.text}, Distance: ${route.distance?.text}`
+        );
+      } else if (response) {
+        console.error("Directions request failed:", response.status);
+      }
+    },
+    []
+  );
 
   if (!GOOGLE_MAPS_API_KEY) {
-      return <div>Google Maps API Key missing. Please check .env file.</div>;
+    return <div>Google Maps API Key missing. Please check .env file.</div>;
   }
 
   return (
-    <LoadScript
-      googleMapsApiKey={GOOGLE_MAPS_API_KEY}
-      libraries={libraries}
-    >
+    <LoadScript googleMapsApiKey={GOOGLE_MAPS_API_KEY} libraries={libraries}>
       <GoogleMap
         mapContainerStyle={containerStyle}
         center={mapCenter}
         zoom={15}
         options={{ disableDefaultUI: true, zoomControl: true }}
       >
-        {/* Directions Service: रूट कैलकुलेट करें */}
+        {/* Route निकालें */}
         <DirectionsService
           options={{
             origin: deliveryBoyLocation,
-            destination: destination,
+            destination,
             travelMode: google.maps.TravelMode.DRIVING,
           }}
           callback={directionsCallback}
         />
 
-        {/* Directions Renderer: रूट को मैप पर दिखाएँ */}
+        {/* Route Render करें */}
         {directionsResponse && (
           <DirectionsRenderer
             options={{
               directions: directionsResponse,
-              suppressMarkers: true, // हम custom markers का उपयोग करेंगे
+              suppressMarkers: true,
               polylineOptions: {
-                strokeColor: '#7C3AED', 
+                strokeColor: "#7C3AED",
                 strokeOpacity: 0.8,
                 strokeWeight: 4,
               },
             }}
           />
         )}
-        
+
         {/* Delivery Boy Marker */}
-         <MarkerF 
+        <MarkerF
           position={deliveryBoyLocation}
-          icon={BIKE_ICON as google.maps.Icon} // Typecast for TS, but use simple object
+          icon={BIKE_ICON}
           title="Delivery Partner"
         />
 
-        {/* Customer Address Marker (गंतव्य) */}
-        {directionsResponse && directionsResponse.routes[0]?.legs[0]?.end_location && (
-            <MarkerF
-                position={directionsResponse.routes[0].legs[0].end_location}
-                icon={HOME_ICON as google.maps.Icon} // Typecast for TS, but use simple object
-                title="Your Location"
-            />
+        {/* Customer Marker */}
+        {directionsResponse?.routes?.[0]?.legs?.[0]?.end_location && (
+          <MarkerF
+            position={directionsResponse.routes[0].legs[0].end_location}
+            icon={HOME_ICON}
+            title="Customer Location"
+          />
         )}
       </GoogleMap>
     </LoadScript>
