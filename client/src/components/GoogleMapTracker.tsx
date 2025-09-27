@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import {
+  google,
   GoogleMap,
   MarkerF,
   DirectionsService,
@@ -77,13 +78,16 @@ const GoogleMapTracker: React.FC<GoogleMapTrackerProps> = ({
 
   // ✅ Safe icon definitions (only after Google Maps is loaded)
   const bikeIcon: google.maps.Icon = {
-    url: 'http://maps.google.com/mapfiles/ms/icons/cycling.png',
+     url: 'http://maps.google.com/mapfiles/kml/shapes/motorcycling.png', 
     scaledSize: new google.maps.Size(32, 32),
+    anchor: new google.maps.Point(16, 16),
+
   };
 
   const homeIcon: google.maps.Icon = {
-    url: 'http://maps.google.com/mapfiles/ms/icons/home.png',
+        url: 'http://maps.google.com/mapfiles/kml/shapes/homegarden.png',
     scaledSize: new google.maps.Size(32, 32),
+    anchor: new google.maps.Point(16, 32),
   };
 
   return (
