@@ -34,16 +34,6 @@ const libraries: (
   | 'visualization'
 )[] = ['places', 'geometry'];
 
-const BIKE_ICON = {
-  url: 'http://maps.google.com/mapfiles/ms/icons/cycling.png',
-  scaledSize: new window.google?.maps.Size(32, 32) ?? undefined,
-};
-
-const HOME_ICON = {
-  url: 'http://maps.google.com/mapfiles/ms/icons/home.png',
-  scaledSize: new window.google?.maps.Size(32, 32) ?? undefined,
-};
-
 const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
 
 const GoogleMapTracker: React.FC<GoogleMapTrackerProps> = ({
@@ -85,6 +75,17 @@ const GoogleMapTracker: React.FC<GoogleMapTrackerProps> = ({
     return <div>Loading Google Maps…</div>;
   }
 
+  // ✅ Safe icon definitions (only after Google Maps is loaded)
+  const bikeIcon: google.maps.Icon = {
+    url: 'http://maps.google.com/mapfiles/ms/icons/cycling.png',
+    scaledSize: new google.maps.Size(32, 32),
+  };
+
+  const homeIcon: google.maps.Icon = {
+    url: 'http://maps.google.com/mapfiles/ms/icons/home.png',
+    scaledSize: new google.maps.Size(32, 32),
+  };
+
   return (
     <GoogleMap
       mapContainerStyle={containerStyle}
@@ -106,19 +107,13 @@ const GoogleMapTracker: React.FC<GoogleMapTrackerProps> = ({
       )}
       <MarkerF
         position={deliveryBoyLocation}
-        icon={{
-          url: 'http://maps.google.com/mapfiles/ms/icons/cycling.png',
-          scaledSize: new google.maps.Size(32, 32),
-        }}
+        icon={bikeIcon}
         title="Delivery Partner"
       />
       {directionsResponse?.routes?.[0]?.legs?.[0]?.end_location && (
         <MarkerF
           position={directionsResponse.routes[0].legs[0].end_location}
-          icon={{
-            url: 'http://maps.google.com/mapfiles/ms/icons/home.png',
-            scaledSize: new google.maps.Size(32, 32),
-          }}
+          icon={homeIcon}
           title="Customer Location"
         />
       )}
