@@ -76,6 +76,13 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
           setIsConnected(true);
         });
 
+        newSocket.on("connect", () => {
+    console.log("✅ Socket connected:", newSocket.id);
+    newSocket.emit("register-client", {
+        role: user.role,
+        userId: user.uid,
+    });
+});
         newSocket.on("disconnect", (reason: string) => {
           console.log("❌ Socket disconnected:", reason);
           setIsConnected(false);
