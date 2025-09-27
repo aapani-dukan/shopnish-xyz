@@ -209,7 +209,7 @@ export default function TrackOrder() {
           <p className="text-lg text-gray-600">Order #{order.orderNumber}</p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">;
           
           {/* Main Tracking */}
           // TrackOrder.tsx (JSX/return statement के अंदर)
