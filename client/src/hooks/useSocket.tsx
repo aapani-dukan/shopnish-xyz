@@ -56,7 +56,7 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
         import.meta.env.VITE_API_BASE_URL || "https://shopnish-00ug.onrender.com";
 
       const newSocket = io(socketUrl, {
-        transports: ["websocket"],
+       // transports: ["websocket"],
         withCredentials: true,
         auth: {
           token: user.idToken,
