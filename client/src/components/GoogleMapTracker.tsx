@@ -28,7 +28,21 @@ const containerStyle = {
 
 const libraries: ("places" | "geometry" | "drawing" | "localContext" | "visualization")[] = ['geometry'];
 
-// API Key को .env से प्राप्त करें (Vite projects में VITE_ prefix की आवश्यकता होती है)
+
+// ✅ 1. ICON DEFINITIONS को कंपोनेंट के बाहर ले जाएँ
+const BIKE_ICON = {
+    url: 'http://maps.google.com/mapfiles/ms/icons/cycling.png', 
+    scaledSize: { width: 32, height: 32 }, 
+    anchor: { x: 16, y: 16 }
+};
+
+const HOME_ICON = {
+    url: 'http://maps.google.com/mapfiles/ms/icons/home.png', 
+    scaledSize: { width: 32, height: 32 },
+    anchor: { x: 16, y: 32 }
+};
+
+
 const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
 
 const GoogleMapTracker: React.FC<GoogleMapTrackerProps> = ({ 
@@ -64,21 +78,6 @@ const GoogleMapTracker: React.FC<GoogleMapTrackerProps> = ({
 
   // Custom Marker Icons
   
-
-const bikeIcon = useMemo(() => ({
-    url: 'http://maps.google.com/mapfiles/ms/icons/cycling.png',
-    // ✅ फिक्स: सरल ऑब्जेक्ट को TypeScript के लिए 'google.maps.Size' के रूप में टाइपकास्ट करें।
-    scaledSize: { width: 32, height: 32 } as google.maps.Size, 
-    anchor: { x: 16, y: 16 } as google.maps.Point // Anchor के लिए भी typecast करें
-}), []);
-
-
-const homeIcon = useMemo(() => ({
-    url: 'http://maps.google.com/mapfiles/ms/icons/home.png',
-    // ✅ फिक्स: सरल ऑब्जेक्ट को 'google.maps.Size' के रूप में टाइपकास्ट करें।
-    scaledSize: { width: 32, height: 32 } as google.maps.Size,
-    anchor: { x: 16, y: 32 } as google.maps.Point // Anchor के लिए भी typecast करें
-}), []);
 
 
   if (!GOOGLE_MAPS_API_KEY) {
@@ -122,9 +121,9 @@ const homeIcon = useMemo(() => ({
         )}
         
         {/* Delivery Boy Marker */}
-        <MarkerF 
+         <MarkerF 
           position={deliveryBoyLocation}
-          icon={bikeIcon}
+          icon={BIKE_ICON as google.maps.Icon} // Typecast for TS, but use simple object
           title="Delivery Partner"
         />
 
@@ -132,7 +131,7 @@ const homeIcon = useMemo(() => ({
         {directionsResponse && directionsResponse.routes[0]?.legs[0]?.end_location && (
             <MarkerF
                 position={directionsResponse.routes[0].legs[0].end_location}
-                icon={homeIcon}
+                icon={HOME_ICON as google.maps.Icon} // Typecast for TS, but use simple object
                 title="Your Location"
             />
         )}
