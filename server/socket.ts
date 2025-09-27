@@ -3,7 +3,10 @@ import type { Server as HTTPServer } from "http";
 import { db } from "./db"; 
 import { orders } from "../shared/backend/schema";
 import { eq } from "drizzle-orm";
+import { authAdmin } from "./lib/firebaseAdmin"; // Firebase Admin import करें
+
 let io: Server | null = null;
+
 export function getIO(): Server {
   if (!io) {
     throw new Error("❌ Socket.IO not initialized. Call initSocket or setIO first.");
@@ -20,7 +23,29 @@ export function initSocket(server: HTTPServer) {
     },
   });
 
-  io.on("connection", (socket) => {
+  // ✅ Middleware: Socket.IO authentication
+  io.use(async (socket, next) => {
+    const token = socket.handshake.auth?.token;
+    if (!token) {
+      console.log("❌ Socket connection rejected: No auth token provided");
+      return next(new Error("Authentication error: No token provided"));
+    }
+
+    try {
+      const decodedToken = await authAdmin.verifyIdToken(token);
+      socket.data.user = {
+        uid: decodedToken.uid,
+        email: decodedToken.email,
+        role: decodedToken.role || "customer",
+      };
+      next();
+    } catch (error) {
+      console.error("❌ Socket authentication failed:", error);
+      return next(new Error("Authentication error"));
+    }
+  });
+
+  io.on("connection", (socket: Socket) => {
     console.log("🔌 New client connected:", socket.id);
 
     // ✅ Delivery / Seller / Admin clients register कर सकें
@@ -32,58 +57,55 @@ export function initSocket(server: HTTPServer) {
       }
     });
 
+    // Chat message handling
     socket.on("chat:message", (msg) => {
       console.log("💬 Message received:", msg);
       io?.emit("chat:message", msg);
     });
 
+    // Order updates
     socket.on("order:update", (data) => {
       console.log("📦 Order update:", data);
       io?.emit("order:update", data);
     });
-socket.on('deliveryboy:location_update', async (data: { orderId: number, lat: number, lng: number }) => {
-        const serverIo = getIO();
-        
-        // सुरक्षा और डेटा जाँच
-        if (!data.orderId || !data.lat || !data.lng) return;
-        
-        console.log(`🏍️ Location Update for Order ${data.orderId}: (${data.lat}, ${data.lng})`);
 
-        try {
-            // 1. डेटाबेस से customerId खोजें
-            const order = await db.query.orders.findFirst({
-                where: eq(orders.id, data.orderId),
-                columns: { customerId: true }
-            });
+    // Delivery location updates
+    socket.on('deliveryboy:location_update', async (data: { orderId: number, lat: number, lng: number }) => {
+      const serverIo = getIO();
+      if (!data.orderId || !data.lat || !data.lng) return;
 
-            if (order?.customerId) {
-                // 2. कस्टमर के रूम में रियल-टाइम लोकेशन इवेंट भेजें
-                // event: 'order:delivery_location'
-                serverIo.to(`user:${order.customerId}`).emit('order:delivery_location', {
-                    orderId: data.orderId,
-                    lat: data.lat,
-                    lng: data.lng,
-                    timestamp: new Date().toISOString(),
-                });
-                console.log(`✅ Location broadcasted to user:${order.customerId}`);
-            }
-        } catch (error) {
-            console.error("❌ Error processing location update:", error);
+      console.log(`🏍️ Location Update for Order ${data.orderId}: (${data.lat}, ${data.lng})`);
+
+      try {
+        const order = await db.query.orders.findFirst({
+          where: eq(orders.id, data.orderId),
+          columns: { customerId: true }
+        });
+
+        if (order?.customerId) {
+          serverIo.to(`user:${order.customerId}`).emit('order:delivery_location', {
+            orderId: data.orderId,
+            lat: data.lat,
+            lng: data.lng,
+            timestamp: new Date().toISOString(),
+          });
+          console.log(`✅ Location broadcasted to user:${order.customerId}`);
         }
+      } catch (error) {
+        console.error("❌ Error processing location update:", error);
+      }
     });
 
-
-    socket.on("disconnect", () => {
-      console.log("❌ Client disconnected:", socket.id);
+    socket.on("disconnect", (reason) => {
+      console.log("❌ Client disconnected:", socket.id, reason);
     });
   });
 
   console.log("✅ Socket.IO initialized via initSocket");
   return io;
 }
-    
+
 export function setIO(serverIO: Server) {
   io = serverIO;
   console.log("✅ Global Socket.IO instance set via setIO");
 }
-
