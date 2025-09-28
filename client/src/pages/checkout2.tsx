@@ -305,7 +305,7 @@ export default function Checkout2() {
                       />
                     </div>
                                    
-                    { \*   ✅ NEW: AddressInputWithMap कंपोनेंट (इसे uncomment करने से पहले import करें) */}
+                    
                     <div className="md:col-span-2 border p-3 rounded-lg bg-gray-50">
                         <Label htmlFor="address">Locate and Verify Address</Label>
                          <AddressInputWithMap
