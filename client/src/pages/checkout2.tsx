@@ -60,7 +60,7 @@ export default function Checkout2() {
     fullName: "",
     phone: "",
     address: "",
-    city: "Jaipur",
+    city: "india",
     pincode: "",
     landmark: "",
     // Default coordinates (मान लें कि जयपुर का सेंटर)
