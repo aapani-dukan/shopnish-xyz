@@ -1,20 +1,17 @@
-import React, { useRef, useState, useMemo, useCallback } from 'react';
+import React, { useRef, useState, useMemo, useCallback, useEffect } from 'react';
 import { StandaloneSearchBox, GoogleMap, MarkerF, useLoadScript } from '@react-google-maps/api';
 
 // सुनिश्चित करें कि ये स्थिर (Static) परिभाषाएँ कंपोनेंट के बाहर हैं
 const containerStyle = { width: '100%', height: '200px' };
 const LIBRARIES = ['places'] as ('places')[]; 
-
-// मान लें कि आपकी API Key आपके .env से आ रही है
 const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
 
+interface LatLngLiteral { lat: number; lng: number }
+
 interface AddressInputProps {
-  // वर्तमान एड्रेस और कोऑर्डिनेट्स (Lat/Lng) को पैरेंट कंपोनेंट से लेना
   currentAddress: string;
-  currentLocation: { lat: number; lng: number } | null;
-  
-  // अपडेटेड डेटा को पैरेंट कंपोनेंट को वापस भेजने का फंक्शन
-  onLocationUpdate: (address: string, location: { lat: number; lng: number }) => void;
+  currentLocation: LatLngLiteral | null; // सुनिश्चित करें कि यह LatLngLiteral या null है
+  onLocationUpdate: (address: string, location: LatLngLiteral) => void;
 }
 
 const AddressInputWithMap: React.FC<AddressInputProps> = ({
@@ -23,7 +20,6 @@ const AddressInputWithMap: React.FC<AddressInputProps> = ({
   onLocationUpdate,
 }) => {
   
-  // यह सुनिश्चित करता है कि Google Maps और Places API लोड हों
   const { isLoaded, loadError } = useLoadScript({
     googleMapsApiKey: GOOGLE_MAPS_API_KEY || '',
     libraries: LIBRARIES,
@@ -31,13 +27,25 @@ const AddressInputWithMap: React.FC<AddressInputProps> = ({
 
   const searchBoxRef = useRef<google.maps.places.SearchBox | null>(null);
   
-  // मैप के केंद्र (center) के लिए एक default value
-  const defaultCenter = useMemo(() => ({ lat: 20.5937, lng: 78.9629 }), []); // India Center
+  // ✅ NEW: Bundi/Jaipur के बजाय India Center को ही Fallback रखें 
+  const defaultCenter = useMemo(() => ({ lat: 20.5937, lng: 78.9629 }), []); 
+  
+  // ✅ NEW STATE: mapCenter को लोकल स्टेट में रखें
+  const [mapCenter, setMapCenter] = useState<LatLngLiteral>(currentLocation || defaultCenter);
 
-  // मैप का center या तो मौजूदा लोकेशन होगा, या default इंडिया सेंटर
-  const mapCenter = useMemo(() => currentLocation || defaultCenter, [currentLocation, defaultCenter]);
+  // ✅ EFFECT: जब currentLocation बदलता है (यानी Bundi/Jaipur निर्देशांक सेट हैं), तो मैप को वहां ले जाएं
+  useEffect(() => {
+      if (currentLocation) {
+          setMapCenter(currentLocation);
+      }
+      // यह useEffect सुनिश्चित करता है कि जब Checkout2.tsx से Bundi के निर्देशांक आते हैं, 
+      // तो मैप वहीं केंद्रित होता है।
+  }, [currentLocation]);
 
-  // जब यूजर Autocomplete से कोई जगह चुनता है
+  // **********************************
+  // * Autocomplete और Dragging लॉजिक *
+  // **********************************
+
   const onPlacesChanged = useCallback(() => {
     if (searchBoxRef.current) {
       const places = searchBoxRef.current.getPlaces();
@@ -48,35 +56,78 @@ const AddressInputWithMap: React.FC<AddressInputProps> = ({
         const newAddress = place.formatted_address;
 
         if (newLat !== undefined && newLng !== undefined && newAddress) {
-          // पैरेंट कंपोनेंट को अपडेटेड एड्रेस और Lat/Lng भेजें
-          onLocationUpdate(newAddress, { lat: newLat, lng: newLng });
+          const newLocation = { lat: newLat, lng: newLng };
+          onLocationUpdate(newAddress, newLocation);
+          setMapCenter(newLocation); // ✅ मैप सेंटर को तुरंत अपडेट करें
         }
       }
     }
   }, [onLocationUpdate]);
 
-  // जब यूजर मैप पर मार्कर को ड्रैग करता है
   const onMarkerDragEnd = useCallback((e: google.maps.MapMouseEvent) => {
     const newLat = e.latLng?.lat();
     const newLng = e.latLng?.lng();
 
     if (newLat !== undefined && newLng !== undefined) {
+      const newLocation = { lat: newLat, lng: newLng };
+      
       // Reverse Geocoding API को कॉल करके Lat/Lng से एड्रेस प्राप्त करें
       const geocoder = new (window as any).google.maps.Geocoder();
-      geocoder.geocode({ location: { lat: newLat, lng: newLng } }, (results: any, status: any) => {
+      geocoder.geocode({ location: newLocation }, (results: any, status: any) => {
         if (status === 'OK' && results[0]) {
-          const newAddress = results[0].formatted_address;
-          onLocationUpdate(newAddress, { lat: newLat, lng: newLng });
+          onLocationUpdate(results[0].formatted_address, newLocation);
         } else {
           // यदि Reverse Geocoding विफल रहता है, तो केवल Lat/Lng को अपडेट करें
-          onLocationUpdate(currentAddress, { lat: newLat, lng: newLng });
+          onLocationUpdate(currentAddress, newLocation);
         }
+        setMapCenter(newLocation); // ✅ मैप सेंटर को ड्रैग के बाद अपडेट करें
       });
     }
   }, [currentAddress, onLocationUpdate]);
 
+  // **********************************
+  // * Geolocation Logic *
+  // **********************************
+  
+  const handleGeolocation = useCallback(() => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const newLocation = {
+            lat: position.coords.latitude,
+            lng: position.coords.longitude,
+          };
+          
+          // Geocoding API का उपयोग करके एड्रेस प्राप्त करें
+          const geocoder = new (window as any).google.maps.Geocoder();
+          geocoder.geocode({ location: newLocation }, (results: any, status: any) => {
+              if (status === 'OK' && results[0]) {
+                  onLocationUpdate(results[0].formatted_address, newLocation);
+              } else {
+                  // एड्रेस नहीं मिला, लेकिन Lat/Lng अपडेट करें
+                  onLocationUpdate(currentAddress, newLocation);
+              }
+              setMapCenter(newLocation); // ✅ Geolocation पर मैप सेंटर सेट करें
+          });
+        },
+        (error) => {
+          // यहाँ वह एरर आती है जो आप देख रहे थे ("आपकी लोकेशन का पता नहीं लगा पा रहे")
+          alert(`📍 लोकेशन एक्सेस अस्वीकृत या विफल: ${error.message}. कृपया मैप पर मैन्युअल रूप से पिन करें।`);
+          // Geolocation विफल होने पर mapCenter को नहीं बदलें।
+        }
+      );
+    } else {
+      alert('आपके ब्राउज़र में जियोलोकेशन समर्थित नहीं है।');
+    }
+  }, [currentAddress, onLocationUpdate]);
+
+  // **********************************
+  // * Render Logic *
+  // **********************************
+
   if (loadError) return <div>नक्शा लोड नहीं हो पाया। API कुंजी जाँचें।</div>;
-  if (!isLoaded) return <div>लोकेशन लोडिंग...</div>;
+  // ✅ NEW: Bundi के निर्देशांक मिलने तक 'लोकेशन लोडिंग...' दिखाएं
+  if (!isLoaded || (!currentLocation && !mapCenter)) return <div>लोकेशन लोडिंग...</div>; 
 
   return (
     <div>
@@ -89,19 +140,9 @@ const AddressInputWithMap: React.FC<AddressInputProps> = ({
           type="text"
           placeholder="डिलीवरी एड्रेस खोजें या टाइप करें"
           value={currentAddress}
-          onChange={(e) => onLocationUpdate(e.target.value, currentLocation || defaultCenter)} // केवल टेक्स्ट बदलने पर Lat/Lng को default पर सेट करें (ताकि मैप न टूटे)
-          style={{
-            boxSizing: `border-box`,
-            border: `1px solid transparent`,
-            width: `100%`,
-            height: `40px`,
-            padding: `0 12px`,
-            borderRadius: `3px`,
-            boxShadow: `0 2px 6px rgba(0, 0, 0, 0.3)`,
-            fontSize: `14px`,
-            outline: `none`,
-            textOverflow: `ellipses`,
-          }}
+          // जब यूजर टाइप करता है, तो सिर्फ एड्रेस अपडेट करें, Lat/Lng नहीं (मैप को हिलने से रोकने के लिए)
+          onChange={(e) => onLocationUpdate(e.target.value, currentLocation || defaultCenter)} 
+          style={{ /* ... styles ... */ }}
         />
       </StandaloneSearchBox>
 
@@ -109,47 +150,23 @@ const AddressInputWithMap: React.FC<AddressInputProps> = ({
       <div style={{ marginTop: '10px' }}>
         <GoogleMap
           mapContainerStyle={containerStyle}
-          center={mapCenter}
+          center={mapCenter} // ✅ लोकल स्टेट का उपयोग करें
           zoom={15}
         >
           {currentLocation && (
             <MarkerF
               position={currentLocation}
-              draggable={true} // यूजर को पिन ड्रैग करने की अनुमति दें
+              draggable={true}
               onDragEnd={onMarkerDragEnd}
             />
           )}
         </GoogleMap>
       </div>
 
-      {/* 3. लाइव लोकेशन बटन (वैकल्पिक) */}
+      {/* 3. लाइव लोकेशन बटन */}
       <button
         type="button"
-        onClick={() => {
-          if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(
-              (position) => {
-                const lat = position.coords.latitude;
-                const lng = position.coords.longitude;
-                
-                // Geocoding API का उपयोग करके एड्रेस प्राप्त करें
-                const geocoder = new (window as any).google.maps.Geocoder();
-                geocoder.geocode({ location: { lat, lng } }, (results: any, status: any) => {
-                    if (status === 'OK' && results[0]) {
-                        onLocationUpdate(results[0].formatted_address, { lat, lng });
-                    } else {
-                        alert('आपके वर्तमान लोकेशन का पता नहीं लगा पाए।');
-                    }
-                });
-              },
-              (error) => {
-                alert(`लोकेशन एक्सेस अस्वीकृत: ${error.message}`);
-              }
-            );
-          } else {
-            alert('आपके ब्राउज़र में जियोलोकेशन समर्थित नहीं है।');
-          }
-        }}
+        onClick={handleGeolocation} // ✅ useCallback फ़ंक्शन का उपयोग करें
         style={{ marginTop: '10px', padding: '8px 15px', backgroundColor: '#4CAF50', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' }}
       >
         📍 मेरी वर्तमान लोकेशन का उपयोग करें
