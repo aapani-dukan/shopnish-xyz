@@ -60,12 +60,12 @@ export default function Checkout2() {
     fullName: "",
     phone: "",
     address: "",
-    city: "india",
+    city: "bundi",
     pincode: "",
     landmark: "",
-    // Default coordinates (मान लें कि जयपुर का सेंटर)
-    latitude: 26.9124, 
-    longitude: 75.7873,
+    
+    latitude: 25.4419,  
+    longitude:75.6179,
   });
   const [paymentMethod, setPaymentMethod] = useState("cod");
   const [deliveryInstructions, setDeliveryInstructions] = useState("");
