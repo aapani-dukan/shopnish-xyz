@@ -392,16 +392,34 @@ export default function Checkout2() {
                 </CardHeader>
                 <CardContent>
                   <RadioGroup value={paymentMethod} onValueChange={setPaymentMethod}>
-                    <div className="flex items-center space-x-2 p-4 border rounded-lg">
-                      <RadioGroupItem value="cod" id="cod" />
-                      <Label htmlFor="cod" className="flex-1 cursor-pointer">
-                        <div>
-                          <p className="font-medium">Cash on Delivery (COD)</p>
-                          <p className="text-sm text-gray-600">Pay when your order arrives</p>
-                        </div>
-                      </Label>
-                    </div>
-                  </RadioGroup>
+    {/* ✅ FIX: सभी विकल्पों को इस 'space-y-4' DIV में रैप करें */}
+    <div className="space-y-4"> 
+        
+        {/* पहला विकल्प: COD */}
+        <div className="flex items-center space-x-2 p-4 border rounded-lg">
+          <RadioGroupItem value="cod" id="cod" />
+          <Label htmlFor="cod" className="flex-1 cursor-pointer">
+            <div>
+              <p className="font-medium">Cash on Delivery (COD)</p>
+              <p className="text-sm text-gray-600">Pay when your order arrives</p>
+            </div>
+          </Label>
+        </div>
+        
+        {/* दूसरा विकल्प: Online */}
+        <div className="flex items-center space-x-2 p-4 border rounded-lg opacity-50">
+          <RadioGroupItem value="online" id="online" disabled />
+          <Label htmlFor="online" className="flex-1 cursor-pointer">
+            <div>
+              <p className="font-medium">Online Payment</p>
+              <p className="text-sm text-gray-600">Pay now using UPI, Card, or Net Banking (Coming Soon)</p>
+            </div>
+          </Label>
+        </div>
+
+    </div> {/* ✅ रैपर DIV यहाँ बंद होता है */}
+</RadioGroup>
+                  
 
                   <div className="flex space-x-4 mt-6">
                     <Button variant="outline" onClick={() => setCurrentStep(2)}>Back to Address</Button>
