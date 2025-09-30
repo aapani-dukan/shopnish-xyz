@@ -64,26 +64,30 @@ const AddressInputWithMap: React.FC<AddressInputProps> = ({
     }
   }, [onLocationUpdate]);
 
-  const onMarkerDragEnd = useCallback((e: google.maps.MapMouseEvent) => {
+  // AddressInputWithMap.tsx
+const onMarkerDragEnd = useCallback((e: google.maps.MapMouseEvent) => {
     const newLat = e.latLng?.lat();
     const newLng = e.latLng?.lng();
 
     if (newLat !== undefined && newLng !== undefined) {
-      const newLocation = { lat: newLat, lng: newLng };
-      
-      // Reverse Geocoding API को कॉल करके Lat/Lng से एड्रेस प्राप्त करें
-      const geocoder = new (window as any).google.maps.Geocoder();
-      geocoder.geocode({ location: newLocation }, (results: any, status: any) => {
-        if (status === 'OK' && results[0]) {
-          onLocationUpdate(results[0].formatted_address, newLocation);
-        } else {
-          // यदि Reverse Geocoding विफल रहता है, तो केवल Lat/Lng को अपडेट करें
-          onLocationUpdate(currentAddress, newLocation);
-        }
-        setMapCenter(newLocation); // ✅ मैप सेंटर को ड्रैग के बाद अपडेट करें
-      });
+        const newLocation = { lat: newLat, lng: newLng };
+        
+        // Reverse Geocoding API को कॉल करके Lat/Lng से एड्रेस प्राप्त करें
+        const geocoder = new (window as any).google.maps.Geocoder();
+        geocoder.geocode({ location: newLocation }, (results: any, status: any) => {
+            if (status === 'OK' && results[0]) {
+                // ✅ FIX 1: सफलतापूर्वक पता मिलने पर, इसे onLocationUpdate में भेजें
+                onLocationUpdate(results[0].formatted_address, newLocation); 
+            } else {
+                // यदि Reverse Geocoding विफल रहता है, तो पुराने एड्रेस के साथ Lat/Lng को अपडेट करें
+                // (या आप एक डिफ़ॉल्ट संदेश 'Unknown Address' भेज सकते हैं)
+                onLocationUpdate(currentAddress, newLocation); 
+            }
+            setMapCenter(newLocation); 
+        });
     }
-  }, [currentAddress, onLocationUpdate]);
+}, [currentAddress, onLocationUpdate]);
+  
 
   // **********************************
   // * Geolocation Logic *
@@ -93,23 +97,24 @@ const AddressInputWithMap: React.FC<AddressInputProps> = ({
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
-          const newLocation = {
+        const newLocation = {
             lat: position.coords.latitude,
             lng: position.coords.longitude,
-          };
-          
-          // Geocoding API का उपयोग करके एड्रेस प्राप्त करें
-          const geocoder = new (window as any).google.maps.Geocoder();
-          geocoder.geocode({ location: newLocation }, (results: any, status: any) => {
-              if (status === 'OK' && results[0]) {
-                  onLocationUpdate(results[0].formatted_address, newLocation);
-              } else {
-                  // एड्रेस नहीं मिला, लेकिन Lat/Lng अपडेट करें
-                  onLocationUpdate(currentAddress, newLocation);
-              }
-              setMapCenter(newLocation); // ✅ Geolocation पर मैप सेंटर सेट करें
-          });
-        },
+        };
+        
+        // Geocoding API का उपयोग करके एड्रेस प्राप्त करें
+        const geocoder = new (window as any).google.maps.Geocoder();
+        geocoder.geocode({ location: newLocation }, (results: any, status: any) => {
+            if (status === 'OK' && results[0]) {
+                // ✅ FIX 2: सफलतापूर्वक पता मिलने पर, इसे onLocationUpdate में भेजें
+                onLocationUpdate(results[0].formatted_address, newLocation);
+            } else {
+                // अगर Geocoding विफल हो जाए, तो यूज़र को अलर्ट दें
+                onLocationUpdate("Location found, but address could not be determined.", newLocation);
+            }
+            setMapCenter(newLocation);
+        });
+    },
         (error) => {
           // यहाँ वह एरर आती है जो आप देख रहे थे ("आपकी लोकेशन का पता नहीं लगा पा रहे")
           alert(`📍 लोकेशन एक्सेस अस्वीकृत या विफल: ${error.message}. कृपया मैप पर मैन्युअल रूप से पिन करें।`);
