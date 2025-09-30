@@ -6,7 +6,7 @@ import { deliveryAddresses, orders, orderItems } from "../../shared/backend/sche
 import { eq, desc, and } from "drizzle-orm";
 import { AuthenticatedRequest } from "../middleware/authMiddleware";
 import { getIO } from "../socket";
-
+import { cartItems } from "../shared/backend/schema";
 /**
  * Handles placing a direct "buy now" order.
  * This is a simplified version of placeOrder for single-item purchases.
@@ -191,29 +191,35 @@ export const placeOrderFromCart = async (req: AuthenticatedRequest, res: Respons
       }).returning();
       
       // 3️⃣ The corrected logic to update orderItems
-      for (const item of items) {
-          const [updatedItem] = await tx.update(orderItems)
-              .set({
-                  orderId: orderResult.id,
-                  status: 'placed'
-              })
-              .where(and(
-                  eq(orderItems.userId, userId),
-                  eq(orderItems.productId, item.productId),
-                  eq(orderItems.status, 'in_cart')
-              ))
-              .returning();
-          
-          if (!updatedItem) {
-              // यदि कोई आइटम नहीं मिला तो ट्रांजेक्शन रोलबैक करें
-              throw new Error("Cart item not found or already placed.");
-          }
-      }
-      
-      console.log("✅ Cart items moved to 'placed' status and associated with new order.");
-      
-      return orderResult;
-    });
+for (const item of items) {
+    const [updatedItem] = await tx.update(orderItems)
+        .set({
+            orderId: orderResult.id,
+            status: 'placed'
+        })
+        .where(and(
+            eq(orderItems.userId, userId),
+            eq(orderItems.productId, item.productId),
+            eq(orderItems.status, 'in_cart')
+        ))
+        .returning();
+
+    if (!updatedItem) {
+        throw new Error("Cart item not found or already placed.");
+    }
+}
+
+console.log("✅ Cart items moved to 'placed' status and associated with new order.");
+
+// 4️⃣ Delete cart items after placing order
+await tx.delete(orderItems)
+    .where(and(
+        eq(orderItems.userId, userId),
+        eq(orderItems.status, 'placed'),
+        eq(orderItems.orderId, orderResult.id)
+    ));
+
+console.log("🗑️ Cart items deleted successfully.");
 
     getIO().emit("new-order", {
       orderId: newOrder.id,
