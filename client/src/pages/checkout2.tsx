@@ -1,5 +1,5 @@
 // client/src/pages/Checkout2.tsx
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useParams, useSearchParams, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
