@@ -84,18 +84,17 @@ export default function Checkout2() {
   // ----------------------------------------------------------------------------------
   // ✅ NEW: AddressInputWithMap से डेटा प्राप्त करने के लिए हैंडलर
   // ----------------------------------------------------------------------------------
-  const handleLocationUpdate = (
-    address: string,
-    location: { lat: number; lng: number }
-  ) => {
-    setDeliveryAddress(prev => ({
-        ...prev,
-        // 'address' को Map/Geocoding से प्राप्त मान से अपडेट करें
-        address: address, 
-        latitude: location.lat,
-        longitude: location.lng,
-    }));
-  };
+  const handleLocationUpdate = useCallback(
+    (address: string, location: { lat: number; lng: number }) => {
+        setDeliveryAddress(prev => ({
+            ...prev,
+            address: address, 
+            latitude: location.lat,
+            longitude: location.lng,
+        }));
+    },
+    [setDeliveryAddress] 
+);
 
   // ----------------------------------------------------------------------------------
   // ✅ Order Items को ठीक करें (Buy Now के लिए)
