@@ -303,30 +303,44 @@ export default function Checkout2() {
                         placeholder="Enter phone number"
                       />
                     </div>
-                                   
-                    
-                    <div className="md:col-span-2 border p-3 rounded-lg bg-gray-50">
-                        <Label htmlFor="address">Locate and Verify Address</Label>
-                         <AddressInputWithMap
-                            currentAddress={deliveryAddress.address}
-                            currentLocation={deliveryAddress.latitude && deliveryAddress.longitude 
-                                ? { lat: deliveryAddress.latitude, lng: deliveryAddress.longitude }
-                                : null
-                            }
-                            onLocationUpdate={handleLocationUpdate}
-                        />
-                        
-      
-                    </div>
-                    <div>
-                      <Label htmlFor="city">City</Label>
-                      <Input
-                        id="city"
-                        value={deliveryAddress.city}
-                        onChange={(e) => setDeliveryAddress({ ...deliveryAddress, city: e.target.value })}
-                        placeholder="City"
-                      />
-                    </div>
+
+<div className="md:col-span-2 border p-3 rounded-lg bg-gray-50">
+    <Label htmlFor="address">Locate and Verify Address</Label>
+     <AddressInputWithMap
+        currentAddress={deliveryAddress.address}
+        currentLocation={deliveryAddress.latitude && deliveryAddress.longitude 
+            ? { lat: deliveryAddress.latitude, lng: deliveryAddress.longitude }
+            : null
+        }
+        onLocationUpdate={handleLocationUpdate}
+    />
+</div>
+
+{/* *************************************************************** */}
+{/* ✅ नया कोड यहाँ जोड़ें: मैप से मिला एड्रेस दिखाने और एडिट करने के लिए */}
+{/* *************************************************************** */}
+
+<div className="md:col-span-2">
+    <Label htmlFor="address_text">Delivery Address Text</Label>
+    <Textarea
+        id="address_text"
+        value={deliveryAddress.address} // <-- Map से मिला पता यहाँ दिखेगा
+        onChange={(e) => setDeliveryAddress({ 
+            ...deliveryAddress, 
+            address: e.target.value 
+        })}
+        placeholder="Map से या मैन्युअल रूप से अपना पूरा पता चुनें"
+        rows={3}
+    />
+</div>
+
+{/* *************************************************************** */}
+
+<div>
+    <Label htmlFor="city">City</Label>
+    <Input
+        id="city"
+        value={deliveryAddress.city}
                     <div>
                       <Label htmlFor="pincode">Pincode</Label>
                       <Input
