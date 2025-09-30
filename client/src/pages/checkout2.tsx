@@ -335,12 +335,15 @@ export default function Checkout2() {
 </div>
 
 {/* *************************************************************** */}
-
 <div>
     <Label htmlFor="city">City</Label>
     <Input
         id="city"
         value={deliveryAddress.city}
+        onChange={(e) => setDeliveryAddress({ ...deliveryAddress, city: e.target.value })}
+        placeholder="City"
+    />
+</div>
                     <div>
                       <Label htmlFor="pincode">Pincode</Label>
                       <Input
