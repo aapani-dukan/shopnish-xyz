@@ -141,14 +141,20 @@ const onMarkerDragEnd = useCallback((e: google.maps.MapMouseEvent) => {
         onLoad={ref => searchBoxRef.current = ref}
         onPlacesChanged={onPlacesChanged}
       >
-        <input
-          type="text"
-          placeholder="डिलीवरी एड्रेस खोजें या टाइप करें"
-          value={currentAddress}
-          // जब यूजर टाइप करता है, तो सिर्फ एड्रेस अपडेट करें, Lat/Lng नहीं (मैप को हिलने से रोकने के लिए)
-          onChange={(e) => onLocationUpdate(e.target.value, currentLocation || defaultCenter)} 
-          style={{ /* ... styles ... */ }}
-        />
+      // AddressInputWithMap.tsx (लगभग लाइन 212)
+
+<input
+  type="text"
+  placeholder="डिलीवरी एड्रेस खोजें या टाइप करें"
+  value={currentAddress}
+  // ❌ पहले का लूप बनाने वाला कोड: 
+  // onChange={(e) => onLocationUpdate(e.target.value, currentLocation || defaultCenter)} 
+  
+  // ✅ FIX: केवल Address टेक्स्ट बदलें, Lat/Lng को वैसा ही रखें जो current में है।
+  onChange={(e) => onLocationUpdate(e.target.value, currentLocation || mapCenter)} 
+  style={{ /* ... styles ... */ }}
+/>
+
       </StandaloneSearchBox>
 
       {/* 2. इंटरैक्टिव मैप */}
