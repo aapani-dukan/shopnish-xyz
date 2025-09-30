@@ -85,16 +85,22 @@ export default function Checkout2() {
   // ✅ NEW: AddressInputWithMap से डेटा प्राप्त करने के लिए हैंडलर
   // ----------------------------------------------------------------------------------
   const handleLocationUpdate = useCallback(
-    (address: string, location: { lat: number; lng: number }) => {
+    // 💡 सुनिश्चित करें कि location ऑब्जेक्ट में city और pincode आ रहे हैं
+    (address: string, location: { lat: number; lng: number; city: string; pincode: string; }) => {
         setDeliveryAddress(prev => ({
             ...prev,
             address: address, 
             latitude: location.lat,
             longitude: location.lng,
+            
+            // ✅ Fix: Pincode और City को स्पष्ट रूप से अपडेट करें
+            city: location.city, 
+            pincode: location.pincode,
         }));
     },
     [setDeliveryAddress] 
 );
+
 
   // ----------------------------------------------------------------------------------
   // ✅ Order Items को ठीक करें (Buy Now के लिए)
