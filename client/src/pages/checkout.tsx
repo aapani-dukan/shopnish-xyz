@@ -1,6 +1,6 @@
 // client/src/pages/Checkout.tsx
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -115,21 +115,21 @@ const [deliveryAddress, setDeliveryAddress] = useState<DeliveryAddress>({
   });
 
   // ✅ NEW: AddressInputWithMap से डेटा प्राप्त करने के लिए हैंडलर
-const handleLocationUpdate = (
-    address: string,
-    location: { lat: number; lng: number }
-) => {
-    setDeliveryAddress(prev => ({
-        ...prev,
-        address: address,
-        latitude: location.lat,
-        longitude: location.lng,
-    }));
-    
-    // (Optional: अगर आप city/pincode को भी auto-fill करना चाहते हैं, तो Reverse Geocoding API से प्राप्त डेटा का उपयोग करें)
-};
 
 
+const handleLocationUpdate = useCallback(
+    (address: string, location: { lat: number; lng: number }) => {
+        setDeliveryAddress(prev => ({
+            ...prev,
+            address: address, 
+            latitude: location.lat,
+            longitude: location.lng,
+        }));
+    },
+    [setDeliveryAddress] 
+);
+
+  
   const handlePlaceOrder = () => {
     if (!user?.id) {
       toast({
