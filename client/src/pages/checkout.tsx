@@ -118,16 +118,22 @@ const [deliveryAddress, setDeliveryAddress] = useState<DeliveryAddress>({
 
 
 const handleLocationUpdate = useCallback(
-    (address: string, location: { lat: number; lng: number }) => {
+    // 💡 सुनिश्चित करें कि location ऑब्जेक्ट में city और pincode आ रहे हैं
+    (address: string, location: { lat: number; lng: number; city: string; pincode: string; }) => {
         setDeliveryAddress(prev => ({
             ...prev,
             address: address, 
             latitude: location.lat,
             longitude: location.lng,
+            
+            // ✅ Fix: Pincode और City को स्पष्ट रूप से अपडेट करें
+            city: location.city, 
+            pincode: location.pincode,
         }));
     },
     [setDeliveryAddress] 
 );
+
 
   
   const handlePlaceOrder = () => {
