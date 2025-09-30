@@ -146,16 +146,15 @@ export const placeOrderFromCart = async (req: AuthenticatedRequest, res: Respons
       return res.status(400).json({ message: "Items list is empty, cannot place an order." });
     }
 
-    // ✅ NEW: Lat/Lng को rawDeliveryAddress से अलग करें
     const safeAddress = rawDeliveryAddress || {};
-    const latitude = safeAddress.latitude || 0; // Default to 0 if missing
-    const longitude = safeAddress.longitude || 0; // Default to 0 if missing
+    const latitude = safeAddress.latitude || 0;
+    const longitude = safeAddress.longitude || 0;
 
     const orderNumber = `ORD-${uuidv4()}`;
 
     const newOrder = await db.transaction(async (tx) => {
       let newDeliveryAddressId: number;
-      
+
       // 1️⃣ Insert delivery address
       const [newAddress] = await tx.insert(deliveryAddresses).values({
         userId,
@@ -166,9 +165,8 @@ export const placeOrderFromCart = async (req: AuthenticatedRequest, res: Respons
         city: safeAddress.city || "Unknown",
         postalCode: safeAddress.pincode || "000000",
         state: "Rajasthan",
-        // ✅ NEW: deliveryAddresses टेबल में कोऑर्डिनेट्स सेव करें
-        latitude: latitude, 
-        longitude: longitude,
+        latitude,
+        longitude,
       }).returning();
       newDeliveryAddressId = newAddress.id;
 
@@ -185,41 +183,42 @@ export const placeOrderFromCart = async (req: AuthenticatedRequest, res: Respons
         deliveryInstructions,
         deliveryAddress: JSON.stringify(safeAddress),
         deliveryBoyId: null,
-        // ✅ NEW: orders टेबल में कोऑर्डिनेट्स सेव करें
         deliveryLat: latitude,
         deliveryLng: longitude,
       }).returning();
-      
-      // 3️⃣ The corrected logic to update orderItems
-for (const item of items) {
-    const [updatedItem] = await tx.update(orderItems)
-        .set({
+
+      // 3️⃣ Update orderItems
+      for (const item of items) {
+        const [updatedItem] = await tx.update(orderItems)
+          .set({
             orderId: orderResult.id,
-            status: 'placed'
-        })
-        .where(and(
+            status: "placed",
+          })
+          .where(and(
             eq(orderItems.userId, userId),
             eq(orderItems.productId, item.productId),
-            eq(orderItems.status, 'in_cart')
-        ))
-        .returning();
+            eq(orderItems.status, "in_cart")
+          ))
+          .returning();
 
-    if (!updatedItem) {
-        throw new Error("Cart item not found or already placed.");
-    }
-}
+        if (!updatedItem) {
+          throw new Error("Cart item not found or already placed.");
+        }
+      }
 
-console.log("✅ Cart items moved to 'placed' status and associated with new order.");
+      console.log("✅ Cart items moved to 'placed' status and associated with new order.");
 
-// 4️⃣ Delete cart items after placing order
-await tx.delete(orderItems)
-    .where(and(
+      // 4️⃣ Delete placed cart items
+      await tx.delete(orderItems).where(and(
         eq(orderItems.userId, userId),
-        eq(orderItems.status, 'placed'),
+        eq(orderItems.status, "placed"),
         eq(orderItems.orderId, orderResult.id)
-    ));
+      ));
 
-console.log("🗑️ Cart items deleted successfully.");
+      console.log("🗑️ Cart items deleted successfully.");
+
+      return orderResult; // ✅ transaction को result लौटाना चाहिए
+    });
 
     getIO().emit("new-order", {
       orderId: newOrder.id,
