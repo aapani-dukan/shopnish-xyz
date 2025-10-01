@@ -114,82 +114,61 @@ const createOrderMutation = useMutation({
 
   // ✅ NEW: AddressInputWithMap से डेटा प्राप्त करने के लिए हैंडलर
 
+const handlePlaceOrder = () => {
+  if (!user?.id) {
+    toast({
+      title: "Authentication Error",
+      description: "You must be logged in to place an order.",
+      variant: "destructive",
+    });
+    return;
+  }
 
-const handleLocationUpdate = useCallback(
-    // 💡 सुनिश्चित करें कि location ऑब्जेक्ट में city और pincode आ रहे हैं
-    (address: string, location: { lat: number; lng: number; city: string; pincode: string; }) => {
-        setDeliveryAddress(prev => ({
-            ...prev,
-            address: address, 
-            latitude: location.lat,
-            longitude: location.lng,
-            
-            // ✅ Fix: Pincode और City को स्पष्ट रूप से अपडेट करें
-            city: location.city, 
-            pincode: location.pincode,
-        }));
+  if (!deliveryAddress.fullName || !deliveryAddress.phone || !deliveryAddress.address || !deliveryAddress.pincode || !deliveryAddress.latitude || !deliveryAddress.longitude) {
+    toast({
+      title: "Address Required",
+      description: "Please fill in all delivery address fields and select a location on the map.",
+      variant: "destructive",
+    });
+    return;
+  }
+
+  if (!cartItems || cartItems.length === 0) {
+    toast({
+      title: "No Items to Order",
+      description: "There are no items to place an order.",
+      variant: "destructive",
+    });
+    return;
+  }
+
+  const itemsToOrder = cartItems.map(item => ({
+    id: item.id,
+    productId: item.product.id,
+    sellerId: item.product.sellerId,
+    quantity: item.quantity,
+    unitPrice: item.product.price,
+    totalPrice: (parseFloat(item.product.price) * item.quantity).toFixed(2),
+  }));
+
+  const orderData = {
+    customerId: user.id,
+    deliveryAddress: {
+      ...deliveryAddress,
+      latitude: deliveryAddress.latitude,
+      longitude: deliveryAddress.longitude,
     },
-    [setDeliveryAddress] 
-);
-
-
-  
-  const handlePlaceOrder = () => {
-    if (!user?.id) {
-      toast({
-        title: "Authentication Error",
-        description: "You must be logged in to place an order.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-     if (!deliveryAddress.fullName || !deliveryAddress.phone || !deliveryAddress.address || !deliveryAddress.pincode || !deliveryAddress.latitude || !deliveryAddress.longitude) {
-      toast({
-        title: "Address Required",
-        description: "Please fill in all delivery address fields and select a location on the map.",
-        variant: "destructive",
-      });
-      return;
-     }
-
-    if (!cartItems || cartItems.length === 0) {
-      toast({
-        title: "No Items to Order",
-        description: "There are no items to place an order.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    const itemsToOrder = cartItems.map(item => ({
-       id: item.id, 
-      productId: item.product.id,
-      sellerId: item.product.sellerId,
-      quantity: item.quantity,
-      unitPrice: item.product.price,
-      totalPrice: (parseFloat(item.product.price) * item.quantity).toFixed(2),
-    }));
-
-    const orderData = {
-      customerId: user.id,
-      deliveryAddress: {
-          ...deliveryAddress,
-          // Lat/Lng को string के बजाय number के रूप में भेजें
-          latitude: deliveryAddress.latitude, 
-          longitude: deliveryAddress.longitude
-      },
-      paymentMethod,
-      subtotal: subtotal.toFixed(2),
-      total: total.toFixed(2),
-      deliveryCharge: deliveryCharge.toFixed(2),
-      deliveryInstructions,
-      items: itemsToOrder,
-      cartOrder: true, 
-    };
-
-    createOrderMutation.mutate(orderData);
+    paymentMethod,
+    subtotal: subtotal.toFixed(2),
+    total: total.toFixed(2),
+    deliveryCharge: deliveryCharge.toFixed(2),
+    deliveryInstructions,
+    items: itemsToOrder,
+    cartOrder: true,
   };
+
+  createOrderMutation.mutate(orderData);
+};
 
   // ------------------- JSX Loading / Empty States -------------------
 
