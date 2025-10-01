@@ -205,13 +205,14 @@ export const placeOrderFromCart = async (req: AuthenticatedRequest, res: Respons
       console.log("✅ Cart items copied to new order.");
 
       // 4️⃣ Delete all in_cart items for this user
-      await tx.delete(orderItems).where(and(
-        eq(orderItems.userId, userId),
-        eq(cartItems.id, item.id)
-        
-      ));
+for (const item of items) {
+  await tx.delete(cartItems).where(and(
+    eq(cartItems.userId, userId),
+    eq(cartItems.id, item.id) // ✅ Cart item id के आधार पर delete करें
+  ));
+}
 
-      console.log("🗑️ In-cart items deleted successfully.");
+console.log("🗑️ In-cart items deleted successfully.");
 
       return orderResult; // ✅ transaction को result लौटाना चाहिए
     });
