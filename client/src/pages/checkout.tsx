@@ -104,16 +104,16 @@ const createOrderMutation = useMutation({
     });
     
     // ✅ FIX 1: setQueryData को बनाए रखें - यह तुरंत अपडेट करता है।
-    queryClient.setQueryData(['cartItems'], { items: [] });
+    queryClient.setQueryData(["/api/cart"], { items: [] });
     
     // ✅ FIX 2: इनवैलिडेशन को व्यापक (broad) करें। 
     // यह सुनिश्चित करता है कि "cart" से शुरू होने वाली कोई भी Query Key री-फ़ेच हो।
     queryClient.invalidateQueries({ 
-        queryKey: ["cart"], 
+        queryKey: ["/api/cart"], 
         refetchType: 'all' // "cart" से शुरू होने वाली सभी keys को इनवैलिडेट करें
     });
     // हम पुरानी ['cartItems'] key को भी साफ़ कर सकते हैं
-    queryClient.invalidateQueries({ queryKey: ["cartItems"] });
+    queryClient.invalidateQueries({ queryKey: ["api/cart"] });
 
 
     // Navigation Logic
