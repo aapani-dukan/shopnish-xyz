@@ -95,27 +95,26 @@ const [deliveryAddress, setDeliveryAddress] = useState<DeliveryAddress>({
 
 // client/src/pages/Checkout.tsx
 
-const createOrderMutation = useMutation({
-  mutationFn: (orderData: any) => api.post("/api/orders", orderData),
-  
-  onSuccess: (data) => {
-    toast({
-      title: "Order placed successfully!",
-      description: "Your cart has been emptied.",
-    });
-    queryClient.setQueryData(['cartItems'], { items: [] });
-    
-    queryClient.invalidateQueries({ queryKey: ["cartItems"] });
-
-    // 4. Navigation Logic
-    const orderId = data?.id || data?.orderId || data?.data?.id; 
-    
-    if (orderId) {
-        navigate(`/order-confirmation/${orderId}`);
-    } else {
-        navigate(`/order-confirmation/`); 
-    }
-  },
+  const createOrderMutation = useMutation({
+    mutationFn: async (orderData: any) => {
+      return await apiRequest("POST", "/api/orders", orderData);
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['cartItems'] });
+      toast({
+        title: "Order Placed Successfully!",
+        description: `Order #${data.orderNumber} has been confirmed`,
+      });
+      navigate(`/order-confirmation/${data.orderId}`);
+    },
+    onError: (error) => {
+      toast({
+        title: "Order Failed",
+        description: "Failed to place order. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
 
   onError: (error: any) => {
     toast({
