@@ -111,9 +111,9 @@ const createOrderMutation = useMutation({
     const orderId = data?.id || data?.orderId || data?.data?.id; 
     
     if (orderId) {
-        navigate(`/order-success/${orderId}`);
+        navigate(`/order-confirmation/${orderId}`);
     } else {
-        navigate(`/order-success/`); 
+        navigate(`/order-confirmation/`); 
     }
   },
 
