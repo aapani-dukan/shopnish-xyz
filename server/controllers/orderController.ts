@@ -9,9 +9,6 @@ import { getIO } from "../socket";
 
 /**
  * Handles placing a direct "buy now" order.
- * This is a simplified version of placeOrder for single-item purchases.
- * @param req The authenticated request object containing user details.
- * @param res The response object to send back to the client.
  */
 export const placeOrderBuyNow = async (req: AuthenticatedRequest, res: Response) => {
   console.log("🚀 [API] Received request to place Buy Now order.");
@@ -30,23 +27,20 @@ export const placeOrderBuyNow = async (req: AuthenticatedRequest, res: Response)
       total,
       deliveryCharge,
     } = req.body;
-    
-    // Ensure that the items array is not empty
+
     if (!items || items.length === 0) {
       return res.status(400).json({ message: "Items list is empty, cannot place an order." });
     }
-    
-    // ✅ NEW: Lat/Lng को rawDeliveryAddress से अलग करें
+
     const safeAddress = rawDeliveryAddress || {};
-    const latitude = safeAddress.latitude || 0; // Default to 0 if missing
-    const longitude = safeAddress.longitude || 0; // Default to 0 if missing
+    const latitude = safeAddress.latitude || 0;
+    const longitude = safeAddress.longitude || 0;
 
     const orderNumber = `ORD-${uuidv4()}`;
 
     const newOrder = await db.transaction(async (tx) => {
       let newDeliveryAddressId: number;
 
-      // 1️⃣ Insert delivery address
       const [newAddress] = await tx.insert(deliveryAddresses).values({
         userId,
         fullName: safeAddress.fullName || req.user?.name || "Unknown Customer",
@@ -56,13 +50,11 @@ export const placeOrderBuyNow = async (req: AuthenticatedRequest, res: Response)
         city: safeAddress.city || "Unknown",
         postalCode: safeAddress.pincode || "000000",
         state: "Rajasthan",
-        // ✅ NEW: deliveryAddresses टेबल में कोऑर्डिनेट्स सेव करें
-        latitude: latitude, 
-        longitude: longitude,
+        latitude,
+        longitude,
       }).returning();
       newDeliveryAddressId = newAddress.id;
 
-      // 2️⃣ Insert order
       const [orderResult] = await tx.insert(orders).values({
         customerId: userId,
         status: "pending",
@@ -75,12 +67,10 @@ export const placeOrderBuyNow = async (req: AuthenticatedRequest, res: Response)
         deliveryInstructions,
         deliveryAddress: JSON.stringify(safeAddress),
         deliveryBoyId: null,
-        // ✅ NEW: orders टेबल में कोऑर्डिनेट्स सेव करें
         deliveryLat: latitude,
         deliveryLng: longitude,
       }).returning();
 
-      // 3️⃣ Insert order items
       for (const item of items) {
         await tx.insert(orderItems).values({
           orderId: orderResult.id,
@@ -93,7 +83,7 @@ export const placeOrderBuyNow = async (req: AuthenticatedRequest, res: Response)
           userId,
         });
       }
-      
+
       return orderResult;
     });
 
@@ -118,8 +108,6 @@ export const placeOrderBuyNow = async (req: AuthenticatedRequest, res: Response)
     res.status(500).json({ message: "Failed to place order." });
   }
 };
-
-// ----------------------------------------------------
 
 /**
  * Handles placing an order from the user's cart.
@@ -155,7 +143,6 @@ export const placeOrderFromCart = async (req: AuthenticatedRequest, res: Respons
     const newOrder = await db.transaction(async (tx) => {
       let newDeliveryAddressId: number;
 
-      // 1️⃣ Insert delivery address
       const [newAddress] = await tx.insert(deliveryAddresses).values({
         userId,
         fullName: safeAddress.fullName || req.user?.name || "Unknown Customer",
@@ -170,7 +157,6 @@ export const placeOrderFromCart = async (req: AuthenticatedRequest, res: Respons
       }).returning();
       newDeliveryAddressId = newAddress.id;
 
-      // 2️⃣ Insert order
       const [orderResult] = await tx.insert(orders).values({
         customerId: userId,
         status: "pending",
@@ -187,7 +173,6 @@ export const placeOrderFromCart = async (req: AuthenticatedRequest, res: Respons
         deliveryLng: longitude,
       }).returning();
 
-      // 3️⃣ Copy cart items into orderItems table (fresh rows)
       for (const item of items) {
         await tx.insert(orderItems).values({
           orderId: orderResult.id,
@@ -200,36 +185,36 @@ export const placeOrderFromCart = async (req: AuthenticatedRequest, res: Respons
           userId,
         });
       }
-      
 
       console.log("✅ Cart items copied to new order.");
 
-      // 4️⃣ Delete all in_cart items for this user
-for (const item of items) {
-  await tx.delete(cartItems).where(and(
-    eq(cartItems.userId, userId),
-    eq(cartItems.id, item.id) // ✅ Cart item id के आधार पर delete करें
-  ));
-}
+      // 🔹 Fix: Delete cart items by productId instead of cartItem id
+      for (const item of items) {
+        await tx.delete(cartItems).where(and(
+          eq(cartItems.userId, userId),
+          eq(cartItems.productId, item.productId) // ✅ correct condition
+        ));
+      }
 
-console.log("🗑️ In-cart items deleted successfully.");
+      console.log("🗑️ In-cart items deleted successfully.");
 
-      return orderResult; // ✅ transaction को result लौटाना चाहिए
+      return orderResult;
     });
 
-    res.status(201).json(newOrder);
+    res.status(201).json({
+      message: "Order placed successfully!",
+      orderId: newOrder.id,
+      orderNumber: newOrder.orderNumber,
+      data: newOrder,
+    });
   } catch (error: any) {
     console.error("❌ Error placing order:", error.message || error);
     res.status(500).json({ message: "Failed to place order", error: error.message });
   }
 };
 
-// ----------------------------------------------------
-
 /**
  * Fetches all orders for the authenticated user.
- * @param req The authenticated request object.
- * @param res The response object.
  */
 export const getUserOrders = async (req: AuthenticatedRequest, res: Response) => {
   console.log("🔄 [API] Received request to get user orders.");
@@ -255,15 +240,8 @@ export const getUserOrders = async (req: AuthenticatedRequest, res: Response) =>
   }
 };
 
-// ----------------------------------------------------
-// ⭐ NEW: Order Tracking Details Function ⭐
-// ----------------------------------------------------
-
 /**
  * Fetches the initial tracking details for a specific order.
- * This is the API endpoint the frontend hits on the TrackOrder page.
- * @param req The authenticated request object.
- * @param res The response object.
  */
 export const getOrderTrackingDetails = async (req: AuthenticatedRequest, res: Response) => {
   console.log("📡 [API] Received request to get order tracking details.");
@@ -279,7 +257,6 @@ export const getOrderTrackingDetails = async (req: AuthenticatedRequest, res: Re
       return res.status(400).json({ message: "Invalid order ID provided." });
     }
 
-    // 1. Fetch the order details, ensuring it belongs to the authenticated user.
     const [order] = await db.select()
       .from(orders)
       .where(and(
@@ -291,18 +268,15 @@ export const getOrderTrackingDetails = async (req: AuthenticatedRequest, res: Re
     if (!order) {
       return res.status(404).json({ message: "Order not found or access denied." });
     }
-    
-    // 2. Return the initial static tracking data (live location comes via Socket.IO)
-    // deliveryAddress JSON string को Parse करें ताकि हम अन्य fields निकाल सकें
-    const deliveryAddress = JSON.parse(order.deliveryAddress as string) || {}; 
+
+    const deliveryAddress = JSON.parse(order.deliveryAddress as string) || {};
 
     res.status(200).json({
       orderId: order.id,
       orderNumber: order.orderNumber,
       status: order.status,
       deliveryAddress: {
-        // ✅ NEW: orders टेबल से Lat/Lng का उपयोग करें
-        lat: order.deliveryLat || 0, 
+        lat: order.deliveryLat || 0,
         lng: order.deliveryLng || 0,
         address: deliveryAddress.address || '',
         city: deliveryAddress.city || '',
@@ -317,40 +291,36 @@ export const getOrderTrackingDetails = async (req: AuthenticatedRequest, res: Re
   }
 };
 
-
-
 /**
  * Fetches details for a specific order ID.
  */
-export const getOrderDetail = async (req: AuthentivatedRequest, res: Response) => {
-    console.log("🔍 [API] Received request to get specific order details.");
-    try {
-        const customerId = req.user?.id;
-        const orderId = Number(req.params.orderId); // Note: req.params.orderId
+export const getOrderDetail = async (req: AuthenticatedRequest, res: Response) => {
+  console.log("🔍 [API] Received request to get specific order details.");
+  try {
+    const customerId = req.user?.id;
+    const orderId = Number(req.params.orderId);
 
-        if (!customerId) return res.status(401).json({ message: "Unauthorized." });
-        if (isNaN(orderId)) return res.status(400).json({ message: "Invalid order ID." });
+    if (!customerId) return res.status(401).json({ message: "Unauthorized." });
+    if (isNaN(orderId)) return res.status(400).json({ message: "Invalid order ID." });
 
-        const orderDetail = await db.query.orders.findFirst({
-            where: and(
-                eq(orders.id, orderId),
-                eq(orders.customerId, customerId)
-            ),
-            with: {
-                items: true,
-                // deliveryAddress: true, // यदि आप चाहें तो
-            },
-        });
+    const orderDetail = await db.query.orders.findFirst({
+      where: and(
+        eq(orders.id, orderId),
+        eq(orders.customerId, customerId)
+      ),
+      with: {
+        items: true,
+      },
+    });
 
-        if (!orderDetail) {
-            return res.status(404).json({ message: "Order not found or access denied." });
-        }
-        
-        console.log(`✅ [API] Found order ${orderId}.`);
-        res.status(200).json(orderDetail);
-    } catch (error) {
-        console.error("❌ Error fetching specific order:", error);
-        res.status(500).json({ message: "Failed to fetch order details." });
+    if (!orderDetail) {
+      return res.status(404).json({ message: "Order not found or access denied." });
     }
+
+    console.log(`✅ [API] Found order ${orderId}.`);
+    res.status(200).json(orderDetail);
+  } catch (error) {
+    console.error("❌ Error fetching specific order:", error);
+    res.status(500).json({ message: "Failed to fetch order details." });
+  }
 };
-        
