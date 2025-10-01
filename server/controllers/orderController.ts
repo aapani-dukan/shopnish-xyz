@@ -6,7 +6,7 @@ import { deliveryAddresses, orders, orderItems, cartItems } from "../../shared/b
 import { eq, desc, and } from "drizzle-orm";
 import { AuthenticatedRequest } from "../middleware/authMiddleware";
 import { getIO } from "../socket";
-import 
+
 /**
  * Handles placing a direct "buy now" order.
  * This is a simplified version of placeOrder for single-item purchases.
