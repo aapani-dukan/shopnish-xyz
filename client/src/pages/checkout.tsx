@@ -93,26 +93,30 @@ const [deliveryAddress, setDeliveryAddress] = useState<DeliveryAddress>({
 
   // ✅ Create order mutation
 
+// client/src/pages/Checkout.tsx
+
 const createOrderMutation = useMutation({
   mutationFn: (orderData: any) => api.post("/api/orders", orderData),
+  
   onSuccess: (data) => {
-    queryClient.setQueryData(['cartItems'], { items: [] });
-    queryClient.invalidateQueries({ queryKey: ["cartItems"] });
     toast({
       title: "Order placed successfully!",
       description: "Your cart has been emptied.",
     });
+    queryClient.setQueryData(['cartItems'], { items: [] });
+    
+    queryClient.invalidateQueries({ queryKey: ["cartItems"] });
 
-    // 3. ✅ FIX NAVIGATION: data.id की जगह, सुनिश्चित करें कि data.data या data.orderId उपलब्ध है
+    // 4. Navigation Logic
     const orderId = data?.id || data?.orderId || data?.data?.id; 
     
     if (orderId) {
         navigate(`/order-success/${orderId}`);
     } else {
-        // यदि ID नहीं मिलती है, तो केवल होम पेज पर नेविगेट करें
         navigate(`/order-success/`); 
     }
   },
+
   onError: (error: any) => {
     toast({
       title: "Order Failed",
