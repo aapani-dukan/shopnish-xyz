@@ -93,26 +93,24 @@ const [deliveryAddress, setDeliveryAddress] = useState<DeliveryAddress>({
   const total = subtotal + deliveryCharge;
 
   // ✅ Create order mutation
-  const createOrderMutation = useMutation({
-    mutationFn: async (orderData: any) => {
-      return await apiRequest("POST", "/api/orders", orderData);
-    },
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['cartItems'] });
-      toast({
-        title: "Order Placed Successfully!",
-        description: `Order #${data.orderNumber} has been confirmed`,
-      });
-      navigate(`/order-confirmation/${data.orderId}`);
-    },
-    onError: (error) => {
-      toast({
-        title: "Order Failed",
-        description: "Failed to place order. Please try again.",
-        variant: "destructive",
-      });
-    },
-  });
+
+const createOrderMutation = useMutation({
+  mutationFn: (orderData: any) => api.post("/orders", orderData),
+  onSuccess: () => {
+    queryClient.invalidateQueries({ queryKey: ["cartItems"] }); // ✅ cart refresh
+    toast({
+      title: "Order placed successfully!",
+      description: "Your cart has been emptied.",
+    });
+  },
+  onError: (error: any) => {
+    toast({
+      title: "Order Failed",
+      description: error?.message || "Something went wrong",
+      variant: "destructive",
+    });
+  },
+});
 
   // ✅ NEW: AddressInputWithMap से डेटा प्राप्त करने के लिए हैंडलर
 
