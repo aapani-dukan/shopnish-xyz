@@ -190,14 +190,17 @@ export const placeOrderFromCart = async (req: AuthenticatedRequest, res: Respons
       // 3️⃣ Copy cart items into orderItems table (fresh rows)
       for (const item of items) {
         await tx.insert(orderItems).values({
-          userId,
-          productId: item.productId,
-          quantity: item.quantity,
-          price: item.price,
           orderId: orderResult.id,
-          status: "placed",
+          productId: item.productId,
+          sellerId: item.sellerId,
+          quantity: item.quantity,
+          unitPrice: parseFloat(item.unitPrice),
+          totalPrice: parseFloat(item.totalPrice),
+          status: 'placed',
+          userId,
         });
       }
+      
 
       console.log("✅ Cart items copied to new order.");
 
