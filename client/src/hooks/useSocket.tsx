@@ -5,6 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 interface SocketContextType {
   socket: Socket | null;
   isConnected: boolean;
+  latestLocation?: { lat: number; lng: number };
 }
 
 const SocketContext = createContext<SocketContextType | undefined>(undefined);
@@ -14,6 +15,7 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
 
   const socketRef = useRef<Socket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
+  const [latestLocation, setLatestLocation] = useState<{ lat: number; lng: number } | undefined>(undefined);
 
   useEffect(() => {
     if (isLoadingAuth) {
@@ -47,10 +49,10 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
         import.meta.env.VITE_API_BASE_URL || "https://shopnish-00ug.onrender.com";
 
       const newSocket = io(socketUrl, {
-        transports: ["websocket"], // सुनिश्चित करें कि यह websocket transport use करे
+        transports: ["websocket"],
         withCredentials: true,
         auth: {
-          token: user.idToken, // server-side validation के लिए जरूरी
+          token: user.idToken,
         },
       });
 
@@ -58,7 +60,6 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
         console.log("✅ Socket connected:", newSocket.id);
         setIsConnected(true);
 
-        // ✅ एक बार ही register-client emit करें
         newSocket.emit("register-client", {
           role: user.role,
           userId: user.uid,
@@ -81,21 +82,26 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
         }
       });
 
-      socketRef.current = newSocket;
-    }
+      // 🔹 LOCATION UPDATE HANDLER
+      const handleLocationUpdate = (data: { lat: number; lng: number }) => {
+        console.log("📍 Location update received:", data);
+        setLatestLocation(data);
+      };
+      newSocket.on("location-update", handleLocationUpdate);
 
-    return () => {
-      if (socketRef.current) {
-        socketRef.current.disconnect();
-        socketRef.current = null;
-      }
-      setIsConnected(false);
-    };
+      socketRef.current = newSocket;
+
+      return () => {
+        newSocket.off("location-update", handleLocationUpdate);
+        newSocket.disconnect();
+      };
+    }
   }, [isAuthenticated, isLoadingAuth, user?.uid, user?.idToken, user?.role]);
 
   const contextValue: SocketContextType = {
     socket: socketRef.current,
     isConnected,
+    latestLocation,
   };
 
   return (
