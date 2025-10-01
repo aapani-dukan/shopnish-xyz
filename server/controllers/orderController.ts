@@ -207,7 +207,8 @@ export const placeOrderFromCart = async (req: AuthenticatedRequest, res: Respons
       // 4️⃣ Delete all in_cart items for this user
       await tx.delete(orderItems).where(and(
         eq(orderItems.userId, userId),
-        eq(orderItems.status, "in_cart")
+        eq(cartItems.id, item.id)
+        
       ));
 
       console.log("🗑️ In-cart items deleted successfully.");
