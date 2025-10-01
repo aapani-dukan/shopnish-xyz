@@ -77,7 +77,7 @@ const [deliveryAddress, setDeliveryAddress] = useState<DeliveryAddress>({
 
   // ✅ Fetch cart items
   const { data, isLoading } = useQuery({
-    queryKey: ['cartItems'],
+    queryKey: ["/api/cart'],
     queryFn: async () => await apiRequest("GET", "/api/cart"),
     enabled: isAuthenticated, // केवल authenticated user के लिए fetch
   });
