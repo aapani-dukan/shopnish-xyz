@@ -93,20 +93,42 @@ const [deliveryAddress, setDeliveryAddress] = useState<DeliveryAddress>({
 
   // ✅ Create order mutation
 
-// client/src/pages/Checkout.tsx
 
-  const createOrderMutation = useMutation({
-    mutationFn: async (orderData: any) => {
-      return await apiRequest("POST", "/api/orders", orderData);
-    },
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['cartItems'] });
-      toast({
-        title: "Order Placed Successfully!",
-        description: `Order #${data.orderNumber} has been confirmed`,
-      });
-      navigate(`/order-confirmation/${data.orderId}`);
-    },
+const createOrderMutation = useMutation({
+  mutationFn: (orderData: any) => api.post("/api/orders", orderData),
+  
+  onSuccess: (data) => {
+    toast({
+      title: "Order placed successfully!",
+      description: "Your cart has been emptied.",
+    });
+    
+    // ✅ FIX 1: setQueryData को बनाए रखें - यह तुरंत अपडेट करता है।
+    queryClient.setQueryData(['cartItems'], { items: [] });
+    
+    // ✅ FIX 2: इनवैलिडेशन को व्यापक (broad) करें। 
+    // यह सुनिश्चित करता है कि "cart" से शुरू होने वाली कोई भी Query Key री-फ़ेच हो।
+    queryClient.invalidateQueries({ 
+        queryKey: ["cart"], 
+        refetchType: 'all' // "cart" से शुरू होने वाली सभी keys को इनवैलिडेट करें
+    });
+    // हम पुरानी ['cartItems'] key को भी साफ़ कर सकते हैं
+    queryClient.invalidateQueries({ queryKey: ["cartItems"] });
+
+
+    // Navigation Logic
+    const orderId = data?.id || data?.orderId || data?.data?.id; 
+    
+    if (orderId) {
+        navigate(`/order-confirmation/${orderId}`);
+    } else {
+        // चूंकि OrderConfirmation के लिए orderId अनिवार्य है, यदि ID नहीं है, 
+        // तो होम पेज पर नेविगेट करें।
+        navigate(`/`); 
+    }
+  },
+
+  
     onError: (error) => {
       toast({
         title: "Order Failed",
