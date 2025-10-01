@@ -187,38 +187,44 @@ export const placeOrderFromCart = async (req: AuthenticatedRequest, res: Respons
         deliveryLng: longitude,
       }).returning();
 
-      // 3️⃣ Update orderItems
+      // 3️⃣ Copy items from cartItems → orderItems
       for (const item of items) {
-        const [updatedItem] = await tx.update(orderItems)
-          .set({
-            orderId: orderResult.id,
-            status: "placed",
-          })
+        const [cartItem] = await tx.select()
+          .from(cartItems)
           .where(and(
-            eq(orderItems.userId, userId),
-            eq(orderItems.productId, item.productId),
-            eq(orderItems.status, "in_cart")
+            eq(cartItems.userId, userId),
+            eq(cartItems.productId, item.productId)
           ))
-          .returning();
+          .limit(1);
 
-        if (!updatedItem) {
-          throw new Error("Cart item not found or already placed.");
+        if (!cartItem) {
+          throw new Error(`Cart item not found for productId ${item.productId}`);
         }
+
+        await tx.insert(orderItems).values({
+          orderId: orderResult.id,
+          productId: cartItem.productId,
+          sellerId: item.sellerId,
+          quantity: cartItem.quantity,
+          unitPrice: parseFloat(item.unitPrice),
+          totalPrice: parseFloat(item.totalPrice),
+          status: "placed",
+          userId,
+        });
+
+        // 4️⃣ Remove from cart after moving to order
+        await tx.delete(cartItems)
+          .where(and(
+            eq(cartItems.userId, userId),
+            eq(cartItems.id, cartItem.id)
+          ));
       }
 
-      console.log("✅ Cart items moved to 'placed' status and associated with new order.");
-
-      // 4️⃣ Delete placed cart items
-      await tx.delete(orderItems).where(and(
-        eq(orderItems.userId, userId),
-        eq(orderItems.status, "placed"),
-        eq(orderItems.orderId, orderResult.id)
-      ));
-
-      console.log("🗑️ Cart items deleted successfully.");
-
-      return orderResult; // ✅ transaction को result लौटाना चाहिए
+      console.log("✅ Cart items moved to orderItems and deleted from cartItems.");
+      return orderResult;
     });
+
+    // 🔔 Emit new order event
 
     getIO().emit("new-order", {
       orderId: newOrder.id,
