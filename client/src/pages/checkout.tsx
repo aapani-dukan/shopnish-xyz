@@ -116,14 +116,6 @@ const [deliveryAddress, setDeliveryAddress] = useState<DeliveryAddress>({
     },
   });
 
-  onError: (error: any) => {
-    toast({
-      title: "Order Failed",
-      description: error?.message || "Something went wrong",
-      variant: "destructive",
-    });
-  },
-});
 
 // =========================================================================
 // ✅ FIX: handleLocationUpdate को कॉम्पोनेंट स्कोप में परिभाषित किया गया
