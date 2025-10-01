@@ -18,6 +18,11 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
   const [latestLocation, setLatestLocation] = useState<{ lat: number; lng: number } | undefined>(undefined);
 
   useEffect(() => {
+    const handleLocationUpdate = (data: { lat: number; lng: number }) => {
+      console.log("📍 Location update received:", data);
+      setLatestLocation(data);
+    };
+
     if (isLoadingAuth) {
       if (socketRef.current) {
         socketRef.current.disconnect();
@@ -82,16 +87,13 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
         }
       });
 
-      // 🔹 LOCATION UPDATE HANDLER
-      const handleLocationUpdate = (data: { lat: number; lng: number }) => {
-        console.log("📍 Location update received:", data);
-        setLatestLocation(data);
-      };
+      // 🔹 Register Location Update listener
       newSocket.on("location-update", handleLocationUpdate);
 
       socketRef.current = newSocket;
 
       return () => {
+        console.log("🧹 Cleaning up socket connection");
         newSocket.off("location-update", handleLocationUpdate);
         newSocket.disconnect();
       };
