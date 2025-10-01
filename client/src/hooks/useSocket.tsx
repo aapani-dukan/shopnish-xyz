@@ -18,11 +18,6 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
   const [latestLocation, setLatestLocation] = useState<{ lat: number; lng: number } | undefined>(undefined);
 
   useEffect(() => {
-    const handleLocationUpdate = (data: { lat: number; lng: number }) => {
-      console.log("📍 Location update received:", data);
-      setLatestLocation(data);
-    };
-
     if (isLoadingAuth) {
       if (socketRef.current) {
         socketRef.current.disconnect();
@@ -61,6 +56,12 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
         },
       });
 
+      // 🔹 Location update handler defined INSIDE useEffect to fix ReferenceError
+      const handleLocationUpdate = (data: { lat: number; lng: number }) => {
+        console.log("📍 Location update received:", data);
+        setLatestLocation(data);
+      };
+
       newSocket.on("connect", () => {
         console.log("✅ Socket connected:", newSocket.id);
         setIsConnected(true);
@@ -87,7 +88,7 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
         }
       });
 
-      // 🔹 Register Location Update listener
+      // 🔹 Register listener for location updates
       newSocket.on("location-update", handleLocationUpdate);
 
       socketRef.current = newSocket;
