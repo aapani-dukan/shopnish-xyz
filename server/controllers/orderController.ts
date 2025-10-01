@@ -187,64 +187,35 @@ export const placeOrderFromCart = async (req: AuthenticatedRequest, res: Respons
         deliveryLng: longitude,
       }).returning();
 
-      // 3️⃣ Copy items from cartItems → orderItems
+      // 3️⃣ Copy cart items into orderItems table (fresh rows)
       for (const item of items) {
-        const [cartItem] = await tx.select()
-          .from(cartItems)
-          .where(and(
-            eq(cartItems.userId, userId),
-            eq(cartItems.productId, item.productId)
-          ))
-          .limit(1);
-
-        if (!cartItem) {
-          throw new Error(`Cart item not found for productId ${item.productId}`);
-        }
-
         await tx.insert(orderItems).values({
-          orderId: orderResult.id,
-          productId: cartItem.productId,
-          sellerId: item.sellerId,
-          quantity: cartItem.quantity,
-          unitPrice: parseFloat(item.unitPrice),
-          totalPrice: parseFloat(item.totalPrice),
-          status: "placed",
           userId,
+          productId: item.productId,
+          quantity: item.quantity,
+          price: item.price,
+          orderId: orderResult.id,
+          status: "placed",
         });
-
-        // 4️⃣ Remove from cart after moving to order
-        await tx.delete(cartItems)
-          .where(and(
-            eq(cartItems.userId, userId),
-            eq(cartItems.id, cartItem.id)
-          ));
       }
 
-      console.log("✅ Cart items moved to orderItems and deleted from cartItems.");
-      return orderResult;
+      console.log("✅ Cart items copied to new order.");
+
+      // 4️⃣ Delete all in_cart items for this user
+      await tx.delete(orderItems).where(and(
+        eq(orderItems.userId, userId),
+        eq(orderItems.status, "in_cart")
+      ));
+
+      console.log("🗑️ In-cart items deleted successfully.");
+
+      return orderResult; // ✅ transaction को result लौटाना चाहिए
     });
 
-    // 🔔 Emit new order event
-
-    getIO().emit("new-order", {
-      orderId: newOrder.id,
-      orderNumber: newOrder.orderNumber,
-      customerId: newOrder.customerId,
-      total: newOrder.total,
-      status: newOrder.status,
-      createdAt: newOrder.createdAt,
-      items,
-    });
-
-    res.status(201).json({
-      message: "Order placed successfully!",
-      orderId: newOrder.id,
-      orderNumber: newOrder.orderNumber,
-      data: newOrder,
-    });
-  } catch (error) {
-    console.error("❌ Error placing cart order:", error);
-    res.status(500).json({ message: "Failed to place order." });
+    res.status(201).json(newOrder);
+  } catch (error: any) {
+    console.error("❌ Error placing order:", error.message || error);
+    res.status(500).json({ message: "Failed to place order", error: error.message });
   }
 };
 
