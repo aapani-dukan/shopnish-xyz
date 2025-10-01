@@ -165,6 +165,7 @@ const handleLocationUpdate = useCallback(
     }
 
     const itemsToOrder = cartItems.map(item => ({
+       id: item.id, 
       productId: item.product.id,
       sellerId: item.product.sellerId,
       quantity: item.quantity,
