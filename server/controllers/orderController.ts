@@ -2,11 +2,11 @@
 import { Router, Response } from "express";
 import { v4 as uuidv4 } from "uuid";
 import { db } from "../db";
-import { deliveryAddresses, orders, orderItems } from "../../shared/backend/schema";
+import { deliveryAddresses, orders, orderItems, cartItems } from "../../shared/backend/schema";
 import { eq, desc, and } from "drizzle-orm";
 import { AuthenticatedRequest } from "../middleware/authMiddleware";
 import { getIO } from "../socket";
-import { cartItems } from "../shared/backend/schema";
+import 
 /**
  * Handles placing a direct "buy now" order.
  * This is a simplified version of placeOrder for single-item purchases.
