@@ -1,4 +1,4 @@
-import React, { useEffect, useState, createContext, useContext, useRef } from "react";
+import React, { useEffect, useState, createContext, useContext, useRef, useCallback } from "react";
 import { io, type Socket } from "socket.io-client";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -16,6 +16,12 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
   const socketRef = useRef<Socket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [latestLocation, setLatestLocation] = useState<{ lat: number; lng: number } | undefined>(undefined);
+
+  // ✅ अब हमेशा stable reference रहेगा
+  const handleLocationUpdate = useCallback((data: { lat: number; lng: number }) => {
+    console.log("📍 Location update received:", data);
+    setLatestLocation(data);
+  }, []);
 
   useEffect(() => {
     if (isLoadingAuth) {
@@ -56,12 +62,6 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
         },
       });
 
-      // 🔹 Location update handler defined INSIDE useEffect to fix ReferenceError
-      const handleLocationUpdate = (data: { lat: number; lng: number }) => {
-        console.log("📍 Location update received:", data);
-        setLatestLocation(data);
-      };
-
       newSocket.on("connect", () => {
         console.log("✅ Socket connected:", newSocket.id);
         setIsConnected(true);
@@ -88,7 +88,7 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
         }
       });
 
-      // 🔹 Register listener for location updates
+      // ✅ अब location-update register
       newSocket.on("location-update", handleLocationUpdate);
 
       socketRef.current = newSocket;
@@ -99,7 +99,7 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
         newSocket.disconnect();
       };
     }
-  }, [isAuthenticated, isLoadingAuth, user?.uid, user?.idToken, user?.role]);
+  }, [isAuthenticated, isLoadingAuth, user?.uid, user?.idToken, user?.role, handleLocationUpdate]);
 
   const contextValue: SocketContextType = {
     socket: socketRef.current,
