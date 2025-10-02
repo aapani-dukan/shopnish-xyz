@@ -39,9 +39,10 @@ export default function CartModal({ isOpen, onClose }: CartModalProps) {
     queryKey: ["/api/cart"],
     queryFn: () => apiRequest("GET", "/api/cart"),
     enabled: isAuthenticated && !isLoadingAuth,
-  });
+  
   refetchOnMount: false, // ⬅️ इसे जोड़ें
-    staleTime: 5000,     
+    staleTime: 5000, 
+    });
   const items = Array.isArray(data?.items) ? data.items : [];
   
   const total = items.reduce((sum, item) => {
