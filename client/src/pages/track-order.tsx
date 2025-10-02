@@ -336,6 +336,7 @@ export default function TrackOrder() {
                   </CardTitle>
                 </CardHeader>
                 
+
 <CardContent>
   <div className="flex items-center justify-between">
     <div>
@@ -348,6 +349,7 @@ export default function TrackOrder() {
     </Button>
   </div>
 </CardContent>
+                
                   
               </Card>
             )}
@@ -392,8 +394,10 @@ export default function TrackOrder() {
                     <span>Store Details</span>
                   </CardTitle>
                 </CardHeader>
-                <CardContent>
-                     <div className="space-y-2">
+                // TrackOrder.tsx (Store Details Card, लगभग Line 248)
+
+    <CardContent>
+      <div className="space-y-2">
         <p className="font-medium">{store?.storeName}</p> {/* ✅ फ़िक्स */}
         <p className="text-sm text-gray-600">{store?.address}</p> {/* ✅ फ़िक्स */}
         <div className="flex items-center justify-between pt-2">
@@ -407,6 +411,7 @@ export default function TrackOrder() {
     </CardContent>
   </Card>
 )}
+                
 
             {/* Delivery Address */}
             <Card>
