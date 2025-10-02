@@ -93,7 +93,6 @@ const [deliveryAddress, setDeliveryAddress] = useState<DeliveryAddress>({
 
   // ✅ Create order mutation
 
-// client/src/pages/Checkout.tsx
 
 const createOrderMutation = useMutation({
   mutationFn: (orderData: any) => api.post("/api/orders", orderData),
@@ -104,13 +103,14 @@ const createOrderMutation = useMutation({
       description: "Your cart has been emptied.",
     });
     
-    // ✅ FIX: केवल एक बार setQueryData का उपयोग करें।
-    // यह UI को तुरंत (Synchronously) अपडेट करेगा।
-    queryClient.setQueryData(["/api/cart"], { items: [] });
+
+    // *******************************************************************
+    // मैं दोनों को रखने का सुझाव देता हूँ, क्योंकि यह Fast UI (setQueryData)
+    // और Data Integrity (invalidateQueries) दोनों सुनिश्चित करता है।
+    // *******************************************************************
     
-    // ✅ FIX: केवल एक बार, सही Key को इनवैलिडेट करें।
-    // यह सुनिश्चित करता है कि अगला फ़ेच खाली डेटा लाए।
-    queryClient.invalidateQueries({ queryKey: ["/api/cart"] });
+    queryClient.setQueryData(["/api/cart"], { items: [] });
+    queryClient.invalidateQueries({ queryKey: ["/api/cart"], refetchType: 'active' }); 
     
 
     // Navigation Logic
@@ -122,6 +122,7 @@ const createOrderMutation = useMutation({
         navigate(`/`); 
     }
   },
+
 
     onError: (error) => {
       toast({
