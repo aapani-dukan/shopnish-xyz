@@ -199,7 +199,7 @@ console.log("✅ Cart items deleted from cartItems table and moved to orderItems
       
       return orderResult;
     });
-
+  
     getIO().emit("new-order", {
       orderId: newOrder.id,
       orderNumber: newOrder.orderNumber,
@@ -216,6 +216,9 @@ console.log("✅ Cart items deleted from cartItems table and moved to orderItems
       orderNumber: newOrder.orderNumber,
       data: newOrder,
     });
+  }
+};
+
 /**
  * Fetches all orders for the authenticated user.
  */
