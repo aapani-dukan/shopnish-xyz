@@ -40,9 +40,10 @@ export default function Cart() {
       return response; // ✅ हमेशा { items: [...] }
     },
     enabled: !!auth.currentUser,
-  });
+
 refetchOnMount: false, // ⬅️ इसे जोड़ें
-    staleTime: 5000,    
+    staleTime: 5000,  
+      });
   const cartItems: CartItem[] = data?.items ?? [];
 
   if (isLoading) {
