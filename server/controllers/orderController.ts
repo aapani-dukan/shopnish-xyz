@@ -216,9 +216,12 @@ console.log("✅ Cart items deleted from cartItems table and moved to orderItems
       orderNumber: newOrder.orderNumber,
       data: newOrder,
     });
-  }
-};
+  } catch(error){
 
+console.error("❌ Error placing cart order:", error);
+    res.status(500).json({ message: "Failed to place order." });
+  }
+}
 /**
  * Fetches all orders for the authenticated user.
  */
