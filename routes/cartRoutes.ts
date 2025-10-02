@@ -1,29 +1,31 @@
+// server/routes/cartRouter.ts
+
 import { Router, Response } from 'express';
 import { db } from '../server/db.ts';
 import {
   users,
-  orderItems,
+  orderItems, // ⚠️ इसे अब सिर्फ़ reference के लिए रखा है, उपयोग cartItems का होगा
+  cartItems,    // ✅ NEW: cartItems स्कीमा को इम्पोर्ट करें
   products
 } from '../shared/backend/schema.ts';
 import { eq, and, inArray } from 'drizzle-orm';
 import { AuthenticatedRequest, requireAuth } from '../server/middleware/authMiddleware.ts';
-import { getIO } from '../server/socket.ts'; // ✅ socket import
+import { getIO } from '../server/socket.ts'; 
 
 const cartRouter = Router();
-// ✅ GET /api/cart - Get user's cart
+
+// 1. ✅ GET /api/cart - Get user's cart (अब cartItems टेबल का उपयोग करता है)
 cartRouter.get('/', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     console.log("🛒 [API] Received GET request for cart.");
     const firebaseUid = req.user?.firebaseUid;
     
-    // 1. सबसे पहले, कैशिंग हेडर सेट करें
-    // यह सुनिश्चित करता है कि 304 Not Modified स्टेटस कभी न भेजा जाए
+    // कैशिंग हेडर को सेट करें (जैसा कि हमने पहले तय किया था)
     res.set({
         'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
         'Pragma': 'no-cache',
         'Expires': '0',
     });
-    // ETag को भी हटाएं (यदि Express/Node.js द्वारा डिफ़ॉल्ट रूप से सेट किया गया हो)
     res.removeHeader('ETag'); 
 
     if (!firebaseUid) {
@@ -39,17 +41,16 @@ cartRouter.get('/', requireAuth, async (req: AuthenticatedRequest, res: Response
       return res.status(404).json({ error: 'User not found.' });
     }
 
-    // 2. कार्ट आइटम को फ़ेच करें
-    // चूंकि ऑर्डर प्लेस हो चुका है, यह क्वेरी खाली होनी चाहिए
-    const cartItemsData = await db.query.orderItems.findMany({
-      where: and(eq(orderItems.userId, dbUser.id), eq(orderItems.status, 'in_cart')),
+    // 🛑 FIX: orderItems से cartItems पर स्विच करें, status की अब आवश्यकता नहीं है।
+    const cartItemsData = await db.query.cartItems.findMany({
+      where: eq(cartItems.userId, dbUser.id),
     });
 
     if (cartItemsData.length === 0) {
       return res.status(200).json({ message: "Your cart is empty", items: [] });
     }
 
-    // 3. यदि कार्ट खाली नहीं है, तो उत्पादों का डेटा फ़ेच करें
+    // बाकी लॉजिक (products fetch, data cleaning) समान रहता है
     const productIds = cartItemsData.map(item => item.productId);
     const productsData = await db.query.products.findMany({
       where: inArray(products.id, productIds),
@@ -69,26 +70,23 @@ cartRouter.get('/', requireAuth, async (req: AuthenticatedRequest, res: Response
           price: product.price,
           image: product.image,
           sellerId: product.sellerId,
-          // सुनिश्चित करें कि Hindi नाम और unit भी यहां हैं
           nameHindi: product.nameHindi, 
           unit: product.unit,
         },
       };
     }).filter(item => item !== null);
 
-    // 4. कार्ट डेटा भेजें (जो भरा हुआ है)
     return res.status(200).json({ message: "Cart fetched successfully", items: cleanedCartData });
 
   } catch (error: any) {
     console.error('❌ [API] Error fetching cart:', error);
-    // 🛑 FIX: यहाँ भी कैशिंग अक्षम करें
     res.set({ 'Cache-Control': 'no-store, no-cache, must-revalidate' }); 
     return res.status(500).json({ error: 'Failed to fetch cart. An unexpected error occurred.' });
   }
 });
 
 
-// ✅ POST /api/cart/add - Add a new item to cart
+// 2. ✅ POST /api/cart/add - Add a new item to cart (अब cartItems टेबल का उपयोग करता है)
 cartRouter.post('/add', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const firebaseUid = req.user?.firebaseUid;
@@ -112,25 +110,28 @@ cartRouter.post('/add', requireAuth, async (req: AuthenticatedRequest, res: Resp
     const totalPrice = unitPrice * quantity;
     const sellerId = product.sellerId;
 
+    // 🛑 FIX: orderItems से cartItems पर स्विच करें
     const [existingItem] = await db
       .select()
-      .from(orderItems)
-      .where(and(eq(orderItems.userId, dbUser.id), eq(orderItems.productId, productId), eq(orderItems.status, 'in_cart')));
+      .from(cartItems)
+      .where(and(eq(cartItems.userId, dbUser.id), eq(cartItems.productId, productId))); // status की अब आवश्यकता नहीं
 
     let item;
     if (existingItem) {
+      // 🛑 FIX: orderItems से cartItems पर स्विच करें
       const updatedItem = await db
-        .update(orderItems)
+        .update(cartItems)
         .set({
           quantity: existingItem.quantity + quantity,
           totalPrice: existingItem.totalPrice + totalPrice,
         })
-        .where(eq(orderItems.id, existingItem.id))
+        .where(eq(cartItems.id, existingItem.id))
         .returning();
       item = updatedItem[0];
     } else {
+      // 🛑 FIX: orderItems से cartItems पर स्विच करें
       const newItem = await db
-        .insert(orderItems)
+        .insert(cartItems)
         .values({
           userId: dbUser.id,
           productId,
@@ -138,13 +139,12 @@ cartRouter.post('/add', requireAuth, async (req: AuthenticatedRequest, res: Resp
           unitPrice,
           totalPrice,
           sellerId,
-          status: 'in_cart',
+          // status अब यहाँ आवश्यक नहीं है, यदि cartItems टेबल में status फ़ील्ड नहीं है
         })
         .returning();
       item = newItem[0];
     }
 
-    // ✅ socket event
     getIO().emit("cart:updated", { userId: dbUser.id });
 
     return res.status(200).json({ message: 'Item added to cart.', item });
@@ -154,7 +154,7 @@ cartRouter.post('/add', requireAuth, async (req: AuthenticatedRequest, res: Resp
   }
 });
 
-// ✅ PUT /api/cart/:cartItemId - Update quantity
+// 3. ✅ PUT /api/cart/:cartItemId - Update quantity (अब cartItems टेबल का उपयोग करता है)
 cartRouter.put('/:cartItemId', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const firebaseUid = req.user?.firebaseUid;
@@ -172,16 +172,17 @@ cartRouter.put('/:cartItemId', requireAuth, async (req: AuthenticatedRequest, re
 
     if (!dbUser) return res.status(404).json({ error: 'User not found.' });
 
-    const [updatedItem] = await db.update(orderItems)
+    // 🛑 FIX: orderItems से cartItems पर स्विच करें
+    const [updatedItem] = await db.update(cartItems)
       .set({ quantity })
-      .where(and(eq(orderItems.id, parseInt(cartItemId)), eq(orderItems.userId, dbUser.id), eq(orderItems.status, 'in_cart')))
+      // status की अब यहाँ आवश्यकता नहीं है
+      .where(and(eq(cartItems.id, parseInt(cartItemId)), eq(cartItems.userId, dbUser.id)))
       .returning();
 
     if (!updatedItem) {
       return res.status(404).json({ message: 'Cart item not found or does not belong to user.' });
     }
 
-    // ✅ socket event
     getIO().emit("cart:updated", { userId: dbUser.id });
 
     return res.status(200).json({ message: 'Cart item updated successfully.', item: updatedItem });
@@ -191,7 +192,7 @@ cartRouter.put('/:cartItemId', requireAuth, async (req: AuthenticatedRequest, re
   }
 });
 
-// ✅ DELETE /api/cart/:cartItemId - Remove a single item
+// 4. ✅ DELETE /api/cart/:cartItemId - Remove a single item (अब cartItems टेबल का उपयोग करता है)
 cartRouter.delete('/:cartItemId', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const firebaseUid = req.user?.firebaseUid;
@@ -208,15 +209,16 @@ cartRouter.delete('/:cartItemId', requireAuth, async (req: AuthenticatedRequest,
 
     if (!dbUser) return res.status(404).json({ error: 'User not found.' });
 
-    const [deletedItem] = await db.delete(orderItems)
-      .where(and(eq(orderItems.id, parseInt(cartItemId)), eq(orderItems.userId, dbUser.id), eq(orderItems.status, 'in_cart')))
+    // 🛑 FIX: orderItems से cartItems पर स्विच करें
+    const [deletedItem] = await db.delete(cartItems)
+      // status की अब यहाँ आवश्यकता नहीं है
+      .where(and(eq(cartItems.id, parseInt(cartItemId)), eq(cartItems.userId, dbUser.id)))
       .returning();
 
     if (!deletedItem) {
       return res.status(404).json({ message: 'Cart item not found or does not belong to user.' });
     }
 
-    // ✅ socket event
     getIO().emit("cart:updated", { userId: dbUser.id });
 
     return res.status(200).json({ message: 'Cart item removed successfully.' });
@@ -227,3 +229,4 @@ cartRouter.delete('/:cartItemId', requireAuth, async (req: AuthenticatedRequest,
 });
 
 export default cartRouter;
+           
