@@ -335,18 +335,20 @@ export default function TrackOrder() {
                     <span>Delivery Partner</span>
                   </CardTitle>
                 </CardHeader>
-                <CardContent>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="font-medium">{order.deliveryBoy?.firstName} {order.deliveryBoy?.lastName}</p>
-                      <p className="text-sm text-gray-600">Delivery Partner</p>
-                    </div>
-                    <Button variant="outline" size="sm">
-                      <Phone className="w-4 h-4 mr-2" />
-                      Call
-                    </Button>
-                  </div>
-                </CardContent>
+                
+<CardContent>
+  <div className="flex items-center justify-between">
+    <div>
+      <p className="font-medium">{order.deliveryBoy?.firstName} {order.deliveryBoy?.lastName}</p> {/* ✅ फ़िक्स */}
+      <p className="text-sm text-gray-600">Delivery Partner</p>
+    </div>
+    <Button variant="outline" size="sm">
+      <Phone className="w-4 h-4 mr-2" />
+      Call
+    </Button>
+  </div>
+</CardContent>
+                  
               </Card>
             )}
           </div>
@@ -391,20 +393,20 @@ export default function TrackOrder() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-2">
-                    <p className="font-medium">{store?.storeName}</p>
-                    <p className="text-sm text-gray-600">{store?.address}</p>
-                    <div className="flex items-center justify-between pt-2">
-                      <span className="text-sm text-gray-600">Contact Store</span>
-                      <Button variant="outline" size="sm">
-                        <Phone className="w-4 h-4 mr-2" />
-                        Call
-                      </Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
+                     <div className="space-y-2">
+        <p className="font-medium">{store?.storeName}</p> {/* ✅ फ़िक्स */}
+        <p className="text-sm text-gray-600">{store?.address}</p> {/* ✅ फ़िक्स */}
+        <div className="flex items-center justify-between pt-2">
+          <span className="text-sm text-gray-600">Contact Store</span>
+          <Button variant="outline" size="sm">
+            <Phone className="w-4 h-4 mr-2" />
+            Call
+          </Button>
+        </div>
+      </div>
+    </CardContent>
+  </Card>
+)}
 
             {/* Delivery Address */}
             <Card>
