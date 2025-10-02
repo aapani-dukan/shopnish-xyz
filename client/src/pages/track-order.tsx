@@ -178,10 +178,12 @@ export default function TrackOrder() {
     }
   };
 
-  const estimatedTime = new Date(order.estimatedDeliveryTime).toLocaleTimeString('en-IN', {
-    hour: '2-digit',
-    minute: '2-digit'
-  });
+  const estimatedTime = order.estimatedDeliveryTime 
+  ? new Date(order.estimatedDeliveryTime).toLocaleTimeString('en-IN', {
+      hour: '2-digit',
+      minute: '2-digit'
+    })
+  : 'TBD'; // TBD = To Be Determined 
 
   const orderTime = new Date(order.createdAt).toLocaleString('en-IN');
   const store = order.items?.[0]?.product?.store;
