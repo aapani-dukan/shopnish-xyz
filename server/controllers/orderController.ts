@@ -252,19 +252,13 @@ export const getUserOrders = async (req: AuthenticatedRequest, res: Response) =>
 /**
  * Fetches the initial tracking details for a specific order.
  */
+// orderController.ts
+
 export const getOrderTrackingDetails = async (req: AuthenticatedRequest, res: Response) => {
   console.log("📡 [API] Received request to get order tracking details.");
   try {
     const customerId = req.user?.id;
     const orderId = Number(req.params.orderId);
-
-    if (!customerId) {
-      return res.status(401).json({ message: "Unauthorized: User not logged in." });
-    }
-
-    if (isNaN(orderId)) {
-      return res.status(400).json({ message: "Invalid order ID provided." });
-    }
 
     const [order] = await db.select()
       .from(orders)
@@ -278,13 +272,25 @@ export const getOrderTrackingDetails = async (req: AuthenticatedRequest, res: Re
       return res.status(404).json({ message: "Order not found or access denied." });
     }
 
-    const deliveryAddress = JSON.parse(order.deliveryAddress as string) || {};
+    // 🛑 FIX: सुरक्षित पार्सिंग लॉजिक
+    let deliveryAddress: any;
+    
+    // जाँचें कि क्या order.deliveryAddress एक स्ट्रिंग है। यदि हाँ, तो पार्स करें।
+    // यदि यह पहले से ही ऑब्जेक्ट है (drizzle के कारण), तो सीधे उसका उपयोग करें।
+    if (typeof order.deliveryAddress === 'string') {
+        deliveryAddress = JSON.parse(order.deliveryAddress) || {};
+    } else {
+        // यदि यह पहले से ही एक ऑब्जेक्ट या null है
+        deliveryAddress = order.deliveryAddress || {};
+    }
+    // ------------------------------------
 
     res.status(200).json({
       orderId: order.id,
       orderNumber: order.orderNumber,
       status: order.status,
       deliveryAddress: {
+        // ... (use deliveryAddress here)
         lat: order.deliveryLat || 0,
         lng: order.deliveryLng || 0,
         address: deliveryAddress.address || '',
