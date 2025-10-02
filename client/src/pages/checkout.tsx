@@ -93,6 +93,7 @@ const [deliveryAddress, setDeliveryAddress] = useState<DeliveryAddress>({
 
   // ✅ Create order mutation
 
+// client/src/pages/Checkout.tsx
 
 const createOrderMutation = useMutation({
   mutationFn: (orderData: any) => api.post("/api/orders", orderData),
@@ -103,29 +104,25 @@ const createOrderMutation = useMutation({
       description: "Your cart has been emptied.",
     });
     
-    // ✅ FIX 1: setQueryData को बनाए रखें - यह तुरंत अपडेट करता है।
+    // ✅ FIX: केवल एक बार setQueryData का उपयोग करें।
+    // यह UI को तुरंत (Synchronously) अपडेट करेगा।
     queryClient.setQueryData(["/api/cart"], { items: [] });
     
-    // ✅ FIX 2: इनवैलिडेशन को व्यापक (broad) करें। 
-    // यह सुनिश्चित करता है कि "cart" से शुरू होने वाली कोई भी Query Key री-फ़ेच हो।
-    queryClient.invalidateQueries({ 
-        queryKey: ["/api/cart"], 
-        refetchType: 'all' // "cart" से शुरू होने वाली सभी keys को इनवैलिडेट करें
-    });
+    // ✅ FIX: केवल एक बार, सही Key को इनवैलिडेट करें।
+    // यह सुनिश्चित करता है कि अगला फ़ेच खाली डेटा लाए।
+    queryClient.invalidateQueries({ queryKey: ["/api/cart"] });
     
+
     // Navigation Logic
     const orderId = data?.id || data?.orderId || data?.data?.id; 
     
     if (orderId) {
         navigate(`/order-confirmation/${orderId}`);
     } else {
-        // चूंकि OrderConfirmation के लिए orderId अनिवार्य है, यदि ID नहीं है, 
-        // तो होम पेज पर नेविगेट करें।
         navigate(`/`); 
     }
   },
 
-  
     onError: (error) => {
       toast({
         title: "Order Failed",
