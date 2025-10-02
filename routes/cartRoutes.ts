@@ -10,12 +10,22 @@ import { AuthenticatedRequest, requireAuth } from '../server/middleware/authMidd
 import { getIO } from '../server/socket.ts'; // ✅ socket import
 
 const cartRouter = Router();
-
 // ✅ GET /api/cart - Get user's cart
 cartRouter.get('/', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     console.log("🛒 [API] Received GET request for cart.");
     const firebaseUid = req.user?.firebaseUid;
+    
+    // 1. सबसे पहले, कैशिंग हेडर सेट करें
+    // यह सुनिश्चित करता है कि 304 Not Modified स्टेटस कभी न भेजा जाए
+    res.set({
+        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0',
+    });
+    // ETag को भी हटाएं (यदि Express/Node.js द्वारा डिफ़ॉल्ट रूप से सेट किया गया हो)
+    res.removeHeader('ETag'); 
+
     if (!firebaseUid) {
       return res.status(401).json({ error: 'Unauthorized: Missing user UUID' });
     }
@@ -29,6 +39,8 @@ cartRouter.get('/', requireAuth, async (req: AuthenticatedRequest, res: Response
       return res.status(404).json({ error: 'User not found.' });
     }
 
+    // 2. कार्ट आइटम को फ़ेच करें
+    // चूंकि ऑर्डर प्लेस हो चुका है, यह क्वेरी खाली होनी चाहिए
     const cartItemsData = await db.query.orderItems.findMany({
       where: and(eq(orderItems.userId, dbUser.id), eq(orderItems.status, 'in_cart')),
     });
@@ -37,6 +49,7 @@ cartRouter.get('/', requireAuth, async (req: AuthenticatedRequest, res: Response
       return res.status(200).json({ message: "Your cart is empty", items: [] });
     }
 
+    // 3. यदि कार्ट खाली नहीं है, तो उत्पादों का डेटा फ़ेच करें
     const productIds = cartItemsData.map(item => item.productId);
     const productsData = await db.query.products.findMany({
       where: inArray(products.id, productIds),
@@ -56,17 +69,24 @@ cartRouter.get('/', requireAuth, async (req: AuthenticatedRequest, res: Response
           price: product.price,
           image: product.image,
           sellerId: product.sellerId,
+          // सुनिश्चित करें कि Hindi नाम और unit भी यहां हैं
+          nameHindi: product.nameHindi, 
+          unit: product.unit,
         },
       };
     }).filter(item => item !== null);
 
+    // 4. कार्ट डेटा भेजें (जो भरा हुआ है)
     return res.status(200).json({ message: "Cart fetched successfully", items: cleanedCartData });
 
   } catch (error: any) {
     console.error('❌ [API] Error fetching cart:', error);
+    // 🛑 FIX: यहाँ भी कैशिंग अक्षम करें
+    res.set({ 'Cache-Control': 'no-store, no-cache, must-revalidate' }); 
     return res.status(500).json({ error: 'Failed to fetch cart. An unexpected error occurred.' });
   }
 });
+
 
 // ✅ POST /api/cart/add - Add a new item to cart
 cartRouter.post('/add', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
