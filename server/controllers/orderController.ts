@@ -174,7 +174,7 @@ export const placeOrderFromCart = async (req: AuthenticatedRequest, res: Respons
       }).returning();
 
         // ✅ 3️⃣ The corrected logic to update orderItems
-      3️⃣ The CORRECT Logic: Delete from the actual cart table
+    
 for (const item of items) {
     await tx.delete(cartItems) // ⬅️ cartItems TABLE का उपयोग करें
         .where(and(
