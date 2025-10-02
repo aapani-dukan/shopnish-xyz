@@ -174,26 +174,28 @@ export const placeOrderFromCart = async (req: AuthenticatedRequest, res: Respons
       }).returning();
 
         // ✅ 3️⃣ The corrected logic to update orderItems
-      for (const item of items) {
-          const [updatedItem] = await tx.update(orderItems)
-              .set({
-                  orderId: orderResult.id,
-                  status: 'placed'
-              })
-              .where(and(
-                  eq(orderItems.userId, userId),
-                  eq(orderItems.productId, item.productId),
-                  eq(orderItems.status, 'in_cart')
-              ))
-              .returning();
-          
-          if (!updatedItem) {
-              // यदि कोई आइटम नहीं मिला तो ट्रांजेक्शन रोलबैक करें
-              throw new Error("Cart item not found or already placed.");
-          }
-      }
-      
-      console.log("✅ Cart items moved to 'placed' status and associated with new order.");
+      3️⃣ The CORRECT Logic: Delete from the actual cart table
+for (const item of items) {
+    await tx.delete(cartItems) // ⬅️ cartItems TABLE का उपयोग करें
+        .where(and(
+            eq(cartItems.userId, userId),
+            eq(cartItems.productId, item.productId)
+        ));
+    
+    // ऑर्डर आइटम को अलग से डालें
+    await tx.insert(orderItems).values({
+        orderId: orderResult.id,
+        productId: item.productId,
+        sellerId: item.sellerId,
+        quantity: item.quantity,
+        unitPrice: parseFloat(item.unitPrice),
+        totalPrice: parseFloat(item.totalPrice),
+        status: 'placed',
+        userId,
+    });
+}
+
+console.log("✅ Cart items deleted from cartItems table and moved to orderItems.");
       
       return orderResult;
     });
