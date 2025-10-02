@@ -112,10 +112,7 @@ const createOrderMutation = useMutation({
         queryKey: ["/api/cart"], 
         refetchType: 'all' // "cart" से शुरू होने वाली सभी keys को इनवैलिडेट करें
     });
-    // हम पुरानी ['cartItems'] key को भी साफ़ कर सकते हैं
-    queryClient.invalidateQueries({ queryKey: ["api/cart"] });
-
-
+    
     // Navigation Logic
     const orderId = data?.id || data?.orderId || data?.data?.id; 
     
