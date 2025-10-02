@@ -209,32 +209,44 @@ export default function TrackOrder() {
                     <span>Real-Time Tracking</span>
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="p-0">
-                  <div className="w-full h-80">
-                    {deliveryBoyLocation && order.deliveryAddress ? (
-                      <GoogleMapTracker
-                        deliveryBoyLocation={deliveryBoyLocation}
-                        customerAddress={order.deliveryAddress}
-                      />
-                    ) : (
-                      <div className="w-full h-full bg-gray-200 flex items-center justify-center text-gray-500">
-                        <p>Waiting for Delivery Partner's location...</p>
-                      </div>
-                    )}
-                  </div>
+                // TrackOrder.tsx (Line 158 के आसपास, Real-Time Tracking Card के अंदर)
 
-                  {deliveryBoyLocation && (
-                    <div className="p-4 border-t">
-                      <p className="text-sm font-medium">Delivery Partner Location Updated:</p>
-                      <p className="text-xs text-gray-600">
-                        Lat: {deliveryBoyLocation.lat.toFixed(4)}, Lng: {deliveryBoyLocation.lng.toFixed(4)}
-                      </p>
-                      <p className="text-xs text-gray-600">
-                        Last Update: {new Date(deliveryBoyLocation.timestamp).toLocaleTimeString()}
-                      </p>
-                    </div>
-                  )}
-                </CardContent>
+<CardContent className="p-0">
+  <div className="w-full h-80">
+    
+    {/* ✅ UPDATED LOGIC: Map को हमेशा लोड करें यदि Delivery Address है */}
+    {order.deliveryAddress ? (
+      <GoogleMapTracker
+        // 💡 यदि deliveryBoyLocation null है, तो GoogleMapTracker को इसे handle करना होगा (जैसे: केवल ग्राहक का पता दिखाना)
+        deliveryBoyLocation={deliveryBoyLocation} // यह null हो सकता है
+        customerAddress={order.deliveryAddress}
+      />
+    ) : (
+      <div className="w-full h-full bg-gray-200 flex items-center justify-center text-gray-500">
+        <p>Delivery address information is missing.</p>
+      </div>
+    )}
+  </div>
+
+  {/* यह Real-Time Location Update मैसेज दिखाने के लिए है (यह ठीक है) */}
+  {deliveryBoyLocation ? (
+    <div className="p-4 border-t">
+      <p className="text-sm font-medium">Delivery Partner Location Updated:</p>
+      <p className="text-xs text-gray-600">
+        Lat: {deliveryBoyLocation.lat.toFixed(4)}, Lng: {deliveryBoyLocation.lng.toFixed(4)}
+      </p>
+      <p className="text-xs text-gray-600">
+        Last Update: {new Date(deliveryBoyLocation.timestamp).toLocaleTimeString()}
+      </p>
+    </div>
+  ) : (
+     // जब तक लोकेशन नहीं आती, 'Waiting' मैसेज दिखाएँ (अब मैप के नीचे)
+     <div className="p-4 border-t text-center text-gray-500">
+        <p>Waiting for Delivery Partner's location...</p>
+     </div>
+  )}
+</CardContent>
+
               </Card>
             )}
 
