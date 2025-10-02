@@ -173,32 +173,39 @@ export const placeOrderFromCart = async (req: AuthenticatedRequest, res: Respons
         deliveryLng: longitude,
       }).returning();
 
+        // ✅ 3️⃣ The corrected logic to update orderItems
       for (const item of items) {
-        await tx.insert(orderItems).values({
-          orderId: orderResult.id,
-          productId: item.productId,
-          sellerId: item.sellerId,
-          quantity: item.quantity,
-          unitPrice: parseFloat(item.unitPrice),
-          totalPrice: parseFloat(item.totalPrice),
-          status: 'placed',
-          userId,
-        });
+          const [updatedItem] = await tx.update(orderItems)
+              .set({
+                  orderId: orderResult.id,
+                  status: 'placed'
+              })
+              .where(and(
+                  eq(orderItems.userId, userId),
+                  eq(orderItems.productId, item.productId),
+                  eq(orderItems.status, 'in_cart')
+              ))
+              .returning();
+          
+          if (!updatedItem) {
+              // यदि कोई आइटम नहीं मिला तो ट्रांजेक्शन रोलबैक करें
+              throw new Error("Cart item not found or already placed.");
+          }
       }
-
-      console.log("✅ Cart items copied to new order.");
-
-      // 🔹 Fix: Delete cart items by productId instead of cartItem id
-      for (const item of items) {
-        await tx.delete(cartItems).where(and(
-          eq(cartItems.userId, userId),
-          eq(cartItems.productId, item.productId) // ✅ correct condition
-        ));
-      }
-
-      console.log("🗑️ In-cart items deleted successfully.");
-
+      
+      console.log("✅ Cart items moved to 'placed' status and associated with new order.");
+      
       return orderResult;
+    });
+
+    getIO().emit("new-order", {
+      orderId: newOrder.id,
+      orderNumber: newOrder.orderNumber,
+      customerId: newOrder.customerId,
+      total: newOrder.total,
+      status: newOrder.status, // ✅ अब केवल status भेज रहा है
+      createdAt: newOrder.createdAt,
+      items,
     });
 
     res.status(201).json({
@@ -207,12 +214,6 @@ export const placeOrderFromCart = async (req: AuthenticatedRequest, res: Respons
       orderNumber: newOrder.orderNumber,
       data: newOrder,
     });
-  } catch (error: any) {
-    console.error("❌ Error placing order:", error.message || error);
-    res.status(500).json({ message: "Failed to place order", error: error.message });
-  }
-};
-
 /**
  * Fetches all orders for the authenticated user.
  */
