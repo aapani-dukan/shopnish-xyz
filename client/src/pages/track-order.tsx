@@ -1,3 +1,4 @@
+
 import { useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -22,7 +23,7 @@ import {
 // -------------------- Interfaces --------------------
 interface Location {
   lat: number;
-  lng: number;
+  lng: string;
   timestamp: string;
 }
 interface DeliveryAddress {
@@ -82,55 +83,53 @@ export default function TrackOrder() {
 
   const [deliveryBoyLocation, setDeliveryBoyLocation] = useState<Location | null>(null);
 
-  // Hook CALL ALWAYS: key fallback karo; enabled se fetch control karo
-  
+  // -------------------- Queries --------------------
+  const {
+    data: order,
+    isLoading,
+  } = useQuery<Order>({
+    queryKey: ["/api/orders", numericOrderId],
+    queryFn: async () => {
+      if (!numericOrderId) return null;
 
-const {
-  data: order,
-  isLoading,
-} = useQuery<Order>({
-  queryKey: ["/api/orders", numericOrderId],
-  queryFn: async () => {
-    if (!numericOrderId) return null;
+      const auth = getAuth();
+      const token = await auth.currentUser?.getIdToken();
 
-    const auth = getAuth();
-    const token = await auth.currentUser?.getIdToken(); // ✅ token लो
+      const res = await fetch(`/api/orders/${numericOrderId}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        credentials: "include",
+      });
 
-    const res = await fetch(`/api/orders/${numericOrderId}`, {
-      headers: {
-        Authorization: `Bearer ${token}`, // ✅ token भेजो
-      },
-      credentials: "include",
-    });
+      if (!res.ok) throw new Error("Failed to fetch order");
+      return await res.json(); // ✅ Fix: added await
+    },
+    enabled: !!numericOrderId,
+  });
 
-    if (!res.ok) throw new Error("Failed to fetch order");
-    return res.json();
-  },
-  enabled: !!numericOrderId,
-});
+  const {
+    data: trackingData,
+  } = useQuery<OrderTracking[]>({
+    queryKey: ["/api/orders/tracking", numericOrderId],
+    queryFn: async () => {
+      if (!numericOrderId) return [];
 
-const {
-  data: trackingData,
-} = useQuery<OrderTracking[]>({
-  queryKey: ["/api/orders/tracking", numericOrderId],
-  queryFn: async () => {
-    if (!numericOrderId) return [];
+      const auth = getAuth();
+      const token = await auth.currentUser?.getIdToken();
 
-    const auth = getAuth();
-    const token = await auth.currentUser?.getIdToken();
+      const res = await fetch(`/api/orders/${numericOrderId}/tracking`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        credentials: "include",
+      });
 
-    const res = await fetch(`/api/orders/${numericOrderId}/tracking`, {
-      headers: {
-        Authorization: `Bearer ${token}`, // ✅ जरूरी
-      },
-      credentials: "include",
-    });
-
-    if (!res.ok) throw new Error("Failed to fetch tracking");
-    return res.json();
-  },
-  enabled: !!numericOrderId,
-});
+      if (!res.ok) throw new Error("Failed to fetch tracking");
+      return await res.json(); // ✅ Fix: added await
+    },
+    enabled: !!numericOrderId,
+  });
 
   const tracking: OrderTracking[] = Array.isArray(trackingData) ? trackingData : [];
 
@@ -156,8 +155,6 @@ const {
     if (!userIdToUse) return;
 
     socket.emit("register-client", { role: "customer", userId: userIdToUse });
-
-    // Register event
     socket.on("order:delivery_location", handleLocationUpdate);
 
     return () => {
@@ -238,7 +235,6 @@ const {
     : -1;
 
   // -------------------- UI --------------------
-
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-4xl mx-auto px-4">
@@ -247,7 +243,6 @@ const {
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Track Your Order</h1>
           <p className="text-lg text-gray-600">Order #{order.orderNumber}</p>
         </div>
-
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Main Tracking */}
           <div className="lg:col-span-2 space-y-6">
