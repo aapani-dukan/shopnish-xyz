@@ -195,7 +195,7 @@ export default function TrackOrder() {
 
   const orderTime = new Date(order.createdAt).toLocaleString("en-IN");
   const store = order.items?.[0]?.product?.store;
-  const lastCompletedIndex = tracking.length > 0 ? tracking.findIndex((t) => t.status === order.status) : -1;
+  const lastCompletedIndex = tracking.findIndex((t) => t.status === order.status);
 
 
   // -------------------- UI --------------------
@@ -302,7 +302,7 @@ export default function TrackOrder() {
                   {tracking.map((step, index) => {
                     const isCompleted = index <= lastCompletedIndex;
                     return (
-                      <div key={step.id || index} className="flex items-center space-x-4">
+                      <div key={step.id ?? `step-${index}`} className="flex items-center space-x-4">
                         <div className="relative">
                           <div className={`w-4 h-4 rounded-full ${isCompleted ? "bg-green-500" : "bg-gray-300"}`}>
                             {isCompleted && <CheckCircle className="w-4 h-4 text-white" />}
@@ -455,5 +455,5 @@ export default function TrackOrder() {
         </div>
       </div>
     </div>
-  );
- }
+     );
+    }
