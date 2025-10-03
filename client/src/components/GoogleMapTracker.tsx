@@ -76,28 +76,26 @@ const GoogleMapTracker: React.FC<GoogleMapTrackerProps> = ({
     return <div>Loading Google Maps…</div>;
   }
 
-    if (!isLoaded) {
-    return <div>Loading Google Maps…</div>;
-  }
-  
-  // ✅ आइकन परिभाषाओं को useMemo में मूव करें
+  // ✅ isLoaded true होने पर ही maps.Icon बनाओ
   const { bikeIcon, homeIcon } = useMemo(() => {
-    // TypeScript के लिए window.google.maps को एक्सेस करने का सुरक्षित तरीका
-    const maps = (window as any).google.maps; 
+    if (!(window as any).google?.maps) return { bikeIcon: undefined, homeIcon: undefined };
+
+    const maps = (window as any).google.maps;
 
     const bikeIcon: google.maps.Icon = {
-        url: 'http://maps.google.com/mapfiles/kml/shapes/motorcycling.png', 
-        scaledSize: new maps.Size(32, 32), // new maps.Size का उपयोग करें
-        anchor: new maps.Point(16, 16),
-    }; 
+      url: 'http://maps.google.com/mapfiles/kml/shapes/motorcycling.png',
+      scaledSize: new maps.Size(32, 32),
+      anchor: new maps.Point(16, 16),
+    };
 
     const homeIcon: google.maps.Icon = {
-        url: 'http://maps.google.com/mapfiles/kml/shapes/homegarden.png', 
-        scaledSize: new maps.Size(32, 32),
-        anchor: new maps.Point(16, 32),
+      url: 'http://maps.google.com/mapfiles/kml/shapes/homegarden.png',
+      scaledSize: new maps.Size(32, 32),
+      anchor: new maps.Point(16, 32),
     };
+
     return { bikeIcon, homeIcon };
-  }, [isLoaded]); // isLoaded पर निर्भरता जरूरी है
+  }, [isLoaded]);
 
   // ✅ Map Options में Map ID जोड़ें (यदि आप advanced marker library का उपयोग कर रहे हैं)
   const mapOptions = useMemo(
@@ -129,18 +127,20 @@ const GoogleMapTracker: React.FC<GoogleMapTrackerProps> = ({
         />
       )}
          {/* मार्कर का उपयोग */}
-      <MarkerF
-        position={deliveryBoyLocation}
-        icon={bikeIcon}
-        title="Delivery Partner"
-      />
-      {directionsResponse?.routes?.[0]?.legs?.[0]?.end_location && (
-        <MarkerF
-          position={directionsResponse.routes[0].legs[0].end_location}
-          icon={homeIcon}
-          title="Customer Location"
-        />
-      )}
+      {bikeIcon && (
+  <MarkerF
+    position={deliveryBoyLocation}
+    icon={bikeIcon}
+    title="Delivery Partner"
+  />
+)}
+{homeIcon && directionsResponse?.routes?.[0]?.legs?.[0]?.end_location && (
+  <MarkerF
+    position={directionsResponse.routes[0].legs[0].end_location}
+    icon={homeIcon}
+    title="Customer Location"
+  />
+)}
     </GoogleMap>
   );
 };
