@@ -137,8 +137,7 @@ const AddressInputWithMap: React.FC<AddressInputProps> = ({
            {
             if (status === "OK" && results && results[0]) {
    const { city, pincode } = extractCityAndPincode(results);
-   ...
-            }
+           }
             const updatedLocation: GeocodedLocation = {
               ...newLocation,
               city,
