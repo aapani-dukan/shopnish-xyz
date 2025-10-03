@@ -19,13 +19,11 @@ import {
 } from "lucide-react";
 
 // -------------------- Interfaces --------------------
-
 interface Location {
   lat: number;
   lng: number;
   timestamp: string;
 }
-
 interface DeliveryAddress {
   fullName: string;
   address: string;
@@ -33,7 +31,6 @@ interface DeliveryAddress {
   pincode: string;
   phone: string;
 }
-
 interface OrderTracking {
   id?: number;
   orderId: number;
@@ -42,21 +39,18 @@ interface OrderTracking {
   timestamp?: string;
   notes?: string;
 }
-
 interface DeliveryBoy {
   id: number;
   firstName: string;
   lastName: string;
   phone: string;
 }
-
 interface StoreType {
   id: number;
   storeName: string;
   address: string;
   phone: string;
 }
-
 interface Order {
   id: number;
   orderNumber: string;
@@ -78,7 +72,6 @@ interface Order {
 }
 
 // -------------------- Component --------------------
-
 export default function TrackOrder() {
   const { orderId } = useParams<{ orderId: string }>();
   const numericOrderId = orderId ? Number(orderId) : null;
@@ -100,7 +93,7 @@ export default function TrackOrder() {
 
   const tracking: OrderTracking[] = Array.isArray(trackingData) ? trackingData : [];
 
-  // ✅ Location update handler
+  // ✅ Location update handler (stable)
   const handleLocationUpdate = useCallback(
     (data: Location & { orderId: number; timestamp?: string }) => {
       if (data.orderId === numericOrderId) {
@@ -121,15 +114,20 @@ export default function TrackOrder() {
     const userIdToUse = (user as any).id || (user as any).uid;
     if (!userIdToUse) return;
 
+    console.log("🔌 Registering customer socket:", userIdToUse);
+
     socket.emit("register-client", { role: "customer", userId: userIdToUse });
+
+    // Register event
     socket.on("order:delivery_location", handleLocationUpdate);
 
     return () => {
-      console.log("🧹 Cleaning up TrackOrder socket");
+      console.log("🧹 Cleaning up TrackOrder socket listener");
       socket.off("order:delivery_location", handleLocationUpdate);
     };
   }, [socket, numericOrderId, isLoading, user, handleLocationUpdate]);
 
+  // -------------------- Render States --------------------
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -153,7 +151,6 @@ export default function TrackOrder() {
   }
 
   // -------------------- Helpers --------------------
-
   const getStatusColor = (status: string) => {
     switch (status) {
       case "placed":
@@ -199,6 +196,7 @@ export default function TrackOrder() {
   const orderTime = new Date(order.createdAt).toLocaleString("en-IN");
   const store = order.items?.[0]?.product?.store;
   const lastCompletedIndex = tracking.length > 0 ? tracking.findIndex((t) => t.status === order.status) : -1;
+
 
   // -------------------- UI --------------------
 
