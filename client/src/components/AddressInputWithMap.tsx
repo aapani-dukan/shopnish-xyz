@@ -108,8 +108,9 @@ const AddressInputWithMap: React.FC<AddressInputProps> = ({
         const newLocation: LatLngLiteral = { lat: newLat, lng: newLng };
         const geocoder = new (window as any).google.maps.Geocoder();
         geocoder.geocode({ location: newLocation }, (results: any, status: any) => {
-          if (status === "OK" && results[0]) {
-            const { city, pincode } = extractCityAndPincode(results);
+          if (status === "OK" && results && results[0]) {
+   const { city, pincode } = extractCityAndPincode(results);
+   
             const updatedLocation: GeocodedLocation = {
               ...newLocation,
               city,
