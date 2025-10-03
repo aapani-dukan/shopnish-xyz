@@ -195,7 +195,9 @@ export default function TrackOrder() {
 
   const orderTime = new Date(order.createdAt).toLocaleString("en-IN");
   const store = order.items?.[0]?.product?.store;
-  const lastCompletedIndex = tracking.findIndex((t) => t.status === order.status);
+  const lastCompletedIndex = tracking.length > 0
+  ? tracking.findIndex((t) => t.status === order.status)
+  : -1;
 
 
   // -------------------- UI --------------------
@@ -300,7 +302,7 @@ export default function TrackOrder() {
               <CardContent>
                 <div className="space-y-6">
                   {tracking.map((step, index) => {
-                    const isCompleted = index <= lastCompletedIndex;
+                    const isCompleted = lastCompletedIndex !== -1 && index <= lastCompletedIndex;
                     return (
                       <div key={step.id ?? `step-${index}`} className="flex items-center space-x-4">
                         <div className="relative">
