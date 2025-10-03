@@ -83,19 +83,30 @@ export default function TrackOrder() {
 
   // Hook CALL ALWAYS: key fallback karo; enabled se fetch control karo
   const {
-    data: order,
-    isLoading,
-  } = useQuery<Order>({
-    queryKey: numericOrderId ? [`/api/orders/${numericOrderId}`] : [`order-disabled`], // fallback key
-    enabled: !!numericOrderId, // run hook always, fetch only if id hai
-  });
-
+  data: order,
+  isLoading,
+} = useQuery<Order>({
+  queryKey: ["/api/orders", numericOrderId],  // हमेशा same structure
+  queryFn: async () => {
+    if (!numericOrderId) return null;
+    const res = await fetch(`/api/orders/${numericOrderId}`);
+    if (!res.ok) throw new Error("Failed to fetch order");
+    return res.json();
+  },
+  enabled: !!numericOrderId,
+});
   const {
-    data: trackingData,
-  } = useQuery<OrderTracking[]>({
-    queryKey: numericOrderId ? [`/api/orders/${numericOrderId}/tracking`] : [`order-tracking-disabled`],
-    enabled: !!numericOrderId,
-  });
+  data: trackingData,
+} = useQuery<OrderTracking[]>({
+  queryKey: ["/api/orders/tracking", numericOrderId],
+  queryFn: async () => {
+    if (!numericOrderId) return [];
+    const res = await fetch(`/api/orders/${numericOrderId}/tracking`);
+    if (!res.ok) throw new Error("Failed to fetch tracking");
+    return res.json();
+  },
+  enabled: !!numericOrderId,
+});
 
   const tracking: OrderTracking[] = Array.isArray(trackingData) ? trackingData : [];
 
