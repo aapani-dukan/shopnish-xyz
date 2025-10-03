@@ -81,13 +81,19 @@ export default function TrackOrder() {
 
   const [deliveryBoyLocation, setDeliveryBoyLocation] = useState<Location | null>(null);
 
-  const { data: order, isLoading } = useQuery<Order>({
-    queryKey: [`/api/orders/${numericOrderId}`],
-    enabled: !!numericOrderId,
+  // Hook CALL ALWAYS: key fallback karo; enabled se fetch control karo
+  const {
+    data: order,
+    isLoading,
+  } = useQuery<Order>({
+    queryKey: numericOrderId ? [`/api/orders/${numericOrderId}`] : [`order-disabled`], // fallback key
+    enabled: !!numericOrderId, // run hook always, fetch only if id hai
   });
 
-  const { data: trackingData } = useQuery<OrderTracking[]>({
-    queryKey: [`/api/orders/${numericOrderId}/tracking`],
+  const {
+    data: trackingData,
+  } = useQuery<OrderTracking[]>({
+    queryKey: numericOrderId ? [`/api/orders/${numericOrderId}/tracking`] : [`order-tracking-disabled`],
     enabled: !!numericOrderId,
   });
 
@@ -114,15 +120,12 @@ export default function TrackOrder() {
     const userIdToUse = (user as any).id || (user as any).uid;
     if (!userIdToUse) return;
 
-    console.log("🔌 Registering customer socket:", userIdToUse);
-
     socket.emit("register-client", { role: "customer", userId: userIdToUse });
 
     // Register event
     socket.on("order:delivery_location", handleLocationUpdate);
 
     return () => {
-      console.log("🧹 Cleaning up TrackOrder socket listener");
       socket.off("order:delivery_location", handleLocationUpdate);
     };
   }, [socket, numericOrderId, isLoading, user, handleLocationUpdate]);
@@ -196,9 +199,8 @@ export default function TrackOrder() {
   const orderTime = new Date(order.createdAt).toLocaleString("en-IN");
   const store = order.items?.[0]?.product?.store;
   const lastCompletedIndex = tracking.length > 0
-  ? tracking.findIndex((t) => t.status === order.status)
-  : -1;
-
+    ? tracking.findIndex((t) => t.status === order.status)
+    : -1;
 
   // -------------------- UI --------------------
 
