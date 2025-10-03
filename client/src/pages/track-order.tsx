@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import React, { useState, useEffect, useCallback } from "react"; 
 import { useAuth } from "@/hooks/useAuth"; 
 import { useSocket } from "@/hooks/useSocket";
+import { getAuth } from "firebase/auth";
 import GoogleMapTracker from "@/components/GoogleMapTracker";
 import { 
   Package, 
@@ -82,26 +83,49 @@ export default function TrackOrder() {
   const [deliveryBoyLocation, setDeliveryBoyLocation] = useState<Location | null>(null);
 
   // Hook CALL ALWAYS: key fallback karo; enabled se fetch control karo
-  const {
+  import { getAuth } from "firebase/auth";
+
+const {
   data: order,
   isLoading,
 } = useQuery<Order>({
-  queryKey: ["/api/orders", numericOrderId],  // हमेशा same structure
+  queryKey: ["/api/orders", numericOrderId],
   queryFn: async () => {
     if (!numericOrderId) return null;
-    const res = await fetch(`/api/orders/${numericOrderId}`);
+
+    const auth = getAuth();
+    const token = await auth.currentUser?.getIdToken(); // ✅ token लो
+
+    const res = await fetch(`/api/orders/${numericOrderId}`, {
+      headers: {
+        Authorization: `Bearer ${token}`, // ✅ token भेजो
+      },
+      credentials: "include",
+    });
+
     if (!res.ok) throw new Error("Failed to fetch order");
     return res.json();
   },
   enabled: !!numericOrderId,
 });
-  const {
+
+const {
   data: trackingData,
 } = useQuery<OrderTracking[]>({
   queryKey: ["/api/orders/tracking", numericOrderId],
   queryFn: async () => {
     if (!numericOrderId) return [];
-    const res = await fetch(`/api/orders/${numericOrderId}/tracking`);
+
+    const auth = getAuth();
+    const token = await auth.currentUser?.getIdToken();
+
+    const res = await fetch(`/api/orders/${numericOrderId}/tracking`, {
+      headers: {
+        Authorization: `Bearer ${token}`, // ✅ जरूरी
+      },
+      credentials: "include",
+    });
+
     if (!res.ok) throw new Error("Failed to fetch tracking");
     return res.json();
   },
