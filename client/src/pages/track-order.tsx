@@ -1,20 +1,19 @@
-
 import { useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import React, { useState, useEffect, useCallback } from "react"; 
-import { useAuth } from "@/hooks/useAuth"; 
+import React, { useState, useEffect, useCallback } from "react";
+import { useAuth } from "@/hooks/useAuth";
 import { useSocket } from "@/hooks/useSocket";
 import { getAuth } from "firebase/auth";
 import GoogleMapTracker from "@/components/GoogleMapTracker";
-import { 
-  Package, 
-  Truck, 
-  MapPin, 
-  Clock, 
-  Phone, 
+import {
+  Package,
+  Truck,
+  MapPin,
+  Clock,
+  Phone,
   CheckCircle,
   User,
   Store
@@ -23,7 +22,7 @@ import {
 // -------------------- Interfaces --------------------
 interface Location {
   lat: number;
-  lng: string;
+  lng: number;
   timestamp: string;
 }
 interface DeliveryAddress {
@@ -60,7 +59,7 @@ interface Order {
   paymentMethod: string;
   paymentStatus: string;
   total: string;
-  deliveryAddress?: DeliveryAddress; 
+  deliveryAddress?: DeliveryAddress;
   estimatedDeliveryTime?: string;
   createdAt: string;
   deliveryBoyId?: number;
@@ -78,8 +77,8 @@ export default function TrackOrder() {
   const { orderId } = useParams<{ orderId: string }>();
   const numericOrderId = orderId ? Number(orderId) : null;
 
-  const { socket } = useSocket(); 
-  const { user } = useAuth(); 
+  const { socket } = useSocket();
+  const { user } = useAuth();
 
   const [deliveryBoyLocation, setDeliveryBoyLocation] = useState<Location | null>(null);
 
@@ -87,23 +86,31 @@ export default function TrackOrder() {
   const {
     data: order,
     isLoading,
-  } = useQuery<Order>({
+  } = useQuery<Order | null>({
     queryKey: ["/api/orders", numericOrderId],
     queryFn: async () => {
       if (!numericOrderId) return null;
 
-      const auth = getAuth();
-      const token = await auth.currentUser?.getIdToken();
+      try {
+        const auth = getAuth();
+        const token = await auth.currentUser?.getIdToken();
+        if (!token) throw new Error("User not authenticated");
 
-      const res = await fetch(`/api/orders/${numericOrderId}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        credentials: "include",
-      });
+        const res = await fetch(`/api/orders/${numericOrderId}`, {
+          headers: { Authorization: `Bearer ${token}` },
+          credentials: "include",
+        });
 
-      if (!res.ok) throw new Error("Failed to fetch order");
-      return await res.json(); // ✅ Fix: added await
+        if (!res.ok) {
+          const errMsg = await res.text();
+          throw new Error(errMsg || "Failed to fetch order");
+        }
+
+        return await res.json();
+      } catch (error) {
+        console.error("Order fetch error:", error);
+        return null;
+      }
     },
     enabled: !!numericOrderId,
   });
@@ -115,25 +122,34 @@ export default function TrackOrder() {
     queryFn: async () => {
       if (!numericOrderId) return [];
 
-      const auth = getAuth();
-      const token = await auth.currentUser?.getIdToken();
+      try {
+        const auth = getAuth();
+        const token = await auth.currentUser?.getIdToken();
+        if (!token) throw new Error("User not authenticated");
 
-      const res = await fetch(`/api/orders/${numericOrderId}/tracking`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        credentials: "include",
-      });
+        const res = await fetch(`/api/orders/${numericOrderId}/tracking`, {
+          headers: { Authorization: `Bearer ${token}` },
+          credentials: "include",
+        });
 
-      if (!res.ok) throw new Error("Failed to fetch tracking");
-      return await res.json(); // ✅ Fix: added await
+        if (!res.ok) {
+          const errMsg = await res.text();
+          throw new Error(errMsg || "Failed to fetch tracking");
+        }
+
+        const data = await res.json();
+        return Array.isArray(data) ? data : [];
+      } catch (error) {
+        console.error("Tracking fetch error:", error);
+        return [];
+      }
     },
     enabled: !!numericOrderId,
   });
 
   const tracking: OrderTracking[] = Array.isArray(trackingData) ? trackingData : [];
 
-  // ✅ Location update handler (stable)
+  // -------------------- Location update handler --------------------
   const handleLocationUpdate = useCallback(
     (data: Location & { orderId: number; timestamp?: string }) => {
       if (data.orderId === numericOrderId) {
@@ -147,7 +163,7 @@ export default function TrackOrder() {
     [numericOrderId]
   );
 
-  // ✅ Socket join + event listener
+  // -------------------- Socket connection --------------------
   useEffect(() => {
     if (!socket || !numericOrderId || isLoading || !user) return;
 
@@ -161,6 +177,43 @@ export default function TrackOrder() {
       socket.off("order:delivery_location", handleLocationUpdate);
     };
   }, [socket, numericOrderId, isLoading, user, handleLocationUpdate]);
+
+  // -------------------- Helpers --------------------
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "placed": case "confirmed": return "bg-blue-500";
+      case "preparing": return "bg-yellow-500";
+      case "ready": case "picked_up": return "bg-orange-500";
+      case "out_for_delivery": return "bg-purple-500";
+      case "delivered": return "bg-green-500";
+      case "cancelled": return "bg-red-500";
+      default: return "bg-gray-500";
+    }
+  };
+
+  const getStatusText = (status: string) => {
+    switch (status) {
+      case "placed": return "Order Placed";
+      case "confirmed": return "Order Confirmed";
+      case "preparing": return "Preparing Order";
+      case "ready": return "Ready for Pickup";
+      case "picked_up": return "Picked Up";
+      case "out_for_delivery": return "Out for Delivery";
+      case "delivered": return "Delivered";
+      case "cancelled": return "Cancelled";
+      default: return status;
+    }
+  };
+
+  const estimatedTime = order?.estimatedDeliveryTime
+    ? new Date(order.estimatedDeliveryTime).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })
+    : "TBD";
+
+  const orderTime = order ? new Date(order.createdAt).toLocaleString("en-IN") : "";
+  const store = order?.items?.[0]?.product?.store;
+  const lastCompletedIndex = tracking.length > 0
+    ? tracking.findIndex((t) => t.status === order?.status)
+    : -1;
 
   // -------------------- Render States --------------------
   if (isLoading) {
@@ -185,55 +238,7 @@ export default function TrackOrder() {
     );
   }
 
-  // -------------------- Helpers --------------------
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "placed":
-      case "confirmed":
-        return "bg-blue-500";
-      case "preparing":
-        return "bg-yellow-500";
-      case "ready":
-      case "picked_up":
-        return "bg-orange-500";
-      case "out_for_delivery":
-        return "bg-purple-500";
-      case "delivered":
-        return "bg-green-500";
-      case "cancelled":
-        return "bg-red-500";
-      default:
-        return "bg-gray-500";
-    }
-  };
-
-  const getStatusText = (status: string) => {
-    switch (status) {
-      case "placed": return "Order Placed";
-      case "confirmed": return "Order Confirmed";
-      case "preparing": return "Preparing Order";
-      case "ready": return "Ready for Pickup";
-      case "picked_up": return "Picked Up";
-      case "out_for_delivery": return "Out for Delivery";
-      case "delivered": return "Delivered";
-      case "cancelled": return "Cancelled";
-      default: return status;
-    }
-  };
-
-  const estimatedTime = order.estimatedDeliveryTime 
-    ? new Date(order.estimatedDeliveryTime).toLocaleTimeString("en-IN", {
-        hour: "2-digit",
-        minute: "2-digit",
-      })
-    : "TBD";
-
-  const orderTime = new Date(order.createdAt).toLocaleString("en-IN");
-  const store = order.items?.[0]?.product?.store;
-  const lastCompletedIndex = tracking.length > 0
-    ? tracking.findIndex((t) => t.status === order.status)
-    : -1;
-
+  
   // -------------------- UI --------------------
   return (
     <div className="min-h-screen bg-gray-50 py-8">
