@@ -35,12 +35,12 @@ interface DeliveryAddress {
 }
 
 interface OrderTracking {
-  id: number;
+  id?: number;
   orderId: number;
   status: string;
-  location: string;
-  timestamp: string;
-  notes: string;
+  location?: string;
+  timestamp?: string;
+  notes?: string;
 }
 
 interface DeliveryBoy {
@@ -64,8 +64,8 @@ interface Order {
   paymentMethod: string;
   paymentStatus: string;
   total: string;
-  deliveryAddress: DeliveryAddress; 
-  estimatedDeliveryTime: string;
+  deliveryAddress?: DeliveryAddress; 
+  estimatedDeliveryTime?: string;
   createdAt: string;
   deliveryBoyId?: number;
   deliveryBoy?: DeliveryBoy;
@@ -100,7 +100,7 @@ export default function TrackOrder() {
 
   const tracking: OrderTracking[] = Array.isArray(trackingData) ? trackingData : [];
 
-  // ✅ Location update handler को useCallback में रखा ताकि cleanup सही से हो
+  // ✅ Location update handler
   const handleLocationUpdate = useCallback(
     (data: Location & { orderId: number; timestamp?: string }) => {
       if (data.orderId === numericOrderId) {
@@ -118,11 +118,10 @@ export default function TrackOrder() {
   useEffect(() => {
     if (!socket || !numericOrderId || isLoading || !user) return;
 
-    const userIdToUse = user.id || user.uid;
+    const userIdToUse = (user as any).id || (user as any).uid;
     if (!userIdToUse) return;
 
     socket.emit("register-client", { role: "customer", userId: userIdToUse });
-
     socket.on("order:delivery_location", handleLocationUpdate);
 
     return () => {
@@ -242,7 +241,8 @@ export default function TrackOrder() {
                     <div className="p-4 border-t">
                       <p className="text-sm font-medium">Delivery Partner Location Updated:</p>
                       <p className="text-xs text-gray-600">
-                        Lat: {deliveryBoyLocation.lat.toFixed(4)}, Lng: {deliveryBoyLocation.lng.toFixed(4)}
+                        Lat: {typeof deliveryBoyLocation.lat === "number" ? deliveryBoyLocation.lat.toFixed(4) : "?"}, 
+                        Lng: {typeof deliveryBoyLocation.lng === "number" ? deliveryBoyLocation.lng.toFixed(4) : "?"}
                       </p>
                       <p className="text-xs text-gray-600">
                         Last Update: {new Date(deliveryBoyLocation.timestamp).toLocaleTimeString()}
@@ -304,7 +304,7 @@ export default function TrackOrder() {
                   {tracking.map((step, index) => {
                     const isCompleted = index <= lastCompletedIndex;
                     return (
-                      <div key={step.id} className="flex items-center space-x-4">
+                      <div key={step.id || index} className="flex items-center space-x-4">
                         <div className="relative">
                           <div className={`w-4 h-4 rounded-full ${isCompleted ? "bg-green-500" : "bg-gray-300"}`}>
                             {isCompleted && <CheckCircle className="w-4 h-4 text-white" />}
@@ -411,27 +411,29 @@ export default function TrackOrder() {
             )}
 
             {/* Delivery Address */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <MapPin className="w-5 h-5" />
-                  <span>Delivery Address</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  <p className="font-medium">{order.deliveryAddress.fullName}</p>
-                  <p className="text-sm text-gray-600">{order.deliveryAddress.address}</p>
-                  <p className="text-sm text-gray-600">
-                    {order.deliveryAddress.city}, {order.deliveryAddress.pincode}
-                  </p>
-                  <div className="flex items-center space-x-2 text-sm text-gray-600">
-                    <Phone className="w-4 h-4" />
-                    <span>{order.deliveryAddress.phone}</span>
+            {order.deliveryAddress && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center space-x-2">
+                    <MapPin className="w-5 h-5" />
+                    <span>Delivery Address</span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    <p className="font-medium">{order.deliveryAddress?.fullName || "N/A"}</p>
+                    <p className="text-sm text-gray-600">{order.deliveryAddress?.address || "N/A"}</p>
+                    <p className="text-sm text-gray-600">
+                      {order.deliveryAddress?.city || "N/A"}, {order.deliveryAddress?.pincode || ""}
+                    </p>
+                    <div className="flex items-center space-x-2 text-sm text-gray-600">
+                      <Phone className="w-4 h-4" />
+                      <span>{order.deliveryAddress?.phone || "N/A"}</span>
+                    </div>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            )}
 
             {/* Help */}
             <Card>
@@ -456,4 +458,4 @@ export default function TrackOrder() {
       </div>
     </div>
   );
-            }
+                    }
