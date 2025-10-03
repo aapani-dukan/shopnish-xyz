@@ -108,11 +108,17 @@ export default function TrackOrder() {
 
   socket.emit("register-client", { role: "user", userId: userIdToUse });
 
-  const handleLocationUpdate = (data: Location & { orderId: number }) => {
+const handleLocationUpdate = (data: Location & { orderId: number, timestamp?: string }) => {
     if (data.orderId === numericOrderId) {
-      setDeliveryBoyLocation({ lat: data.lat, lng: data.lng, timestamp: data.timestamp });
+      setDeliveryBoyLocation({ 
+        lat: data.lat, 
+        lng: data.lng, 
+        // ✅ फ़िक्स: यदि सर्वर से timestamp नहीं आता है, तो वर्तमान समय का उपयोग करें।
+        timestamp: data.timestamp || new Date().toISOString(), 
+      });
     }
   };
+    
 
   socket.on("order:delivery_location", handleLocationUpdate);
 
