@@ -233,100 +233,113 @@ export default function TrackOrder() {
   }
 
   // -------------------- UI --------------------
-  return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-4xl mx-auto px-4">
-        {/* Header */}
-        <div className="mb-8 text-center">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Track Your Order</h1>
-          <p className="text-lg text-gray-600">Order #{order.orderNumber}</p>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Main Tracking */}
-          <div className="lg:col-span-2 space-y-6">
-            {(order.status === "picked_up" || order.status === "out_for_delivery") && order.deliveryBoyId && (
-              
-
   
-            {/* Current Status */}
-     {/* Real-Time Tracking */}
-<Card>
-  <CardHeader>
-    <CardTitle className="flex items-center space-x-2">
-      <MapPin className="w-5 h-5 text-purple-600" />
-      <span>Real-Time Tracking</span>
-    </CardTitle>
-  </CardHeader>
-  <CardContent className="p-0">
-    <div className="w-full h-80">
-      {order.deliveryAddress ? (
-        <GoogleMapTracker
-          deliveryBoyLocation={deliveryBoyLocation ?? null}
-          customerAddress={order.deliveryAddress}
-        />
-      ) : (
-        <div className="w-full h-full bg-gray-200 flex items-center justify-center text-gray-500">
-          <p>Delivery address information is missing.</p>
+
+    return (
+  <div className="min-h-screen bg-gray-50 py-8">
+    <div className="max-w-4xl mx-auto px-4">
+      {/* Header */}
+      <div className="mb-8 text-center">
+        <h1 className="text-3xl font-bold text-gray-900 mb-2">Track Your Order</h1>
+        <p className="text-lg text-gray-600">Order #{order.orderNumber}</p>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Main Tracking */}
+        <div className="lg:col-span-2 space-y-6">
+          {(order.status === "picked_up" || order.status === "out_for_delivery") &&
+            order.deliveryBoyId && (
+              <>
+                {/* Real-Time Tracking */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center space-x-2">
+                      <MapPin className="w-5 h-5 text-purple-600" />
+                      <span>Real-Time Tracking</span>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-0">
+                    <div className="w-full h-80">
+                      {order.deliveryAddress ? (
+                        <GoogleMapTracker
+                          deliveryBoyLocation={deliveryBoyLocation ?? null}
+                          customerAddress={order.deliveryAddress}
+                        />
+                      ) : (
+                        <div className="w-full h-full bg-gray-200 flex items-center justify-center text-gray-500">
+                          <p>Delivery address information is missing.</p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* नीचे स्टेटस सेक्शन */}
+                    <div className="p-4 border-t text-center text-gray-500">
+                      {deliveryBoyLocation ? (
+                        <>
+                          <p className="text-sm font-medium">Delivery Partner Location Updated:</p>
+                          <p className="text-xs text-gray-600">
+                            Lat: {deliveryBoyLocation.lat.toFixed(4)}, Lng:{" "}
+                            {deliveryBoyLocation.lng.toFixed(4)}
+                          </p>
+                          <p className="text-xs text-gray-600">
+                            Last Update:{" "}
+                            {new Date(deliveryBoyLocation.timestamp).toLocaleTimeString()}
+                          </p>
+                        </>
+                      ) : (
+                        <p>Waiting for Delivery Partner's location...</p>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Current Status */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center justify-between">
+                      <span>Current Status</span>
+                      <Badge className={`${getStatusColor(order.status)} text-white`}>
+                        {getStatusText(order.status)}
+                      </Badge>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex items-center space-x-4">
+                      <div
+                        className={`w-12 h-12 rounded-full ${getStatusColor(
+                          order.status
+                        )} flex items-center justify-center`}
+                      >
+                        {order.status === "delivered" ? (
+                          <CheckCircle className="w-6 h-6 text-white" />
+                        ) : order.status === "out_for_delivery" ? (
+                          <Truck className="w-6 h-6 text-white" />
+                        ) : (
+                          <Package className="w-6 h-6 text-white" />
+                        )}
+                      </div>
+                      <div>
+                        <p className="font-medium text-lg">{getStatusText(order.status)}</p>
+                        <p className="text-gray-600">
+                          {order.status === "delivered"
+                            ? "Your order has been delivered successfully"
+                            : order.status === "out_for_delivery"
+                            ? `Arriving by ${estimatedTime}`
+                            : order.status === "preparing"
+                            ? "Your order is being prepared"
+                            : "Order confirmed and being processed"}
+                        </p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </>
+            )}
         </div>
-      )}
-    </div>
-
-    {/* नीचे स्टेटस सेक्शन */}
-    <div className="p-4 border-t text-center text-gray-500">
-      {deliveryBoyLocation ? (
-        <>
-          <p className="text-sm font-medium">Delivery Partner Location Updated:</p>
-          <p className="text-xs text-gray-600">
-            Lat: {deliveryBoyLocation.lat.toFixed(4)}, Lng: {deliveryBoyLocation.lng.toFixed(4)}
-          </p>
-          <p className="text-xs text-gray-600">
-            Last Update: {new Date(deliveryBoyLocation.timestamp).toLocaleTimeString()}
-          </p>
-        </>
-      ) : (
-        <p>Waiting for Delivery Partner's location...</p>
-      )}
-    </div>
-  </CardContent>
-</Card>
-
-{/* ✅ Current Status अलग Card में */}
-<Card>
-  <CardHeader>
-    <CardTitle className="flex items-center justify-between">
-      <span>Current Status</span>
-      <Badge className={`${getStatusColor(order.status)} text-white`}>
-        {getStatusText(order.status)}
-      </Badge>
-    </CardTitle>
-  </CardHeader>
-  <CardContent>
-    <div className="flex items-center space-x-4">
-      <div className={`w-12 h-12 rounded-full ${getStatusColor(order.status)} flex items-center justify-center`}>
-        {order.status === "delivered" ? (
-          <CheckCircle className="w-6 h-6 text-white" />
-        ) : order.status === "out_for_delivery" ? (
-          <Truck className="w-6 h-6 text-white" />
-        ) : (
-          <Package className="w-6 h-6 text-white" />
-        )}
-      </div>
-      <div>
-        <p className="font-medium text-lg">{getStatusText(order.status)}</p>
-        <p className="text-gray-600">
-          {order.status === "delivered"
-            ? "Your order has been delivered successfully"
-            : order.status === "out_for_delivery"
-            ? `Arriving by ${estimatedTime}`
-            : order.status === "preparing"
-            ? "Your order is being prepared"
-            : "Order confirmed and being processed"}
-        </p>
       </div>
     </div>
-  </CardContent>
-</Card>
+  </div>
+);
 
             {/* Timeline */}
             <Card>
