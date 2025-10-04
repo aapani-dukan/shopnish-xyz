@@ -63,6 +63,7 @@ interface Order {
   createdAt: string;
   deliveryBoyId?: number;
   deliveryBoy?: DeliveryBoy;
+  deliveryLocation?: Location;
   items: Array<{
     product: {
       storeId: number;
@@ -78,8 +79,10 @@ export default function TrackOrder() {
   const { socket } = useSocket();
   const { user } = useAuth();
 
+  // ✅ Track current live delivery boy location (from GPS)
   const [deliveryBoyLocation, setDeliveryBoyLocation] = useState<Location | null>(null);
 
+  // ✅ Fetch order details
   const { data: order, isLoading } = useQuery<Order | null>({
     queryKey: ["/api/orders", numericOrderId],
     queryFn: async () => {
@@ -103,6 +106,7 @@ export default function TrackOrder() {
     enabled: !!numericOrderId,
   });
 
+  // ✅ Fetch order tracking status
   const { data: trackingData } = useQuery<OrderTracking[]>({
     queryKey: ["/api/orders/tracking", numericOrderId],
     queryFn: async () => {
@@ -129,6 +133,7 @@ export default function TrackOrder() {
 
   const tracking: OrderTracking[] = Array.isArray(trackingData) ? trackingData : [];
 
+  // ✅ Listen for live location updates from delivery partner via socket
   const handleLocationUpdate = useCallback(
     (data: Location & { orderId: number; timestamp?: string }) => {
       if (data.orderId === numericOrderId) {
@@ -153,6 +158,27 @@ export default function TrackOrder() {
     };
   }, [socket, numericOrderId, isLoading, user, handleLocationUpdate]);
 
+  // ✅ Track customer’s own GPS location (if needed)
+  useEffect(() => {
+    const watchId = navigator.geolocation.watchPosition(
+      (position) => {
+        setDeliveryBoyLocation({
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+          timestamp: new Date().toISOString(),
+        });
+      },
+      (error) => console.error("Error getting location:", error),
+      { enableHighAccuracy: true, maximumAge: 10000, timeout: 5000 }
+    );
+    return () => navigator.geolocation.clearWatch(watchId);
+  }, []);
+
+  // ✅ Fallback logic
+  const deliveryBoyLocationToShow = deliveryBoyLocation || order?.deliveryLocation || null;
+  const customerAddress = order?.deliveryAddress;
+
+  // ✅ Status color & text helpers
   const getStatusColor = (status: string) => {
     switch (status) {
       case "placed":
@@ -173,7 +199,6 @@ export default function TrackOrder() {
         return "bg-gray-500";
     }
   };
-
   const getStatusText = (status: string) => {
     switch (status) {
       case "placed":
@@ -201,7 +226,6 @@ export default function TrackOrder() {
     ? new Date(order.estimatedDeliveryTime).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })
     : "TBD";
   const store = order?.items?.[0]?.product?.store;
-  const lastCompletedIndex = tracking.length > 0 ? tracking.findIndex((t) => t.status === order?.status) : -1;
 
   if (isLoading) {
     return (
@@ -237,46 +261,44 @@ export default function TrackOrder() {
           {/* Main Tracking */}
           <div className="lg:col-span-2 space-y-6">
             {(order.status === "picked_up" || order.status === "out_for_delivery") && order.deliveryBoyId && (
-              <>
-                {/* Real-Time Tracking */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center space-x-2">
-                      <MapPin className="w-5 h-5 text-purple-600" />
-                      <span>Real-Time Tracking</span>
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="p-0">
-                    <div className="w-full h-80">
-                      {order.deliveryAddress && deliveryBoyLocation ? (
-                        <GoogleMapTracker
-                          deliveryBoyLocation={deliveryBoyLocation}
-                          customerAddress={order.deliveryAddress}
-                        />
-                      ) : (
-                        <div className="w-full h-full bg-gray-200 flex items-center justify-center text-gray-500">
-                          <p>Delivery address or location information is missing.</p>
-                        </div>
-                      )}
-                    </div>
-                    <div className="p-4 border-t text-center text-gray-500">
-                    {deliveryBoyLocation ? (
-                        <>
-                          <p className="text-sm font-medium">Delivery Partner Location Updated:</p>
-                          <p className="text-xs text-gray-600">
-                            Lat: {deliveryBoyLocation.lat.toFixed(4)}, Lng: {deliveryBoyLocation.lng.toFixed(4)}
-                          </p>
-                          <p className="text-xs text-gray-600">
-                            Last Update: {new Date(deliveryBoyLocation.timestamp).toLocaleTimeString()}
-                          </p>
-                        </>
-                      ) : (
-                        <p>Waiting for Delivery Partner's location...</p>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              </>
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center space-x-2">
+                    <MapPin className="w-5 h-5 text-purple-600" />
+                    <span>Real-Time Tracking</span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-0">
+                  <div className="w-full h-80">
+                    {customerAddress && deliveryBoyLocationToShow ? (
+                      <GoogleMapTracker
+                        deliveryBoyLocation={deliveryBoyLocationToShow}
+                        customerAddress={customerAddress}
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-gray-200 flex items-center justify-center text-gray-500">
+                        <p>Delivery address or location information is missing.</p>
+                      </div>
+                    )}
+                  </div>
+                  <div className="p-4 border-t text-center text-gray-500">
+                    {deliveryBoyLocationToShow ? (
+                      <>
+                        <p className="text-sm font-medium">Delivery Partner Location Updated:</p>
+                        <p className="text-xs text-gray-600">
+                          Lat: {deliveryBoyLocationToShow.lat.toFixed(4)}, Lng:{" "}
+                          {deliveryBoyLocationToShow.lng.toFixed(4)}
+                        </p>
+                        <p className="text-xs text-gray-600">
+                          Last Update: {new Date(deliveryBoyLocationToShow.timestamp).toLocaleTimeString()}
+                        </p>
+                      </>
+                    ) : (
+                      <p>Waiting for Delivery Partner's location...</p>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
             )}
 
             {/* Order Status Timeline */}
