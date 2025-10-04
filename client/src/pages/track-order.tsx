@@ -83,7 +83,6 @@ export default function TrackOrder() {
 
   const [deliveryBoyLocation, setDeliveryBoyLocation] = useState<Location | null>(null);
 
-  // -------------------- Queries --------------------
   const { data: order, isLoading } = useQuery<Order | null>({
     queryKey: ["/api/orders", numericOrderId],
     queryFn: async () => {
@@ -133,7 +132,6 @@ export default function TrackOrder() {
 
   const tracking: OrderTracking[] = Array.isArray(trackingData) ? trackingData : [];
 
-  // -------------------- Location update handler --------------------
   const handleLocationUpdate = useCallback(
     (data: Location & { orderId: number; timestamp?: string }) => {
       if (data.orderId === numericOrderId) {
@@ -147,7 +145,6 @@ export default function TrackOrder() {
     [numericOrderId]
   );
 
-  // -------------------- Socket connection --------------------
   useEffect(() => {
     if (!socket || !numericOrderId || isLoading || !user) return;
     const userIdToUse = (user as any).id || (user as any).uid;
@@ -159,7 +156,6 @@ export default function TrackOrder() {
     };
   }, [socket, numericOrderId, isLoading, user, handleLocationUpdate]);
 
-  // -------------------- Helpers --------------------
   const getStatusColor = (status: string) => {
     switch (status) {
       case "placed":
@@ -210,7 +206,6 @@ export default function TrackOrder() {
   const store = order?.items?.[0]?.product?.store;
   const lastCompletedIndex = tracking.length > 0 ? tracking.findIndex((t) => t.status === order?.status) : -1;
 
-  // -------------------- Render States --------------------
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -232,23 +227,19 @@ export default function TrackOrder() {
     );
   }
 
-  // -------------------- UI --------------------
-  
+  return (
+    <div className="min-h-screen bg-gray-50 py-8">
+      <div className="max-w-4xl mx-auto px-4">
+        {/* Header */}
+        <div className="mb-8 text-center">
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Track Your Order</h1>
+          <p className="text-lg text-gray-600">Order #{order.orderNumber}</p>
+        </div>
 
-    return (
-  <div className="min-h-screen bg-gray-50 py-8">
-    <div className="max-w-4xl mx-auto px-4">
-      {/* Header */}
-      <div className="mb-8 text-center">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Track Your Order</h1>
-        <p className="text-lg text-gray-600">Order #{order.orderNumber}</p>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Main Tracking */}
-        <div className="lg:col-span-2 space-y-6">
-          {(order.status === "picked_up" || order.status === "out_for_delivery") &&
-            order.deliveryBoyId && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Main Tracking */}
+          <div className="lg:col-span-2 space-y-6">
+            {(order.status === "picked_up" || order.status === "out_for_delivery") && order.deliveryBoyId && (
               <>
                 {/* Real-Time Tracking */}
                 <Card>
@@ -272,18 +263,15 @@ export default function TrackOrder() {
                       )}
                     </div>
 
-                    {/* नीचे स्टेटस सेक्शन */}
                     <div className="p-4 border-t text-center text-gray-500">
                       {deliveryBoyLocation ? (
                         <>
                           <p className="text-sm font-medium">Delivery Partner Location Updated:</p>
                           <p className="text-xs text-gray-600">
-                            Lat: {deliveryBoyLocation.lat.toFixed(4)}, Lng:{" "}
-                            {deliveryBoyLocation.lng.toFixed(4)}
+                            Lat: {deliveryBoyLocation.lat.toFixed(4)}, Lng: {deliveryBoyLocation.lng.toFixed(4)}
                           </p>
                           <p className="text-xs text-gray-600">
-                            Last Update:{" "}
-                            {new Date(deliveryBoyLocation.timestamp).toLocaleTimeString()}
+                            Last Update: {new Date(deliveryBoyLocation.timestamp).toLocaleTimeString()}
                           </p>
                         </>
                       ) : (
@@ -305,11 +293,7 @@ export default function TrackOrder() {
                   </CardHeader>
                   <CardContent>
                     <div className="flex items-center space-x-4">
-                      <div
-                        className={`w-12 h-12 rounded-full ${getStatusColor(
-                          order.status
-                        )} flex items-center justify-center`}
-                      >
+                      <div className={`w-12 h-12 rounded-full ${getStatusColor(order.status)} flex items-center justify-center`}>
                         {order.status === "delivered" ? (
                           <CheckCircle className="w-6 h-6 text-white" />
                         ) : order.status === "out_for_delivery" ? (
@@ -335,11 +319,6 @@ export default function TrackOrder() {
                 </Card>
               </>
             )}
-        </div>
-      </div>
-    </div>
-  </div>
-);
 
             {/* Timeline */}
             <Card>
