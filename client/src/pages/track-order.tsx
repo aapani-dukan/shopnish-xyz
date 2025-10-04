@@ -1,3 +1,4 @@
+// src/pages/track-order.tsx
 import { useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,7 +17,7 @@ import {
   Phone,
   CheckCircle,
   User,
-  Store
+  Store,
 } from "lucide-react";
 
 // -------------------- Interfaces --------------------
@@ -83,14 +84,10 @@ export default function TrackOrder() {
   const [deliveryBoyLocation, setDeliveryBoyLocation] = useState<Location | null>(null);
 
   // -------------------- Queries --------------------
-  const {
-    data: order,
-    isLoading,
-  } = useQuery<Order | null>({
+  const { data: order, isLoading } = useQuery<Order | null>({
     queryKey: ["/api/orders", numericOrderId],
     queryFn: async () => {
       if (!numericOrderId) return null;
-
       try {
         const auth = getAuth();
         const token = await auth.currentUser?.getIdToken();
@@ -100,12 +97,7 @@ export default function TrackOrder() {
           headers: { Authorization: `Bearer ${token}` },
           credentials: "include",
         });
-
-        if (!res.ok) {
-          const errMsg = await res.text();
-          throw new Error(errMsg || "Failed to fetch order");
-        }
-
+        if (!res.ok) throw new Error(await res.text());
         return await res.json();
       } catch (error) {
         console.error("Order fetch error:", error);
@@ -115,13 +107,10 @@ export default function TrackOrder() {
     enabled: !!numericOrderId,
   });
 
-  const {
-    data: trackingData,
-  } = useQuery<OrderTracking[]>({
+  const { data: trackingData } = useQuery<OrderTracking[]>({
     queryKey: ["/api/orders/tracking", numericOrderId],
     queryFn: async () => {
       if (!numericOrderId) return [];
-
       try {
         const auth = getAuth();
         const token = await auth.currentUser?.getIdToken();
@@ -131,12 +120,7 @@ export default function TrackOrder() {
           headers: { Authorization: `Bearer ${token}` },
           credentials: "include",
         });
-
-        if (!res.ok) {
-          const errMsg = await res.text();
-          throw new Error(errMsg || "Failed to fetch tracking");
-        }
-
+        if (!res.ok) throw new Error(await res.text());
         const data = await res.json();
         return Array.isArray(data) ? data : [];
       } catch (error) {
@@ -166,13 +150,10 @@ export default function TrackOrder() {
   // -------------------- Socket connection --------------------
   useEffect(() => {
     if (!socket || !numericOrderId || isLoading || !user) return;
-
     const userIdToUse = (user as any).id || (user as any).uid;
     if (!userIdToUse) return;
-
     socket.emit("register-client", { role: "customer", userId: userIdToUse });
     socket.on("order:delivery_location", handleLocationUpdate);
-
     return () => {
       socket.off("order:delivery_location", handleLocationUpdate);
     };
@@ -181,39 +162,53 @@ export default function TrackOrder() {
   // -------------------- Helpers --------------------
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "placed": case "confirmed": return "bg-blue-500";
-      case "preparing": return "bg-yellow-500";
-      case "ready": case "picked_up": return "bg-orange-500";
-      case "out_for_delivery": return "bg-purple-500";
-      case "delivered": return "bg-green-500";
-      case "cancelled": return "bg-red-500";
-      default: return "bg-gray-500";
+      case "placed":
+      case "confirmed":
+        return "bg-blue-500";
+      case "preparing":
+        return "bg-yellow-500";
+      case "ready":
+      case "picked_up":
+        return "bg-orange-500";
+      case "out_for_delivery":
+        return "bg-purple-500";
+      case "delivered":
+        return "bg-green-500";
+      case "cancelled":
+        return "bg-red-500";
+      default:
+        return "bg-gray-500";
     }
   };
 
   const getStatusText = (status: string) => {
     switch (status) {
-      case "placed": return "Order Placed";
-      case "confirmed": return "Order Confirmed";
-      case "preparing": return "Preparing Order";
-      case "ready": return "Ready for Pickup";
-      case "picked_up": return "Picked Up";
-      case "out_for_delivery": return "Out for Delivery";
-      case "delivered": return "Delivered";
-      case "cancelled": return "Cancelled";
-      default: return status;
+      case "placed":
+        return "Order Placed";
+      case "confirmed":
+        return "Order Confirmed";
+      case "preparing":
+        return "Preparing Order";
+      case "ready":
+        return "Ready for Pickup";
+      case "picked_up":
+        return "Picked Up";
+      case "out_for_delivery":
+        return "Out for Delivery";
+      case "delivered":
+        return "Delivered";
+      case "cancelled":
+        return "Cancelled";
+      default:
+        return status;
     }
   };
 
   const estimatedTime = order?.estimatedDeliveryTime
     ? new Date(order.estimatedDeliveryTime).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })
     : "TBD";
-
-  const orderTime = order ? new Date(order.createdAt).toLocaleString("en-IN") : "";
   const store = order?.items?.[0]?.product?.store;
-  const lastCompletedIndex = tracking.length > 0
-    ? tracking.findIndex((t) => t.status === order?.status)
-    : -1;
+  const lastCompletedIndex = tracking.length > 0 ? tracking.findIndex((t) => t.status === order?.status) : -1;
 
   // -------------------- Render States --------------------
   if (isLoading) {
@@ -223,7 +218,6 @@ export default function TrackOrder() {
       </div>
     );
   }
-
   if (!order) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -238,7 +232,6 @@ export default function TrackOrder() {
     );
   }
 
-  
   // -------------------- UI --------------------
   return (
     <div className="min-h-screen bg-gray-50 py-8">
@@ -248,6 +241,7 @@ export default function TrackOrder() {
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Track Your Order</h1>
           <p className="text-lg text-gray-600">Order #{order.orderNumber}</p>
         </div>
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Main Tracking */}
           <div className="lg:col-span-2 space-y-6">
@@ -259,41 +253,22 @@ export default function TrackOrder() {
                     <span>Real-Time Tracking</span>
                   </CardTitle>
                 </CardHeader>
-
                 <CardContent className="p-0">
                   <div className="w-full h-80">
-
-{deliveryBoyLocation && order.deliveryAddress ? (
-  <GoogleMapTracker
-    deliveryBoyLocation={deliveryBoyLocation}
-    customerAddress={order.deliveryAddress}
-  />
-) : (
-  <div className="w-full h-full bg-gray-200 flex items-center justify-center text-gray-500">
-    <p>Waiting for Delivery Partner's location...</p>
-  </div>
-)}
-                    
-
-                    {/*  {deliveryBoyLocation ? (
-                    <div className="p-4 border-t">
-                      <p className="text-sm font-medium">Delivery Partner Location Updated:</p>
-                      <p className="text-xs text-gray-600">
-                        Lat: {typeof deliveryBoyLocation.lat === "number" ? deliveryBoyLocation.lat.toFixed(4) : "?"}, 
-                        Lng: {typeof deliveryBoyLocation.lng === "number" ? deliveryBoyLocation.lng.toFixed(4) : "?"}
-                      </p>
-                      <p className="text-xs text-gray-600">
-                        Last Update: {new Date(deliveryBoyLocation.timestamp).toLocaleTimeString()}
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="p-4 border-t text-center text-gray-500">
-                      <p>Waiting for Delivery Partner's location...</p>
-                    </div>
-                  )}
+                    {deliveryBoyLocation && order.deliveryAddress ? (
+                      <GoogleMapTracker
+                        deliveryBoyLocation={deliveryBoyLocation}
+                        customerAddress={order.deliveryAddress}
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-gray-200 flex items-center justify-center text-gray-500">
+                        <p>Waiting for Delivery Partner's location...</p>
+                      </div>
+                    )}
+                  </div>
                 </CardContent>
               </Card>
-            )}*/}
+            )}
 
             {/* Current Status */}
             <Card>
@@ -492,9 +467,8 @@ export default function TrackOrder() {
               </CardContent>
             </Card>
           </div>
-        
+        </div>
       </div>
- 
-        </div> 
-     );
-    }
+    </div>
+  );
+}
