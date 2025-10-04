@@ -385,6 +385,60 @@ router.patch('/orders/:orderId/status', requireDeliveryBoyAuth, async (req: Auth
   }
 });
 
+// ✅ POST: Update Delivery Boy Live Location
+router.post("/update-location", requireDeliveryBoyAuth, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const firebaseUid = req.user?.firebaseUid;
+    const { orderId, latitude, longitude } = req.body;
+
+    if (!firebaseUid || !orderId || !latitude || !longitude) {
+      return res.status(400).json({ message: "Missing required fields (orderId, latitude, longitude)." });
+    }
+
+    // 🧠 Delivery Boy Profile
+    const deliveryBoy = await db.query.deliveryBoys.findFirst({
+      where: eq(deliveryBoys.firebaseUid, firebaseUid),
+    });
+
+    if (!deliveryBoy) {
+      return res.status(404).json({ message: "Delivery Boy profile not found." });
+    }
+
+    // 🧾 Order Check
+    const order = await db.query.orders.findFirst({
+      where: eq(orders.id, orderId),
+      columns: { id: true, customerId: true }
+    });
+
+    if (!order) {
+      return res.status(404).json({ message: "Order not found." });
+    }
+
+    // 📍 Update delivery location in DB
+    await db.update(orders)
+      .set({
+        deliveryLat: latitude,
+        deliveryLng: longitude,
+        updatedAt: new Date(),
+      })
+      .where(eq(orders.id, orderId));
+
+    // 📡 Emit location update to customer in real-time
+    const io = getIO();
+    io.to(`user:${order.customerId}`).emit("delivery-location-update", {
+      orderId,
+      latitude,
+      longitude,
+    });
+
+    res.status(200).json({ success: true, message: "Location updated successfully." });
+
+  } catch (error: any) {
+    console.error("❌ Error updating delivery location:", error);
+    res.status(500).json({ message: "Failed to update delivery location." });
+  }
+});
+
 // ✅ POST Complete Delivery with OTP
 router.post('/orders/:orderId/complete-delivery', requireDeliveryBoyAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
