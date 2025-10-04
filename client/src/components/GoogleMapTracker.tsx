@@ -17,6 +17,8 @@ interface DeliveryAddress {
   address: string;
   city: string;
   pincode: string;
+  lat?: number;
+  lng?: number;
 }
 
 interface GoogleMapTrackerProps {
@@ -48,13 +50,26 @@ const GoogleMapTracker: React.FC<GoogleMapTrackerProps> = ({
     libraries,
   });
 
+  // ✅ Safe lat/lng fallback logic
+  const lat =
+    customerAddress?.lat ??
+    (deliveryBoyLocation ? deliveryBoyLocation.lat : 0);
+
+  const lng =
+    customerAddress?.lng ??
+    (deliveryBoyLocation ? deliveryBoyLocation.lng : 0);
+
+  const customerLatLng = { lat, lng };
+
   const mapCenter = useMemo(() => {
     return deliveryBoyLocation ?? { lat: 0, lng: 0, timestamp: "" };
   }, [deliveryBoyLocation]);
 
   const destination = useMemo(() => {
     if (!customerAddress) return "";
-    return `${customerAddress.address}, ${customerAddress.city}, ${customerAddress.pincode}`;
+    return customerAddress.lat && customerAddress.lng
+      ? new google.maps.LatLng(customerAddress.lat, customerAddress.lng)
+      : `${customerAddress.address}, ${customerAddress.city}, ${customerAddress.pincode}`;
   }, [customerAddress]);
 
   const directionsCallback = useCallback(
@@ -122,6 +137,7 @@ const GoogleMapTracker: React.FC<GoogleMapTrackerProps> = ({
         }}
         callback={directionsCallback}
       />
+
       {directionsResponse && (
         <DirectionsRenderer
           options={{ directions: directionsResponse, suppressMarkers: true }}
@@ -135,14 +151,15 @@ const GoogleMapTracker: React.FC<GoogleMapTrackerProps> = ({
           title="Delivery Partner"
         />
       )}
-      {homeIcon &&
-        directionsResponse?.routes?.[0]?.legs?.[0]?.end_location && (
-          <MarkerF
-            position={directionsResponse.routes[0].legs[0].end_location}
-            icon={homeIcon}
-            title="Customer Location"
-          />
-        )}
+
+      {/* ✅ Always show customer marker */}
+      {homeIcon && customerLatLng && (
+        <MarkerF
+          position={customerLatLng}
+          icon={homeIcon}
+          title="Customer Location"
+        />
+      )}
     </GoogleMap>
   );
 };
