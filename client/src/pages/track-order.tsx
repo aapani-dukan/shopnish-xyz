@@ -148,31 +148,33 @@ export default function TrackOrder() {
   );
 
     useEffect(() => {
-    if (!socket || !numericOrderId || isLoading || !user) return;
-    const userIdToUse = (user as any).id || (user as any).uid;
-    if (!userIdToUse) return;
-    socket.emit("register-client", { role: "customer", userId: userIdToUse });
-    socket.on("order:delivery_location", handleLocationUpdate);
-    return () => {
-      socket.off("order:delivery_location", handleLocationUpdate);
-    };
-  }, [socket, numericOrderId, isLoading, user, handleLocationUpdate]); 
+  if (!socket || !numericOrderId || isLoading || !user) return;
 
-  // ✅ Track customer’s own GPS location (if needed)
-  {/*  useEffect(() => {
-    const watchId = navigator.geolocation.watchPosition(
-      (position) => {
-        setDeliveryBoyLocation({
-          lat: position.coords.latitude,
-          lng: position.coords.longitude,
-          timestamp: new Date().toISOString(),
-        });
-      },
-      (error) => console.error("Error getting location:", error),
-      { enableHighAccuracy: true, maximumAge: 10000, timeout: 5000 }
-    );
-    return () => navigator.geolocation.clearWatch(watchId);
-  }, []); */}
+  const userIdToUse = (user as any).id || (user as any).uid;
+  if (!userIdToUse) return;
+
+  // Register customer client
+  socket.emit("register-client", { role: "customer", userId: userIdToUse });
+
+  const handleLocationUpdate = (data: Location & { orderId: number; timestamp?: string }) => {
+    console.log("📍 Location update received:", data);
+    if (data.orderId === numericOrderId) {
+      setDeliveryBoyLocation({
+        lat: data.lat,
+        lng: data.lng,
+        timestamp: data.timestamp || new Date().toISOString(),
+      });
+    }
+  };
+
+  socket.on("order:delivery_location", handleLocationUpdate);
+
+  return () => {
+    socket.off("order:delivery_location", handleLocationUpdate);
+  };
+}, [socket, numericOrderId, isLoading, user]);
+
+
 
   // ✅ Fallback logic
   const deliveryBoyLocationToShow = deliveryBoyLocation || order?.deliveryLocation || null;
