@@ -55,6 +55,7 @@ export const placeOrderBuyNow = async (req: AuthenticatedRequest, res: Response)
       }).returning();
       newDeliveryAddressId = newAddress.id;
 
+      // ✅ Fixed: Save structured delivery address JSON
       const [orderResult] = await tx.insert(orders).values({
         customerId: userId,
         status: "pending",
@@ -65,7 +66,13 @@ export const placeOrderBuyNow = async (req: AuthenticatedRequest, res: Response)
         paymentMethod: paymentMethod || "COD",
         deliveryAddressId: newDeliveryAddressId,
         deliveryInstructions,
-        deliveryAddress: JSON.stringify(safeAddress),
+        deliveryAddress: JSON.stringify({
+          address: safeAddress.address || safeAddress.addressLine1 || "N/A",
+          city: safeAddress.city || "Unknown",
+          pincode: safeAddress.pincode || safeAddress.postalCode || "000000",
+          latitude,
+          longitude,
+        }),
         deliveryBoyId: null,
         deliveryLat: latitude,
         deliveryLng: longitude,
@@ -157,6 +164,7 @@ export const placeOrderFromCart = async (req: AuthenticatedRequest, res: Respons
       }).returning();
       newDeliveryAddressId = newAddress.id;
 
+      // ✅ Fixed structured delivery address JSON
       const [orderResult] = await tx.insert(orders).values({
         customerId: userId,
         status: "pending",
@@ -167,45 +175,48 @@ export const placeOrderFromCart = async (req: AuthenticatedRequest, res: Respons
         paymentMethod: paymentMethod || "COD",
         deliveryAddressId: newDeliveryAddressId,
         deliveryInstructions,
-        deliveryAddress: JSON.stringify(safeAddress),
+        deliveryAddress: JSON.stringify({
+          address: safeAddress.address || safeAddress.addressLine1 || "N/A",
+          city: safeAddress.city || "Unknown",
+          pincode: safeAddress.pincode || safeAddress.postalCode || "000000",
+          latitude,
+          longitude,
+        }),
         deliveryBoyId: null,
         deliveryLat: latitude,
         deliveryLng: longitude,
       }).returning();
 
-        // ✅ 3️⃣ The corrected logic to update orderItems
-    
-for (const item of items) {
-    await tx.delete(cartItems) // ⬅️ cartItems TABLE का उपयोग करें
-        .where(and(
+      // ✅ Updated cart deletion logic
+      for (const item of items) {
+        await tx.delete(cartItems)
+          .where(and(
             eq(cartItems.userId, userId),
             eq(cartItems.productId, item.productId)
-        ));
-    
-    // ऑर्डर आइटम को अलग से डालें
-    await tx.insert(orderItems).values({
-        orderId: orderResult.id,
-        productId: item.productId,
-        sellerId: item.sellerId,
-        quantity: item.quantity,
-        unitPrice: parseFloat(item.unitPrice),
-        totalPrice: parseFloat(item.totalPrice),
-        status: 'placed',
-        userId,
-    });
-}
+          ));
 
-console.log("✅ Cart items deleted from cartItems table and moved to orderItems.");
-      
+        await tx.insert(orderItems).values({
+          orderId: orderResult.id,
+          productId: item.productId,
+          sellerId: item.sellerId,
+          quantity: item.quantity,
+          unitPrice: parseFloat(item.unitPrice),
+          totalPrice: parseFloat(item.totalPrice),
+          status: 'placed',
+          userId,
+        });
+      }
+
+      console.log("✅ Cart items deleted from cartItems table and moved to orderItems.");
       return orderResult;
     });
-  
+
     getIO().emit("new-order", {
       orderId: newOrder.id,
       orderNumber: newOrder.orderNumber,
       customerId: newOrder.customerId,
       total: newOrder.total,
-      status: newOrder.status, // ✅ अब केवल status भेज रहा है
+      status: newOrder.status,
       createdAt: newOrder.createdAt,
       items,
     });
@@ -216,12 +227,12 @@ console.log("✅ Cart items deleted from cartItems table and moved to orderItems
       orderNumber: newOrder.orderNumber,
       data: newOrder,
     });
-  } catch(error){
-
-console.error("❌ Error placing cart order:", error);
+  } catch (error) {
+    console.error("❌ Error placing cart order:", error);
     res.status(500).json({ message: "Failed to place order." });
   }
-}
+};
+
 /**
  * Fetches all orders for the authenticated user.
  */
@@ -252,8 +263,6 @@ export const getUserOrders = async (req: AuthenticatedRequest, res: Response) =>
 /**
  * Fetches the initial tracking details for a specific order.
  */
-// orderController.ts
-
 export const getOrderTrackingDetails = async (req: AuthenticatedRequest, res: Response) => {
   console.log("📡 [API] Received request to get order tracking details.");
   try {
@@ -272,27 +281,21 @@ export const getOrderTrackingDetails = async (req: AuthenticatedRequest, res: Re
       return res.status(404).json({ message: "Order not found or access denied." });
     }
 
-    // 🛑 FIX: सुरक्षित पार्सिंग लॉजिक
+    // ✅ Safe JSON parse
     let deliveryAddress: any;
-    
-    // जाँचें कि क्या order.deliveryAddress एक स्ट्रिंग है। यदि हाँ, तो पार्स करें।
-    // यदि यह पहले से ही ऑब्जेक्ट है (drizzle के कारण), तो सीधे उसका उपयोग करें।
     if (typeof order.deliveryAddress === 'string') {
-        deliveryAddress = JSON.parse(order.deliveryAddress) || {};
+      deliveryAddress = JSON.parse(order.deliveryAddress) || {};
     } else {
-        // यदि यह पहले से ही एक ऑब्जेक्ट या null है
-        deliveryAddress = order.deliveryAddress || {};
+      deliveryAddress = order.deliveryAddress || {};
     }
-    // ------------------------------------
 
     res.status(200).json({
       orderId: order.id,
       orderNumber: order.orderNumber,
       status: order.status,
       deliveryAddress: {
-        // ... (use deliveryAddress here)
-        lat: order.deliveryLat || 0,
-        lng: order.deliveryLng || 0,
+        lat: deliveryAddress.latitude || order.deliveryLat || 0,
+        lng: deliveryAddress.longitude || order.deliveryLng || 0,
         address: deliveryAddress.address || '',
         city: deliveryAddress.city || '',
         pincode: deliveryAddress.pincode || '',
