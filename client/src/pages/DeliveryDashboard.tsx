@@ -196,19 +196,21 @@ export default function DeliveryDashboard() {
 
         if (activeOrder && navigator.geolocation) {
             console.log(`📡 Starting GPS tracking for Order ${activeOrder.id}`);
+        
+    const sendLocation = (position: GeolocationPosition) => {
+    const { latitude, longitude } = position.coords;
 
-            const sendLocation = (position: GeolocationPosition) => {
-                const { latitude, longitude } = position.coords;
-
-                // 2. हर 10 सेकंड में सर्वर को लोकेशन भेजें
-                socket.emit("order:delivery_location", {
-    orderId: activeOrder.id,
-    lat: latitude,
-    lng: longitude,
-    timestamp: new Date().toISOString()
-});
-                console.log(`Emit: ${latitude}, ${longitude}`);
-            };
+    // 🛑 FIX 1: इवेंट नाम को 'deliveryboy:location_update' में बदलें
+    socket.emit("deliveryboy:location_update", { 
+        orderId: activeOrder.id,
+        lat: latitude,
+        lng: longitude,
+        timestamp: new Date().toISOString()
+    });
+    console.log(`Emit: ${latitude}, ${longitude}`);
+};
+          
+            
 
             // 1. GPS Location प्राप्त करने की प्रक्रिया शुरू करें
             watchId = navigator.geolocation.watchPosition(
