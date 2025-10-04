@@ -232,26 +232,26 @@ export default function TrackOrder() {
     : "TBD";
   const store = order?.items?.[0]?.product?.store;
 
-  if (isLoading) {
+
+if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full"></div>
       </div>
     );
-  }
-  if (!order) {
+}
+if (!order || !order.deliveryAddress) { 
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Card className="w-full max-w-md">
           <CardContent className="pt-6 text-center">
-            <Package className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-            <h3 className="text-lg font-medium mb-2">Order not found</h3>
-            <p className="text-gray-600">Unable to track this order</p>
+            <h3 className="text-lg font-medium mb-2">Order not found or data missing</h3>
+            <p className="text-gray-600">Unable to track this order or some data is still loading.</p>
           </CardContent>
         </Card>
       </div>
     );
-  }
+}
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
