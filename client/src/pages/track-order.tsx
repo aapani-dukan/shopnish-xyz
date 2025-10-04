@@ -375,13 +375,13 @@ if (!order || !order.deliveryAddress) {
                 </CardHeader>
                 <CardContent>
                   <p>
-                    <strong>Name:</strong> {store.storeName}
+                    <strong>Name:</strong> {store?.storeName}
                   </p>
                   <p>
-                    <strong>Address:</strong> {store.address}
+                    <strong>Address:</strong> {store?.address}
                   </p>
                   <p>
-                    <strong>Phone:</strong> {store.phone}
+                    <strong>Phone:</strong> {store?.phone}
                   </p>
                 </CardContent>
               </Card>
