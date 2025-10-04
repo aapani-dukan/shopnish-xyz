@@ -7,6 +7,9 @@ import {
   useJsApiLoader,
 } from "@react-google-maps/api";
 
+// ----------------------------
+// ✅ Interfaces
+// ----------------------------
 interface Location {
   lat: number;
   lng: number;
@@ -26,7 +29,11 @@ interface GoogleMapTrackerProps {
   customerAddress: DeliveryAddress | null;
 }
 
+// ----------------------------
+// ✅ Constants
+// ----------------------------
 const containerStyle = { width: "100%", height: "320px" };
+
 const libraries: (
   | "places"
   | "geometry"
@@ -38,6 +45,9 @@ const libraries: (
 
 const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
 
+// ----------------------------
+// ✅ Component
+// ----------------------------
 const GoogleMapTracker: React.FC<GoogleMapTrackerProps> = ({
   deliveryBoyLocation,
   customerAddress,
@@ -50,21 +60,34 @@ const GoogleMapTracker: React.FC<GoogleMapTrackerProps> = ({
     libraries,
   });
 
-  // ✅ Safe lat/lng fallback logic
+  // ----------------------------
+  // ✅ Safe Fallback Logic
+  // ----------------------------
   const lat =
     customerAddress?.lat ??
     (deliveryBoyLocation ? deliveryBoyLocation.lat : 0);
-
   const lng =
     customerAddress?.lng ??
     (deliveryBoyLocation ? deliveryBoyLocation.lng : 0);
 
   const customerLatLng = { lat, lng };
 
-  const mapCenter = useMemo(() => {
-    return deliveryBoyLocation ?? { lat: 0, lng: 0, timestamp: "" };
-  }, [deliveryBoyLocation]);
+  // ----------------------------
+  // ✅ Map Center
+  // ----------------------------
+  const mapCenter = useMemo(
+    () =>
+      deliveryBoyLocation ?? {
+        lat: customerLatLng.lat,
+        lng: customerLatLng.lng,
+        timestamp: "",
+      },
+    [deliveryBoyLocation, customerLatLng]
+  );
 
+  // ----------------------------
+  // ✅ Destination (LatLng preferred)
+  // ----------------------------
   const destination = useMemo(() => {
     if (!customerAddress) return "";
     return customerAddress.lat && customerAddress.lng
@@ -72,6 +95,9 @@ const GoogleMapTracker: React.FC<GoogleMapTrackerProps> = ({
       : `${customerAddress.address}, ${customerAddress.city}, ${customerAddress.pincode}`;
   }, [customerAddress]);
 
+  // ----------------------------
+  // ✅ Directions Callback
+  // ----------------------------
   const directionsCallback = useCallback(
     (response: google.maps.DirectionsResult | null) => {
       if (response && response.status === "OK") {
@@ -83,6 +109,9 @@ const GoogleMapTracker: React.FC<GoogleMapTrackerProps> = ({
     []
   );
 
+  // ----------------------------
+  // ✅ Load & Error Guards
+  // ----------------------------
   if (loadError) {
     return <div>Google Maps failed to load: {String(loadError)}</div>;
   }
@@ -91,19 +120,31 @@ const GoogleMapTracker: React.FC<GoogleMapTrackerProps> = ({
     return <div>Loading Google Maps…</div>;
   }
 
+  if (!deliveryBoyLocation || !customerAddress) {
+    return (
+      <div className="w-full h-80 flex items-center justify-center text-gray-500 bg-gray-100">
+        Delivery address or location information is missing.
+      </div>
+    );
+  }
+
+  // ----------------------------
+  // ✅ Icons (safe inside useMemo)
+  // ----------------------------
   const { bikeIcon, homeIcon } = useMemo(() => {
-    if (!(window as any).google?.maps) return { bikeIcon: undefined, homeIcon: undefined };
+    if (!(window as any).google?.maps)
+      return { bikeIcon: undefined, homeIcon: undefined };
 
     const maps = (window as any).google.maps;
 
     const bikeIcon: google.maps.Icon = {
-      url: "http://maps.google.com/mapfiles/kml/shapes/motorcycling.png",
+      url: "http://maps.google.com/mapfiles/ms/icons/cycling.png",
       scaledSize: new maps.Size(32, 32),
       anchor: new maps.Point(16, 16),
     };
 
     const homeIcon: google.maps.Icon = {
-      url: "http://maps.google.com/mapfiles/kml/shapes/homegarden.png",
+      url: "http://maps.google.com/mapfiles/ms/icons/home.png",
       scaledSize: new maps.Size(32, 32),
       anchor: new maps.Point(16, 32),
     };
@@ -111,39 +152,44 @@ const GoogleMapTracker: React.FC<GoogleMapTrackerProps> = ({
     return { bikeIcon, homeIcon };
   }, [isLoaded]);
 
+  // ----------------------------
+  // ✅ Map Options
+  // ----------------------------
   const mapOptions = useMemo(
     () => ({
       zoom: 15,
       center: mapCenter,
+      mapId: "SHOPNISH_TRACK_MAP", // custom map style के लिए optional
+      disableDefaultUI: false,
     }),
     [mapCenter]
   );
 
-  if (!deliveryBoyLocation || !customerAddress) {
-    return (
-      <div className="w-full h-80 flex items-center justify-center text-gray-500 bg-gray-100">
-        Loading map data...
-      </div>
-    );
-  }
-
+  // ----------------------------
+  // ✅ Render Map
+  // ----------------------------
   return (
     <GoogleMap mapContainerStyle={containerStyle} options={mapOptions}>
-      <DirectionsService
-        options={{
-          origin: deliveryBoyLocation,
-          destination,
-          travelMode: google.maps.TravelMode.DRIVING,
-        }}
-        callback={directionsCallback}
-      />
+      {/* Directions Service */}
+      {mapCenter && destination && (
+        <DirectionsService
+          options={{
+            origin: deliveryBoyLocation,
+            destination,
+            travelMode: google.maps.TravelMode.DRIVING,
+          }}
+          callback={directionsCallback}
+        />
+      )}
 
+      {/* Directions Renderer */}
       {directionsResponse && (
         <DirectionsRenderer
           options={{ directions: directionsResponse, suppressMarkers: true }}
         />
       )}
 
+      {/* Delivery Boy Marker */}
       {bikeIcon && (
         <MarkerF
           position={deliveryBoyLocation}
@@ -152,7 +198,7 @@ const GoogleMapTracker: React.FC<GoogleMapTrackerProps> = ({
         />
       )}
 
-      {/* ✅ Always show customer marker */}
+      {/* Customer Marker */}
       {homeIcon && customerLatLng && (
         <MarkerF
           position={customerLatLng}
