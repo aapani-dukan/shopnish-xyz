@@ -201,11 +201,12 @@ export default function DeliveryDashboard() {
                 const { latitude, longitude } = position.coords;
 
                 // 2. हर 10 सेकंड में सर्वर को लोकेशन भेजें
-                socket.emit('deliveryboy:location_update', {
-                    orderId: activeOrder.id,
-                    lat: latitude,
-                    lng: longitude,
-                });
+                socket.emit("order:delivery_location", {
+    orderId: activeOrder.id,
+    lat: latitude,
+    lng: longitude,
+    timestamp: new Date().toISOString()
+});
                 console.log(`Emit: ${latitude}, ${longitude}`);
             };
 
