@@ -147,7 +147,7 @@ export default function TrackOrder() {
     [numericOrderId]
   );
 
-  useEffect(() => {
+  {/*  useEffect(() => {
     if (!socket || !numericOrderId || isLoading || !user) return;
     const userIdToUse = (user as any).id || (user as any).uid;
     if (!userIdToUse) return;
@@ -156,7 +156,7 @@ export default function TrackOrder() {
     return () => {
       socket.off("order:delivery_location", handleLocationUpdate);
     };
-  }, [socket, numericOrderId, isLoading, user, handleLocationUpdate]);
+  }, [socket, numericOrderId, isLoading, user, handleLocationUpdate]); */}
 
   // ✅ Track customer’s own GPS location (if needed)
   useEffect(() => {
