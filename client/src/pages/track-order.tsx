@@ -254,21 +254,36 @@ export default function TrackOrder() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="p-0">
-                  <div className="w-full h-80">
-                    {deliveryBoyLocation && order.deliveryAddress ? (
-                      <GoogleMapTracker
-                        deliveryBoyLocation={deliveryBoyLocation}
-                        customerAddress={order.deliveryAddress}
-                      />
-                    ) : (
-                      <div className="w-full h-full bg-gray-200 flex items-center justify-center text-gray-500">
-                        <p>Waiting for Delivery Partner's location...</p>
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
+  <div className="w-full h-80">
+    {order.deliveryAddress ? (
+      <GoogleMapTracker
+        deliveryBoyLocation={deliveryBoyLocation ?? null}
+        customerAddress={order.deliveryAddress}
+      />
+    ) : (
+      <div className="w-full h-full bg-gray-200 flex items-center justify-center text-gray-500">
+        <p>Delivery address information is missing.</p>
+      </div>
+    )}
+  </div>
+
+  {/* नीचे स्टेटस सेक्शन */}
+  <div className="p-4 border-t text-center text-gray-500">
+    {deliveryBoyLocation ? (
+      <>
+        <p className="text-sm font-medium">Delivery Partner Location Updated:</p>
+        <p className="text-xs text-gray-600">
+          Lat: {deliveryBoyLocation.lat.toFixed(4)}, Lng: {deliveryBoyLocation.lng.toFixed(4)}
+        </p>
+        <p className="text-xs text-gray-600">
+          Last Update: {new Date(deliveryBoyLocation.timestamp).toLocaleTimeString()}
+        </p>
+      </>
+    ) : (
+      <p>Waiting for Delivery Partner's location...</p>
+    )}
+  </div>
+</CardContent>
 
             {/* Current Status */}
             <Card>
