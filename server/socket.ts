@@ -3,7 +3,7 @@ import type { Server as HTTPServer } from "http";
 import { db } from "./db"; 
 import { orders } from "../shared/backend/schema";
 import { eq } from "drizzle-orm";
-import { authAdmin } from "./lib/firebaseAdmin"; // Firebase Admin import करें
+import { authAdmin } from "./lib/firebaseAdmin";
 
 let io: Server | null = null;
 
@@ -23,7 +23,7 @@ export function initSocket(server: HTTPServer) {
     },
   });
 
-  // ✅ Middleware: Socket.IO authentication
+  // Middleware: Socket.IO authentication
   io.use(async (socket, next) => {
     const token = socket.handshake.auth?.token;
     if (!token) {
@@ -48,7 +48,7 @@ export function initSocket(server: HTTPServer) {
   io.on("connection", (socket: Socket) => {
     console.log("🔌 New client connected:", socket.id);
 
-    // ✅ Delivery / Seller / Admin clients register कर सकें
+    // Client registration
     socket.on("register-client", (data) => {
       console.log("📦 Registered client:", data);
       if (data?.role && data?.userId) {
@@ -57,19 +57,13 @@ export function initSocket(server: HTTPServer) {
       }
     });
 
-    // Chat message handling
-    socket.on("chat:message", (msg) => {
-      console.log("💬 Message received:", msg);
-      io?.emit("chat:message", msg);
+    // ✅ Customer joins order room to receive location updates
+    socket.on("join-order-room", ({ orderId }) => {
+      socket.join(`order:${orderId}`);
+      console.log(`📍 Customer joined room: order:${orderId}`);
     });
 
-    // Order updates
-    socket.on("order:update", (data) => {
-      console.log("📦 Order update:", data);
-      io?.emit("order:update", data);
-    });
-
-    // Delivery location updates
+    // Delivery-boy sends location updates
     socket.on('deliveryboy:location_update', async (data: { orderId: number, lat: number, lng: number }) => {
       const serverIo = getIO();
       if (!data.orderId || !data.lat || !data.lng) return;
@@ -77,23 +71,26 @@ export function initSocket(server: HTTPServer) {
       console.log(`🏍️ Location Update for Order ${data.orderId}: (${data.lat}, ${data.lng})`);
 
       try {
-        const order = await db.query.orders.findFirst({
-          where: eq(orders.id, data.orderId),
-          columns: { customerId: true }
+        serverIo.to(`order:${data.orderId}`).emit('order:delivery_location', {
+          orderId: data.orderId,
+          lat: data.lat,
+          lng: data.lng,
+          timestamp: new Date().toISOString()
         });
-
-        if (order?.customerId) {
-          serverIo.to(`user:${order.customerId}`).emit('order:delivery_location', {
-            orderId: data.orderId,
-            lat: data.lat,
-            lng: data.lng,
-            timestamp: new Date().toISOString(),
-          });
-          console.log(`✅ Location broadcasted to user:${order.customerId}`);
-        }
+        console.log(`✅ Location broadcasted to order:${data.orderId}`);
       } catch (error) {
         console.error("❌ Error processing location update:", error);
       }
+    });
+
+    socket.on("chat:message", (msg) => {
+      console.log("💬 Message received:", msg);
+      io?.emit("chat:message", msg);
+    });
+
+    socket.on("order:update", (data) => {
+      console.log("📦 Order update:", data);
+      io?.emit("order:update", data);
     });
 
     socket.on("disconnect", (reason) => {
