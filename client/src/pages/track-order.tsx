@@ -262,19 +262,20 @@ export default function TrackOrder() {
 
                 <CardContent className="p-0">
                   <div className="w-full h-80">
-                    {order.deliveryAddress ? (
-                      <GoogleMapTracker
-                        deliveryBoyLocation={deliveryBoyLocation || undefined}
-                        customerAddress={order.deliveryAddress}
-                      />
-                    ) : (
-                      <div className="w-full h-full bg-gray-200 flex items-center justify-center text-gray-500">
-                        <p>Delivery address information is missing.</p>
-                      </div>
-                    )}
-                  </div>
 
-                  {deliveryBoyLocation ? (
+{deliveryBoyLocation && order.deliveryAddress ? (
+  <GoogleMapTracker
+    deliveryBoyLocation={deliveryBoyLocation}
+    customerAddress={order.deliveryAddress}
+  />
+) : (
+  <div className="w-full h-full bg-gray-200 flex items-center justify-center text-gray-500">
+    <p>Waiting for Delivery Partner's location...</p>
+  </div>
+)}
+                    
+
+                    {/*  {deliveryBoyLocation ? (
                     <div className="p-4 border-t">
                       <p className="text-sm font-medium">Delivery Partner Location Updated:</p>
                       <p className="text-xs text-gray-600">
@@ -292,7 +293,7 @@ export default function TrackOrder() {
                   )}
                 </CardContent>
               </Card>
-            )}
+            )}*/}
 
             {/* Current Status */}
             <Card>
