@@ -147,7 +147,7 @@ export default function TrackOrder() {
     [numericOrderId]
   );
 
-  {/*  useEffect(() => {
+    useEffect(() => {
     if (!socket || !numericOrderId || isLoading || !user) return;
     const userIdToUse = (user as any).id || (user as any).uid;
     if (!userIdToUse) return;
@@ -156,10 +156,10 @@ export default function TrackOrder() {
     return () => {
       socket.off("order:delivery_location", handleLocationUpdate);
     };
-  }, [socket, numericOrderId, isLoading, user, handleLocationUpdate]); */}
+  }, [socket, numericOrderId, isLoading, user, handleLocationUpdate]); 
 
   // ✅ Track customer’s own GPS location (if needed)
-  useEffect(() => {
+  {/*  useEffect(() => {
     const watchId = navigator.geolocation.watchPosition(
       (position) => {
         setDeliveryBoyLocation({
@@ -172,7 +172,7 @@ export default function TrackOrder() {
       { enableHighAccuracy: true, maximumAge: 10000, timeout: 5000 }
     );
     return () => navigator.geolocation.clearWatch(watchId);
-  }, []);
+  }, []); */}
 
   // ✅ Fallback logic
   const deliveryBoyLocationToShow = deliveryBoyLocation || order?.deliveryLocation || null;
