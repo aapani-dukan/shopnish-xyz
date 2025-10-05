@@ -1,3 +1,5 @@
+
+
 // client/src/components/AddressInputWithMap.tsx
 
 import React, { useRef, useState, useMemo, useCallback, useEffect } from "react";
@@ -7,7 +9,6 @@ import {
   useLoadScript,
   Autocomplete,
 } from "@react-google-maps/api";
-import { MapPin } from "lucide-react";
 
 const containerStyle = { width: "100%", height: "200px" };
 const LIBRARIES: ("places")[] = ["places"];
@@ -34,7 +35,6 @@ const extractCityAndPincode = (results: any) => {
   let city = "";
   let pincode = "";
 
-  // 🚀 FIX: सुनिश्चित करें कि results[0] मौजूद है
   if (results && results[0] && results[0].address_components) {
     results[0].address_components.forEach((component: any) => {
       if (component.types.includes("postal_code")) {
@@ -64,8 +64,7 @@ const AddressInputWithMap: React.FC<AddressInputProps> = ({
   const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
 
   const defaultCenter = useMemo(
-    // 💡 भारत का केंद्र (लगभग)
-    () => ({ lat: 20.5937, lng: 78.9629 }), 
+    () => ({ lat: 20.5937, lng: 78.9629 }),
     []
   );
   const [mapCenter, setMapCenter] = useState<LatLngLiteral>(
@@ -88,8 +87,7 @@ const AddressInputWithMap: React.FC<AddressInputProps> = ({
 
       const geocoder = new (window as any).google.maps.Geocoder();
       geocoder.geocode({ location: newLocation }, (results: any, status: any) => {
-        // 🚀 FIX: Geocoder OK होने पर ही city/pincode एक्सट्रेक्ट करें
-        if (status === "OK" && results && results[0]) {
+        if (status === "OK" && results[0]) {
           const { city, pincode } = extractCityAndPincode(results);
           const updatedLocation: GeocodedLocation = {
             ...newLocation,
@@ -97,14 +95,6 @@ const AddressInputWithMap: React.FC<AddressInputProps> = ({
             pincode,
           };
           onLocationUpdate(place.formatted_address, updatedLocation);
-        } else {
-            // यदि Geocoding विफल होता है, तो केवल lat/lng के साथ पास करें
-            const updatedLocation: GeocodedLocation = {
-                ...newLocation,
-                city: "",
-                pincode: "",
-            };
-            onLocationUpdate(place.formatted_address, updatedLocation);
         }
       });
       setMapCenter(newLocation);
@@ -121,7 +111,8 @@ const AddressInputWithMap: React.FC<AddressInputProps> = ({
         const geocoder = new (window as any).google.maps.Geocoder();
         geocoder.geocode({ location: newLocation }, (results: any, status: any) => {
           if (status === "OK" && results && results[0]) {
-            const { city, pincode } = extractCityAndPincode(results);
+   const { city, pincode } = extractCityAndPincode(results);
+   
             const updatedLocation: GeocodedLocation = {
               ...newLocation,
               city,
@@ -146,25 +137,17 @@ const AddressInputWithMap: React.FC<AddressInputProps> = ({
         };
         const geocoder = new (window as any).google.maps.Geocoder();
         geocoder.geocode({ location: newLocation }, (results: any, status: any) => {
-           
-            let city = ""; // 🚀 FIX: city और pincode को यहाँ डिफाइन करें
-            let pincode = "";
-            let formattedAddress = "";
-
+           {
             if (status === "OK" && results && results[0]) {
-               ({ city, pincode } = extractCityAndPincode(results));
-               formattedAddress = results[0].formatted_address;
-            }
-
+   const { city, pincode } = extractCityAndPincode(results);
+           }
             const updatedLocation: GeocodedLocation = {
               ...newLocation,
-              city: city || "", // 🚀 FIX: सुनिश्चित करें कि ये हमेशा string हों
-              pincode: pincode || "",
+              city,
+              pincode,
             };
-            
-            // 🚀 FIX: यदि Geocoder विफल हो जाता है तो भी onLocationUpdate को कॉल करें
-            onLocationUpdate(formattedAddress || "Unknown Address", updatedLocation);
-          
+            onLocationUpdate(results[0].formatted_address, updatedLocation);
+          }
         });
         setMapCenter(newLocation);
       });
@@ -182,19 +165,19 @@ const AddressInputWithMap: React.FC<AddressInputProps> = ({
         onPlaceChanged={onPlaceChanged}
       >
         <input
-          type="text"
-          placeholder="डिलीवरी एड्रेस खोजें"
-          defaultValue={currentAddress} 
-          style={{
-            boxSizing: "border-box",
-            border: "1px solid #ccc",
-            width: "100%",
-            height: "40px",
-            padding: "0 12px",
-            borderRadius: "4px",
-            marginTop: "8px",
-          }}
-        />
+  type="text"
+  placeholder="डिलीवरी एड्रेस खोजें"
+  defaultValue={currentAddress}  // ✅ value की जगह defaultValue
+  style={{
+    boxSizing: "border-box",
+    border: "1px solid #ccc",
+    width: "100%",
+    height: "40px",
+    padding: "0 12px",
+    borderRadius: "4px",
+    marginTop: "8px",
+  }}
+/>
       </Autocomplete>
 
       {/* ✅ Map + Marker */}
@@ -204,7 +187,6 @@ const AddressInputWithMap: React.FC<AddressInputProps> = ({
           center={mapCenter}
           zoom={15}
         >
-          {/* 💡 Note: यदि currentLocation null है, तो MarkerF रेंडर नहीं होगा */}
           {currentLocation && (
             <MarkerF
               position={currentLocation}
@@ -227,13 +209,9 @@ const AddressInputWithMap: React.FC<AddressInputProps> = ({
           border: "none",
           borderRadius: "5px",
           cursor: "pointer",
-          display: 'flex', 
-          alignItems: 'center', 
-          gap: '5px'
         }}
       >
-        <MapPin size={16} /> 
-        मेरी वर्तमान लोकेशन का उपयोग करें
+        📍 मेरी वर्तमान लोकेशन का उपयोग करें
       </button>
 
       {/* Debug LatLng */}
