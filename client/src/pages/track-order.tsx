@@ -82,9 +82,11 @@ export default function TrackOrder() {
   const { socket } = useSocket();
   const { user } = useAuth();
 
+  // ✅ Track current live delivery boy location (from GPS)
   const [deliveryBoyLocation, setDeliveryBoyLocation] = useState<Location | null>(null);
 
-  // 🚀 FIX 1: useQuery में isFetching को प्राप्त करें।
+  // 🚀 FIX 1: useQuery से 'isFetching' को प्राप्त करें।
+  // isFetching = true होता है जब useQuery पृष्ठभूमि में डेटा अपडेट कर रहा होता है (जैसे Delivery Boy असाइन होने के बाद)।
   const { data: order, isLoading, isFetching } = useQuery<Order | null>({
     queryKey: ["/api/orders", numericOrderId],
     queryFn: async () => {
@@ -102,13 +104,13 @@ export default function TrackOrder() {
         return await res.json();
       } catch (error) {
         console.error("Order fetch error:", error);
-        // 💡 Note: useQuery में null रिटर्न करना आमतौर पर सुरक्षित होता है।
-        return null; 
+        return null;
       }
     },
     enabled: !!numericOrderId,
   });
 
+  // ✅ Fetch order tracking status (Unchanged)
   const { data: trackingData } = useQuery<OrderTracking[]>({
     queryKey: ["/api/orders/tracking", numericOrderId],
     queryFn: async () => {
@@ -135,18 +137,28 @@ export default function TrackOrder() {
 
   const tracking: OrderTracking[] = Array.isArray(trackingData) ? trackingData : [];
 
-// useEffect for Socket connection
+// 🚀 FIX 2: useEffect Logic (isFetching के दौरान Socket Update को ब्लॉक करें)
 useEffect(() => {
+  // यदि order, user, socket नहीं है, या Delivery Boy असाइन नहीं है, तो शुरू न करें।
   if (!socket || !numericOrderId || !user || !order || !order.deliveryBoyId) return; 
   
+  // 💡 Note: यह useEffect केवल तभी चलेगा जब 'order' डेटा लोड हो चुका हो
+  // और order में एक deliveryBoy असाइन किया गया हो।
+
   const userIdToUse = (user as any).id || (user as any).uid;
   if (!userIdToUse) return;
 
+  // Register customer client
   socket.emit("register-client", { role: "customer", userId: userIdToUse });
+
+  // Join specific order room
   socket.emit("join-order-room", { orderId: numericOrderId });
 
   const handleSocketLocationUpdate = (data: Location & { orderId: number; timestamp?: string }) => {
-    // Race condition guard बनाए रखें
+    console.log("📍 Location update received:", data);
+    
+    // 🚀 FINAL FIX 3: setDeliveryBoyLocation को ब्लॉक करें जब order रिफ़ेच हो रहा हो।
+    // इससे Socket Update और useQuery के बीच की Race Condition समाप्त हो जाएगी।
     if (data.orderId === numericOrderId && !isFetching) {
       setDeliveryBoyLocation({
         lat: data.lat,
@@ -161,53 +173,55 @@ useEffect(() => {
   return () => {
     socket.off("order:delivery_location", handleSocketLocationUpdate);
   };
+// 🚀 FIX 4: dependencies में order और isFetching को जोड़ें।
 }, [socket, numericOrderId, user, order, isFetching]); 
   
-  // Status color & text helpers (unchanged)
+  // ✅ Status color & text helpers (Unchanged)
   const getStatusColor = (status: string) => {
     switch (status) {
-        case "placed":
-        case "confirmed":
-            return "bg-blue-500";
-        case "preparing":
-            return "bg-yellow-500";
-        case "ready":
-        case "picked_up":
-            return "bg-orange-500";
-        case "out_for_delivery":
-            return "bg-purple-500";
-        case "delivered":
-            return "bg-green-500";
-        case "cancelled":
-            return "bg-red-500";
-        default:
-            return "bg-gray-500";
+      case "placed":
+      case "confirmed":
+        return "bg-blue-500";
+      case "preparing":
+        return "bg-yellow-500";
+      case "ready":
+      case "picked_up":
+        return "bg-orange-500";
+      case "out_for_delivery":
+        return "bg-purple-500";
+      case "delivered":
+        return "bg-green-500";
+      case "cancelled":
+        return "bg-red-500";
+      default:
+        return "bg-gray-500";
     }
   };
   const getStatusText = (status: string) => {
     switch (status) {
-        case "placed":
-            return "Order Placed";
-        case "confirmed":
-            return "Order Confirmed";
-        case "preparing":
-            return "Preparing Order";
-        case "ready":
-            return "Ready for Pickup";
-        case "picked_up":
-            return "Picked Up";
-        case "out_for_delivery":
-            return "Out for Delivery";
-        case "delivered":
-            return "Delivered";
-        case "cancelled":
-        default:
-            return status;
+      case "placed":
+        return "Order Placed";
+      case "confirmed":
+        return "Order Confirmed";
+      case "preparing":
+        return "Preparing Order";
+      case "ready":
+        return "Ready for Pickup";
+      case "picked_up":
+        return "Picked Up";
+      case "out_for_delivery":
+        return "Out for Delivery";
+      case "delivered":
+        return "Delivered";
+      case "cancelled":
+        return "Cancelled";
+      default:
+        return status;
     }
   };
 
 
-// ✅ Guard Checks (unchanged)
+// 🚀 FINAL FIX 5: Loading और Data Not Found चेक (Unchanged - ये आवश्यक हैं)
 if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -216,6 +230,7 @@ if (isLoading) {
     );
 }
 
+// यदि डेटा फेच हो गया है (isLoading=false) लेकिन order, address, या items मौजूद नहीं हैं, तो क्रैश से बचें।
 if (!order || !order.deliveryAddress || !order.items || order.items.length === 0) { 
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -229,41 +244,20 @@ if (!order || !order.deliveryAddress || !order.items || order.items.length === 0
     );
 }
 
-// -------------------------------------------------------------
-// 🚀 FINAL DECISIVE FIX: All Props Stabilized with useMemo
-// -------------------------------------------------------------
-
-// FIX 2: deliveryBoyLocationToShow को useMemo में वापस लाएं और Dependencies को सुरक्षित करें।
-const deliveryBoyLocationToShow = useMemo(() => {
-    return deliveryBoyLocation || order.deliveryLocation || null;
-}, [
-    // केवल deliveryBoyLocation Object Reference को ट्रैक करें
-    deliveryBoyLocation,
-    // order.deliveryLocation की उपस्थिति को ट्रैक करें
-    order.deliveryLocation?.lat, 
-    order.deliveryLocation?.lng 
-]); 
-
+// 🚀 FINAL FIX 6: Variables को IF ब्लॉक के बाद डिफाइन करें (Unchanged - ये आवश्यक हैं)
+const deliveryBoyLocationToShow = deliveryBoyLocation || order.deliveryLocation || null;
 const customerAddress = order.deliveryAddress; 
 
-// FIX 3: estimatedTime को useMemo में बनाए रखें (स्थिरता के लिए)
-const estimatedTime = useMemo(() => {
-    return order.estimatedDeliveryTime
-        ? new Date(order.estimatedDeliveryTime).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })
-        : "TBD";
-}, [order.estimatedDeliveryTime]);
-
-// FIX 4: store को useMemo में बनाए रखें (स्थिरता के लिए)
-const store = useMemo(() => {
-    return order.items?.[0]?.product?.store; 
-}, [order.items?.[0]?.product?.store?.id]); 
-// -------------------------------------------------------------
+const estimatedTime = order.estimatedDeliveryTime
+    ? new Date(order.estimatedDeliveryTime).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })
+    : "TBD";
+const store = order.items?.[0]?.product?.store; 
 
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-4xl mx-auto px-4">
-        {/* Header (unchanged) */}
+        {/* Header */}
         <div className="mb-8 text-center">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Track Your Order</h1>
           <p className="text-lg text-gray-600">Order #{order.orderNumber}</p>
@@ -272,8 +266,6 @@ const store = useMemo(() => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Main Tracking */}
           <div className="lg:col-span-2 space-y-6">
-            
-            {/* Map को तभी रेंडर करें जब Delivery Boy ID असाइन हो और order/delivery के लिए हो */}
             {(order.status === "picked_up" || order.status === "out_for_delivery") && order.deliveryBoyId && (
               <Card>
                 <CardHeader>
@@ -284,7 +276,7 @@ const store = useMemo(() => {
                 </CardHeader>
                 <CardContent className="p-0">
                   <div className="w-full h-80">
-                    {/* Map RENDER CONDITION: दोनों ऑब्जेक्ट्स पूरी तरह से उपलब्ध होने चाहिए */}
+                    {/* customerAddress और deliveryBoyLocationToShow अब सुरक्षित हैं */}
                     {customerAddress && deliveryBoyLocationToShow ? (
                       <GoogleMapTracker
                         deliveryBoyLocation={deliveryBoyLocationToShow}
@@ -292,7 +284,7 @@ const store = useMemo(() => {
                       />
                     ) : (
                       <div className="w-full h-full bg-gray-200 flex items-center justify-center text-gray-500">
-                        <p>Waiting for Delivery Partner's location...</p>
+                        <p>Delivery address or location information is missing.</p>
                       </div>
                     )}
                   </div>
@@ -316,7 +308,7 @@ const store = useMemo(() => {
               </Card>
             )}
 
-            {/* Order Status Timeline (unchanged) */}
+            {/* Order Status Timeline */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center space-x-2">
@@ -346,7 +338,7 @@ const store = useMemo(() => {
             </Card>
           </div>
 
-          {/* Order Details (unchanged) */}
+          {/* Order Details */}
           <div className="space-y-6">
             <Card>
               <CardHeader>
@@ -374,7 +366,7 @@ const store = useMemo(() => {
               </CardContent>
             </Card>
 
-            {/* Store Info (unchanged) */}
+            {/* Store Info */}
             {store && (
               <Card>
                 <CardHeader>
@@ -401,5 +393,5 @@ const store = useMemo(() => {
       </div>
     </div>
   );
-  }
-                      
+}
+      
