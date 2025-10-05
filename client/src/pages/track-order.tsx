@@ -138,19 +138,20 @@ export default function TrackOrder() {
 
 // 🚀 Socket Logic (isFetching guard के साथ)
 useEffect(() => {
-  if (!socket || !numericOrderId || !user || !order || !order.deliveryBoyId) return; 
-  
+  if (!socket || !numericOrderId || !user) return;
+
   const userIdToUse = (user as any).id || (user as any).uid;
   if (!userIdToUse) return;
 
+  console.log("📡 Registering customer socket...");
+
+  // ✅ Register only once per order
   socket.emit("register-client", { role: "customer", userId: userIdToUse });
   socket.emit("join-order-room", { orderId: numericOrderId });
 
   const handleSocketLocationUpdate = (data: Location & { orderId: number; timestamp?: string }) => {
-    console.log("📍 Location update received:", data);
-    
-    // setDeliveryBoyLocation को ब्लॉक करें जब order रिफ़ेच हो रहा हो।
-    if (data.orderId === numericOrderId && !isFetching) {
+    if (data.orderId === numericOrderId) {
+      console.log("📍 Location update received:", data);
       setDeliveryBoyLocation({
         lat: data.lat,
         lng: data.lng,
@@ -164,7 +165,9 @@ useEffect(() => {
   return () => {
     socket.off("order:delivery_location", handleSocketLocationUpdate);
   };
-}, [socket, numericOrderId, user, order, isFetching]); 
+
+  // ⚡ Effect को केवल तब चलाओ जब socket और orderId सेट हों।
+}, [socket, numericOrderId, user]); 
   
   // ✅ Status color & text helpers (Unchanged)
   const getStatusColor = (status: string) => {
