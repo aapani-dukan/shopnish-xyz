@@ -3,12 +3,13 @@ import { useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Package, Clock, MapPin, Store } from "lucide-react";
 import { getAuth } from "firebase/auth";
 import GoogleMapTracker from "@/components/GoogleMapTracker";
-import { Package, MapPin, Clock, Store } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useSocket } from "@/hooks/useSocket";
 
+// Interfaces
 interface Location {
   lat: number;
   lng: number;
@@ -70,55 +71,48 @@ export default function TrackOrder() {
   const { user } = useAuth();
   const [deliveryBoyLocation, setDeliveryBoyLocation] = useState<Location | null>(null);
 
+  // Fetch Order
   const { data: order, isLoading } = useQuery<Order | null>({
     queryKey: ["/api/orders", numericOrderId],
     queryFn: async () => {
       if (!numericOrderId) return null;
-      try {
-        const auth = getAuth();
-        const token = await auth.currentUser?.getIdToken();
-        if (!token) throw new Error("User not authenticated");
+      const auth = getAuth();
+      const token = await auth.currentUser?.getIdToken();
+      if (!token) throw new Error("User not authenticated");
 
-        const res = await fetch(`/api/orders/${numericOrderId}`, {
-          headers: { Authorization: `Bearer ${token}` },
-          credentials: "include",
-        });
-        if (!res.ok) throw new Error(await res.text());
-        return await res.json();
-      } catch (error) {
-        console.error("Order fetch error:", error);
-        return null;
-      }
+      const res = await fetch(`/api/orders/${numericOrderId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error(await res.text());
+      return res.json();
     },
     enabled: !!numericOrderId,
   });
 
+  // Fetch Tracking Data
   const { data: trackingData } = useQuery<OrderTracking[]>({
     queryKey: ["/api/orders/tracking", numericOrderId],
     queryFn: async () => {
       if (!numericOrderId) return [];
-      try {
-        const auth = getAuth();
-        const token = await auth.currentUser?.getIdToken();
-        if (!token) throw new Error("User not authenticated");
+      const auth = getAuth();
+      const token = await auth.currentUser?.getIdToken();
+      if (!token) throw new Error("User not authenticated");
 
-        const res = await fetch(`/api/orders/${numericOrderId}/tracking`, {
-          headers: { Authorization: `Bearer ${token}` },
-          credentials: "include",
-        });
-        if (!res.ok) throw new Error(await res.text());
-        const data = await res.json();
-        return Array.isArray(data) ? data : [];
-      } catch (error) {
-        console.error("Tracking fetch error:", error);
-        return [];
-      }
+      const res = await fetch(`/api/orders/${numericOrderId}/tracking`, {
+        headers: { Authorization: `Bearer ${token}` },
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error(await res.text());
+      const data = await res.json();
+      return Array.isArray(data) ? data : [];
     },
     enabled: !!numericOrderId,
   });
 
   const tracking: OrderTracking[] = Array.isArray(trackingData) ? trackingData : [];
 
+  // Socket: Listen for delivery location updates
   useEffect(() => {
     if (!socket || !numericOrderId || !user) return;
 
@@ -128,12 +122,7 @@ export default function TrackOrder() {
     socket.emit("register-client", { role: "customer", userId: userIdToUse });
     socket.emit("join-order-room", { orderId: numericOrderId });
 
-    const handleSocketLocationUpdate = (data: {
-      orderId: number;
-      lat: number;
-      lng: number;
-      timestamp?: string;
-    }) => {
+    const handleSocketLocationUpdate = (data: { orderId: number; lat: number; lng: number; timestamp?: string }) => {
       if (data.orderId !== numericOrderId) return;
       setDeliveryBoyLocation({
         lat: data.lat,
@@ -149,46 +138,29 @@ export default function TrackOrder() {
     };
   }, [socket, numericOrderId, user]);
 
+  // Helpers
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "placed":
-      case "confirmed":
-        return "bg-blue-500";
-      case "preparing":
-        return "bg-yellow-500";
-      case "ready":
-      case "picked_up":
-        return "bg-orange-500";
-      case "out_for_delivery":
-        return "bg-purple-500";
-      case "delivered":
-        return "bg-green-500";
-      case "cancelled":
-        return "bg-red-500";
-      default:
-        return "bg-gray-500";
+      case "placed": case "confirmed": return "bg-blue-500";
+      case "preparing": return "bg-yellow-500";
+      case "ready": case "picked_up": return "bg-orange-500";
+      case "out_for_delivery": return "bg-purple-500";
+      case "delivered": return "bg-green-500";
+      case "cancelled": return "bg-red-500";
+      default: return "bg-gray-500";
     }
   };
   const getStatusText = (status: string) => {
     switch (status) {
-      case "placed":
-        return "Order Placed";
-      case "confirmed":
-        return "Order Confirmed";
-      case "preparing":
-        return "Preparing Order";
-      case "ready":
-        return "Ready for Pickup";
-      case "picked_up":
-        return "Picked Up";
-      case "out_for_delivery":
-        return "Out for Delivery";
-      case "delivered":
-        return "Delivered";
-      case "cancelled":
-        return "Cancelled";
-      default:
-        return status;
+      case "placed": return "Order Placed";
+      case "confirmed": return "Order Confirmed";
+      case "preparing": return "Preparing Order";
+      case "ready": return "Ready for Pickup";
+      case "picked_up": return "Picked Up";
+      case "out_for_delivery": return "Out for Delivery";
+      case "delivered": return "Delivered";
+      case "cancelled": return "Cancelled";
+      default: return status;
     }
   };
 
@@ -206,9 +178,7 @@ export default function TrackOrder() {
         <Card className="w-full max-w-md">
           <CardContent className="pt-6 text-center">
             <h3 className="text-lg font-medium mb-2">Order Not Ready or Data Missing</h3>
-            <p className="text-gray-600">
-              Please wait while we prepare the tracking information, or try refreshing.
-            </p>
+            <p className="text-gray-600">Please wait while we prepare tracking information.</p>
           </CardContent>
         </Card>
       </div>
@@ -218,10 +188,7 @@ export default function TrackOrder() {
   const customerAddress = order.deliveryAddress;
   const deliveryBoyLocationToShow = deliveryBoyLocation || order.deliveryLocation || null;
   const estimatedTime = order.estimatedDeliveryTime
-    ? new Date(order.estimatedDeliveryTime).toLocaleTimeString("en-IN", {
-        hour: "2-digit",
-        minute: "2-digit",
-      })
+    ? new Date(order.estimatedDeliveryTime).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })
     : "TBD";
   const store = order.items?.[0]?.product?.store;
 
@@ -243,28 +210,24 @@ export default function TrackOrder() {
                     <span>Real-Time Tracking</span>
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="p-0 relative">
-                  {customerAddress ? (
-                    <div className="relative w-full h-[400px]">
+                <CardContent className="p-0">
+                  <div className="w-full h-[400px]">
+                    {customerAddress ? (
                       <GoogleMapTracker
                         deliveryBoyLocation={deliveryBoyLocationToShow || undefined}
                         customerAddress={customerAddress}
                       />
-                      {!deliveryBoyLocationToShow && (
-                        <div className="absolute inset-0 flex items-center justify-center bg-gray-100 bg-opacity-60 text-gray-600 text-sm">
-                          🚴‍♂️ Waiting for delivery boy location...
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="w-full h-[400px] bg-gray-200 flex items-center justify-center text-gray-500">
-                      Delivery address not found.
-                    </div>
-                  )}
+                    ) : (
+                      <div className="w-full h-[400px] bg-gray-200 flex items-center justify-center text-gray-500">
+                        Delivery address not found.
+                      </div>
+                    )}
+                  </div>
                 </CardContent>
               </Card>
             )}
 
+            {/* Order Status Timeline */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center space-x-2">
@@ -294,51 +257,64 @@ export default function TrackOrder() {
             </Card>
           </div>
 
+          {/* Order Details */}
           <div className="space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
+                <CardTitle className
+                  ="flex items-center space-x-2">
                   <Package className="w-5 h-5 text-green-500" />
                   <span>Order Details</span>
                 </CardTitle>
               </CardHeader>
-              <CardContent>
-                <p>
-                  <strong>Status:</strong>{" "}
-                  <span className={`${getStatusColor(order.status)} py-1 px-2 rounded text-white`}>
+              <CardContent className="space-y-2">
+                <div className="flex justify-between">
+                  <span className="font-medium">Order Number:</span>
+                  <span>{order.orderNumber}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="font-medium">Status:</span>
+                  <Badge className={`${getStatusColor(order.status)} py-1 px-2 rounded`}>
                     {getStatusText(order.status)}
-                  </span>
-                </p>
-                <p>
-                  <strong>Estimated Delivery Time:</strong> {estimatedTime}
-                </p>
-                <p>
-                  <strong>Payment Method:</strong> {order.paymentMethod}
-                </p>
-                <p>
-                  <strong>Total:</strong> ₹{order.total}
-                </p>
+                  </Badge>
+                </div>
+                <div className="flex justify-between">
+                  <span className="font-medium">Payment:</span>
+                  <span>{order.paymentMethod.toUpperCase()} ({order.paymentStatus})</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="font-medium">Total:</span>
+                  <span>₹{order.total}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="font-medium">Estimated Delivery:</span>
+                  <span>{estimatedTime}</span>
+                </div>
               </CardContent>
             </Card>
 
+            {/* Store Details */}
             {store && (
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center space-x-2">
-                    <Store className="w-5 h-5 text-orange-500" />
-                    <span>Store Information</span>
+                    <Store className="w-5 h-5 text-blue-500" />
+                    <span>Store Details</span>
                   </CardTitle>
                 </CardHeader>
-                <CardContent>
-                  <p>
-                    <strong>Name:</strong> {store?.storeName}
-                  </p>
-                  <p>
-                    <strong>Address:</strong> {store?.address}
-                  </p>
-                  <p>
-                    <strong>Phone:</strong> {store?.phone}
-                  </p>
+                <CardContent className="space-y-2">
+                  <div className="flex justify-between">
+                    <span className="font-medium">Store Name:</span>
+                    <span>{store.storeName}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="font-medium">Address:</span>
+                    <span>{store.address}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="font-medium">Phone:</span>
+                    <span>{store.phone}</span>
+                  </div>
                 </CardContent>
               </Card>
             )}
