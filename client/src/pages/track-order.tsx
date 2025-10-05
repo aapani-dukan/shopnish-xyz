@@ -1,27 +1,14 @@
-import React, { useState, useMemo, useCallback, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { getAuth } from "firebase/auth";
 import GoogleMapTracker from "@/components/GoogleMapTracker";
-import {
-  Package,
-  Truck,
-  MapPin,
-  Clock,
-  Phone,
-  CheckCircle,
-  User,
-  Store,
-} from "lucide-react";
+import { Package, MapPin, Clock, Store } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useSocket } from "@/hooks/useSocket";
 
-// ----------------------------
-// ✅ Interfaces (Unchanged)
-// ----------------------------
 interface Location {
   lat: number;
   lng: number;
@@ -81,12 +68,9 @@ export default function TrackOrder() {
 
   const { socket } = useSocket();
   const { user } = useAuth();
-
-  // ✅ Track current live delivery boy location (from GPS)
   const [deliveryBoyLocation, setDeliveryBoyLocation] = useState<Location | null>(null);
 
-  // useQuery से 'isFetching' को प्राप्त करें।
-  const { data: order, isLoading, isFetching } = useQuery<Order | null>({
+  const { data: order, isLoading } = useQuery<Order | null>({
     queryKey: ["/api/orders", numericOrderId],
     queryFn: async () => {
       if (!numericOrderId) return null;
@@ -109,7 +93,6 @@ export default function TrackOrder() {
     enabled: !!numericOrderId,
   });
 
-  // ✅ Fetch order tracking status (Unchanged)
   const { data: trackingData } = useQuery<OrderTracking[]>({
     queryKey: ["/api/orders/tracking", numericOrderId],
     queryFn: async () => {
@@ -136,41 +119,36 @@ export default function TrackOrder() {
 
   const tracking: OrderTracking[] = Array.isArray(trackingData) ? trackingData : [];
 
-// 🚀 Socket Logic (isFetching guard के साथ)
-// 🚀 TrackOrder.tsx - Stable Socket Effect
-useEffect(() => {
-  if (!socket || !numericOrderId || !user) return;
+  useEffect(() => {
+    if (!socket || !numericOrderId || !user) return;
 
-  const userIdToUse = (user as any).id || (user as any).uid;
-  if (!userIdToUse) return;
+    const userIdToUse = (user as any).id || (user as any).uid;
+    if (!userIdToUse) return;
 
-  console.log("📡 Registering customer socket for order:", numericOrderId);
+    socket.emit("register-client", { role: "customer", userId: userIdToUse });
+    socket.emit("join-order-room", { orderId: numericOrderId });
 
-  // ✅ Register client & join order room once
-  socket.emit("register-client", { role: "customer", userId: userIdToUse });
-  socket.emit("join-order-room", { orderId: numericOrderId });
+    const handleSocketLocationUpdate = (data: {
+      orderId: number;
+      lat: number;
+      lng: number;
+      timestamp?: string;
+    }) => {
+      if (data.orderId !== numericOrderId) return;
+      setDeliveryBoyLocation({
+        lat: data.lat,
+        lng: data.lng,
+        timestamp: data.timestamp || new Date().toISOString(),
+      });
+    };
 
-  const handleSocketLocationUpdate = (data: { orderId: number; lat: number; lng: number; timestamp?: string }) => {
-    if (data.orderId !== numericOrderId) return;
-    console.log("📍 Location update received:", data);
-    setDeliveryBoyLocation({
-      lat: data.lat,
-      lng: data.lng,
-      timestamp: data.timestamp || new Date().toISOString(),
-    });
-  };
+    socket.on("order:delivery_location", handleSocketLocationUpdate);
 
-  socket.on("order:delivery_location", handleSocketLocationUpdate);
+    return () => {
+      socket.off("order:delivery_location", handleSocketLocationUpdate);
+    };
+  }, [socket, numericOrderId, user]);
 
-  return () => {
-    console.log("❌ Cleaning up socket listener for order:", numericOrderId);
-    socket.off("order:delivery_location", handleSocketLocationUpdate);
-  };
-
-  // ⚡ केवल socket और orderId पर effect depend करे
-}, [socket, numericOrderId]);
-  
-  // ✅ Status color & text helpers (Unchanged)
   const getStatusColor = (status: string) => {
     switch (status) {
       case "placed":
@@ -214,56 +192,48 @@ useEffect(() => {
     }
   };
 
-
-// 🚀 Loading और Data Not Found चेक (Unchanged)
-if (isLoading) {
+  if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full"></div>
       </div>
     );
-}
+  }
 
-if (!order || !order.deliveryAddress || !order.items || order.items.length === 0) { 
+  if (!order || !order.deliveryAddress || !order.items || order.items.length === 0) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Card className="w-full max-w-md">
           <CardContent className="pt-6 text-center">
             <h3 className="text-lg font-medium mb-2">Order Not Ready or Data Missing</h3>
-            <p className="text-gray-600">Please wait while we prepare the tracking information, or try refreshing.</p>
+            <p className="text-gray-600">
+              Please wait while we prepare the tracking information, or try refreshing.
+            </p>
           </CardContent>
         </Card>
       </div>
     );
-}
+  }
 
-// -------------------------------------------------------------
-// 🔄 FINAL ROLLBACK: deliveryBoyLocationToShow is now a simple variable
-// -------------------------------------------------------------
-const customerAddress = order.deliveryAddress; 
-
-// 🔥 ROLLBACK FIX: useMemo हटा दिया गया, अब यह फिर से अस्थिर हो सकता है, 
-// लेकिन यह कम से कम शुरुआती क्रैश नहीं होने दे रहा था।
-const deliveryBoyLocationToShow = deliveryBoyLocation || order.deliveryLocation || null;
-
-// बाकी वेरिएबल्स को सरल रखा गया है
-const estimatedTime = order.estimatedDeliveryTime
-    ? new Date(order.estimatedDeliveryTime).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })
+  const customerAddress = order.deliveryAddress;
+  const deliveryBoyLocationToShow = deliveryBoyLocation || order.deliveryLocation || null;
+  const estimatedTime = order.estimatedDeliveryTime
+    ? new Date(order.estimatedDeliveryTime).toLocaleTimeString("en-IN", {
+        hour: "2-digit",
+        minute: "2-digit",
+      })
     : "TBD";
-const store = order.items?.[0]?.product?.store; 
-
+  const store = order.items?.[0]?.product?.store;
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-4xl mx-auto px-4">
-        {/* Header */}
         <div className="mb-8 text-center">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Track Your Order</h1>
           <p className="text-lg text-gray-600">Order #{order.orderNumber}</p>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Main Tracking */}
           <div className="lg:col-span-2 space-y-6">
             {(order.status === "picked_up" || order.status === "out_for_delivery") && order.deliveryBoyId && (
               <Card>
@@ -273,30 +243,28 @@ const store = order.items?.[0]?.product?.store;
                     <span>Real-Time Tracking</span>
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="p-0">
-                 <div className="w-full h-full">
-   {customerAddress ? (
-  <div className="relative w-full h-[400px]">
-    <GoogleMapTracker
-      deliveryBoyLocation={deliveryBoyLocationToShow || undefined}
-      customerAddress={customerAddress}
-    />
-    {!deliveryBoyLocationToShow && (
-      <div className="absolute inset-0 flex items-center justify-center bg-gray-100 bg-opacity-60 text-gray-600 text-sm">
-        🚴‍♂️ Waiting for delivery boy location...
-      </div>
-    )}
-  </div>
-) : (
-  <div className="w-full h-[400px] bg-gray-200 flex items-center justify-center text-gray-500">
-    Delivery address not found.
-  </div>
-)}
+                <CardContent className="p-0 relative">
+                  {customerAddress ? (
+                    <div className="relative w-full h-[400px]">
+                      <GoogleMapTracker
+                        deliveryBoyLocation={deliveryBoyLocationToShow || undefined}
+                        customerAddress={customerAddress}
+                      />
+                      {!deliveryBoyLocationToShow && (
+                        <div className="absolute inset-0 flex items-center justify-center bg-gray-100 bg-opacity-60 text-gray-600 text-sm">
+                          🚴‍♂️ Waiting for delivery boy location...
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="w-full h-[400px] bg-gray-200 flex items-center justify-center text-gray-500">
+                      Delivery address not found.
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             )}
 
-            {/* Order Status Timeline */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center space-x-2">
@@ -326,7 +294,6 @@ const store = order.items?.[0]?.product?.store;
             </Card>
           </div>
 
-          {/* Order Details */}
           <div className="space-y-6">
             <Card>
               <CardHeader>
@@ -354,7 +321,6 @@ const store = order.items?.[0]?.product?.store;
               </CardContent>
             </Card>
 
-            {/* Store Info */}
             {store && (
               <Card>
                 <CardHeader>
