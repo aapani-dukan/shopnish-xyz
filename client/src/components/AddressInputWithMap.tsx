@@ -108,8 +108,9 @@ const AddressInputWithMap: React.FC<AddressInputProps> = ({
         const newLocation: LatLngLiteral = { lat: newLat, lng: newLng };
         const geocoder = new (window as any).google.maps.Geocoder();
         geocoder.geocode({ location: newLocation }, (results: any, status: any) => {
-          if (status === "OK" && results[0]) {
-            const { city, pincode } = extractCityAndPincode(results);
+          if (status === "OK" && results && results[0]) {
+   const { city, pincode } = extractCityAndPincode(results);
+   
             const updatedLocation: GeocodedLocation = {
               ...newLocation,
               city,
@@ -134,8 +135,10 @@ const AddressInputWithMap: React.FC<AddressInputProps> = ({
         };
         const geocoder = new (window as any).google.maps.Geocoder();
         geocoder.geocode({ location: newLocation }, (results: any, status: any) => {
-          if (status === "OK" && results[0]) {
-            const { city, pincode } = extractCityAndPincode(results);
+           {
+            if (status === "OK" && results && results[0]) {
+   const { city, pincode } = extractCityAndPincode(results);
+           }
             const updatedLocation: GeocodedLocation = {
               ...newLocation,
               city,
@@ -160,20 +163,19 @@ const AddressInputWithMap: React.FC<AddressInputProps> = ({
         onPlaceChanged={onPlaceChanged}
       >
         <input
-          type="text"
-          placeholder="डिलीवरी एड्रेस खोजें"
-          value={currentAddress}
-          readOnly
-          style={{
-            boxSizing: "border-box",
-            border: "1px solid #ccc",
-            width: "100%",
-            height: "40px",
-            padding: "0 12px",
-            borderRadius: "4px",
-            marginTop: "8px",
-          }}
-        />
+  type="text"
+  placeholder="डिलीवरी एड्रेस खोजें"
+  defaultValue={currentAddress}  // ✅ value की जगह defaultValue
+  style={{
+    boxSizing: "border-box",
+    border: "1px solid #ccc",
+    width: "100%",
+    height: "40px",
+    padding: "0 12px",
+    borderRadius: "4px",
+    marginTop: "8px",
+  }}
+/>
       </Autocomplete>
 
       {/* ✅ Map + Marker */}
