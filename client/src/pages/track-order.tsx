@@ -159,7 +159,7 @@ export default function TrackOrder() {
   // Join specific order room
   socket.emit("join-order-room", { orderId: numericOrderId });
 
-  const handleLocationUpdate = (data: Location & { orderId: number; timestamp?: string }) => {
+  const handleSocketLocationUpdate = (data: Location & { orderId: number; timestamp?: string }) => {
     console.log("📍 Location update received:", data);
     if (data.orderId === numericOrderId) {
       setDeliveryBoyLocation({
@@ -170,20 +170,15 @@ export default function TrackOrder() {
     }
   };
 
-  socket.on("order:delivery_location", handleLocationUpdate);
+  socket.on("order:delivery_location", handleSocketLocationUpdate);
 
   return () => {
-    socket.off("order:delivery_location", handleLocationUpdate);
+    socket.off("order:delivery_location", handleSocketLocationUpdate);
   };
 }, [socket, numericOrderId, isLoading, user]);
 
 
-
-  // ✅ Fallback logic
-  const deliveryBoyLocationToShow = deliveryBoyLocation || order?.deliveryLocation || null;
-  const customerAddress = order?.deliveryAddress;
-
-  // ✅ Status color & text helpers
+  // ✅ Status color & text helpers (इन्हें फ़ंक्शन के रूप में सुरक्षित रूप से कहीं भी इस्तेमाल किया जा सकता है)
   const getStatusColor = (status: string) => {
     switch (status) {
       case "placed":
@@ -227,14 +222,9 @@ export default function TrackOrder() {
     }
   };
 
-  const estimatedTime = order?.estimatedDeliveryTime
-    ? new Date(order.estimatedDeliveryTime).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })
-    : "TBD";
-  const store = order?.items?.[0]?.product?.store;
 
-
-// TrackOrder.tsx (लगभग Line 139)
-
+// 🚀 FINAL FIX 1: Loading और Data Not Found चेक
+// इससे सुनिश्चित होता है कि Socket Update आने पर, यदि order डेटा नहीं आया है तो क्रैश नहीं होगा।
 if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -242,6 +232,8 @@ if (isLoading) {
       </div>
     );
 }
+
+// यदि डेटा फेच हो गया है (isLoading=false) लेकिन order, address, या items मौजूद नहीं हैं, तो क्रैश से बचें।
 if (!order || !order.deliveryAddress || !order.items || order.items.length === 0) { 
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -254,6 +246,17 @@ if (!order || !order.deliveryAddress || !order.items || order.items.length === 0
       </div>
     );
 }
+
+// 🚀 FINAL FIX 2: Variables को IF ब्लॉक के बाद डिफाइन करें
+// order की उपलब्धता सुनिश्चित होने के बाद ही ये वेरिएबल्स डिफाइन होंगे।
+const deliveryBoyLocationToShow = deliveryBoyLocation || order.deliveryLocation || null;
+const customerAddress = order.deliveryAddress; 
+
+const estimatedTime = order.estimatedDeliveryTime
+    ? new Date(order.estimatedDeliveryTime).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })
+    : "TBD";
+const store = order.items?.[0]?.product?.store; // order.items की उपलब्धता की जाँच ऊपर हो चुकी है
+
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
@@ -277,6 +280,7 @@ if (!order || !order.deliveryAddress || !order.items || order.items.length === 0
                 </CardHeader>
                 <CardContent className="p-0">
                   <div className="w-full h-80">
+                    {/* customerAddress और deliveryBoyLocationToShow अब सुरक्षित हैं */}
                     {customerAddress && deliveryBoyLocationToShow ? (
                       <GoogleMapTracker
                         deliveryBoyLocation={deliveryBoyLocationToShow}
@@ -376,6 +380,7 @@ if (!order || !order.deliveryAddress || !order.items || order.items.length === 0
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
+                  {/* 🚀 FINAL FIX 3: store properties पर Optional Chaining (`?.`) लगाकर क्रैश को पूरी तरह से रोकें */}
                   <p>
                     <strong>Name:</strong> {store?.storeName}
                   </p>
