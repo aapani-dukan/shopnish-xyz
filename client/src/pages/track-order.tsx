@@ -274,35 +274,24 @@ const store = order.items?.[0]?.product?.store;
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="p-0">
-                  <div className="w-full h-80">
-                    {/* GoogleMapTracker को अब अस्थिर प्रॉप मिलेगा, लेकिन यह पुरानी स्थिति है */}
-                    {customerAddress && deliveryBoyLocationToShow ? (
-                      <GoogleMapTracker
-                        deliveryBoyLocation={deliveryBoyLocationToShow}
-                        customerAddress={customerAddress}
-                      />
-                    ) : (
-                      <div className="w-full h-full bg-gray-200 flex items-center justify-center text-gray-500">
-                        <p>Delivery address or location information is missing.</p>
-                      </div>
-                    )}
-                  </div>
-                  <div className="p-4 border-t text-center text-gray-500">
-                    {deliveryBoyLocationToShow ? (
-                      <>
-                        <p className="text-sm font-medium">Delivery Partner Location Updated:</p>
-                        <p className="text-xs text-gray-600">
-                          Lat: {deliveryBoyLocationToShow.lat.toFixed(4)}, Lng:{" "}
-                          {deliveryBoyLocationToShow.lng.toFixed(4)}
-                        </p>
-                        <p className="text-xs text-gray-600">
-                          Last Update: {new Date(deliveryBoyLocationToShow.timestamp).toLocaleTimeString()}
-                        </p>
-                      </>
-                    ) : (
-                      <p>Waiting for Delivery Partner's location...</p>
-                    )}
-                  </div>
+                 <div className="w-full h-full">
+  {customerAddress ? (
+    <GoogleMapTracker
+      deliveryBoyLocation={deliveryBoyLocationToShow || null}
+      customerAddress={customerAddress}
+    />
+  ) : (
+    <div className="w-full h-full bg-gray-200 flex items-center justify-center text-gray-500">
+      <p>Customer address is missing.</p>
+    </div>
+  )}
+
+  {!deliveryBoyLocationToShow && customerAddress && (
+    <div className="absolute inset-0 flex items-center justify-center bg-gray-100 bg-opacity-60 text-gray-600">
+      <p>🚴‍♂️ Waiting for delivery boy location...</p>
+    </div>
+  )}
+</div>
                 </CardContent>
               </Card>
             )}
