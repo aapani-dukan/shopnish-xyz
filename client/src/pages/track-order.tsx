@@ -233,6 +233,8 @@ export default function TrackOrder() {
   const store = order?.items?.[0]?.product?.store;
 
 
+// TrackOrder.tsx (लगभग Line 139)
+
 if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -240,13 +242,13 @@ if (isLoading) {
       </div>
     );
 }
-if (!order || !order.deliveryAddress) { 
+if (!order || !order.deliveryAddress || !order.items || order.items.length === 0) { 
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Card className="w-full max-w-md">
           <CardContent className="pt-6 text-center">
-            <h3 className="text-lg font-medium mb-2">Order not found or data missing</h3>
-            <p className="text-gray-600">Unable to track this order or some data is still loading.</p>
+            <h3 className="text-lg font-medium mb-2">Order Not Ready or Data Missing</h3>
+            <p className="text-gray-600">Please wait while we prepare the tracking information, or try refreshing.</p>
           </CardContent>
         </Card>
       </div>
