@@ -275,23 +275,23 @@ const store = order.items?.[0]?.product?.store;
                 </CardHeader>
                 <CardContent className="p-0">
                  <div className="w-full h-full">
-  {customerAddress ? (
+   {customerAddress ? (
+  <div className="relative w-full h-[400px]">
     <GoogleMapTracker
-      deliveryBoyLocation={deliveryBoyLocationToShow || null}
+      deliveryBoyLocation={deliveryBoyLocationToShow || undefined}
       customerAddress={customerAddress}
     />
-  ) : (
-    <div className="w-full h-full bg-gray-200 flex items-center justify-center text-gray-500">
-      <p>Customer address is missing.</p>
-    </div>
-  )}
-
-  {!deliveryBoyLocationToShow && customerAddress && (
-    <div className="absolute inset-0 flex items-center justify-center bg-gray-100 bg-opacity-60 text-gray-600">
-      <p>🚴‍♂️ Waiting for delivery boy location...</p>
-    </div>
-  )}
-</div>
+    {!deliveryBoyLocationToShow && (
+      <div className="absolute inset-0 flex items-center justify-center bg-gray-100 bg-opacity-60 text-gray-600 text-sm">
+        🚴‍♂️ Waiting for delivery boy location...
+      </div>
+    )}
+  </div>
+) : (
+  <div className="w-full h-[400px] bg-gray-200 flex items-center justify-center text-gray-500">
+    Delivery address not found.
+  </div>
+)}
                 </CardContent>
               </Card>
             )}
