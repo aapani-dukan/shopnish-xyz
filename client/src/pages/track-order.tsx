@@ -137,37 +137,38 @@ export default function TrackOrder() {
   const tracking: OrderTracking[] = Array.isArray(trackingData) ? trackingData : [];
 
 // 🚀 Socket Logic (isFetching guard के साथ)
+// 🚀 TrackOrder.tsx - Stable Socket Effect
 useEffect(() => {
   if (!socket || !numericOrderId || !user) return;
 
   const userIdToUse = (user as any).id || (user as any).uid;
   if (!userIdToUse) return;
 
-  console.log("📡 Registering customer socket...");
+  console.log("📡 Registering customer socket for order:", numericOrderId);
 
-  // ✅ Register only once per order
+  // ✅ Register client & join order room once
   socket.emit("register-client", { role: "customer", userId: userIdToUse });
   socket.emit("join-order-room", { orderId: numericOrderId });
 
-  const handleSocketLocationUpdate = (data: Location & { orderId: number; timestamp?: string }) => {
-    if (data.orderId === numericOrderId) {
-      console.log("📍 Location update received:", data);
-      setDeliveryBoyLocation({
-        lat: data.lat,
-        lng: data.lng,
-        timestamp: data.timestamp || new Date().toISOString(),
-      });
-    }
+  const handleSocketLocationUpdate = (data: { orderId: number; lat: number; lng: number; timestamp?: string }) => {
+    if (data.orderId !== numericOrderId) return;
+    console.log("📍 Location update received:", data);
+    setDeliveryBoyLocation({
+      lat: data.lat,
+      lng: data.lng,
+      timestamp: data.timestamp || new Date().toISOString(),
+    });
   };
 
   socket.on("order:delivery_location", handleSocketLocationUpdate);
 
   return () => {
+    console.log("❌ Cleaning up socket listener for order:", numericOrderId);
     socket.off("order:delivery_location", handleSocketLocationUpdate);
   };
 
-  // ⚡ Effect को केवल तब चलाओ जब socket और orderId सेट हों।
-}, [socket, numericOrderId, user]); 
+  // ⚡ केवल socket और orderId पर effect depend करे
+}, [socket, numericOrderId]);
   
   // ✅ Status color & text helpers (Unchanged)
   const getStatusColor = (status: string) => {
