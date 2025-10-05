@@ -19,6 +19,9 @@ import {
 import { useAuth } from "@/hooks/useAuth";
 import { useSocket } from "@/hooks/useSocket";
 
+// ----------------------------
+// ✅ Interfaces (Unchanged)
+// ----------------------------
 interface Location {
   lat: number;
   lng: number;
@@ -82,8 +85,9 @@ export default function TrackOrder() {
   // ✅ Track current live delivery boy location (from GPS)
   const [deliveryBoyLocation, setDeliveryBoyLocation] = useState<Location | null>(null);
 
-  // ✅ Fetch order details
-  const { data: order, isLoading } = useQuery<Order | null>({
+  // 🚀 FIX 1: useQuery से 'isFetching' को प्राप्त करें।
+  // isFetching = true होता है जब useQuery पृष्ठभूमि में डेटा अपडेट कर रहा होता है (जैसे Delivery Boy असाइन होने के बाद)।
+  const { data: order, isLoading, isFetching } = useQuery<Order | null>({
     queryKey: ["/api/orders", numericOrderId],
     queryFn: async () => {
       if (!numericOrderId) return null;
@@ -106,7 +110,7 @@ export default function TrackOrder() {
     enabled: !!numericOrderId,
   });
 
-  // ✅ Fetch order tracking status
+  // ✅ Fetch order tracking status (Unchanged)
   const { data: trackingData } = useQuery<OrderTracking[]>({
     queryKey: ["/api/orders/tracking", numericOrderId],
     queryFn: async () => {
@@ -133,12 +137,9 @@ export default function TrackOrder() {
 
   const tracking: OrderTracking[] = Array.isArray(trackingData) ? trackingData : [];
 
-
-
-    // TrackOrder.tsx (लगभग Line 139 के आसपास, पुराने useEffect को पूरी तरह बदलें)
-
+// 🚀 FIX 2: useEffect Logic (isFetching के दौरान Socket Update को ब्लॉक करें)
 useEffect(() => {
-  // हम अब isLoading का उपयोग नहीं कर रहे हैं। हम सीधे 'order' डेटा की जाँच करेंगे।
+  // यदि order, user, socket नहीं है, या Delivery Boy असाइन नहीं है, तो शुरू न करें।
   if (!socket || !numericOrderId || !user || !order || !order.deliveryBoyId) return; 
   
   // 💡 Note: यह useEffect केवल तभी चलेगा जब 'order' डेटा लोड हो चुका हो
@@ -155,7 +156,10 @@ useEffect(() => {
 
   const handleSocketLocationUpdate = (data: Location & { orderId: number; timestamp?: string }) => {
     console.log("📍 Location update received:", data);
-    if (data.orderId === numericOrderId) {
+    
+    // 🚀 FINAL FIX 3: setDeliveryBoyLocation को ब्लॉक करें जब order रिफ़ेच हो रहा हो।
+    // इससे Socket Update और useQuery के बीच की Race Condition समाप्त हो जाएगी।
+    if (data.orderId === numericOrderId && !isFetching) {
       setDeliveryBoyLocation({
         lat: data.lat,
         lng: data.lng,
@@ -169,12 +173,10 @@ useEffect(() => {
   return () => {
     socket.off("order:delivery_location", handleSocketLocationUpdate);
   };
-// 🚀 FIX: isLoading को हटाएँ, और order को dependency में जोड़ें।
-}, [socket, numericOrderId, user, order]); 
+// 🚀 FIX 4: dependencies में order और isFetching को जोड़ें।
+}, [socket, numericOrderId, user, order, isFetching]); 
   
-
-
-  // ✅ Status color & text helpers (इन्हें फ़ंक्शन के रूप में सुरक्षित रूप से कहीं भी इस्तेमाल किया जा सकता है)
+  // ✅ Status color & text helpers (Unchanged)
   const getStatusColor = (status: string) => {
     switch (status) {
       case "placed":
@@ -219,8 +221,7 @@ useEffect(() => {
   };
 
 
-// 🚀 FINAL FIX 1: Loading और Data Not Found चेक
-// इससे सुनिश्चित होता है कि Socket Update आने पर, यदि order डेटा नहीं आया है तो क्रैश नहीं होगा।
+// 🚀 FINAL FIX 5: Loading और Data Not Found चेक (Unchanged - ये आवश्यक हैं)
 if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -243,15 +244,14 @@ if (!order || !order.deliveryAddress || !order.items || order.items.length === 0
     );
 }
 
-// 🚀 FINAL FIX 2: Variables को IF ब्लॉक के बाद डिफाइन करें
-// order की उपलब्धता सुनिश्चित होने के बाद ही ये वेरिएबल्स डिफाइन होंगे।
+// 🚀 FINAL FIX 6: Variables को IF ब्लॉक के बाद डिफाइन करें (Unchanged - ये आवश्यक हैं)
 const deliveryBoyLocationToShow = deliveryBoyLocation || order.deliveryLocation || null;
 const customerAddress = order.deliveryAddress; 
 
 const estimatedTime = order.estimatedDeliveryTime
     ? new Date(order.estimatedDeliveryTime).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })
     : "TBD";
-const store = order.items?.[0]?.product?.store; // order.items की उपलब्धता की जाँच ऊपर हो चुकी है
+const store = order.items?.[0]?.product?.store; 
 
 
   return (
@@ -376,7 +376,6 @@ const store = order.items?.[0]?.product?.store; // order.items की उपल�
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  {/* 🚀 FINAL FIX 3: store properties पर Optional Chaining (`?.`) लगाकर क्रैश को पूरी तरह से रोकें */}
                   <p>
                     <strong>Name:</strong> {store?.storeName}
                   </p>
