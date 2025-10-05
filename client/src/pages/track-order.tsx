@@ -85,7 +85,7 @@ export default function TrackOrder() {
   // ✅ Track current live delivery boy location (from GPS)
   const [deliveryBoyLocation, setDeliveryBoyLocation] = useState<Location | null>(null);
 
-  // 🚀 useQuery से 'isFetching' को प्राप्त करें।
+  // useQuery से 'isFetching' को प्राप्त करें।
   const { data: order, isLoading, isFetching } = useQuery<Order | null>({
     queryKey: ["/api/orders", numericOrderId],
     queryFn: async () => {
@@ -151,7 +151,6 @@ useEffect(() => {
     
     // setDeliveryBoyLocation को ब्लॉक करें जब order रिफ़ेच हो रहा हो।
     if (data.orderId === numericOrderId && !isFetching) {
-      // 💡 यहाँ एक नया ऑब्जेक्ट बनाया जाता है, जिससे re-render होता है।
       setDeliveryBoyLocation({
         lat: data.lat,
         lng: data.lng,
@@ -168,8 +167,48 @@ useEffect(() => {
 }, [socket, numericOrderId, user, order, isFetching]); 
   
   // ✅ Status color & text helpers (Unchanged)
-  const getStatusColor = (status: string) => { /* ... logic ... */ return "bg-gray-500"; };
-  const getStatusText = (status: string) => { /* ... logic ... */ return status; };
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "placed":
+      case "confirmed":
+        return "bg-blue-500";
+      case "preparing":
+        return "bg-yellow-500";
+      case "ready":
+      case "picked_up":
+        return "bg-orange-500";
+      case "out_for_delivery":
+        return "bg-purple-500";
+      case "delivered":
+        return "bg-green-500";
+      case "cancelled":
+        return "bg-red-500";
+      default:
+        return "bg-gray-500";
+    }
+  };
+  const getStatusText = (status: string) => {
+    switch (status) {
+      case "placed":
+        return "Order Placed";
+      case "confirmed":
+        return "Order Confirmed";
+      case "preparing":
+        return "Preparing Order";
+      case "ready":
+        return "Ready for Pickup";
+      case "picked_up":
+        return "Picked Up";
+      case "out_for_delivery":
+        return "Out for Delivery";
+      case "delivered":
+        return "Delivered";
+      case "cancelled":
+        return "Cancelled";
+      default:
+        return status;
+    }
+  };
 
 
 // 🚀 Loading और Data Not Found चेक (Unchanged)
@@ -195,27 +234,15 @@ if (!order || !order.deliveryAddress || !order.items || order.items.length === 0
 }
 
 // -------------------------------------------------------------
-// 🚀 FINAL FIX 7: deliveryBoyLocationToShow को useMemo से स्थिर करें
+// 🔄 FINAL ROLLBACK: deliveryBoyLocationToShow is now a simple variable
 // -------------------------------------------------------------
 const customerAddress = order.deliveryAddress; 
 
-// 🔥 FIX: अब यह केवल तभी एक नया ऑब्जेक्ट बनाएगा जब lat/lng/timestamp वास्तव में बदल जाए।
-const deliveryBoyLocationToShow = useMemo(() => {
-    return deliveryBoyLocation || order.deliveryLocation || null;
-}, [
-    // dependencies में केवल primitive values का उपयोग करें
-    deliveryBoyLocation?.lat,
-    deliveryBoyLocation?.lng,
-    deliveryBoyLocation?.timestamp,
-    order.deliveryLocation?.lat, 
-    order.deliveryLocation?.lng,
-    order.deliveryLocation?.timestamp 
-]); 
+// 🔥 ROLLBACK FIX: useMemo हटा दिया गया, अब यह फिर से अस्थिर हो सकता है, 
+// लेकिन यह कम से कम शुरुआती क्रैश नहीं होने दे रहा था।
+const deliveryBoyLocationToShow = deliveryBoyLocation || order.deliveryLocation || null;
 
-
-// 💡 Note: estimatedTime और store को simple variables के रूप में ही रखा गया है,
-// क्योंकि वे शुरुआती रेंडरिंग को क्रैश नहीं कर रहे थे।
-
+// बाकी वेरिएबल्स को सरल रखा गया है
 const estimatedTime = order.estimatedDeliveryTime
     ? new Date(order.estimatedDeliveryTime).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })
     : "TBD";
@@ -244,7 +271,7 @@ const store = order.items?.[0]?.product?.store;
                 </CardHeader>
                 <CardContent className="p-0">
                   <div className="w-full h-80">
-                    {/* GoogleMapTracker को अब एक स्थिर प्रॉप मिलेगा */}
+                    {/* GoogleMapTracker को अब अस्थिर प्रॉप मिलेगा, लेकिन यह पुरानी स्थिति है */}
                     {customerAddress && deliveryBoyLocationToShow ? (
                       <GoogleMapTracker
                         deliveryBoyLocation={deliveryBoyLocationToShow}
