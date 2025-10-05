@@ -86,7 +86,6 @@ export default function TrackOrder() {
   const [deliveryBoyLocation, setDeliveryBoyLocation] = useState<Location | null>(null);
 
   // 🚀 FIX 1: useQuery से 'isFetching' को प्राप्त करें।
-  // isFetching = true होता है जब useQuery पृष्ठभूमि में डेटा अपडेट कर रहा होता है (जैसे Delivery Boy असाइन होने के बाद)।
   const { data: order, isLoading, isFetching } = useQuery<Order | null>({
     queryKey: ["/api/orders", numericOrderId],
     queryFn: async () => {
@@ -139,26 +138,20 @@ export default function TrackOrder() {
 
 // 🚀 FIX 2: useEffect Logic (isFetching के दौरान Socket Update को ब्लॉक करें)
 useEffect(() => {
-  // यदि order, user, socket नहीं है, या Delivery Boy असाइन नहीं है, तो शुरू न करें।
   if (!socket || !numericOrderId || !user || !order || !order.deliveryBoyId) return; 
   
-  // 💡 Note: यह useEffect केवल तभी चलेगा जब 'order' डेटा लोड हो चुका हो
-  // और order में एक deliveryBoy असाइन किया गया हो।
-
   const userIdToUse = (user as any).id || (user as any).uid;
   if (!userIdToUse) return;
 
-  // Register customer client
+  // Register client and join room
   socket.emit("register-client", { role: "customer", userId: userIdToUse });
-
-  // Join specific order room
   socket.emit("join-order-room", { orderId: numericOrderId });
 
   const handleSocketLocationUpdate = (data: Location & { orderId: number; timestamp?: string }) => {
     console.log("📍 Location update received:", data);
     
     // 🚀 FINAL FIX 3: setDeliveryBoyLocation को ब्लॉक करें जब order रिफ़ेच हो रहा हो।
-    // इससे Socket Update और useQuery के बीच की Race Condition समाप्त हो जाएगी।
+    // यह Socket Update और useQuery के बीच की Race Condition को समाप्त कर देगा।
     if (data.orderId === numericOrderId && !isFetching) {
       setDeliveryBoyLocation({
         lat: data.lat,
@@ -214,14 +207,13 @@ useEffect(() => {
       case "delivered":
         return "Delivered";
       case "cancelled":
-        return "Cancelled";
       default:
         return status;
     }
   };
 
 
-// 🚀 FINAL FIX 5: Loading और Data Not Found चेक (Unchanged - ये आवश्यक हैं)
+// ✅ Loading/Guard Checks (Unchanged)
 if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -230,7 +222,6 @@ if (isLoading) {
     );
 }
 
-// यदि डेटा फेच हो गया है (isLoading=false) लेकिन order, address, या items मौजूद नहीं हैं, तो क्रैश से बचें।
 if (!order || !order.deliveryAddress || !order.items || order.items.length === 0) { 
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -244,8 +235,12 @@ if (!order || !order.deliveryAddress || !order.items || order.items.length === 0
     );
 }
 
-// 🚀 FINAL FIX 6: Variables को IF ब्लॉक के बाद डिफाइन करें (Unchanged - ये आवश्यक हैं)
-const deliveryBoyLocationToShow = deliveryBoyLocation || order.deliveryLocation || null;
+// 🚀 FINAL FIX 7: deliveryBoyLocationToShow को useMemo में रैप करें
+// यह सुनिश्चित करता है कि जब तक prop का मान न बदले, GoogleMapTracker को एक स्थिर रेफरेंस मिले।
+const deliveryBoyLocationToShow = useMemo(() => {
+    return deliveryBoyLocation || order.deliveryLocation || null;
+}, [deliveryBoyLocation, order.deliveryLocation]); // order.deliveryLocation हमेशा उपलब्ध नहीं हो सकता, लेकिन order उपलब्ध है
+
 const customerAddress = order.deliveryAddress; 
 
 const estimatedTime = order.estimatedDeliveryTime
@@ -276,7 +271,7 @@ const store = order.items?.[0]?.product?.store;
                 </CardHeader>
                 <CardContent className="p-0">
                   <div className="w-full h-80">
-                    {/* customerAddress और deliveryBoyLocationToShow अब सुरक्षित हैं */}
+                    {/* GoogleMapTracker को अब एक स्थिर 'deliveryBoyLocationToShow' प्रॉप मिल रहा है */}
                     {customerAddress && deliveryBoyLocationToShow ? (
                       <GoogleMapTracker
                         deliveryBoyLocation={deliveryBoyLocationToShow}
@@ -284,7 +279,7 @@ const store = order.items?.[0]?.product?.store;
                       />
                     ) : (
                       <div className="w-full h-full bg-gray-200 flex items-center justify-center text-gray-500">
-                        <p>Delivery address or location information is missing.</p>
+                        <p>Waiting for Delivery Partner's location...</p>
                       </div>
                     )}
                   </div>
@@ -308,7 +303,7 @@ const store = order.items?.[0]?.product?.store;
               </Card>
             )}
 
-            {/* Order Status Timeline */}
+            {/* Order Status Timeline (Unchanged) */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center space-x-2">
@@ -338,7 +333,7 @@ const store = order.items?.[0]?.product?.store;
             </Card>
           </div>
 
-          {/* Order Details */}
+          {/* Order Details (Unchanged) */}
           <div className="space-y-6">
             <Card>
               <CardHeader>
@@ -366,7 +361,7 @@ const store = order.items?.[0]?.product?.store;
               </CardContent>
             </Card>
 
-            {/* Store Info */}
+            {/* Store Info (Unchanged) */}
             {store && (
               <Card>
                 <CardHeader>
@@ -393,4 +388,5 @@ const store = order.items?.[0]?.product?.store;
       </div>
     </div>
   );
-}
+ }
+              
