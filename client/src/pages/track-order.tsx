@@ -82,10 +82,9 @@ export default function TrackOrder() {
   const { socket } = useSocket();
   const { user } = useAuth();
 
-  // ✅ Track current live delivery boy location (from GPS)
   const [deliveryBoyLocation, setDeliveryBoyLocation] = useState<Location | null>(null);
 
-  // useQuery for order and tracking data
+  // 🚀 FIX 1: useQuery में isFetching को प्राप्त करें।
   const { data: order, isLoading, isFetching } = useQuery<Order | null>({
     queryKey: ["/api/orders", numericOrderId],
     queryFn: async () => {
@@ -103,7 +102,8 @@ export default function TrackOrder() {
         return await res.json();
       } catch (error) {
         console.error("Order fetch error:", error);
-        return null;
+        // 💡 Note: useQuery में null रिटर्न करना आमतौर पर सुरक्षित होता है।
+        return null; 
       }
     },
     enabled: !!numericOrderId,
@@ -135,20 +135,18 @@ export default function TrackOrder() {
 
   const tracking: OrderTracking[] = Array.isArray(trackingData) ? trackingData : [];
 
-// useEffect for Socket connection (Race condition guard सहित)
+// useEffect for Socket connection
 useEffect(() => {
-  // यदि order, user, socket नहीं है, या Delivery Boy असाइन नहीं है, तो शुरू न करें।
   if (!socket || !numericOrderId || !user || !order || !order.deliveryBoyId) return; 
   
   const userIdToUse = (user as any).id || (user as any).uid;
   if (!userIdToUse) return;
 
-  // Register client and join room
   socket.emit("register-client", { role: "customer", userId: userIdToUse });
   socket.emit("join-order-room", { orderId: numericOrderId });
 
   const handleSocketLocationUpdate = (data: Location & { orderId: number; timestamp?: string }) => {
-    // Race condition guard बनाए रखें: setDeliveryBoyLocation को ब्लॉक करें जब order रिफ़ेच हो रहा हो।
+    // Race condition guard बनाए रखें
     if (data.orderId === numericOrderId && !isFetching) {
       setDeliveryBoyLocation({
         lat: data.lat,
@@ -209,7 +207,7 @@ useEffect(() => {
   };
 
 
-// ✅ Loading/Guard Checks (unchanged)
+// ✅ Guard Checks (unchanged)
 if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -232,22 +230,30 @@ if (!order || !order.deliveryAddress || !order.items || order.items.length === 0
 }
 
 // -------------------------------------------------------------
-// 🔄 Rollback: Location Tracking Logic
+// 🚀 FINAL DECISIVE FIX: All Props Stabilized with useMemo
 // -------------------------------------------------------------
 
-// 🔄 Rollback: इसे वापस सरल असाइनमेंट पर ले जाएं ताकि यह पुराना व्यवहार करे।
-const deliveryBoyLocationToShow = deliveryBoyLocation || order.deliveryLocation || null;
+// FIX 2: deliveryBoyLocationToShow को useMemo में वापस लाएं और Dependencies को सुरक्षित करें।
+const deliveryBoyLocationToShow = useMemo(() => {
+    return deliveryBoyLocation || order.deliveryLocation || null;
+}, [
+    // केवल deliveryBoyLocation Object Reference को ट्रैक करें
+    deliveryBoyLocation,
+    // order.deliveryLocation की उपस्थिति को ट्रैक करें
+    order.deliveryLocation?.lat, 
+    order.deliveryLocation?.lng 
+]); 
 
 const customerAddress = order.deliveryAddress; 
 
-// ✅ FIX: estimatedTime को useMemo में बनाए रखें (स्थिरता के लिए)
+// FIX 3: estimatedTime को useMemo में बनाए रखें (स्थिरता के लिए)
 const estimatedTime = useMemo(() => {
     return order.estimatedDeliveryTime
         ? new Date(order.estimatedDeliveryTime).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })
         : "TBD";
 }, [order.estimatedDeliveryTime]);
 
-// ✅ FIX: store को useMemo में बनाए रखें (स्थिरता के लिए)
+// FIX 4: store को useMemo में बनाए रखें (स्थिरता के लिए)
 const store = useMemo(() => {
     return order.items?.[0]?.product?.store; 
 }, [order.items?.[0]?.product?.store?.id]); 
@@ -257,7 +263,7 @@ const store = useMemo(() => {
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-4xl mx-auto px-4">
-        {/* Header */}
+        {/* Header (unchanged) */}
         <div className="mb-8 text-center">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Track Your Order</h1>
           <p className="text-lg text-gray-600">Order #{order.orderNumber}</p>
@@ -278,7 +284,7 @@ const store = useMemo(() => {
                 </CardHeader>
                 <CardContent className="p-0">
                   <div className="w-full h-80">
-                    {/* Map RENDER CONDITION */}
+                    {/* Map RENDER CONDITION: दोनों ऑब्जेक्ट्स पूरी तरह से उपलब्ध होने चाहिए */}
                     {customerAddress && deliveryBoyLocationToShow ? (
                       <GoogleMapTracker
                         deliveryBoyLocation={deliveryBoyLocationToShow}
@@ -395,5 +401,5 @@ const store = useMemo(() => {
       </div>
     </div>
   );
-        }
-                    
+  }
+                      
