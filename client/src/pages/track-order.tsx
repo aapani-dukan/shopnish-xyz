@@ -20,7 +20,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useSocket } from "@/hooks/useSocket";
 
 // ----------------------------
-// ✅ Interfaces (Unchanged)
+// ✅ Interfaces 
 // ----------------------------
 interface Location {
   lat: number;
@@ -75,7 +75,6 @@ interface Order {
   }>;
 }
 
-
 export default function TrackOrder() {
   const { orderId } = useParams<{ orderId: string }>();
   const numericOrderId = orderId ? Number(orderId) : null;
@@ -83,23 +82,61 @@ export default function TrackOrder() {
   const { socket } = useSocket();
   const { user } = useAuth();
 
+  // ✅ Track current live delivery boy location (from GPS)
   const [deliveryBoyLocation, setDeliveryBoyLocation] = useState<Location | null>(null);
 
+  // 🚀 FIX 1: useQuery से 'isFetching' को प्राप्त करें।
   const { data: order, isLoading, isFetching } = useQuery<Order | null>({
     queryKey: ["/api/orders", numericOrderId],
-    queryFn: async () => { /* ... fetch logic ... */ },
+    queryFn: async () => {
+      if (!numericOrderId) return null;
+      try {
+        const auth = getAuth();
+        const token = await auth.currentUser?.getIdToken();
+        if (!token) throw new Error("User not authenticated");
+
+        const res = await fetch(`/api/orders/${numericOrderId}`, {
+          headers: { Authorization: `Bearer ${token}` },
+          credentials: "include",
+        });
+        if (!res.ok) throw new Error(await res.text());
+        return await res.json();
+      } catch (error) {
+        console.error("Order fetch error:", error);
+        return null;
+      }
+    },
     enabled: !!numericOrderId,
   });
 
+  // ✅ Fetch order tracking status 
   const { data: trackingData } = useQuery<OrderTracking[]>({
     queryKey: ["/api/orders/tracking", numericOrderId],
-    queryFn: async () => { /* ... fetch logic ... */ },
+    queryFn: async () => {
+      if (!numericOrderId) return [];
+      try {
+        const auth = getAuth();
+        const token = await auth.currentUser?.getIdToken();
+        if (!token) throw new Error("User not authenticated");
+
+        const res = await fetch(`/api/orders/${numericOrderId}/tracking`, {
+          headers: { Authorization: `Bearer ${token}` },
+          credentials: "include",
+        });
+        if (!res.ok) throw new Error(await res.text());
+        const data = await res.json();
+        return Array.isArray(data) ? data : [];
+      } catch (error) {
+        console.error("Tracking fetch error:", error);
+        return [];
+      }
+    },
     enabled: !!numericOrderId,
   });
 
   const tracking: OrderTracking[] = Array.isArray(trackingData) ? trackingData : [];
 
-// 🚀 FIX 2: useEffect Logic (isFetching के दौरान Socket Update को ब्लॉक करें)
+// 🚀 FIX 2: useEffect Logic (Race condition guard)
 useEffect(() => {
   if (!socket || !numericOrderId || !user || !order || !order.deliveryBoyId) return; 
   
@@ -132,7 +169,6 @@ useEffect(() => {
   
   // ✅ Status color & text helpers (Unchanged)
   const getStatusColor = (status: string) => {
-    // ... logic unchanged
     switch (status) {
         case "placed":
         case "confirmed":
@@ -153,7 +189,6 @@ useEffect(() => {
     }
   };
   const getStatusText = (status: string) => {
-    // ... logic unchanged
     switch (status) {
         case "placed":
             return "Order Placed";
@@ -176,7 +211,7 @@ useEffect(() => {
   };
 
 
-// ✅ Loading/Guard Checks (Unchanged)
+// ✅ Loading/Guard Checks 
 if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -185,6 +220,7 @@ if (isLoading) {
     );
 }
 
+// यह गार्ड `order` डेटा की न्यूनतम आवश्यकता सुनिश्चित करता है।
 if (!order || !order.deliveryAddress || !order.items || order.items.length === 0) { 
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -198,7 +234,11 @@ if (!order || !order.deliveryAddress || !order.items || order.items.length === 0
     );
 }
 
-// 🚀 FINAL DECISIVE FIX: deliveryBoyLocationToShow को useMemo में रैप करें, और Dependencies को सुरक्षित करें।
+// -------------------------------------------------------------
+// 🚀 FINAL DECISIVE FIXES: All Computed Variables Stabilized with useMemo
+// -------------------------------------------------------------
+
+// FIX 3: deliveryBoyLocationToShow को useMemo में रैप करें, Dependencies को Primitive Values तक सीमित करें।
 const deliveryBoyLocationToShow = useMemo(() => {
     return deliveryBoyLocation || order.deliveryLocation || null;
 }, [
@@ -210,10 +250,18 @@ const deliveryBoyLocationToShow = useMemo(() => {
 
 const customerAddress = order.deliveryAddress; 
 
-const estimatedTime = order.estimatedDeliveryTime
-    ? new Date(order.estimatedDeliveryTime).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })
-    : "TBD";
-const store = order.items?.[0]?.product?.store; 
+// FIX 4: estimatedTime को useMemo में रैप करें।
+const estimatedTime = useMemo(() => {
+    return order.estimatedDeliveryTime
+        ? new Date(order.estimatedDeliveryTime).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })
+        : "TBD";
+}, [order.estimatedDeliveryTime]); // केवल तभी बदलें जब time string बदले।
+
+// FIX 5: store को useMemo में रैप करें।
+const store = useMemo(() => {
+    // order.items की उपलब्धता की जाँच ऊपर हो चुकी है
+    return order.items?.[0]?.product?.store; 
+}, [order.items?.[0]?.product?.store?.id]); // केवल Store ID बदलने पर re-calculate करें।
 
 
   return (
@@ -355,4 +403,4 @@ const store = order.items?.[0]?.product?.store;
       </div>
     </div>
   );
-        }
+}
