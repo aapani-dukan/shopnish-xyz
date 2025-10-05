@@ -108,6 +108,8 @@ export default function TrackOrder() {
 
   socket.emit("register-client", { role: "user", userId: userIdToUse });
 
+    socket.emit("join-order-room", { orderId: numericOrderId });
+    
   const handleLocationUpdate = (data: Location & { orderId: number }) => {
     if (data.orderId === numericOrderId) {
       setDeliveryBoyLocation({ lat: data.lat, lng: data.lng, timestamp: data.timestamp });
