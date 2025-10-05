@@ -107,9 +107,7 @@ export default function TrackOrder() {
   if (!userIdToUse) return;
 
   socket.emit("register-client", { role: "user", userId: userIdToUse });
-
-    socket.emit("join-order-room", { orderId: numericOrderId });
-    
+socket.emit("join-order-room", { orderId: numericOrderId });
   const handleLocationUpdate = (data: Location & { orderId: number }) => {
     if (data.orderId === numericOrderId) {
       setDeliveryBoyLocation({ lat: data.lat, lng: data.lng, timestamp: data.timestamp });
@@ -180,10 +178,12 @@ export default function TrackOrder() {
     }
   };
 
-  const estimatedTime = new Date(order.estimatedDeliveryTime).toLocaleTimeString('en-IN', {
-    hour: '2-digit',
-    minute: '2-digit'
-  });
+  const estimatedTime = order.estimatedDeliveryTime 
+  ? new Date(order.estimatedDeliveryTime).toLocaleTimeString('en-IN', {
+      hour: '2-digit',
+      minute: '2-digit'
+    })
+  : 'TBD'; // TBD = To Be Determined 
 
   const orderTime = new Date(order.createdAt).toLocaleString('en-IN');
   const store = order.items?.[0]?.product?.store;
@@ -211,32 +211,44 @@ export default function TrackOrder() {
                     <span>Real-Time Tracking</span>
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="p-0">
-                  <div className="w-full h-80">
-                    {deliveryBoyLocation && order.deliveryAddress ? (
-                      <GoogleMapTracker
-                        deliveryBoyLocation={deliveryBoyLocation}
-                        customerAddress={order.deliveryAddress}
-                      />
-                    ) : (
-                      <div className="w-full h-full bg-gray-200 flex items-center justify-center text-gray-500">
-                        <p>Waiting for Delivery Partner's location...</p>
-                      </div>
-                    )}
-                  </div>
+                // TrackOrder.tsx (Line 158 के आसपास, Real-Time Tracking Card के अंदर)
 
-                  {deliveryBoyLocation && (
-                    <div className="p-4 border-t">
-                      <p className="text-sm font-medium">Delivery Partner Location Updated:</p>
-                      <p className="text-xs text-gray-600">
-                        Lat: {deliveryBoyLocation.lat.toFixed(4)}, Lng: {deliveryBoyLocation.lng.toFixed(4)}
-                      </p>
-                      <p className="text-xs text-gray-600">
-                        Last Update: {new Date(deliveryBoyLocation.timestamp).toLocaleTimeString()}
-                      </p>
-                    </div>
-                  )}
-                </CardContent>
+<CardContent className="p-0">
+  <div className="w-full h-80">
+    
+    {/* ✅ UPDATED LOGIC: Map को हमेशा लोड करें यदि Delivery Address है */}
+    {order.deliveryAddress ? (
+      <GoogleMapTracker
+        // 💡 यदि deliveryBoyLocation null है, तो GoogleMapTracker को इसे handle करना होगा (जैसे: केवल ग्राहक का पता दिखाना)
+        deliveryBoyLocation={deliveryBoyLocation} // यह null हो सकता है
+        customerAddress={order.deliveryAddress}
+      />
+    ) : (
+      <div className="w-full h-full bg-gray-200 flex items-center justify-center text-gray-500">
+        <p>Delivery address information is missing.</p>
+      </div>
+    )}
+  </div>
+
+  {/* यह Real-Time Location Update मैसेज दिखाने के लिए है (यह ठीक है) */}
+  {deliveryBoyLocation ? (
+    <div className="p-4 border-t">
+      <p className="text-sm font-medium">Delivery Partner Location Updated:</p>
+      <p className="text-xs text-gray-600">
+        Lat: {deliveryBoyLocation.lat.toFixed(4)}, Lng: {deliveryBoyLocation.lng.toFixed(4)}
+      </p>
+      <p className="text-xs text-gray-600">
+        Last Update: {new Date(deliveryBoyLocation.timestamp).toLocaleTimeString()}
+      </p>
+    </div>
+  ) : (
+     // जब तक लोकेशन नहीं आती, 'Waiting' मैसेज दिखाएँ (अब मैप के नीचे)
+     <div className="p-4 border-t text-center text-gray-500">
+        <p>Waiting for Delivery Partner's location...</p>
+     </div>
+  )}
+</CardContent>
+
               </Card>
             )}
 
@@ -323,18 +335,20 @@ export default function TrackOrder() {
                     <span>Delivery Partner</span>
                   </CardTitle>
                 </CardHeader>
-                <CardContent>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="font-medium">{order.deliveryBoy.firstName} {order.deliveryBoy.lastName}</p>
-                      <p className="text-sm text-gray-600">Delivery Partner</p>
-                    </div>
-                    <Button variant="outline" size="sm">
-                      <Phone className="w-4 h-4 mr-2" />
-                      Call
-                    </Button>
-                  </div>
-                </CardContent>
+                
+<CardContent>
+  <div className="flex items-center justify-between">
+    <div>
+      <p className="font-medium">{order.deliveryBoy?.firstName} {order.deliveryBoy?.lastName}</p> {/* ✅ फ़िक्स */}
+      <p className="text-sm text-gray-600">Delivery Partner</p>
+    </div>
+    <Button variant="outline" size="sm">
+      <Phone className="w-4 h-4 mr-2" />
+      Call
+    </Button>
+  </div>
+</CardContent>
+                  
               </Card>
             )}
           </div>
@@ -379,20 +393,20 @@ export default function TrackOrder() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-2">
-                    <p className="font-medium">{store.storeName}</p>
-                    <p className="text-sm text-gray-600">{store.address}</p>
-                    <div className="flex items-center justify-between pt-2">
-                      <span className="text-sm text-gray-600">Contact Store</span>
-                      <Button variant="outline" size="sm">
-                        <Phone className="w-4 h-4 mr-2" />
-                        Call
-                      </Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
+                     <div className="space-y-2">
+        <p className="font-medium">{store?.storeName}</p> {/* ✅ फ़िक्स */}
+        <p className="text-sm text-gray-600">{store?.address}</p> {/* ✅ फ़िक्स */}
+        <div className="flex items-center justify-between pt-2">
+          <span className="text-sm text-gray-600">Contact Store</span>
+          <Button variant="outline" size="sm">
+            <Phone className="w-4 h-4 mr-2" />
+            Call
+          </Button>
+        </div>
+      </div>
+    </CardContent>
+  </Card>
+)}
 
             {/* Delivery Address */}
             <Card>
@@ -440,9 +454,9 @@ export default function TrackOrder() {
       </div>
     </div>
   );
-}
+  }
 
-
+            
 {/*$$$$$
 import React, { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
