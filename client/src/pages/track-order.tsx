@@ -133,22 +133,16 @@ export default function TrackOrder() {
 
   const tracking: OrderTracking[] = Array.isArray(trackingData) ? trackingData : [];
 
-  // ✅ Listen for live location updates from delivery partner via socket
-  const handleLocationUpdate = useCallback(
-    (data: Location & { orderId: number; timestamp?: string }) => {
-      if (data.orderId === numericOrderId) {
-        setDeliveryBoyLocation({
-          lat: data.lat,
-          lng: data.lng,
-          timestamp: data.timestamp || new Date().toISOString(),
-        });
-      }
-    },
-    [numericOrderId]
-  );
 
-    useEffect(() => {
-  if (!socket || !numericOrderId || isLoading || !user) return;
+
+    // TrackOrder.tsx (लगभग Line 139 के आसपास, पुराने useEffect को पूरी तरह बदलें)
+
+useEffect(() => {
+  // हम अब isLoading का उपयोग नहीं कर रहे हैं। हम सीधे 'order' डेटा की जाँच करेंगे।
+  if (!socket || !numericOrderId || !user || !order || !order.deliveryBoyId) return; 
+  
+  // 💡 Note: यह useEffect केवल तभी चलेगा जब 'order' डेटा लोड हो चुका हो
+  // और order में एक deliveryBoy असाइन किया गया हो।
 
   const userIdToUse = (user as any).id || (user as any).uid;
   if (!userIdToUse) return;
@@ -175,7 +169,9 @@ export default function TrackOrder() {
   return () => {
     socket.off("order:delivery_location", handleSocketLocationUpdate);
   };
-}, [socket, numericOrderId, isLoading, user]);
+// 🚀 FIX: isLoading को हटाएँ, और order को dependency में जोड़ें।
+}, [socket, numericOrderId, user, order]); 
+  
 
 
   // ✅ Status color & text helpers (इन्हें फ़ंक्शन के रूप में सुरक्षित रूप से कहीं भी इस्तेमाल किया जा सकता है)
