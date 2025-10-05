@@ -63,6 +63,7 @@ const GoogleMapTracker: React.FC<GoogleMapTrackerProps> = ({
   // ----------------------------
   // ✅ Safe Fallback Logic
   // ----------------------------
+  // यदि customerAddress में lat/lng है, तो उसका उपयोग करें, अन्यथा deliveryBoyLocation का उपयोग करें।
   const lat =
     customerAddress?.lat ??
     (deliveryBoyLocation ? deliveryBoyLocation.lat : 0);
@@ -90,8 +91,11 @@ const GoogleMapTracker: React.FC<GoogleMapTrackerProps> = ({
   // ----------------------------
   const destination = useMemo(() => {
     if (!customerAddress) return "";
+    
+    // Note: यहाँ google.maps.LatLng का उपयोग तब सुरक्षित है जब कंपोनेंट रेंडर हो रहा हो,
+    // क्योंकि यह useMemo के बाहर है।
     return customerAddress.lat && customerAddress.lng
-      ? new google.maps.LatLng(customerAddress.lat, customerAddress.lng)
+      ? { lat: customerAddress.lat, lng: customerAddress.lng } // Simple LatLng object
       : `${customerAddress.address}, ${customerAddress.city}, ${customerAddress.pincode}`;
   }, [customerAddress]);
 
@@ -110,7 +114,32 @@ const GoogleMapTracker: React.FC<GoogleMapTrackerProps> = ({
   );
 
   // ----------------------------
-  // ✅ Load & Error Guards
+  // 🚀 FIX: Marker Icons (Simple Objects to avoid React Error #310)
+  // ----------------------------
+  const { bikeIcon, homeIcon } = useMemo(() => {
+    // हम सीधे Google Maps कंस्ट्रक्टर (जैसे new maps.Size()) का उपयोग करने से बचते हैं
+    // क्योंकि ये जटिल ऑब्जेक्ट्स React के इंटरनल स्टेट ट्रैकिंग को क्रैश करते हैं (Error #310).
+    
+    // Delivery Partner Icon (bike/motorcycle)
+    const bikeIcon = {
+      url: "https://maps.google.com/mapfiles/kml/pal2/icon2.png", // एक साधारण URL
+      scaledSize: { width: 32, height: 32 }, // Simple object for size
+      anchor: { x: 16, y: 16 }, // Simple object for anchor point
+    };
+
+    // Customer Location Icon (home)
+    const homeIcon = {
+      url: "https://maps.google.com/mapfiles/kml/pal4/icon54.png", // एक साधारण URL
+      scaledSize: { width: 32, height: 32 },
+      anchor: { x: 16, y: 32 },
+    };
+
+    return { bikeIcon, homeIcon };
+  }, []); // isLoaded को dependency से हटा दिया क्योंकि ये केवल साधारण JS ऑब्जेक्ट हैं
+
+
+  // ----------------------------
+  // ✅ Map Load & Data Guards
   // ----------------------------
   if (loadError) {
     return <div>Google Maps failed to load: {String(loadError)}</div>;
@@ -119,7 +148,8 @@ const GoogleMapTracker: React.FC<GoogleMapTrackerProps> = ({
   if (!isLoaded) {
     return <div>Loading Google Maps…</div>;
   }
-
+  
+  // Note: TrackOrder.tsx में पहले ही जाँच हो चुकी है, लेकिन यहाँ डबल-चेक ठीक है।
   if (!deliveryBoyLocation || !customerAddress) {
     return (
       <div className="w-full h-80 flex items-center justify-center text-gray-500 bg-gray-100">
@@ -129,37 +159,13 @@ const GoogleMapTracker: React.FC<GoogleMapTrackerProps> = ({
   }
 
   // ----------------------------
-  // ✅ Icons (safe inside useMemo)
-  // ----------------------------
-  const { bikeIcon, homeIcon } = useMemo(() => {
-    if (!(window as any).google?.maps)
-      return { bikeIcon: undefined, homeIcon: undefined };
-
-    const maps = (window as any).google.maps;
-
-    const bikeIcon: google.maps.Icon = {
-      url: "http://maps.google.com/mapfiles/ms/icons/cycling.png",
-      scaledSize: new maps.Size(32, 32),
-      anchor: new maps.Point(16, 16),
-    };
-
-    const homeIcon: google.maps.Icon = {
-      url: "http://maps.google.com/mapfiles/ms/icons/home.png",
-      scaledSize: new maps.Size(32, 32),
-      anchor: new maps.Point(16, 32),
-    };
-
-    return { bikeIcon, homeIcon };
-  }, [isLoaded]);
-
-  // ----------------------------
   // ✅ Map Options
   // ----------------------------
   const mapOptions = useMemo(
     () => ({
       zoom: 15,
       center: mapCenter,
-      mapId: "SHOPNISH_TRACK_MAP", // custom map style के लिए optional
+      mapId: "SHOPNISH_TRACK_MAP",
       disableDefaultUI: false,
     }),
     [mapCenter]
@@ -171,11 +177,13 @@ const GoogleMapTracker: React.FC<GoogleMapTrackerProps> = ({
   return (
     <GoogleMap mapContainerStyle={containerStyle} options={mapOptions}>
       {/* Directions Service */}
-      {mapCenter && destination && (
+      {/* 🚀 FIX: Direction Service केवल तभी चलाएं जब mapCenter और deliveryBoyLocation दोनों मौजूद हों */}
+      {deliveryBoyLocation && destination && (
         <DirectionsService
           options={{
             origin: deliveryBoyLocation,
-            destination,
+            // सुनिश्चित करें कि डेस्टिनेशन केवल LatLng ऑब्जेक्ट या स्ट्रिंग है
+            destination: destination as string | google.maps.LatLng, 
             travelMode: google.maps.TravelMode.DRIVING,
           }}
           callback={directionsCallback}
@@ -190,22 +198,20 @@ const GoogleMapTracker: React.FC<GoogleMapTrackerProps> = ({
       )}
 
       {/* Delivery Boy Marker */}
-      {bikeIcon && (
-        <MarkerF
-          position={deliveryBoyLocation}
-          icon={bikeIcon}
-          title="Delivery Partner"
-        />
-      )}
+      {/* bikeIcon अब एक सुरक्षित सादा JS ऑब्जेक्ट है */}
+      <MarkerF
+        position={deliveryBoyLocation}
+        icon={bikeIcon}
+        title="Delivery Partner"
+      />
 
       {/* Customer Marker */}
-      {homeIcon && customerLatLng && (
-        <MarkerF
-          position={customerLatLng}
-          icon={homeIcon}
-          title="Customer Location"
-        />
-      )}
+      {/* homeIcon अब एक सुरक्षित सादा JS ऑब्जेक्ट है */}
+      <MarkerF
+        position={customerLatLng}
+        icon={homeIcon}
+        title="Customer Location"
+      />
     </GoogleMap>
   );
 };
