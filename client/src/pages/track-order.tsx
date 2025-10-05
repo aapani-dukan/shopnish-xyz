@@ -234,12 +234,14 @@ if (!order || !order.deliveryAddress || !order.items || order.items.length === 0
       </div>
     );
 }
-
-// 🚀 FINAL FIX 7: deliveryBoyLocationToShow को useMemo में रैप करें
-// यह सुनिश्चित करता है कि जब तक prop का मान न बदले, GoogleMapTracker को एक स्थिर रेफरेंस मिले।
 const deliveryBoyLocationToShow = useMemo(() => {
     return deliveryBoyLocation || order.deliveryLocation || null;
-}, [deliveryBoyLocation, order.deliveryLocation]); // order.deliveryLocation हमेशा उपलब्ध नहीं हो सकता, लेकिन order उपलब्ध है
+}, [
+    deliveryBoyLocation, 
+    order.deliveryLocation?.lat, 
+    order.deliveryLocation?.lng  
+]); 
+  
 
 const customerAddress = order.deliveryAddress; 
 
