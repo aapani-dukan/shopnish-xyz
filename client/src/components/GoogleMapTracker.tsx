@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
+  useLoadScript,
   GoogleMap,
   MarkerF,
   DirectionsService,
@@ -8,6 +9,25 @@ import {
   useJsApiLoader,
 } from '@react-google-maps/api';
 
+
+export default function MyMap() {
+  const { isLoaded, loadError } = useLoadScript({
+    googleMapsApiKey:=import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+  });
+
+  if (loadError) return <div>Error loading maps</div>;
+  if (!isLoaded) return <div>Loading Maps...</div>;
+
+  return (
+    <GoogleMap
+      mapContainerStyle={{ width: "100%", height: "400px" }}
+      center={{ lat: 25.445656, lng: 75.6657727 }}
+      zoom={15}
+    >
+      <Marker position={{ lat: 25.445656, lng: 75.6657727 }} />
+    </GoogleMap>
+  );
+}
 interface CustomerAddress {
   address: string;
   city: string;
