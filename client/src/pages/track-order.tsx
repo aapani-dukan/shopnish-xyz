@@ -120,7 +120,7 @@ const userIdToUse = user.id || user.uid; // सबसे सुरक्षि�
 if (!socket || !numericOrderId || isLoading || !userIdToUse) return;
 
 socket.emit("register-client", { role: "user", userId: userIdToUse }); 
-    
+    socket.emit("join-order-room", { orderId: numericOrderId });
     socket.on("order:delivery_location", handleLocationUpdate);
 
     return () => {
