@@ -12,6 +12,7 @@ const containerStyle = {
   width: '100%',
   height: '300px',
 };
+  interface Location {
   lat: number;
   lng: number;
   timestamp: string;
@@ -29,6 +30,7 @@ interface GoogleMapTrackerProps {
   deliveryBoyLocation: Location | null;
   customerAddress: DeliveryAddress | null;
 }
+
 // ✅ 'marker' लाइब्रेरी को रखें
 const libraries: (
   | 'places'
