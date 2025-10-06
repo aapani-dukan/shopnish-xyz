@@ -1,7 +1,6 @@
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
-  useLoadScript,
   GoogleMap,
   MarkerF,
   DirectionsService,
@@ -9,90 +8,81 @@ import {
   useJsApiLoader,
 } from '@react-google-maps/api';
 
-
-
+// ----------------------------
+// ✅ Interfaces (CustomerAddress में lat/lng जोड़ा गया, जैसा कि आपके destination लॉजिक में निहित है)
+// ----------------------------
 interface CustomerAddress {
   address: string;
   city: string;
   pincode: string;
+  lat?: number; // Added for robustness
+  lng?: number; // Added for robustness
 }
 
 interface GoogleMapTrackerProps {
-  deliveryBoyLocation?: { lat: number; lng: number };
+  deliveryBoyLocation?: { lat: number; lng: number }; // अब यह unused है अगर आप GPS का उपयोग कर रहे हैं
   customerAddress: CustomerAddress;
 }
 
+// ----------------------------
+// ✅ Constants (Safe)
+// ----------------------------
 const containerStyle = { width: '100%', height: '300px' };
-const { isLoaded, loadError } = useJsApiLoader({
-    googleMapsApiKey: GOOGLE_MAPS_API_KEY || "",
-    libraries,
-  });
-const libraries: (
-  | 'places'
-  | 'geometry'
-  | 'drawing'
-  | 'localContext'
-  | 'visualization'
-  | 'marker'
-)[] = ['places', 'geometry', 'marker'];
-
+const libraries: ('places' | 'geometry' | 'drawing' | 'localContext' | 'visualization' | 'marker')[] = ['places', 'geometry', 'marker'];
 const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
 
-// 🏍️ Bike Icon
-const BIKE_ICON: google.maps.Icon = {
-  url: 'https://maps.google.com/mapfiles/kml/shapes/motorcycling.png',
-  scaledSize: new google.maps.Size(40, 40),
-};
 
-// 🏠 Home Icon
-const HOME_ICON: google.maps.Icon = {
-  url: 'https://maps.google.com/mapfiles/kml/shapes/homegardenbusiness.png',
-  scaledSize: new google.maps.Size(40, 40),
-};
-
+// ----------------------------
+// ✅ Component
+// ----------------------------
 const GoogleMapTracker: React.FC<GoogleMapTrackerProps> = ({
-  deliveryBoyLocation,
   customerAddress,
 }) => {
-  const [currentLocation, setCurrentLocation] = useState(deliveryBoyLocation);
+  // 💡 Note: यदि आप डिलीवरी बॉय हैं, तो आप अपना GPS (currentLocation) उपयोग कर रहे हैं। 
+  // यदि आप ग्राहक हैं, तो आपको prop (deliveryBoyLocation) का उपयोग करना चाहिए।
+  // यहाँ हम GPS (currentLocation) पर फोकस कर रहे हैं।
+  const [currentLocation, setCurrentLocation] = useState<{ lat: number; lng: number } | undefined>(undefined);
   const [directionsResponse, setDirectionsResponse] =
     useState<google.maps.DirectionsResult | null>(null);
   const [distance, setDistance] = useState<string | null>(null);
 
+  // 1. Google Maps Loader
   const { isLoaded, loadError } = useJsApiLoader({
     googleMapsApiKey: GOOGLE_MAPS_API_KEY || '',
     libraries,
   });
 
-  // 🛰️ Step 1: Real-time GPS Tracking
+  // 2. Real-time GPS Tracking (Only for the user who is running this component)
   useEffect(() => {
     if (!navigator.geolocation) return;
+    
+    // Initial location set (optional, but good for faster load)
+    navigator.geolocation.getCurrentPosition((pos) => {
+        setCurrentLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+    }, (err) => console.error('Initial Geolocation error:', err), { enableHighAccuracy: true });
+
+    // Watch position for continuous updates
     const watcher = navigator.geolocation.watchPosition(
       (pos) => {
-        const coords = {
-          lat: pos.coords.latitude,
-          lng: pos.coords.longitude,
-        };
-        setCurrentLocation(coords);
+        setCurrentLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
       },
       (err) => console.error('Geolocation error:', err),
-      { enableHighAccuracy: true }
+      { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
     );
 
     return () => navigator.geolocation.clearWatch(watcher);
   }, []);
 
-  
-const destination = useMemo(() => {
-    if (!customerAddress) return "";
-    
+  // 3. Destination (Customer Address)
+  const destination = useMemo(() => {
+    // अगर lat/lng उपलब्ध है, तो ऑब्जेक्ट लौटाएं, अन्यथा एड्रेस स्ट्रिंग
     if (customerAddress.lat && customerAddress.lng) {
         return { lat: customerAddress.lat, lng: customerAddress.lng }; 
     }
-    
     return `${customerAddress.address}, ${customerAddress.city}, ${customerAddress.pincode}`;
-  }, [customerAddress?.address, customerAddress?.city, customerAddress?.pincode, customerAddress?.lat, customerAddress?.lng]);
+  }, [customerAddress]);
   
+  // 4. Directions Callback
   const directionsCallback = useCallback(
     (response: google.maps.DirectionsResult | null) => {
       if (response && response.status === 'OK') {
@@ -103,20 +93,44 @@ const destination = useMemo(() => {
         }
       } else if (response) {
         console.error('Directions failed:', response.status);
+        setDirectionsResponse(null); // Clear previous directions on failure
       }
     },
     []
   );
+
+  // 5. 🔥 FIX: Marker Icons को isLoaded के बाद परिभाषित करें
+  const { bikeIcon, homeIcon } = useMemo(() => {
+    if (!isLoaded || !window.google?.maps) {
+        // Fallback or wait
+        return { bikeIcon: undefined, homeIcon: undefined }; 
+    }
+    
+    // अब window.google.maps सुरक्षित रूप से एक्सेस किया जा सकता है
+    const BIKE_ICON: google.maps.Icon = {
+      url: 'https://maps.gstatic.com/mapfiles/ms/micons/red-dot.png', // Reliable URL
+      scaledSize: new window.google.maps.Size(32, 32),
+    };
+    
+    const HOME_ICON: google.maps.Icon = {
+      url: 'https://maps.gstatic.com/mapfiles/ms/micons/blue-dot.png', // Reliable URL
+      scaledSize: new window.google.maps.Size(32, 32),
+    };
+    
+    return { bikeIcon: BIKE_ICON, homeIcon: HOME_ICON };
+  }, [isLoaded]);
+
+  // 6. Guards
+  if (loadError) return <div>Error loading map: {String(loadError)}</div>;
+  if (!isLoaded) return <div>Loading map...</div>;
+  if (!currentLocation) return <div>Getting your location...</div>;
 
   const mapOptions = {
     mapId: 'SHOPNISH_TRACKER_MAP',
     disableDefaultUI: false,
   };
 
-  if (loadError) return <div>Error loading map</div>;
-  if (!isLoaded) return <div>Loading map...</div>;
-  if (!currentLocation) return <div>Getting your location...</div>;
-
+  // 7. Render
   return (
     <div className="relative w-full h-[300px]">
       <GoogleMap
@@ -125,17 +139,19 @@ const destination = useMemo(() => {
         zoom={14}
         options={mapOptions}
       >
-        {currentLocation && destination && (
+        {/* Directions Service */}
+        {currentLocation && destination && (bikeIcon && homeIcon) && (
           <DirectionsService
             options={{
               origin: currentLocation,
-              destination,
-              travelMode: google.maps.TravelMode.DRIVING,
+              destination: destination,
+              travelMode: window.google.maps.TravelMode.DRIVING, // Ensure window.google.maps usage
             }}
             callback={directionsCallback}
           />
         )}
 
+        {/* Directions Renderer */}
         {directionsResponse && (
           <DirectionsRenderer
             options={{
@@ -149,11 +165,16 @@ const destination = useMemo(() => {
           />
         )}
 
-        <MarkerF position={currentLocation} icon={BIKE_ICON} title="Delivery Partner" />
-        {directionsResponse?.routes[0]?.legs[0]?.end_location && (
+        {/* Delivery Partner Marker (currentLocation is the GPS) */}
+        {bikeIcon && (
+          <MarkerF position={currentLocation} icon={bikeIcon} title="Delivery Partner" />
+        )}
+        
+        {/* Customer Marker (End location from Directions) */}
+        {homeIcon && directionsResponse?.routes[0]?.legs[0]?.end_location && (
           <MarkerF
             position={directionsResponse.routes[0].legs[0].end_location}
-            icon={HOME_ICON}
+            icon={homeIcon}
             title="Customer Location"
           />
         )}
