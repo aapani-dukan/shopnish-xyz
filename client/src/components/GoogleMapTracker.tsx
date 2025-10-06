@@ -8,8 +8,27 @@ import {
   useJsApiLoader,
 } from '@react-google-maps/api';
 
-// ... (Interfaces, containerStyle) ...
+const containerStyle = {
+  width: '100%',
+  height: '300px',
+};
+  lat: number;
+  lng: number;
+  timestamp: string;
+}
 
+interface DeliveryAddress {
+  address: string;
+  city: string;
+  pincode: string;
+  lat?: number;
+  lng?: number;
+}
+
+interface GoogleMapTrackerProps {
+  deliveryBoyLocation: Location | null;
+  customerAddress: DeliveryAddress | null;
+}
 // ✅ 'marker' लाइब्रेरी को रखें
 const libraries: (
   | 'places'
