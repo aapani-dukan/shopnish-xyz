@@ -76,10 +76,7 @@ interface Order {
     };
   }>;
 }
-const containerStyle = {
-  width: '100%',
-  height: '300px', 
-};
+
 // -------------------- Component --------------------
 
 export default function TrackOrder() {
