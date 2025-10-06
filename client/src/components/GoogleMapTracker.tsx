@@ -76,12 +76,17 @@ const GoogleMapTracker: React.FC<GoogleMapTrackerProps> = ({
     return () => navigator.geolocation.clearWatch(watcher);
   }, []);
 
-  const destination = useMemo(
-    () =>
-      `${customerAddress.address}, ${customerAddress.city}, ${customerAddress.pincode}`,
-    [customerAddress]
-  );
-
+  
+const destination = useMemo(() => {
+    if (!customerAddress) return "";
+    
+    if (customerAddress.lat && customerAddress.lng) {
+        return { lat: customerAddress.lat, lng: customerAddress.lng }; 
+    }
+    
+    return `${customerAddress.address}, ${customerAddress.city}, ${customerAddress.pincode}`;
+  }, [customerAddress?.address, customerAddress?.city, customerAddress?.pincode, customerAddress?.lat, customerAddress?.lng]);
+  
   const directionsCallback = useCallback(
     (response: google.maps.DirectionsResult | null) => {
       if (response && response.status === 'OK') {
