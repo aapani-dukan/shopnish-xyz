@@ -1,75 +1,80 @@
-import React, { useState, useMemo, useCallback } from 'react';
+
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   GoogleMap,
-  // ✅ इसे वापस MarkerF में बदलें
-  MarkerF, 
+  MarkerF,
   DirectionsService,
   DirectionsRenderer,
   useJsApiLoader,
 } from '@react-google-maps/api';
 
-const containerStyle = {
-  width: '100%',
-  height: '300px',
-};
-  interface Location {
-  lat: number;
-  lng: number;
-  timestamp: string;
-}
-
-interface DeliveryAddress {
+interface CustomerAddress {
   address: string;
   city: string;
   pincode: string;
-  lat?: number;
-  lng?: number;
 }
 
 interface GoogleMapTrackerProps {
-  deliveryBoyLocation: Location | null;
-  customerAddress: DeliveryAddress | null;
+  deliveryBoyLocation?: { lat: number; lng: number };
+  customerAddress: CustomerAddress;
 }
 
-// ✅ 'marker' लाइब्रेरी को रखें
+const containerStyle = { width: '100%', height: '300px' };
+
 const libraries: (
   | 'places'
   | 'geometry'
   | 'drawing'
   | 'localContext'
   | 'visualization'
-  | 'marker' 
-)[] = ['places', 'geometry', 'marker']; 
+  | 'marker'
+)[] = ['places', 'geometry', 'marker'];
 
 const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
 
-// 🛑 Icons को कंपोनेंट के बाहर सरल objects के रूप में परिभाषित करें (ReferenceError से बचने के लिए)
-const BIKE_ICON = {
-    url: 'http://maps.google.com/mapfiles/ms/icons/cycling.png', 
-    scaledSize: { width: 32, height: 32 } as google.maps.Size, 
-    anchor: { x: 16, y: 16 } as google.maps.Point
-} as google.maps.Icon; 
+// 🏍️ Bike Icon
+const BIKE_ICON: google.maps.Icon = {
+  url: 'https://maps.google.com/mapfiles/kml/shapes/motorcycling.png',
+  scaledSize: new google.maps.Size(40, 40),
+};
 
-const HOME_ICON = {
-    url: 'http://maps.google.com/mapfiles/ms/icons/home.png', 
-    scaledSize: { width: 32, height: 32 } as google.maps.Size,
-    anchor: { x: 16, y: 32 } as google.maps.Point
-} as google.maps.Icon; 
-
+// 🏠 Home Icon
+const HOME_ICON: google.maps.Icon = {
+  url: 'https://maps.google.com/mapfiles/kml/shapes/homegardenbusiness.png',
+  scaledSize: new google.maps.Size(40, 40),
+};
 
 const GoogleMapTracker: React.FC<GoogleMapTrackerProps> = ({
   deliveryBoyLocation,
   customerAddress,
 }) => {
+  const [currentLocation, setCurrentLocation] = useState(deliveryBoyLocation);
   const [directionsResponse, setDirectionsResponse] =
     useState<google.maps.DirectionsResult | null>(null);
+  const [distance, setDistance] = useState<string | null>(null);
 
   const { isLoaded, loadError } = useJsApiLoader({
     googleMapsApiKey: GOOGLE_MAPS_API_KEY || '',
     libraries,
   });
 
-  const mapCenter = useMemo(() => deliveryBoyLocation, [deliveryBoyLocation]);
+  // 🛰️ Step 1: Real-time GPS Tracking
+  useEffect(() => {
+    if (!navigator.geolocation) return;
+    const watcher = navigator.geolocation.watchPosition(
+      (pos) => {
+        const coords = {
+          lat: pos.coords.latitude,
+          lng: pos.coords.longitude,
+        };
+        setCurrentLocation(coords);
+      },
+      (err) => console.error('Geolocation error:', err),
+      { enableHighAccuracy: true }
+    );
+
+    return () => navigator.geolocation.clearWatch(watcher);
+  }, []);
 
   const destination = useMemo(
     () =>
@@ -81,76 +86,79 @@ const GoogleMapTracker: React.FC<GoogleMapTrackerProps> = ({
     (response: google.maps.DirectionsResult | null) => {
       if (response && response.status === 'OK') {
         setDirectionsResponse(response);
+        const leg = response.routes[0].legs[0];
+        if (leg?.distance?.text) {
+          setDistance(leg.distance.text);
+        }
       } else if (response) {
-        console.error('Directions request failed:', response.status);
+        console.error('Directions failed:', response.status);
       }
     },
     []
   );
-  
-  // ✅ mapOptions में Map ID रखें
-  const mapOptions = useMemo(
-    () => ({
-      zoom: 15,
-      center: mapCenter,
-      mapId: 'DEMO_MAP_ID', // Map ID को Advanced/Legacy Markers दोनों के लिए रखें
-    }),
-    [mapCenter]
-  );
-  
-  if (loadError) {
-    return <div>Google Maps failed to load: {String(loadError)}</div>;
-  }
 
-  if (!isLoaded) {
-    return <div>Loading Google Maps…</div>;
-  }
-  
-  // 🛑 यहाँ से पुरानी icon परिभाषाएं हटा दी गईं थी।
+  const mapOptions = {
+    mapId: 'SHOPNISH_TRACKER_MAP',
+    disableDefaultUI: false,
+  };
+
+  if (loadError) return <div>Error loading map</div>;
+  if (!isLoaded) return <div>Loading map...</div>;
+  if (!currentLocation) return <div>Getting your location...</div>;
 
   return (
-    <GoogleMap
-      mapContainerStyle={containerStyle}
-      options={mapOptions} 
-    >
-      {/* Directions Service को सिर्फ तभी चलाएं जब data उपलब्ध हो */}
-      {mapCenter && destination && (
+    <div className="relative w-full h-[300px]">
+      <GoogleMap
+        mapContainerStyle={containerStyle}
+        center={currentLocation}
+        zoom={14}
+        options={mapOptions}
+      >
+        {currentLocation && destination && (
           <DirectionsService
             options={{
-              origin: mapCenter,
+              origin: currentLocation,
               destination,
               travelMode: google.maps.TravelMode.DRIVING,
             }}
             callback={directionsCallback}
           />
+        )}
+
+        {directionsResponse && (
+          <DirectionsRenderer
+            options={{
+              directions: directionsResponse,
+              suppressMarkers: true,
+              polylineOptions: {
+                strokeColor: '#2563eb',
+                strokeWeight: 5,
+              },
+            }}
+          />
+        )}
+
+        <MarkerF position={currentLocation} icon={BIKE_ICON} title="Delivery Partner" />
+        {directionsResponse?.routes[0]?.legs[0]?.end_location && (
+          <MarkerF
+            position={directionsResponse.routes[0].legs[0].end_location}
+            icon={HOME_ICON}
+            title="Customer Location"
+          />
+        )}
+      </GoogleMap>
+
+      {/* 📏 Distance Info */}
+      {distance && (
+        <div className="absolute bottom-2 right-2 bg-white shadow-md rounded-lg px-3 py-1 text-sm font-medium text-gray-700">
+          Distance: {distance}
+        </div>
       )}
-      
-      {directionsResponse && (
-        <DirectionsRenderer
-          options={{ directions: directionsResponse, suppressMarkers: true }}
-        />
-      )}
-      
-      {/* ✅ MarkerF का उपयोग करें और कंपोनेंट के बाहर परिभाषित स्थिर आइकन का उपयोग करें */}
-      <MarkerF
-        position={deliveryBoyLocation}
-        icon={BIKE_ICON} // स्थिर आइकन का उपयोग
-        title="Delivery Partner"
-      />
-      
-      {directionsResponse?.routes?.[0]?.legs?.[0]?.end_location && (
-        <MarkerF
-          position={directionsResponse.routes[0].legs[0].end_location}
-          icon={HOME_ICON} // स्थिर आइकन का उपयोग
-          title="Customer Location"
-        />
-      )}
-    </GoogleMap>
+    </div>
   );
 };
 
 export default React.memo(GoogleMapTracker);
-
 
 
 {/*
