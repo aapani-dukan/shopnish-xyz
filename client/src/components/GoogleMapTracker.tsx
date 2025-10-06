@@ -1,67 +1,52 @@
-
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   GoogleMap,
   MarkerF,
   DirectionsService,
   DirectionsRenderer,
-  useJsApiLoader,
+  useJsApiLoader, // ✅ केवल यहाँ उपयोग होगा
 } from '@react-google-maps/api';
 
 // ----------------------------
-// ✅ Interfaces (CustomerAddress में lat/lng जोड़ा गया, जैसा कि आपके destination लॉजिक में निहित है)
+// ... Interfaces and Constants ...
 // ----------------------------
 interface CustomerAddress {
   address: string;
   city: string;
   pincode: string;
-  lat?: number; // Added for robustness
-  lng?: number; // Added for robustness
+  lat?: number;
+  lng?: number; 
 }
-
 interface GoogleMapTrackerProps {
-  deliveryBoyLocation?: { lat: number; lng: number }; // अब यह unused है अगर आप GPS का उपयोग कर रहे हैं
+  deliveryBoyLocation?: { lat: number; lng: number }; 
   customerAddress: CustomerAddress;
 }
-
-// ----------------------------
-// ✅ Constants (Safe)
-// ----------------------------
 const containerStyle = { width: '100%', height: '300px' };
 const libraries: ('places' | 'geometry' | 'drawing' | 'localContext' | 'visualization' | 'marker')[] = ['places', 'geometry', 'marker'];
 const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
 
+// 🔥 आइकॉन को ग्लोबल स्कोप से हटा दिया गया है।
 
-// ----------------------------
-// ✅ Component
-// ----------------------------
-const GoogleMapTracker: React.FC<GoogleMapTrackerProps> = ({
-  customerAddress,
-}) => {
-  // 💡 Note: यदि आप डिलीवरी बॉय हैं, तो आप अपना GPS (currentLocation) उपयोग कर रहे हैं। 
-  // यदि आप ग्राहक हैं, तो आपको prop (deliveryBoyLocation) का उपयोग करना चाहिए।
-  // यहाँ हम GPS (currentLocation) पर फोकस कर रहे हैं।
+const GoogleMapTracker: React.FC<GoogleMapTrackerProps> = ({ customerAddress }) => {
   const [currentLocation, setCurrentLocation] = useState<{ lat: number; lng: number } | undefined>(undefined);
-  const [directionsResponse, setDirectionsResponse] =
-    useState<google.maps.DirectionsResult | null>(null);
+  const [directionsResponse, setDirectionsResponse] = useState<google.maps.DirectionsResult | null>(null);
   const [distance, setDistance] = useState<string | null>(null);
 
-  // 1. Google Maps Loader
+  // ✅ 1. Google Maps Loader (सिंगल, सही कॉल)
   const { isLoaded, loadError } = useJsApiLoader({
     googleMapsApiKey: GOOGLE_MAPS_API_KEY || '',
     libraries,
   });
 
-  // 2. Real-time GPS Tracking (Only for the user who is running this component)
+  // 2. Real-time GPS Tracking (useEffect)
+  // ... (यह लॉजिक वही रहेगा, जो currentLocation को सेट करता है)
   useEffect(() => {
     if (!navigator.geolocation) return;
     
-    // Initial location set (optional, but good for faster load)
     navigator.geolocation.getCurrentPosition((pos) => {
         setCurrentLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
     }, (err) => console.error('Initial Geolocation error:', err), { enableHighAccuracy: true });
 
-    // Watch position for continuous updates
     const watcher = navigator.geolocation.watchPosition(
       (pos) => {
         setCurrentLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
@@ -73,16 +58,15 @@ const GoogleMapTracker: React.FC<GoogleMapTrackerProps> = ({
     return () => navigator.geolocation.clearWatch(watcher);
   }, []);
 
-  // 3. Destination (Customer Address)
+  // 3. Destination (useMemo)
   const destination = useMemo(() => {
-    // अगर lat/lng उपलब्ध है, तो ऑब्जेक्ट लौटाएं, अन्यथा एड्रेस स्ट्रिंग
     if (customerAddress.lat && customerAddress.lng) {
         return { lat: customerAddress.lat, lng: customerAddress.lng }; 
     }
     return `${customerAddress.address}, ${customerAddress.city}, ${customerAddress.pincode}`;
   }, [customerAddress]);
   
-  // 4. Directions Callback
+  // 4. Directions Callback (useCallback)
   const directionsCallback = useCallback(
     (response: google.maps.DirectionsResult | null) => {
       if (response && response.status === 'OK') {
@@ -93,34 +77,33 @@ const GoogleMapTracker: React.FC<GoogleMapTrackerProps> = ({
         }
       } else if (response) {
         console.error('Directions failed:', response.status);
-        setDirectionsResponse(null); // Clear previous directions on failure
+        setDirectionsResponse(null);
       }
     },
     []
   );
 
-  // 5. 🔥 FIX: Marker Icons को isLoaded के बाद परिभाषित करें
+  // 5. ✅ FIX: Marker Icons (Safe useMemo)
   const { bikeIcon, homeIcon } = useMemo(() => {
     if (!isLoaded || !window.google?.maps) {
-        // Fallback or wait
         return { bikeIcon: undefined, homeIcon: undefined }; 
     }
     
     // अब window.google.maps सुरक्षित रूप से एक्सेस किया जा सकता है
     const BIKE_ICON: google.maps.Icon = {
-      url: 'https://maps.gstatic.com/mapfiles/ms/micons/red-dot.png', // Reliable URL
+      url: 'https://maps.gstatic.com/mapfiles/ms/micons/red-dot.png', 
       scaledSize: new window.google.maps.Size(32, 32),
     };
     
     const HOME_ICON: google.maps.Icon = {
-      url: 'https://maps.gstatic.com/mapfiles/ms/micons/blue-dot.png', // Reliable URL
+      url: 'https://maps.gstatic.com/mapfiles/ms/micons/blue-dot.png',
       scaledSize: new window.google.maps.Size(32, 32),
     };
     
     return { bikeIcon: BIKE_ICON, homeIcon: HOME_ICON };
   }, [isLoaded]);
 
-  // 6. Guards
+  // 6. Guards and Options
   if (loadError) return <div>Error loading map: {String(loadError)}</div>;
   if (!isLoaded) return <div>Loading map...</div>;
   if (!currentLocation) return <div>Getting your location...</div>;
@@ -140,18 +123,18 @@ const GoogleMapTracker: React.FC<GoogleMapTrackerProps> = ({
         options={mapOptions}
       >
         {/* Directions Service */}
-        {currentLocation && destination && (bikeIcon && homeIcon) && (
+        {currentLocation && destination && bikeIcon && homeIcon && (
           <DirectionsService
             options={{
               origin: currentLocation,
               destination: destination,
-              travelMode: window.google.maps.TravelMode.DRIVING, // Ensure window.google.maps usage
+              travelMode: window.google.maps.TravelMode.DRIVING, 
             }}
             callback={directionsCallback}
           />
         )}
 
-        {/* Directions Renderer */}
+        {/* Markers and Renderer (वही लॉजिक) */}
         {directionsResponse && (
           <DirectionsRenderer
             options={{
@@ -164,13 +147,9 @@ const GoogleMapTracker: React.FC<GoogleMapTrackerProps> = ({
             }}
           />
         )}
-
-        {/* Delivery Partner Marker (currentLocation is the GPS) */}
         {bikeIcon && (
           <MarkerF position={currentLocation} icon={bikeIcon} title="Delivery Partner" />
         )}
-        
-        {/* Customer Marker (End location from Directions) */}
         {homeIcon && directionsResponse?.routes[0]?.legs[0]?.end_location && (
           <MarkerF
             position={directionsResponse.routes[0].legs[0].end_location}
@@ -180,7 +159,7 @@ const GoogleMapTracker: React.FC<GoogleMapTrackerProps> = ({
         )}
       </GoogleMap>
 
-      {/* 📏 Distance Info */}
+      {/* Distance Info */}
       {distance && (
         <div className="absolute bottom-2 right-2 bg-white shadow-md rounded-lg px-3 py-1 text-sm font-medium text-gray-700">
           Distance: {distance}
@@ -191,6 +170,7 @@ const GoogleMapTracker: React.FC<GoogleMapTrackerProps> = ({
 };
 
 export default React.memo(GoogleMapTracker);
+
 
 
 {/*
