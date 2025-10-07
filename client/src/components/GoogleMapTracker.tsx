@@ -84,24 +84,34 @@ const GoogleMapTracker: React.FC<GoogleMapTrackerProps> = ({ customerAddress }) 
   );
 
   // 5. ✅ FIX: Marker Icons (Safe useMemo)
-  const { bikeIcon, homeIcon } = useMemo(() => {
+  // GoogleMapTracker.tsx में useMemo ब्लॉक:
+
+const { bikeIcon, homeIcon } = useMemo(() => {
     if (!isLoaded || !window.google?.maps) {
         return { bikeIcon: undefined, homeIcon: undefined }; 
     }
     
-    // अब window.google.maps सुरक्षित रूप से एक्सेस किया जा सकता है
+    // 🏍️ डिलीवरी बॉय आइकॉन: रॉ इमेज URL का उपयोग करें
     const BIKE_ICON: google.maps.Icon = {
-      url: 'https://maps.gstatic.com/mapfiles/ms/micons/red-dot.png', 
-      scaledSize: new window.google.maps.Size(32, 32),
+      // 🔥 FIX: यह सीधे PNG इमेज फ़ाइल का URL है।
+      url: 'https://raw.githubusercontent.com/aapani-dukan/shopnish-xyz/main/dist/public/assets/pngtree-delivery-bike-black-icon-vector-png-image_12551154.png', 
+      
+      // आइकॉन को Map के लिए सही से स्केल करें
+      scaledSize: new window.google.maps.Size(40, 40),
+      
+      // आइकॉन को ठीक से केंद्र में रखने के लिए anchor सेट करें (40x40 के लिए 20x40)
+      anchor: new window.google.maps.Point(20, 40), 
     };
     
+    // 🏠 ग्राहक आइकॉन 
     const HOME_ICON: google.maps.Icon = {
       url: 'https://maps.gstatic.com/mapfiles/ms/micons/blue-dot.png',
       scaledSize: new window.google.maps.Size(32, 32),
     };
     
     return { bikeIcon: BIKE_ICON, homeIcon: HOME_ICON };
-  }, [isLoaded]);
+}, [isLoaded]);
+
 
   // 6. Guards and Options
   if (loadError) return <div>Error loading map: {String(loadError)}</div>;
