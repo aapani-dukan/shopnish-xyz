@@ -1,30 +1,31 @@
-// client/src/pages/auth.tsx
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { useNavigate, useLocation } from "react-router-dom"; // useNavigate और useLocation का उपयोग करें
-import { useAuth } from "@/hooks/useAuth"; // अपना useAuth हुक इम्पोर्ट करें
+import React, { useState, useEffect, useCallback } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
+// Ensure correct paths for imports
+import { useAuth } from "@/hooks/useAuth"; 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
-import { useToast } from "@/hooks/use-toast"; // यदि आपके पास यह टोस्ट हुक है
-import { ShoppingBag, ShieldQuestion, AlertTriangle, RefreshCw, Mail, ExternalLink, CheckCircle, User as UserIcon } from 'lucide-react'; // सभी आवश्यक आइकन्स इम्पोर्ट करें
-import { checkBrowserCompatibility, AuthError, User as FirebaseUserType } from '@/lib/firebase'; // firebase.ts से इम्पोर्ट करें
+import { useToast } from "@/hooks/use-toast"; 
+import { 
+  ShoppingBag, ShieldQuestion, AlertTriangle, RefreshCw, Mail, 
+  ExternalLink, CheckCircle, User as UserIcon, LogIn, UserPlus 
+} from 'lucide-react'; 
+import { 
+  checkBrowserCompatibility, AuthError, User as FirebaseUserType,
+  signInWithEmail, signUpWithEmail // 🚀 New: Email/Password Auth functions
+} from '@/lib/firebase'; 
 
-// यदि आपके पास Loading, Error, Success कंपोनेंट्स अलग से नहीं हैं, तो उन्हें यहीं परिभाषित कर सकते हैं
-// या फिर आप उन्हें Replit के अनुसार अलग फाइलों में बना सकते हैं।
-// सादगी के लिए, मैं इन्हें यहीं इनलाइन उदाहरणों के रूप में प्रदान कर रहा हूं।
-
-// --- LoadingState Component (Replit से पोर्टेड) ---
+// --- LoadingState Component ---
 const LoadingState: React.FC = () => {
   return (
     <div className="w-full max-w-md mx-auto">
       <Card className="bg-white rounded-2xl shadow-xl border border-neutral-200 p-8">
         <CardContent className="text-center p-0">
           <div className="w-16 h-16 bg-primary rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse">
-            {/* यह एक साधारण स्पिनर है, आप अपने Loading कंपोनेंट को यहां इम्पोर्ट कर सकते हैं */}
             <svg className="animate-spin h-8 w-8 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
@@ -35,7 +36,7 @@ const LoadingState: React.FC = () => {
           <div className="w-full bg-neutral-200 rounded-full h-2 mb-4">
             <div 
               className="bg-primary h-2 rounded-full transition-all duration-1000 ease-out animate-pulse" 
-              style={{ width: '60%' }} // यह सिर्फ एक विज़ुअल इफेक्ट है
+              style={{ width: '60%' }} 
             />
           </div>
           <p className="text-sm text-neutral-400">Redirecting to Google or processing...</p>
@@ -45,14 +46,14 @@ const LoadingState: React.FC = () => {
   );
 };
 
-// --- ErrorState Component (Replit से पोर्टेड) ---
+// --- ErrorState Component ---
 interface ErrorStateProps {
   error: AuthError;
   onRetry: () => void;
-  onEmailSignIn: () => void;
+  // onEmailSignIn: () => void; // अब हम सीधे AuthFormPanel में Email/Password फ़ॉर्म दिखाएंगे
 }
 
-const ErrorState: React.FC<ErrorStateProps> = ({ error, onRetry, onEmailSignIn }) => {
+const ErrorState: React.FC<ErrorStateProps> = ({ error, onRetry }) => {
   const isThirdPartyBlocked = error.code === 'auth/web-storage-unsupported' || 
                              (error.message && error.message.includes('third-party storage')) ||
                              (error.details && error.details.includes('Third-party storage'));
@@ -93,27 +94,17 @@ const ErrorState: React.FC<ErrorStateProps> = ({ error, onRetry, onEmailSignIn }
           </Button>
           
           <div className="text-center">
-            <p className="text-sm text-neutral-400 mb-3">Having trouble? Try these alternatives:</p>
-            <div className="space-y-2">
-              {isThirdPartyBlocked && (
-                <Button
-                  variant="outline"
-                  className="w-full bg-neutral-100 text-neutral-600 py-2 px-4 rounded-lg text-sm hover:bg-neutral-200 transition-colors"
-                  onClick={() => window.open('https://support.google.com/chrome/answer/95647', '_blank')} // Chrome help link
-                >
-                  <ExternalLink className="w-4 h-4 mr-2" />
-                  Fix Browser Settings
-                </Button>
-              )}
+            <p className="text-sm text-neutral-400 mb-3">Having trouble? Check browser settings:</p>
+            {isThirdPartyBlocked && (
               <Button
                 variant="outline"
-                onClick={onEmailSignIn}
                 className="w-full bg-neutral-100 text-neutral-600 py-2 px-4 rounded-lg text-sm hover:bg-neutral-200 transition-colors"
+                onClick={() => window.open('https://support.google.com/chrome/answer/95647', '_blank')} 
               >
-                <Mail className="w-4 h-4 mr-2" />
-                Sign in with Email
+                <ExternalLink className="w-4 h-4 mr-2" />
+                Fix Browser Settings
               </Button>
-            </div>
+            )}
           </div>
 
           {isThirdPartyBlocked && (
@@ -134,9 +125,9 @@ const ErrorState: React.FC<ErrorStateProps> = ({ error, onRetry, onEmailSignIn }
   );
 };
 
-// --- SuccessState Component (Replit से पोर्टेड) ---
+// --- SuccessState Component ---
 interface SuccessStateProps {
-  user: FirebaseUserType; // firebase.ts से UserType
+  user: FirebaseUserType; 
   onContinue: () => void;
 }
 
@@ -187,33 +178,51 @@ const SuccessState: React.FC<SuccessStateProps> = ({ user, onContinue }) => {
   );
 };
 
-// --- LoginForm Component (Replit से पोर्टेड) ---
-interface LoginFormProps {
+// --- AuthFormPanel Component (Refactored LoginForm) ---
+interface AuthFormPanelProps {
   handleGoogleSignIn: (usePopup: boolean) => Promise<void>;
-  handleEmailSignIn: (e: React.FormEvent) => void;
+  handleEmailAuth: (e: React.FormEvent) => void;
   isLoading: boolean;
   showCompatibilityWarning: boolean;
   currentDomain: string;
+  isLogin: boolean;
+  setIsLogin: React.Dispatch<React.SetStateAction<boolean>>;
+  email: string;
+  setEmail: React.Dispatch<React.SetStateAction<string>>;
+  password: string;
+  setPassword: React.Dispatch<React.SetStateAction<string>>;
+  confirmPassword: string;
+  setConfirmPassword: React.Dispatch<React.SetStateAction<string>>;
 }
 
-const LoginForm: React.FC<LoginFormProps> = ({ 
+const AuthFormPanel: React.FC<AuthFormPanelProps> = ({ 
   handleGoogleSignIn, 
-  handleEmailSignIn, 
+  handleEmailAuth, 
   isLoading, 
   showCompatibilityWarning, 
-  currentDomain 
+  currentDomain,
+  isLogin,
+  setIsLogin,
+  email,
+  setEmail,
+  password,
+  setPassword,
+  confirmPassword,
+  setConfirmPassword
 }) => {
   return (
     <div className="w-full max-w-md mx-auto">
       <Card className="bg-white rounded-2xl shadow-xl border border-neutral-200 animate-fade-in">
         <CardHeader className="text-center pb-4">
           <div className="w-16 h-16 bg-primary rounded-full flex items-center justify-center mx-auto mb-4">
-            <ShieldQuestion className="w-8 h-8 text-white" />
+            {isLogin ? <LogIn className="w-8 h-8 text-white" /> : <UserPlus className="w-8 h-8 text-white" />}
           </div>
           <CardTitle className="text-2xl font-bold text-neutral-600 mb-2">
-            Welcome Back
+            {isLogin ? 'Welcome Back' : 'Create Your Account'}
           </CardTitle>
-          <p className="text-neutral-400">Sign in to your account to continue</p>
+          <p className="text-neutral-400">
+            {isLogin ? 'Sign in to your account to continue' : 'Join us to start shopping or selling'}
+          </p>
         </CardHeader>
         
         <CardContent className="p-8 pt-0">
@@ -256,8 +265,8 @@ const LoginForm: React.FC<LoginFormProps> = ({
             </div>
           </div>
 
-          {/* Email Login Form */}
-          <form onSubmit={handleEmailSignIn} className="space-y-6">
+          {/* Email Login/Signup Form */}
+          <form onSubmit={handleEmailAuth} className="space-y-4">
             <div>
               <Label className="block text-sm font-medium text-neutral-500 mb-2">
                 Email Address
@@ -265,8 +274,11 @@ const LoginForm: React.FC<LoginFormProps> = ({
               <Input
                 type="email"
                 required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 className="w-full px-4 py-3 border border-neutral-200 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
                 placeholder="Enter your email"
+                disabled={isLoading}
               />
             </div>
             <div>
@@ -276,36 +288,66 @@ const LoginForm: React.FC<LoginFormProps> = ({
               <Input
                 type="password"
                 required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
                 className="w-full px-4 py-3 border border-neutral-200 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
                 placeholder="Enter your password"
+                disabled={isLoading}
               />
             </div>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-2">
-                <Checkbox id="remember" />
-                <Label htmlFor="remember" className="text-sm text-neutral-500">
-                  Remember me
+            {/* Confirm Password (Only for Signup) */}
+            {!isLogin && (
+              <div>
+                <Label className="block text-sm font-medium text-neutral-500 mb-2">
+                  Confirm Password
                 </Label>
+                <Input
+                  type="password"
+                  required
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className="w-full px-4 py-3 border border-neutral-200 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
+                  placeholder="Confirm your password"
+                  disabled={isLoading}
+                />
               </div>
-              <a href="#" className="text-sm text-primary hover:text-secondary transition-colors">
-                Forgot password?
-              </a>
-            </div>
+            )}
+            
+            {/* Checkbox and Forgot Password (Only for Login) */}
+            {isLogin && (
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <Checkbox id="remember" />
+                  <Label htmlFor="remember" className="text-sm text-neutral-500">
+                    Remember me
+                  </Label>
+                </div>
+                <a href="#" className="text-sm text-primary hover:text-secondary transition-colors">
+                  Forgot password?
+                </a>
+              </div>
+            )}
+
             <Button
               type="submit"
+              disabled={isLoading}
               className="w-full bg-primary text-white py-3 px-4 rounded-xl font-medium hover:bg-secondary transition-all duration-200 focus:ring-2 focus:ring-primary focus:ring-offset-2"
             >
-              Sign In
+              {isLoading ? 'Processing...' : isLogin ? 'Sign In' : 'Sign Up'}
             </Button>
           </form>
 
-          {/* Sign Up Link */}
+          {/* Sign Up / Login Link */}
           <div className="text-center mt-6">
             <p className="text-neutral-400 mb-2">
-              Don't have an account?{' '}
-              <a href="#" className="text-primary hover:text-secondary font-medium transition-colors">
-                Sign up
-              </a>
+              {isLogin ? "Don't have an account?" : "Already have an account?"}{' '}
+              <button 
+                onClick={() => setIsLogin(!isLogin)} 
+                disabled={isLoading}
+                className="text-primary hover:text-secondary font-medium transition-colors disabled:opacity-50"
+              >
+                {isLogin ? 'Sign up' : 'Sign in'}
+              </button>
             </p>
             <p className="text-neutral-400">
               Want to sell products?{' '}
@@ -317,7 +359,7 @@ const LoginForm: React.FC<LoginFormProps> = ({
         </CardContent>
       </Card>
 
-      {/* Firebase Setup Information */}
+      {/* Firebase Setup Information and Browser Warning remain here */}
       <Card className="bg-blue-50 border border-blue-200 rounded-xl p-4 mt-6">
         <div className="flex items-start space-x-3">
           <div className="text-blue-500 mt-1">
@@ -342,7 +384,6 @@ const LoginForm: React.FC<LoginFormProps> = ({
         </div>
       </Card>
 
-      {/* Browser Compatibility Warning */}
       {showCompatibilityWarning && (
         <Card className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 mt-4">
           <div className="flex items-start space-x-3">
@@ -370,20 +411,24 @@ const LoginForm: React.FC<LoginFormProps> = ({
 // --- Main AuthPage Component ---
 export default function AuthPage() {
   const { user, isLoadingAuth, isAuthenticated, error, clearError, signIn } = useAuth();
-  const navigate = useNavigate(); // react-router-dom से useNavigate
-  const location = useLocation(); // react-router-dom से useLocation
-  const { toast } = useToast(); // टोस्ट नोटिफिकेशंस के लिए
+  const navigate = useNavigate(); 
+  const { toast } = useToast(); 
   
+  // 🚀 New States for Email/Password Auth
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [isLogin, setIsLogin] = useState(true); // true for Login, false for Signup
+  const [isProcessing, setIsProcessing] = useState(false); // Local processing state for Email/Pass
+
   const [showSuccessState, setShowSuccessState] = useState(false);
   const [showCompatibilityWarning, setShowCompatibilityWarning] = useState(false);
   const [currentDomain, setCurrentDomain] = useState('');
 
-  // Firebase Authorized Domain के लिए वर्तमान डोमेन प्राप्त करें
+  // Domain & Compatibility Check
   useEffect(() => {
     setCurrentDomain(window.location.origin);
-    console.log('Current domain for Firebase auth:', window.location.origin);
     
-    // ब्राउज़र संगतता जांच करें
     const { isCompatible, warnings } = checkBrowserCompatibility();
     if (!isCompatible || warnings.length > 0) {
       setShowCompatibilityWarning(true);
@@ -395,95 +440,129 @@ export default function AuthPage() {
     }
   }, [toast]);
 
-  // प्रमाणीकरण सफल होने पर रीडायरेक्ट करें
+    // Auth Success Redirect
   useEffect(() => {
-    console.log("AuthPage useEffect: Triggered. Auth State:", { isLoadingAuth, isAuthenticated, user });
-
     if (isAuthenticated && !isLoadingAuth && user) {
-      setShowSuccessState(true); // सक्सेस स्टेट दिखाएं
+      setShowSuccessState(true); 
 
       const redirectIntent = localStorage.getItem("redirectIntent");
       const timer = setTimeout(() => {
-        localStorage.removeItem("redirectIntent"); // इंटेंट को हटा दें
+        localStorage.removeItem("redirectIntent"); 
 
         if (redirectIntent === "become-seller") {
           navigate("/seller-apply", { replace: true });
-          console.log("AuthPage useEffect: Authenticated with 'become-seller' intent. Redirecting to /seller-apply.");
         } else {
           navigate("/", { replace: true });
-          console.log("AuthPage useEffect: Authenticated without specific intent. Redirecting to /.");
         }
-      }, 2000); // 2 सेकंड बाद रीडायरेक्ट
+      }, 2000); 
 
-      return () => clearTimeout(timer); // क्लीनअप
+      return () => clearTimeout(timer); 
     }
   }, [isAuthenticated, isLoadingAuth, user, navigate]);
 
-  // Google साइन-इन हैंडलर
+  // Google Sign-in Handler (using redirect or popup, error handled by useAuth/ErrorState)
   const handleGoogleSignIn = async (usePopup: boolean = false) => {
-    clearError(); // कोई भी पुरानी एरर क्लियर करें
+    clearError(); 
     try {
-      console.log(`AuthPage: Attempting Google sign-in with ${usePopup ? 'popup' : 'redirect'}...`);
-      await signIn(usePopup); // useAuth हुक से signIn फ़ंक्शन को कॉल करें
-
-      // यदि पॉपअप सफल होता है, तो `signIn` तुरंत user ऑब्जेक्ट देगा
-      // यदि रीडायरेक्ट होता है, तो यह यहीं null लौटाएगा और `onAuthStateChanged` इसे बाद में संभालेगा
-      // UI State Management useAuth().isLoadingAuth और useAuth().error पर निर्भर करेगा
+      await signIn(usePopup); 
     } catch (err: any) {
+      // The error should be caught by the useAuth hook and set to the error state
       console.error("AuthPage: Google sign-in failed:", err);
-      // एरर useAuth हुक द्वारा सेट की जाएगी और ErrorState कंपोनेंट द्वारा प्रदर्शित की जाएगी
     }
   };
 
-  const handleEmailSignIn = (e: React.FormEvent) => {
+  // 🚀 Email/Password Auth Handler (Completing the cut-off function)
+  const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault();
-    toast({
-      title: "Email Sign-in",
-      description: "Email authentication is not implemented yet. Please use Google sign-in for now.",
-      variant: "default",
-    });
-    // यहां ईमेल/पासवर्ड प्रमाणीकरण लॉजिक जोड़ें
-  };
+    clearError();
+    
+    if (!email || !password || (!isLogin && !confirmPassword)) {
+      toast({ title: "Validation Error", description: "Email, Password, and Confirmation are required.", variant: "destructive" });
+      return;
+    }
+    
+    if (!isLogin && password !== confirmPassword) {
+      toast({ title: "Validation Error", description: "Passwords do not match.", variant: "destructive" });
+      return;
+    }
 
-  const handleRetry = () => {
-    clearError(); // एरर क्लियर करें
-    // यह पृष्ठ को रिलोड करेगा, जिससे useEffect फिर से चलेगा
-    window.location.reload(); 
-  };
-
-  const handleContinue = () => {
-    // यह उपयोगकर्ता को डैशबोर्ड या इच्छित पेज पर रीडायरेक्ट करेगा
-    const redirectIntent = localStorage.getItem("redirectIntent");
-    localStorage.removeItem("redirectIntent");
-    if (redirectIntent === "become-seller") {
-      navigate("/seller-apply", { replace: true });
-    } else {
-      navigate("/", { replace: true });
+    setIsProcessing(true); // Start local processing
+    
+    try {
+      if (isLogin) {
+        // Sign In
+        await signInWithEmail(email, password);
+        // Success will be caught by useEffect(isAuthenticated)
+      } else {
+        // Sign Up
+        await signUpWithEmail(email, password);
+        
+        toast({ title: "Success", description: "Account created successfully! Please sign in now.", variant: "success" });
+        setIsLogin(true); // Switch to login after successful signup
+        setEmail('');
+        setPassword('');
+        setConfirmPassword('');
+      }
+    } catch (err: any) {
+      const authError = err as AuthError;
+      toast({
+        title: "Authentication Error",
+        description: authError.message || "Failed to process request. Check console.",
+        variant: "destructive",
+      });
+      console.error("Email/Password Auth Error:", authError);
+    } finally {
+      setIsProcessing(false);
     }
   };
 
-  // --- UI रेंडरिंग लॉजिक ---
-  if (isLoadingAuth) {
-    return <LoadingState />; // जब प्रमाणीकरण स्थिति लोड हो रही हो तो लोडिंग स्टेट दिखाएं
+
+  // --- Render Logic ---
+  const isLoadingOrProcessing = isLoadingAuth || isProcessing;
+  
+  if (showSuccessState && user) {
+    return <SuccessState user={user} onContinue={() => navigate('/')} />;
   }
 
+  // Google Redirect Flow के दौरान, useAuth hook द्वारा 'loading' स्टेट दिखाया जाता है
+  if (isLoadingAuth && !error) {
+    return <LoadingState />;
+  }
+  
+  // यदि error है, तो ErrorState दिखाएँ
   if (error) {
-    return <ErrorState error={error} onRetry={handleRetry} onEmailSignIn={handleEmailSignIn} />;
+    return (
+      <ErrorState 
+        error={error} 
+        onRetry={() => {
+          clearError(); 
+          // Redirect login only for specific errors, otherwise just clear error
+          if (error.code !== 'auth/web-storage-unsupported') {
+             handleGoogleSignIn(false);
+          }
+        }} 
+      />
+    );
   }
 
-  if (isAuthenticated && user && showSuccessState) {
-    return <SuccessState user={user} onContinue={handleContinue} />;
-  }
-
-  // डिफ़ॉल्ट रूप से लॉगिन फॉर्म दिखाएं
+  // डिफ़ॉल्ट रूप से AuthFormPanel दिखाएँ
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-gray-100 p-4">
-      <LoginForm 
-        handleGoogleSignIn={handleGoogleSignIn} 
-        handleEmailSignIn={handleEmailSignIn} 
-        isLoading={isLoadingAuth} // isLoadingAuth से लोडिंग स्थिति नियंत्रित करें
+    <div className="min-h-screen bg-neutral-50 flex items-center justify-center p-4">
+      <AuthFormPanel 
+        handleGoogleSignIn={handleGoogleSignIn}
+        handleEmailAuth={handleEmailAuth}
+        isLoading={isLoadingOrProcessing}
         showCompatibilityWarning={showCompatibilityWarning}
         currentDomain={currentDomain}
+        // New Props for Email/Password/Toggle
+        isLogin={isLogin}
+        setIsLogin={setIsLogin}
+        email={email}
+        setEmail={setEmail}
+        password={password}
+        setPassword={setPassword}
+        confirmPassword={confirmPassword}
+        setConfirmPassword={setConfirmPassword}
       />
     </div>
   );
