@@ -1,5 +1,3 @@
-// client/src/lib/firebase.ts
-
 import { initializeApp, getApps, getApp } from "firebase/app";
 import {
   getAuth,
@@ -10,9 +8,15 @@ import {
   signOut,
   onAuthStateChanged,
   User,
+  // 🚀 New Imports for Email/Password Auth & Credential
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  // 👇 New Import for Native Login via Token
+  signInWithCredential,
 } from "firebase/auth";
 
-// ✅ Firebase config with auto key selection
+// ... (existing firebaseConfig and setup) ...
+
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
   authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
@@ -26,8 +30,7 @@ const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 const provider = new GoogleAuthProvider();
 
-provider.addScope("profile");
-provider.addScope("email");
+// ... (existing provider scope and interfaces) ...
 
 export interface AuthError {
   code: string;
@@ -40,7 +43,77 @@ export interface AuthResult {
   error: AuthError | null;
 }
 
+// ----------------------------------------------------
+// ✅ New: Sign In with Credential (Native/Token Login)
+// ----------------------------------------------------
+/**
+ * Signs in a user using an ID Token obtained from a native (Android/iOS) SDK.
+ * This is crucial for enabling a native Google Sign-In experience in a hybrid app.
+ */
+export const signInWithNativeCredential = async (idToken: string): Promise<User> => {
+    try {
+        const credential = GoogleAuthProvider.credential(idToken);
+        const userCredential = await signInWithCredential(auth, credential);
+        console.log("Native Credential Sign In successful:", userCredential.user.email);
+        return userCredential.user;
+    } catch (error: any) {
+        console.error("Native Credential Sign In Error:", error);
+        throw {
+            code: error.code || "auth/native-signin-error",
+            message: error.message || "Failed to sign in with native token",
+            details: error.toString(),
+        } as AuthError;
+    }
+};
+// ----------------------------------------------------
+
+// ----------------------------------------------------
+// Existing: Sign Up with Email and Password
+// ----------------------------------------------------
+export const signUpWithEmail = async (
+  email: string,
+  password: string
+): Promise<User> => {
+// ... (implementation remains the same)
+  try {
+    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+    console.log("Email Sign Up successful:", userCredential.user.email);
+    return userCredential.user;
+  } catch (error: any) {
+    console.error("Email Sign Up Error:", error);
+    throw {
+      code: error.code || "auth/signup-error",
+      message: error.message || "Failed to sign up with email and password",
+      details: error.toString(),
+    } as AuthError;
+  }
+};
+
+// ----------------------------------------------------
+// Existing: Sign In with Email and Password
+// ----------------------------------------------------
+export const signInWithEmail = async (
+  email: string,
+  password: string
+): Promise<User> => {
+// ... (implementation remains the same)
+  try {
+    const userCredential = await signInWithEmailAndPassword(auth, email, password);
+    console.log("Email Sign In successful:", userCredential.user.email);
+    return userCredential.user;
+  } catch (error: any) {
+    console.error("Email Sign In Error:", error);
+    throw {
+      code: error.code || "auth/signin-error",
+      message: error.message || "Failed to sign in with email and password",
+      details: error.toString(),
+    } as AuthError;
+  }
+};
+
+
 export const signInWithGoogle = async (
+// ... (existing signInWithGoogle implementation) ...
   usePopup: boolean = false
 ): Promise<User | null> => {
   try {
@@ -85,6 +158,7 @@ export const signInWithGoogle = async (
 };
 
 export const handleRedirectResult = async (): Promise<AuthResult> => {
+// ... (existing handleRedirectResult implementation) ...
   try {
     const result = await getRedirectResult(auth);
 
@@ -151,6 +225,7 @@ export const handleRedirectResult = async (): Promise<AuthResult> => {
 };
 
 export const signOutUser = async (): Promise<void> => {
+// ... (existing signOutUser implementation) ...
   try {
     await signOut(auth);
     sessionStorage.removeItem("google_access_token");
@@ -172,6 +247,7 @@ export const onAuthStateChange = (callback: (user: User | null) => void) => {
 };
 
 export const checkBrowserCompatibility = (): {
+// ... (existing checkBrowserCompatibility implementation) ...
   isCompatible: boolean;
   warnings: string[];
 } => {
