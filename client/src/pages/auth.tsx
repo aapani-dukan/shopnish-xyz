@@ -226,7 +226,7 @@ const AuthFormPanel: React.FC<AuthFormPanelProps> = ({
         
         <CardContent className="p-8 pt-0">
           {/* Google Sign-in Button */}
-          <Button
+          {/*      <Button
             onClick={() => handleGoogleSignIn(false)}
             disabled={isLoading}
             className="w-full bg-white border-2 border-neutral-200 text-neutral-600 font-medium py-3 px-4 rounded-xl hover:border-primary hover:bg-neutral-50 transition-all duration-200 flex items-center justify-center space-x-3 group mb-4"
@@ -241,7 +241,7 @@ const AuthFormPanel: React.FC<AuthFormPanelProps> = ({
             <span className="group-hover:text-primary transition-colors">
               {isLoading ? "Signing in..." : "Continue with Google"}
             </span>
-          </Button>
+          </Button> */}
 
           {/* Popup Sign-in Alternative */}
           <Button
@@ -251,7 +251,7 @@ const AuthFormPanel: React.FC<AuthFormPanelProps> = ({
             variant="outline"
             size="sm"
           >
-            <span className="text-sm">Having trouble? Try popup sign-in</span>
+            <span className="text-sm">Continue with Google</span>
           </Button>
 
           {/* Divider */}
