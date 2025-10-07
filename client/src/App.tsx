@@ -29,6 +29,12 @@ import TrackOrder from "@/pages/track-order";
 import Checkout2 from "./pages/checkout2";
 import DeliveryDashboard from "@/pages/DeliveryDashboard";
 import AdminOrderDashboard from "./pages/adminOrderDashboard";
+import PrivacyPolicy from "@/pages/PrivacyPolicy";
+import TermsOfService from "@/pages/TermsOfService";
+import CookiesPolicy from "@/pages/CookiesPolicy";
+import FAQ from "@/pages/FAQ";
+import AboutUs from "@/pages/AboutUs";
+import ContactUs from "@/pages/ContactUs";
 // Protected / Auth-based
 import AuthRedirectGuard from "@/components/auth-redirect-guard";
 import AdminGuard from "@/components/admin-guard";
@@ -51,7 +57,15 @@ function App() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/admin-login" element={<AdminLogin />} />
           <Route path="/delivery-login" element={<DeliveryLogin />} />
+           <Route path="/track-order/:orderId" element={<TrackOrder />} />
 
+      <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+      <Route path="/terms-of-service" element={<TermsOfService />} />
+      <Route path="/cookies-policy" element={<CookiesPolicy />} />
+      <Route path="/faq" element={<FAQ />} />
+      <Route path="/about" element={<AboutUs />} />
+      <Route path="/contact" element={<ContactUs />} />
+          
           {/* Protected routes */}
           <Route
             path="/seller-dashboard"
