@@ -13,6 +13,7 @@ import {
   signInWithEmailAndPassword,
   // 👇 New Import for Native Login via Token
   signInWithCredential,
+  sendPasswordResetEmail as firebaseSendPasswordResetEmail,
 } from "firebase/auth";
 
 // ... (existing firebaseConfig and setup) ...
@@ -29,6 +30,17 @@ const firebaseConfig = {
 const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 const provider = new GoogleAuthProvider();
+// 🚀 New function to export
+export const sendPasswordResetEmail = async (email: string): Promise<void> => {
+  if (!auth) throw new Error("Firebase Auth not initialized.");
+  try {
+    await firebaseSendPasswordResetEmail(auth, email);
+  } catch (error) {
+    console.error("Firebase Password Reset Error:", error);
+    // You should wrap Firebase error here if you use AuthError type globally
+    throw error;
+  }
+};
 
 // ... (existing provider scope and interfaces) ...
 
