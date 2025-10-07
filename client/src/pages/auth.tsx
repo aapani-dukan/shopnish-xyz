@@ -525,7 +525,43 @@ export default function AuthPage() {
       setIsProcessing(false);
     }
   };
-
+  // 🚀 New: Forgot Password Handler
+  const handleForgotPassword = async () => {
+    clearError();
+    if (!email) {
+      toast({ title: "Input Required", description: "Please enter your email address above to reset the password.", variant: "warning" });
+      return;
+    }
+    
+    setIsProcessing(true);
+    try {
+      await resetPassword(email);
+      toast({ 
+        title: "Password Reset Email Sent", 
+        description: `A password reset link has been sent to ${email}. Please check your inbox.`, 
+        variant: "success",
+        duration: 7000
+      });
+      // Clear password fields for security
+      setPassword(''); 
+      setConfirmPassword('');
+    } catch (err: any) {
+      const authError = err as AuthError;
+       // We use a generic message here for security (to avoid confirming if an email exists)
+      if (authError.code === 'auth/user-not-found') {
+         toast({ title: "User Not Found", description: "No user found with this email. Please check the address or sign up.", variant: "destructive" });
+      } else {
+         toast({ 
+          title: "Password Reset Failed", 
+          description: authError.message || "Could not send reset email. Check console.", 
+          variant: "destructive" 
+        });
+      }
+      console.error("Password Reset Error:", authError);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
 
   // --- Render Logic (No change) ---
   const isLoadingOrProcessing = isLoadingAuth || isProcessing;
