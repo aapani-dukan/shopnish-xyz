@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-// Ensure correct paths for imports
+// 🚀 Now import the new functions from useAuth
 import { useAuth } from "@/hooks/useAuth"; 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,15 +11,16 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from "@/hooks/use-toast"; 
 import { 
-  ShoppingBag, ShieldQuestion, AlertTriangle, RefreshCw, Mail, 
+  AlertTriangle, RefreshCw, Mail, 
   ExternalLink, CheckCircle, User as UserIcon, LogIn, UserPlus 
 } from 'lucide-react'; 
 import { 
   checkBrowserCompatibility, AuthError, User as FirebaseUserType,
-  signInWithEmail, signUpWithEmail // 🚀 New: Email/Password Auth functions
+  // ❌ Removed direct import of firebase functions from firebase.ts
 } from '@/lib/firebase'; 
 
-// --- LoadingState Component ---
+
+// --- LoadingState Component (No change) ---
 const LoadingState: React.FC = () => {
   return (
     <div className="w-full max-w-md mx-auto">
@@ -46,11 +47,10 @@ const LoadingState: React.FC = () => {
   );
 };
 
-// --- ErrorState Component ---
+// --- ErrorState Component (No change) ---
 interface ErrorStateProps {
   error: AuthError;
   onRetry: () => void;
-  // onEmailSignIn: () => void; // अब हम सीधे AuthFormPanel में Email/Password फ़ॉर्म दिखाएंगे
 }
 
 const ErrorState: React.FC<ErrorStateProps> = ({ error, onRetry }) => {
@@ -125,7 +125,7 @@ const ErrorState: React.FC<ErrorStateProps> = ({ error, onRetry }) => {
   );
 };
 
-// --- SuccessState Component ---
+// --- SuccessState Component (No change) ---
 interface SuccessStateProps {
   user: FirebaseUserType; 
   onContinue: () => void;
@@ -178,7 +178,7 @@ const SuccessState: React.FC<SuccessStateProps> = ({ user, onContinue }) => {
   );
 };
 
-// --- AuthFormPanel Component (Refactored LoginForm) ---
+// --- AuthFormPanel Component (No change, uses props to handle logic) ---
 interface AuthFormPanelProps {
   handleGoogleSignIn: (usePopup: boolean) => Promise<void>;
   handleEmailAuth: (e: React.FormEvent) => void;
@@ -410,22 +410,32 @@ const AuthFormPanel: React.FC<AuthFormPanelProps> = ({
 
 // --- Main AuthPage Component ---
 export default function AuthPage() {
-  const { user, isLoadingAuth, isAuthenticated, error, clearError, signIn } = useAuth();
+  const { 
+    user, 
+    isLoadingAuth, 
+    isAuthenticated, 
+    error, 
+    clearError, 
+    signIn,
+    // 🚀 New: Destructure email/password auth functions
+    signInWithEmailAndPassword,
+    signUpWithEmailAndPassword,
+  } = useAuth();
+  
   const navigate = useNavigate(); 
   const { toast } = useToast(); 
   
-  // 🚀 New States for Email/Password Auth
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [isLogin, setIsLogin] = useState(true); // true for Login, false for Signup
-  const [isProcessing, setIsProcessing] = useState(false); // Local processing state for Email/Pass
+  const [isLogin, setIsLogin] = useState(true); 
+  const [isProcessing, setIsProcessing] = useState(false); 
 
   const [showSuccessState, setShowSuccessState] = useState(false);
   const [showCompatibilityWarning, setShowCompatibilityWarning] = useState(false);
   const [currentDomain, setCurrentDomain] = useState('');
 
-  // Domain & Compatibility Check
+  // Domain & Compatibility Check (No change)
   useEffect(() => {
     setCurrentDomain(window.location.origin);
     
@@ -440,7 +450,7 @@ export default function AuthPage() {
     }
   }, [toast]);
 
-    // Auth Success Redirect
+  // Auth Success Redirect (No change)
   useEffect(() => {
     if (isAuthenticated && !isLoadingAuth && user) {
       setShowSuccessState(true); 
@@ -460,18 +470,17 @@ export default function AuthPage() {
     }
   }, [isAuthenticated, isLoadingAuth, user, navigate]);
 
-  // Google Sign-in Handler (using redirect or popup, error handled by useAuth/ErrorState)
+    // Google Sign-in Handler (No change)
   const handleGoogleSignIn = async (usePopup: boolean = false) => {
     clearError(); 
     try {
       await signIn(usePopup); 
     } catch (err: any) {
-      // The error should be caught by the useAuth hook and set to the error state
       console.error("AuthPage: Google sign-in failed:", err);
     }
   };
 
-  // 🚀 Email/Password Auth Handler (Completing the cut-off function)
+  // 🚀 Updated Email/Password Auth Handler
   const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     clearError();
@@ -490,12 +499,13 @@ export default function AuthPage() {
     
     try {
       if (isLogin) {
-        // Sign In
-        await signInWithEmail(email, password);
-        // Success will be caught by useEffect(isAuthenticated)
+        // 🔑 Use the hook's signIn function
+        await signInWithEmailAndPassword(email, password);
+        // Success will be handled by the global useEffect(isAuthenticated)
+        toast({ title: "Success", description: "You have been logged in.", variant: "success" });
       } else {
-        // Sign Up
-        await signUpWithEmail(email, password);
+        // 📝 Use the hook's signUp function
+        await signUpWithEmailAndPassword(email, password);
         
         toast({ title: "Success", description: "Account created successfully! Please sign in now.", variant: "success" });
         setIsLogin(true); // Switch to login after successful signup
@@ -517,26 +527,23 @@ export default function AuthPage() {
   };
 
 
-  // --- Render Logic ---
+  // --- Render Logic (No change) ---
   const isLoadingOrProcessing = isLoadingAuth || isProcessing;
   
   if (showSuccessState && user) {
     return <SuccessState user={user} onContinue={() => navigate('/')} />;
   }
 
-  // Google Redirect Flow के दौरान, useAuth hook द्वारा 'loading' स्टेट दिखाया जाता है
   if (isLoadingAuth && !error) {
     return <LoadingState />;
   }
   
-  // यदि error है, तो ErrorState दिखाएँ
   if (error) {
     return (
       <ErrorState 
         error={error} 
         onRetry={() => {
           clearError(); 
-          // Redirect login only for specific errors, otherwise just clear error
           if (error.code !== 'auth/web-storage-unsupported') {
              handleGoogleSignIn(false);
           }
@@ -545,7 +552,6 @@ export default function AuthPage() {
     );
   }
 
-  // डिफ़ॉल्ट रूप से AuthFormPanel दिखाएँ
   return (
     <div className="min-h-screen bg-neutral-50 flex items-center justify-center p-4">
       <AuthFormPanel 
@@ -554,7 +560,6 @@ export default function AuthPage() {
         isLoading={isLoadingOrProcessing}
         showCompatibilityWarning={showCompatibilityWarning}
         currentDomain={currentDomain}
-        // New Props for Email/Password/Toggle
         isLogin={isLogin}
         setIsLogin={setIsLogin}
         email={email}
