@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-// 🚀 Now import the new functions from useAuth
 import { useAuth } from "@/hooks/useAuth"; 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,11 +15,10 @@ import {
 } from 'lucide-react'; 
 import { 
   checkBrowserCompatibility, AuthError, User as FirebaseUserType,
-  // ❌ Removed direct import of firebase functions from firebase.ts
 } from '@/lib/firebase'; 
 
 
-// --- LoadingState Component (No change) ---
+// --- LoadingState Component (Skipped for brevity) ---
 const LoadingState: React.FC = () => {
   return (
     <div className="w-full max-w-md mx-auto">
@@ -47,7 +45,7 @@ const LoadingState: React.FC = () => {
   );
 };
 
-// --- ErrorState Component (No change) ---
+// --- ErrorState Component (Skipped for brevity) ---
 interface ErrorStateProps {
   error: AuthError;
   onRetry: () => void;
@@ -124,8 +122,7 @@ const ErrorState: React.FC<ErrorStateProps> = ({ error, onRetry }) => {
     </div>
   );
 };
-
-// --- SuccessState Component (No change) ---
+// --- SuccessState Component (Skipped for brevity) ---
 interface SuccessStateProps {
   user: FirebaseUserType; 
   onContinue: () => void;
@@ -178,10 +175,11 @@ const SuccessState: React.FC<SuccessStateProps> = ({ user, onContinue }) => {
   );
 };
 
-// --- AuthFormPanel Component (No change, uses props to handle logic) ---
+// --- AuthFormPanel Component (Updated with handleForgotPassword) ---
 interface AuthFormPanelProps {
   handleGoogleSignIn: (usePopup: boolean) => Promise<void>;
   handleEmailAuth: (e: React.FormEvent) => void;
+  handleForgotPassword: () => void; // 🚀 New Prop
   isLoading: boolean;
   showCompatibilityWarning: boolean;
   currentDomain: string;
@@ -198,6 +196,7 @@ interface AuthFormPanelProps {
 const AuthFormPanel: React.FC<AuthFormPanelProps> = ({ 
   handleGoogleSignIn, 
   handleEmailAuth, 
+  handleForgotPassword, // 🚀 Use the new prop
   isLoading, 
   showCompatibilityWarning, 
   currentDomain,
@@ -226,7 +225,7 @@ const AuthFormPanel: React.FC<AuthFormPanelProps> = ({
         </CardHeader>
         
         <CardContent className="p-8 pt-0">
-          {/* Google Sign-in Button (Redirect/Default) */}
+          {/* Google Sign-in Button */}
           <Button
             onClick={() => handleGoogleSignIn(false)}
             disabled={isLoading}
@@ -322,9 +321,15 @@ const AuthFormPanel: React.FC<AuthFormPanelProps> = ({
                     Remember me
                   </Label>
                 </div>
-                <a href="#" className="text-sm text-primary hover:text-secondary transition-colors">
-                  Forgot password?
-                </a>
+                {/* 🚀 Updated Forgot Password link */}
+                <button
+                    type="button" // Important: use type="button" to prevent form submission
+                    onClick={handleForgotPassword}
+                    className="text-sm text-primary hover:text-secondary transition-colors font-medium disabled:opacity-50"
+                    disabled={isLoading}
+                >
+                    Forgot password?
+                </button>
               </div>
             )}
 
@@ -358,8 +363,7 @@ const AuthFormPanel: React.FC<AuthFormPanelProps> = ({
           </div>
         </CardContent>
       </Card>
-
-      {/* Firebase Setup Information and Browser Warning remain here */}
+           {/* Firebase Setup Information and Browser Warning remain here */}
       <Card className="bg-blue-50 border border-blue-200 rounded-xl p-4 mt-6">
         <div className="flex items-start space-x-3">
           <div className="text-blue-500 mt-1">
@@ -408,7 +412,7 @@ const AuthFormPanel: React.FC<AuthFormPanelProps> = ({
 };
 
 
-// --- Main AuthPage Component ---
+// --- Main AuthPage Component (Updated) ---
 export default function AuthPage() {
   const { 
     user, 
@@ -417,15 +421,15 @@ export default function AuthPage() {
     error, 
     clearError, 
     signIn,
-    // 🚀 New: Destructure email/password auth functions
     signInWithEmailAndPassword,
     signUpWithEmailAndPassword,
+    resetPassword, // 🚀 New: Destructure resetPassword
   } = useAuth();
   
   const navigate = useNavigate(); 
   const { toast } = useToast(); 
   
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState('shivraj8404@gmail.com'); // Pre-fill email for convenience
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isLogin, setIsLogin] = useState(true); 
@@ -435,7 +439,7 @@ export default function AuthPage() {
   const [showCompatibilityWarning, setShowCompatibilityWarning] = useState(false);
   const [currentDomain, setCurrentDomain] = useState('');
 
-  // Domain & Compatibility Check (No change)
+  // Domain & Compatibility Check (Skipped for brevity)
   useEffect(() => {
     setCurrentDomain(window.location.origin);
     
@@ -450,7 +454,7 @@ export default function AuthPage() {
     }
   }, [toast]);
 
-  // Auth Success Redirect (No change)
+  // Auth Success Redirect (Skipped for brevity)
   useEffect(() => {
     if (isAuthenticated && !isLoadingAuth && user) {
       setShowSuccessState(true); 
@@ -470,7 +474,7 @@ export default function AuthPage() {
     }
   }, [isAuthenticated, isLoadingAuth, user, navigate]);
 
-    // Google Sign-in Handler (No change)
+  // Google Sign-in Handler (Skipped for brevity)
   const handleGoogleSignIn = async (usePopup: boolean = false) => {
     clearError(); 
     try {
@@ -480,7 +484,7 @@ export default function AuthPage() {
     }
   };
 
-  // 🚀 Updated Email/Password Auth Handler
+  // Email/Password Auth Handler (Skipped for brevity)
   const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     clearError();
@@ -495,20 +499,17 @@ export default function AuthPage() {
       return;
     }
 
-    setIsProcessing(true); // Start local processing
+    setIsProcessing(true); 
     
     try {
       if (isLogin) {
-        // 🔑 Use the hook's signIn function
         await signInWithEmailAndPassword(email, password);
-        // Success will be handled by the global useEffect(isAuthenticated)
         toast({ title: "Success", description: "You have been logged in.", variant: "success" });
       } else {
-        // 📝 Use the hook's signUp function
         await signUpWithEmailAndPassword(email, password);
         
         toast({ title: "Success", description: "Account created successfully! Please sign in now.", variant: "success" });
-        setIsLogin(true); // Switch to login after successful signup
+        setIsLogin(true); 
         setEmail('');
         setPassword('');
         setConfirmPassword('');
@@ -525,11 +526,14 @@ export default function AuthPage() {
       setIsProcessing(false);
     }
   };
-  // 🚀 New: Forgot Password Handler
+    // 🚀 Updated: Forgot Password Handler with console.log
   const handleForgotPassword = async () => {
+    console.log("Forgot Password clicked. Current Email:", email); // 👈 Debugging log
     clearError();
+    
     if (!email) {
       toast({ title: "Input Required", description: "Please enter your email address above to reset the password.", variant: "warning" });
+      setIsProcessing(false); // Ensure loading state is reset if we early exit
       return;
     }
     
@@ -560,8 +564,10 @@ export default function AuthPage() {
       console.error("Password Reset Error:", authError);
     } finally {
       setIsProcessing(false);
+      console.log("Forgot Password attempt finished."); // 👈 Debugging log
     }
   };
+
 
   // --- Render Logic (No change) ---
   const isLoadingOrProcessing = isLoadingAuth || isProcessing;
@@ -593,6 +599,7 @@ export default function AuthPage() {
       <AuthFormPanel 
         handleGoogleSignIn={handleGoogleSignIn}
         handleEmailAuth={handleEmailAuth}
+        handleForgotPassword={handleForgotPassword} // 🚀 Pass the new handler
         isLoading={isLoadingOrProcessing}
         showCompatibilityWarning={showCompatibilityWarning}
         currentDomain={currentDomain}
