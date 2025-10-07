@@ -1,5 +1,3 @@
-// client/src/hooks/useAuth.tsx
-
 import {
   useEffect,
   useState,
@@ -17,10 +15,13 @@ import {
   signInWithGoogle as firebaseSignInWithGoogle,
   signOutUser,
   AuthError,
+  // 🚀 New: Import Email/Password functions from firebase utility
+  signInWithEmail as firebaseSignInWithEmail,
+  signUpWithEmail as firebaseSignUpWithEmail,
 } from "@/lib/firebase";
 import { apiRequest } from "@/lib/queryClient";
 
-// --- Types ---
+// --- Types (No changes here, repeated for completeness) ---
 export interface SellerInfo {
   id: string;
   userId: string;
@@ -47,10 +48,14 @@ interface AuthContextType {
   isAdmin: boolean;
   error: AuthError | null;
   clearError: () => void;
-  signIn: (usePopup?: boolean) => Promise<FirebaseUser | null>;
+  signIn: (usePopup?: boolean) => Promise<FirebaseUser | null>; // Google Auth
   signOut: () => Promise<void>;
   refetchUser: () => void;
-  backendLogin: (email: string, password: string) => Promise<User>;
+  backendLogin: (email: string, password: string) => Promise<User>; // Delivery/Backend-only login
+
+  // 🚀 New: Email/Password Auth functions
+  signInWithEmailAndPassword: (email: string, password: string) => Promise<FirebaseUser | null>;
+  signUpWithEmailAndPassword: (email: string, password: string) => Promise<FirebaseUser | null>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -67,7 +72,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     setAuthError(null);
   }, []);
 
-  // ✅ Consolidated logic in one function
+  // ✅ Consolidated logic for fetching and syncing backend user
   const fetchAndSyncBackendUser = useCallback(async (fbUser: FirebaseUser) => {
     setIsLoadingAuth(true);
     let dbUserData = null;
@@ -129,7 +134,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     setIsLoadingAuth(false);
   }, []);
 
-  // ✅ Firebase + Backend sync
+  // ✅ Firebase + Backend sync Listener
   useEffect(() => {
     const checkRedirectResult = async () => {
       try {
@@ -147,7 +152,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       );
 
       if (fbUser) {
-        await fetchAndSyncBackendUser(fbUser);
+        // Only run fetchAndSync if user data is not yet loaded
+        if (!user || user.uid !== fbUser.uid) {
+            await fetchAndSyncBackendUser(fbUser);
+        } else {
+            // Already authenticated and synced, just update loading state
+            setIsLoadingAuth(false);
+        }
       } else {
         console.warn("❌ No Firebase user. Clearing state.");
         setUser(null);
@@ -159,15 +170,17 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     });
 
     return () => unsubscribe();
-  }, [fetchAndSyncBackendUser, queryClient]);
+  }, [fetchAndSyncBackendUser, queryClient, user]); // Added user dependency to prevent re-sync loop
 
-  // Google sign in
+  // --- 1. Google Sign In Handler ---
   const signIn = useCallback(
     async (usePopup: boolean = false): Promise<FirebaseUser | null> => {
       setIsLoadingAuth(true);
       setAuthError(null);
       try {
         const fbUser = await firebaseSignInWithGoogle(usePopup);
+        // If redirect is used, fbUser is null, and the listener handles it.
+        // If popup is used and successful, we sync immediately.
         if (fbUser) {
           await fetchAndSyncBackendUser(fbUser);
         }
@@ -181,7 +194,50 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     [fetchAndSyncBackendUser]
   );
   
-  // ... (बाकी सभी फ़ंक्शन जैसे signOut, refetchUser, backendLogin वही रहेंगे)
+  // --- 2. 🚀 Email/Password Sign In Handler ---
+  const signInWithEmailAndPassword = useCallback(
+    async (email: string, password: string): Promise<FirebaseUser | null> => {
+      setIsLoadingAuth(true);
+      setAuthError(null);
+      try {
+        const fbUser = await firebaseSignInWithEmail(email, password);
+        if (fbUser) {
+          await fetchAndSyncBackendUser(fbUser);
+        }
+        return fbUser;
+      } catch (err: any) {
+        // Email/Password login failures are AuthErrors
+        setAuthError(err as AuthError);
+        setIsLoadingAuth(false);
+        throw err;
+      }
+    },
+    [fetchAndSyncBackendUser]
+  );
+  
+  // --- 3. 🚀 Email/Password Sign Up Handler ---
+  const signUpWithEmailAndPassword = useCallback(
+    async (email: string, password: string): Promise<FirebaseUser | null> => {
+      setIsLoadingAuth(true);
+      setAuthError(null);
+      try {
+        // Note: Sign Up typically doesn't need immediate backend sync 
+        // because the successful sign up automatically triggers the 
+        // onAuthStateChanged listener, which handles the sync via fetchAndSyncBackendUser.
+        // However, we return the user for immediate success feedback in the UI.
+        const fbUser = await firebaseSignUpWithEmail(email, password);
+        // After sign up, the user is signed in, so onAuthStateChanged will handle the rest.
+        return fbUser; 
+      } catch (err: any) {
+        setAuthError(err as AuthError);
+        setIsLoadingAuth(false);
+        throw err;
+      }
+    },
+    [] // No dependency needed as it relies on firebase utility and global listener
+  );
+
+  // --- Sign Out Handler ---
   const signOut = useCallback(async (): Promise<void> => {
     try {
       await signOutUser();
@@ -197,6 +253,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   }, [queryClient]);
 
+  // --- Refetch User Handler ---
   const refetchUser = useCallback(async () => {
     setIsLoadingAuth(true);
     const fbUser = auth.currentUser;
@@ -207,11 +264,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   }, [fetchAndSyncBackendUser]);
 
+  // --- Backend Login Handler (for delivery/admin if Firebase isn't used) ---
   const backendLogin = useCallback(
     async (email: string, password: string): Promise<User> => {
       setAuthError(null);
       setIsLoadingAuth(true);
       try {
+        // NOTE: This assumes a custom /api/delivery/login endpoint that returns a backend token/user
+        // If successful, this function bypasses Firebase Auth State
         const res = await apiRequest("POST", "/api/delivery/login", {
           email,
           password,
@@ -254,6 +314,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       signOut,
       refetchUser,
       backendLogin,
+      // 🚀 New additions
+      signInWithEmailAndPassword,
+      signUpWithEmailAndPassword,
     }),
     [
       user,
@@ -266,6 +329,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       signOut,
       refetchUser,
       backendLogin,
+      signInWithEmailAndPassword,
+      signUpWithEmailAndPassword,
     ]
   );
 
